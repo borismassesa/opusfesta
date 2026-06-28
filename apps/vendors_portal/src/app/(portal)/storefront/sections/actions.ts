@@ -356,7 +356,7 @@ export async function loadRecognition(): Promise<
 // so admin can identify which vendor owns a file at a glance, and so cover
 // photos can be replaced without orphaning gallery entries.
 
-export type UploadKind = 'cover' | 'gallery'
+export type UploadKind = 'cover' | 'gallery' | 'avatar' | 'logo'
 export type UploadResult =
   | { ok: true; url: string; path: string }
   | { ok: false; error: string; reason: 'unauth' | 'invalid' | 'unknown' }
@@ -381,7 +381,12 @@ export async function uploadStorefrontPhoto(
   if (!(file instanceof File)) {
     return { ok: false, reason: 'invalid', error: 'No file in upload payload.' }
   }
-  if (kindRaw !== 'cover' && kindRaw !== 'gallery') {
+  if (
+    kindRaw !== 'cover' &&
+    kindRaw !== 'gallery' &&
+    kindRaw !== 'avatar' &&
+    kindRaw !== 'logo'
+  ) {
     return { ok: false, reason: 'invalid', error: 'Unknown upload kind.' }
   }
   const kind = kindRaw as UploadKind
@@ -663,6 +668,8 @@ export async function loadStorefrontPhotos(): Promise<LoadPhotosResult> {
 
 export type StorefrontProfileFields = {
   hours?: StorefrontHours
+  // Public URL of the vendor's logo / profile picture (vendors.logo).
+  logo?: string | null
   style?: string | null
   personality?: string | null
   homeMarket?: string | null
@@ -689,6 +696,7 @@ export async function saveProfileFields(input: StorefrontProfileFields): Promise
 
   const update: Record<string, unknown> = {}
   if (input.hours !== undefined) update.hours = input.hours
+  if (input.logo !== undefined) update.logo = input.logo?.trim() || null
   if (input.style !== undefined) update.style = input.style
   if (input.personality !== undefined) update.personality = input.personality
   if (input.homeMarket !== undefined) update.home_market = input.homeMarket

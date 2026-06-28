@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Camera, Plus, Save, Trash2, User, X } from 'lucide-react'
+import { ArrowRight, Camera, Loader2, Plus, Save, Trash2, User, X } from 'lucide-react'
 import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft, type TeamMember } from '@/lib/onboarding/draft'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { cn } from '@/lib/utils'
-import { loadTeam, saveTeam } from '../sections/actions'
+import { loadTeam, saveTeam, uploadStorefrontPhoto } from '../sections/actions'
 
 const newMember = (seed?: Partial<TeamMember>): TeamMember => ({
   id:
@@ -57,6 +57,25 @@ export default function TeamPage() {
   // can't clobber localStorage with the empty default.
   const team = hydrated ? draft.team : []
 
+  // Freshest team for async callbacks (avatar uploads resolve after the
+  // closure that started them has gone stale). Synced in an effect so we don't
+  // write a ref during render; async uploads resolve well after commit.
+  const teamRef = useRef(team)
+  useEffect(() => {
+    teamRef.current = team
+  }, [team])
+
+  // Per-member avatar upload state + a shared error line.
+  const [uploadingIds, setUploadingIds] = useState<Set<string>>(new Set())
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const setUploading = (id: string, on: boolean) =>
+    setUploadingIds((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
   // Hydrate from the DB (source of truth) when the local draft is empty —
   // a fresh device / cleared storage / admin-approved vendor would otherwise
   // see no team members despite having saved some. Seeding only when empty
@@ -71,7 +90,12 @@ export default function TeamPage() {
       if (res.ok && res.team.length > 0) {
         update({
           team: res.team.map((m) =>
-            newMember({ name: m.name ?? '', role: m.role ?? '', bio: m.bio ?? '' }),
+            newMember({
+              name: m.name ?? '',
+              role: m.role ?? '',
+              bio: m.bio ?? '',
+              avatar: m.avatar,
+            }),
           ),
         })
       }
@@ -81,7 +105,11 @@ export default function TeamPage() {
 
   const updateMember = (id: string, patch: Partial<TeamMember>) => {
     if (!hydrated) return
-    update({ team: team.map((m) => (m.id === id ? { ...m, ...patch } : m)) })
+    // Patch off teamRef so an async avatar upload completing later doesn't
+    // clobber edits made while it was in flight.
+    update({
+      team: teamRef.current.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    })
   }
 
   const addMember = () => {
@@ -101,13 +129,44 @@ export default function TeamPage() {
     // Revoke the previous blob if there was one — new file or clearing both
     // need cleanup.
     if (member?.avatarUrl) URL.revokeObjectURL(member.avatarUrl)
+    setAvatarError(null)
     if (!file) {
-      updateMember(id, { avatarUrl: undefined })
+      updateMember(id, { avatarUrl: undefined, avatar: undefined })
       return
     }
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Choose an image file (JPEG, PNG, or WebP).')
+      return
+    }
+    // Show the picked image immediately as a blob preview, then upload it to
+    // storage so we get a permanent URL that persists to the DB (and therefore
+    // shows on admin + the public storefront). Before this, the avatar was a
+    // blob-only preview that was stripped on save and never stored anywhere.
     const url = URL.createObjectURL(file)
     objectUrlsRef.current.push(url)
     updateMember(id, { avatarUrl: url })
+
+    setUploading(id, true)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('kind', 'avatar')
+    uploadStorefrontPhoto(fd)
+      .then((res) => {
+        setUploading(id, false)
+        if (!res.ok) {
+          setAvatarError(res.error)
+          return
+        }
+        // Persist the permanent URL; keep the blob preview until the next save
+        // /reload (display prefers `avatar` once it's set).
+        updateMember(id, { avatar: res.url })
+      })
+      .catch((err) => {
+        setUploading(id, false)
+        setAvatarError(
+          err instanceof Error ? err.message : 'Photo upload failed. Try again.',
+        )
+      })
   }
 
   const onNext = () => {
@@ -162,6 +221,7 @@ export default function TeamPage() {
                 <MemberCard
                   key={member.id}
                   member={member}
+                  uploading={uploadingIds.has(member.id)}
                   onChange={(patch) => updateMember(member.id, patch)}
                   onSetAvatar={(file) => setAvatar(member.id, file)}
                   onRemove={() => removeMember(member.id)}
@@ -186,6 +246,9 @@ export default function TeamPage() {
           <div className="text-xs text-gray-500">
             <span className="font-semibold text-gray-900 tabular-nums">{completeMembers}</span>{' '}
             complete · {team.length} total
+            {avatarError && (
+              <span className="ml-3 text-rose-700">{avatarError}</span>
+            )}
             {saveError && (
               <span className="ml-3 text-rose-700">{saveError}</span>
             )}
@@ -197,11 +260,15 @@ export default function TeamPage() {
             <button
               type="button"
               onClick={onSave}
-              disabled={saving}
+              disabled={saving || uploadingIds.size > 0}
               className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <Save className="w-3.5 h-3.5" />
-              {saving ? 'Saving…' : 'Save'}
+              {saving
+                ? 'Saving…'
+                : uploadingIds.size > 0
+                  ? 'Uploading photo…'
+                  : 'Save'}
             </button>
             <button
               type="button"
@@ -220,11 +287,13 @@ export default function TeamPage() {
 
 function MemberCard({
   member,
+  uploading,
   onChange,
   onSetAvatar,
   onRemove,
 }: {
   member: TeamMember
+  uploading: boolean
   onChange: (patch: Partial<TeamMember>) => void
   onSetAvatar: (file: File | null) => void
   onRemove: () => void
@@ -232,7 +301,7 @@ function MemberCard({
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6 lg:p-7">
       <div className="flex items-start gap-5">
-        <Avatar member={member} onSetFile={onSetAvatar} />
+        <Avatar member={member} uploading={uploading} onSetFile={onSetAvatar} />
 
         <div className="flex-1 min-w-0 space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
@@ -279,15 +348,19 @@ function MemberCard({
 
 function Avatar({
   member,
+  uploading,
   onSetFile,
 }: {
   member: TeamMember
+  uploading: boolean
   onSetFile: (file: File | null) => void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const initials = initialsFor(member.name)
-  const hasAvatar = Boolean(member.avatarUrl)
+  // Prefer the persisted public URL; fall back to the in-flight blob preview.
+  const avatarSrc = member.avatar || member.avatarUrl
+  const hasAvatar = Boolean(avatarSrc)
   const hasName = member.name.trim().length > 0
 
   return (
@@ -329,7 +402,7 @@ function Avatar({
       {hasAvatar ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={member.avatarUrl}
+          src={avatarSrc}
           alt={member.name || 'Team member'}
           className="w-full h-full object-cover"
         />
@@ -346,9 +419,16 @@ function Avatar({
         </div>
       )}
 
+      {/* Uploading spinner — shown while the picked photo uploads to storage. */}
+      {uploading && (
+        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </span>
+      )}
+
       {/* Hover overlay — only shown when an avatar or initials exist; the
           empty state already telegraphs uploadability via the dashed border. */}
-      {(hasAvatar || hasName) && (
+      {!uploading && (hasAvatar || hasName) && (
         <span
           className={cn(
             'absolute inset-0 flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity',

@@ -591,6 +591,7 @@ function mapVendorRow(row: VendorRow): Vendor {
     id: row.id,
     slug: row.slug,
     name: row.business_name ?? '',
+    logo: row.logo?.trim() ? row.logo : undefined,
     excerpt: row.description ?? row.bio?.slice(0, 160) ?? '',
     category: row.category ?? '',
     categoryId,

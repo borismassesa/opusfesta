@@ -61,10 +61,13 @@ export type TeamMember = {
   name: string
   role: string
   bio: string
-  // Avatars are session-only blob URLs (the editor calls URL.createObjectURL).
-  // Persisting full image data in localStorage would blow the quota — once a
-  // backend storage layer lands, swap this for a permanent URL.
+  // Transient preview only: a `blob:` URL from URL.createObjectURL, shown while
+  // the file uploads. Never persisted (resolves only in the current tab).
   avatarUrl?: string
+  // Persisted public URL of the uploaded avatar (vendor-portfolios bucket).
+  // This is what's saved to vendors.team and shown on admin + the public
+  // storefront. Set once the upload in the team editor returns.
+  avatar?: string
 }
 
 // The Availability tab represents the vendor's *operating* posture (when they
@@ -107,6 +110,10 @@ export type OnboardingDraft = {
   firstName: string
   lastName: string
   businessName: string
+  // Public URL of the vendor's logo / profile picture (vendor-portfolios
+  // bucket). Captured in onboarding and editable in the storefront; persisted
+  // to vendors.logo and shown on admin + the public storefront.
+  logo: string
   // Tanzania administrative address (Region › District › Ward › Street/Village).
   houseNumber: string // House / Plot number
   street: string // Street / Village (Mtaa / Kijiji)
@@ -220,6 +227,7 @@ const EMPTY: OnboardingDraft = {
   firstName: '',
   lastName: '',
   businessName: '',
+  logo: '',
   houseNumber: '',
   street: '',
   ward: '',

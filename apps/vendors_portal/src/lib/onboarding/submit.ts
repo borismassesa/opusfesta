@@ -412,6 +412,10 @@ export async function submitApplication(
     description: draft.description?.trim() || null,
     location: buildLocation(draft),
     contact_info: buildContactInfo(draft),
+    // Logo / profile picture captured on the onboarding name step. Already a
+    // public URL (uploaded during onboarding); persisted so it shows on the
+    // storefront + admin.
+    logo: draft.logo?.trim() || null,
     ...lifecycleFields,
   }
 

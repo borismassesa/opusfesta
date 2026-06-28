@@ -7,6 +7,8 @@
 
 export type DbProfile = {
   businessName: string
+  // Public URL of the vendor logo / profile picture (vendors.logo).
+  logo: string
   firstName: string
   lastName: string
   yearsInBusiness: string // editor uses string, DB stores INTEGER (or null)
@@ -35,6 +37,7 @@ export type DbProfile = {
 
 export type VendorRowFromDb = {
   business_name: string | null
+  logo: string | null
   years_in_business: number | null
   bio: string | null
   description: string | null
@@ -45,6 +48,7 @@ export type VendorRowFromDb = {
 
 const EMPTY: DbProfile = {
   businessName: '',
+  logo: '',
   firstName: '',
   lastName: '',
   yearsInBusiness: '',
@@ -77,6 +81,7 @@ export function dbVendorToProfile(row: VendorRowFromDb | null | undefined): DbPr
   if (!row) return EMPTY
   return {
     businessName: row.business_name ?? '',
+    logo: row.logo ?? '',
     firstName: readString(row.contact_info, 'firstName'),
     lastName: readString(row.contact_info, 'lastName'),
     yearsInBusiness:

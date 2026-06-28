@@ -9,6 +9,7 @@ import AboutEditor, { type AboutSource } from './AboutEditor'
 
 const EMPTY_PROFILE: DbProfile = {
   businessName: '',
+  logo: '',
   firstName: '',
   lastName: '',
   yearsInBusiness: '',
@@ -71,7 +72,7 @@ async function loadProfile(): Promise<{
   const { data, error } = await supabase
     .from('vendors')
     .select(
-      'business_name, years_in_business, bio, description, location, contact_info, social_links, draft_content',
+      'business_name, logo, years_in_business, bio, description, location, contact_info, social_links, draft_content',
     )
     .eq('id', state.vendor.id)
     .single<
@@ -101,6 +102,7 @@ async function loadProfile(): Promise<{
   const draftAbout = data.draft_content?.about
   const liveOnlyRow: VendorRowFromDb = {
     business_name: data.business_name,
+    logo: data.logo,
     years_in_business: data.years_in_business,
     bio: data.bio,
     description: data.description,

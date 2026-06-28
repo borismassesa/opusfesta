@@ -55,6 +55,8 @@ export type Vendor = {
   id: string
   slug: string
   name: string
+  // Public URL of the vendor's logo / profile picture (vendors.logo).
+  logo?: string
   excerpt: string
   category: string
   categoryId: VendorCategoryId

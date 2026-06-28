@@ -30,8 +30,9 @@ import {
   TZ_REGIONS,
   homeMarketForRegion,
 } from '@/lib/onboarding/regions'
+import { LogoUpload } from '@/components/onboard/LogoUpload'
 import { saveProfile } from './actions'
-import { saveProfileFields } from '../sections/actions'
+import { saveProfileFields, uploadStorefrontPhoto } from '../sections/actions'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { profilesEqual, type DbProfile } from './mapping'
 
@@ -220,6 +221,7 @@ export default function AboutEditor({
           ? saveProfile(profile)
           : Promise.resolve({ ok: true as const }),
         saveProfileFields({
+          logo: profile.logo,
           style: draft.style || null,
           personality: draft.personality || null,
           homeMarket: homeMarket ?? null,
@@ -283,6 +285,26 @@ export default function AboutEditor({
             className="lg:col-span-2"
           >
             <div className="space-y-4">
+              <div>
+                <FieldLabel>Logo or profile picture</FieldLabel>
+                <div className="mt-1">
+                  <LogoUpload
+                    value={profile.logo}
+                    onChange={(url) => setField('logo', url)}
+                    disabled={!canEdit}
+                    upload={async (file) => {
+                      const fd = new FormData()
+                      fd.append('file', file)
+                      fd.append('kind', 'logo')
+                      const res = await uploadStorefrontPhoto(fd)
+                      return res.ok
+                        ? { ok: true, url: res.url }
+                        : { ok: false, error: res.error }
+                    }}
+                    hint="Square works best. Shown on your public storefront."
+                  />
+                </div>
+              </div>
               <div data-field="businessName">
                 <FieldLabel required>Business name</FieldLabel>
                 <TextInput

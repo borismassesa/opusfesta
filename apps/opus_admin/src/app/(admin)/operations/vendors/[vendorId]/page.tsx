@@ -11,6 +11,7 @@ type VendorRow = {
   vendor_code: string | null
   slug: string
   business_name: string
+  logo: string | null
   category: string
   bio: string | null
   description: string | null
@@ -159,7 +160,7 @@ export default async function VendorReviewPage({
     admin
       .from('vendors')
       .select(
-        `id, vendor_code, slug, business_name, category, bio, description,
+        `id, vendor_code, slug, business_name, logo, category, bio, description,
          location, contact_info, social_links, services_offered,
          years_in_business, onboarding_status, onboarding_started_at,
          onboarding_completed_at, suspended_at, suspension_reason,
@@ -492,6 +493,7 @@ export default async function VendorReviewPage({
       styleColumn: v.style,
       personalityColumn: v.personality,
       coverImageColumn: v.cover_image,
+      logoColumn: v.logo ?? null,
       galleryUrlsColumn: v.gallery_urls ?? [],
       videoUrlsColumn: videoUrls,
       startingPriceColumn: pricingCapacity.starting_price,

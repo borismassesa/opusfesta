@@ -159,6 +159,7 @@ export type VendorReviewProps = {
     styleColumn: string | null
     personalityColumn: string | null
     coverImageColumn: string | null
+    logoColumn: string | null
     galleryUrlsColumn: string[]
     videoUrlsColumn: string[]
     startingPriceColumn: string | null
@@ -682,6 +683,33 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             title="Storefront Content"
             description="Manage the commercial content and trust signals shown on the vendor storefront."
           >
+            {/* Logo / profile picture — read-only; the vendor uploads this in
+                onboarding or the storefront About editor. */}
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+              {vendor.logoColumn ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={vendor.logoColumn}
+                  alt="Vendor logo"
+                  className="h-16 w-16 shrink-0 rounded-xl border border-gray-200 object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  No logo
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  Logo / profile picture
+                </p>
+                <p className="text-xs text-gray-500">
+                  {vendor.logoColumn
+                    ? 'Uploaded by the vendor.'
+                    : 'The vendor has not uploaded a logo yet.'}
+                </p>
+              </div>
+            </div>
+
             <AdminPhotosVideosEditor
               vendorId={vendor.id}
               initial={{
@@ -727,6 +755,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 name: typeof m.name === 'string' ? m.name : '',
                 role: typeof m.role === 'string' ? m.role : '',
                 bio: typeof m.bio === 'string' ? m.bio : '',
+                avatar: typeof m.avatar === 'string' ? m.avatar : undefined,
               }))}
             />
 
