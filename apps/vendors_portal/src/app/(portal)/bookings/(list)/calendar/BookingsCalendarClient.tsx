@@ -23,7 +23,7 @@ import {
 } from '@/lib/onboarding/draft'
 import type { CalendarBooking } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
-import { loadAvailability, loadBusinessHours, saveAvailability } from '../../../storefront/sections/actions'
+import { loadAvailability, saveAvailability } from '../../../storefront/sections/actions'
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 const MONTH_LABELS = [
@@ -151,18 +151,11 @@ export default function BookingsCalendarClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated])
 
-  // Business hours live on the vendor record — seed them back into the draft so
-  // weekly-closed days show on this calendar too. Seed once.
-  const hoursSeeded = useRef(false)
-  useEffect(() => {
-    if (!hydrated || hoursSeeded.current) return
-    hoursSeeded.current = true
-    void loadBusinessHours().then((res) => {
-      if (res.ok && res.hours) update({ hours: res.hours })
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated])
-
+  // Business hours: this calendar only READS them (to grey weekly-closed days),
+  // so it reads draft.hours directly rather than seeding from the DB. Seeding
+  // here would clobber unsaved hours edits made on the shared availability page,
+  // which writes the same draft store but has no way to signal "touched" across
+  // routes. The availability editor owns loading/persisting hours.
   if (!hydrated) return <div className="p-8" aria-hidden />
 
   const offByDate = new Map(draft.availability.map((a) => [a.date, a]))
