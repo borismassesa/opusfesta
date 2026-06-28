@@ -239,6 +239,7 @@ export default async function VerifyPage() {
   return (
     <VerifyClient
       status={state.status}
+      vendorId={state.vendorId}
       slots={slots}
       nationalId={nationalId}
       agreementDocs={agreementDocs}
