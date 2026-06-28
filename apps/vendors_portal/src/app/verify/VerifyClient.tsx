@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, useRef, useState, useTransition } from 'react'
+import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SignOutButton } from '@clerk/nextjs'
@@ -83,6 +83,9 @@ export type AgreementDocView = {
 
 type Props = {
   status: 'verification_pending' | 'needs_corrections' | 'admin_review'
+  /** The active vendor id — scopes the persisted "skipped optional docs" flag
+   *  so the agreement step doesn't re-lock on every reload. */
+  vendorId: string
   slots: VerifyDocSlot[]
   /** National ID + liveness selfie capture progress (the required identity
    *  step). TIN + business license in `slots` are optional. */
@@ -118,6 +121,7 @@ function isSlotDone(slot: VerifyDocSlot): boolean {
 
 export default function VerifyClient({
   status,
+  vendorId,
   slots,
   nationalId,
   agreementDocs,
@@ -145,7 +149,34 @@ export default function VerifyClient({
   const agreementSigned =
     agreementDocs.length > 0 && signedCount === agreementDocs.length
 
-  const [skippedOptional, setSkippedOptional] = useState(false)
+  // The vendor explicitly moving past the optional-docs step ("Skip / Continue
+  // to agreement") used to live only in component state, so a reload re-locked
+  // the agreement and forced them to click through again. Persist it per vendor
+  // so the unlock sticks across reloads/sessions on this device.
+  const [skippedOptional, setSkippedOptionalState] = useState(false)
+  const skipKey = `opusfesta:verify-skip-optional:${vendorId}`
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (window.localStorage.getItem(skipKey) === '1') {
+        // Hydrating a client-only persisted flag — a lazy useState initializer
+        // would read localStorage during SSR and mismatch on hydration.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSkippedOptionalState(true)
+      }
+    } catch {
+      // ignore private-mode / quota errors — the in-memory flag still works
+    }
+  }, [skipKey])
+  const setSkippedOptional = (val: boolean) => {
+    setSkippedOptionalState(val)
+    try {
+      if (val) window.localStorage.setItem(skipKey, '1')
+      else window.localStorage.removeItem(skipKey)
+    } catch {
+      // ignore private-mode / quota errors
+    }
+  }
 
   const idMode: StepMode = idComplete ? 'done' : 'active'
 
@@ -409,7 +440,7 @@ export default function VerifyClient({
               line. The actionable card for the *active* step renders below
               the timeline so the vendor sees the whole journey at a glance
               and the next concrete action right after. */}
-          <section className="mt-10 sm:mt-12 bg-white rounded-3xl border border-gray-100 shadow-[0_2px_24px_-8px_rgba(98,52,128,0.08)] p-6 sm:p-8">
+          <section id="documents" className="scroll-mt-24 mt-10 sm:mt-12 bg-white rounded-3xl border border-gray-100 shadow-[0_2px_24px_-8px_rgba(98,52,128,0.08)] p-6 sm:p-8">
             <div className="flex items-baseline justify-between gap-3 mb-6">
               <h2 className="text-base font-semibold text-gray-900">
                 Your verification journey

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import QRCode from 'qrcode'
-import { Camera, Check, Lock, RefreshCw, ScanFace, Smartphone } from 'lucide-react'
+import { Camera, Check, Lock, RefreshCw, ScanFace, Smartphone, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import CameraCapture from '@/components/CameraCapture'
 import {
@@ -13,6 +13,10 @@ import {
 } from './actions'
 
 type Kind = 'front' | 'back' | 'selfie'
+
+// Matches storeVerificationShot's server-side cap so the gallery-upload
+// fallback rejects oversized files before encoding them into a data URL.
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
 // Desktop identity capture: National ID front + back, then a liveness selfie
 // (Uber-style). Camera-only (no file upload) on this device, OR scan a QR with
@@ -98,8 +102,7 @@ export default function NationalIdStep({
     return () => clearInterval(id)
   }, [allDone, router])
 
-  const handleCapture = (kind: Kind) => (dataUrl: string) => {
-    setError(null)
+  const persistShot = (kind: Kind, dataUrl: string) => {
     startTransition(async () => {
       const res = await uploadNationalIdShot(kind, dataUrl)
       if (!res.ok) {
@@ -112,6 +115,43 @@ export default function NationalIdStep({
       setCapturing(null)
       router.refresh()
     })
+  }
+
+  const handleCapture = (kind: Kind) => (dataUrl: string) => {
+    setError(null)
+    persistShot(kind, dataUrl)
+  }
+
+  // Fallback for vendors whose camera is blocked — denied permission, no
+  // camera, or an in-app browser (WhatsApp/Instagram) that disables
+  // getUserMedia. They pick a photo from their gallery instead; admin review
+  // is still the backstop for every National ID. Reuses the same server action
+  // as the camera path by reading the file into a data URL.
+  const handleFile = (kind: Kind) => (file: File) => {
+    setError(null)
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setError('Upload a JPG, PNG, or WEBP photo of your ID.')
+      return
+    }
+    if (file.size === 0) {
+      setError('That file is empty — pick another photo.')
+      return
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError('Photo is too large (max 15 MB). Pick a smaller one.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+      if (!dataUrl) {
+        setError('Could not read that photo — try another.')
+        return
+      }
+      persistShot(kind, dataUrl)
+    }
+    reader.onerror = () => setError('Could not read that photo — try another.')
+    reader.readAsDataURL(file)
   }
 
   if (capturing) {
@@ -156,6 +196,7 @@ export default function NationalIdStep({
           label="ID — Front"
           done={front}
           onTake={() => setCapturing('front')}
+          onUpload={handleFile('front')}
           disabled={pending}
         />
         <CaptureTile
@@ -163,6 +204,7 @@ export default function NationalIdStep({
           label="ID — Back"
           done={back}
           onTake={() => setCapturing('back')}
+          onUpload={handleFile('back')}
           disabled={pending}
         />
       </div>
@@ -183,6 +225,7 @@ export default function NationalIdStep({
         // side was sent back for re-upload (it only locks before it exists).
         locked={!idDone && !selfie}
         onTake={() => setCapturing('selfie')}
+        onUpload={handleFile('selfie')}
         disabled={pending}
       />
 
@@ -227,6 +270,7 @@ function CaptureTile({
   done,
   locked = false,
   onTake,
+  onUpload,
   disabled,
 }: {
   icon: typeof Camera
@@ -235,6 +279,7 @@ function CaptureTile({
   done: boolean
   locked?: boolean
   onTake: () => void
+  onUpload?: (file: File) => void
   disabled: boolean
 }) {
   return (
@@ -274,29 +319,56 @@ function CaptureTile({
           </p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onTake}
-        disabled={disabled || locked}
-        className={cn(
-          'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-          done
-            ? 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            : 'bg-[#1A1A1A] text-white hover:bg-black',
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <button
+          type="button"
+          onClick={onTake}
+          disabled={disabled || locked}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            done
+              ? 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-[#1A1A1A] text-white hover:bg-black',
+          )}
+        >
+          {done ? (
+            <>
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retake
+            </>
+          ) : (
+            <>
+              <Camera className="h-3.5 w-3.5" />
+              Take photo
+            </>
+          )}
+        </button>
+        {/* Gallery-upload fallback for when the camera is unavailable (denied
+            permission, no camera, or an in-app browser that blocks it). */}
+        {onUpload && !locked && (
+          <label
+            className={cn(
+              'inline-flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-800',
+              disabled && 'pointer-events-none opacity-50',
+            )}
+          >
+            <Upload className="h-3 w-3" />
+            {done ? 'Replace by upload' : 'Upload instead'}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              disabled={disabled}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                // Reset the value so picking the same file again still fires.
+                e.target.value = ''
+                if (file) onUpload(file)
+              }}
+            />
+          </label>
         )}
-      >
-        {done ? (
-          <>
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retake
-          </>
-        ) : (
-          <>
-            <Camera className="h-3.5 w-3.5" />
-            Take photo
-          </>
-        )}
-      </button>
+      </div>
     </div>
   )
 }
