@@ -593,7 +593,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
 
       {/* Scrollable body: proposal + accepted notice + thread. overscroll-contain
           keeps wheel events inside this pane so the list column doesn't scroll. */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-4">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-4">
         {status === 'accepted' && (
           <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl px-4 py-3">
             <CheckCircle2 className="w-4 h-4 shrink-0" />

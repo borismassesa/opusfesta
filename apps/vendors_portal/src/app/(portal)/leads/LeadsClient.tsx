@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
-import { ArrowDownUp, Inbox, Mail, Phone, Search, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp, Plus, Image as ImageIcon, FileText } from 'lucide-react'
+import { ArrowDownUp, Inbox, Mail, Phone, Search, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp, Plus, Image as ImageIcon, FileText, Calendar, MapPin, Users, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import type { InquiryRow } from '@/lib/mock-data'
 import { TZ_REGIONS } from '@/lib/onboarding/regions'
@@ -496,27 +496,42 @@ function ProposalStateCard({
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Proposal</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">
+    <div className="mt-6 rounded-2xl border border-[#C9A0DC]/30 bg-[#C9A0DC]/[0.06] p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#7E5896]">Proposal</p>
+          <p className="mt-0.5 text-base font-bold text-gray-900">
             {inquiryDetail.proposal_status === 'sent' && 'Waiting for client response'}
             {inquiryDetail.proposal_status === 'countered' && 'Client sent a counter'}
             {inquiryDetail.proposal_status === 'accepted' && 'Proposal accepted'}
           </p>
         </div>
-        <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-bold', statusClass)}>
+        <span className={cn('shrink-0 rounded-full px-3 py-1 text-xs font-bold capitalize', statusClass)}>
           {inquiryDetail.proposal_status}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
-        <div><strong>Date:</strong> {formatProposalDate(inquiryDetail.proposal_event_date ?? '')}</div>
-        <div><strong>Venue:</strong> {inquiryDetail.proposal_venue ?? 'TBC'}</div>
-        <div><strong>Guests:</strong> {inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : 'TBC'}</div>
-        <div><strong>Package:</strong> {inquiryDetail.proposal_package ?? 'TBC'}</div>
-        <div><strong>Invoice:</strong> {formatProposalMoney(inquiryDetail.proposal_invoice_amount)}</div>
+      {/* Headline figure */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A0DC]/20 bg-white px-4 py-3">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
+        <span className="text-xl font-extrabold tracking-tight text-gray-900">{formatProposalMoney(inquiryDetail.proposal_invoice_amount)}</span>
+      </div>
+
+      {/* Detail tiles */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { icon: Calendar, label: 'Date', value: formatProposalDate(inquiryDetail.proposal_event_date ?? '') },
+          { icon: MapPin, label: 'Venue', value: inquiryDetail.proposal_venue ?? 'TBC' },
+          { icon: Users, label: 'Guests', value: inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : 'TBC' },
+          { icon: Package, label: 'Package', value: inquiryDetail.proposal_package ?? 'TBC' },
+        ].map(({ icon: Icon, label, value }) => (
+          <div key={label} className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <Icon className="w-3 h-3" />{label}
+            </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">{value}</p>
+          </div>
+        ))}
       </div>
 
       {inquiryDetail.proposal_invoice_details && (
