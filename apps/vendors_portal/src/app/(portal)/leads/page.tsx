@@ -5,9 +5,6 @@ import type { VendorPricingPackage } from '@/lib/vendors'
 import { getCurrentVendor } from '@/lib/vendor'
 import LeadsClient, { type LeadsSource } from './LeadsClient'
 
-const PLACEHOLDER_AVATAR =
-  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&h=120&fit=crop'
-
 type DbInquiryStatus =
   | 'pending'
   | 'responded'
@@ -78,7 +75,9 @@ function mapRow(row: InquiryRowFromDb): InquiryRow {
     budget: row.budget ?? '—',
     location: row.location ?? '—',
     status: mapStatus(row.status),
-    avatarUrl: PLACEHOLDER_AVATAR,
+    // Real couples have no uploaded photo here; the client renders a
+    // deterministic initials avatar when avatarUrl is null.
+    avatarUrl: null,
     email: row.email ?? undefined,
     phone: row.phone ?? undefined,
     message: row.message ?? undefined,

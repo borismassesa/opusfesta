@@ -2106,8 +2106,6 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
   })
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const [inquiryId, setInquiryId] = useState<string | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -2141,8 +2139,6 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         toast.error(message)
         setStatus('error')
       } else {
-        setInquiryId(json.id ?? null)
-        setAccessToken(json.accessToken ?? null)
         if (form.email) {
           try { sessionStorage.setItem('of_inquiry_email', form.email.trim().toLowerCase()) } catch { /* ignore */ }
         }
@@ -2214,20 +2210,20 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           <p className="text-sm text-green-700">
             {vendor.name} will get back to you soon.
           </p>
-          {inquiryId && accessToken && (
-            <a
-              href={`/my/inquiries/${inquiryId}?access_token=${accessToken}`}
-              className="flex items-center justify-center gap-1.5 w-full rounded-full border border-green-400 bg-white text-green-800 text-sm font-semibold py-2.5 hover:bg-green-100 transition-colors"
-            >
-              Track your request
-            </a>
-          )}
+          {/* Send the couple to their unified dashboard (on OpusPass) to track
+              this request, rather than the standalone single-inquiry page. The
+              /opuspass path 308-redirects to the OpusPass subdomain; from there
+              the "Vendor inquiries" card links back to the full inquiry thread. */}
+          <a
+            href="/opuspass/my/dashboard"
+            className="flex items-center justify-center gap-1.5 w-full rounded-full border border-green-400 bg-white text-green-800 text-sm font-semibold py-2.5 hover:bg-green-100 transition-colors"
+          >
+            Track your request
+          </a>
           <button
             type="button"
             onClick={() => {
               setStatus('idle')
-              setInquiryId(null)
-              setAccessToken(null)
               setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', interestedPackage: '', message: '', emailNotifications: true })
             }}
             className="block w-full text-center text-xs underline text-green-700 hover:text-green-900"

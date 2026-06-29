@@ -28,7 +28,7 @@ type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string }
 
 const topItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Inbox, label: 'Leads', href: '/leads', badge: '12' },
+  { icon: Inbox, label: 'Leads', href: '/leads' },
 ]
 
 const mainItems: NavItem[] = [
@@ -104,10 +104,17 @@ function SidebarLink({
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
   const pathname = usePathname()
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState(false)
+
+  // Live "new leads" count badge. Capped display at 99+ to keep the pill tidy.
+  const leadsBadge =
+    newLeadCount > 0 ? (newLeadCount > 99 ? '99+' : String(newLeadCount)) : undefined
+  const topItemsWithBadges: NavItem[] = topItems.map((item) =>
+    item.href === '/leads' ? { ...item, badge: leadsBadge } : item,
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -183,7 +190,7 @@ export function Sidebar() {
 
       <div className={cn('flex-1 overflow-y-auto overflow-x-hidden space-y-4')}>
         <nav className="space-y-1">
-          {topItems.map((item) => (
+          {topItemsWithBadges.map((item) => (
             <SidebarLink
               key={item.href}
               item={item}

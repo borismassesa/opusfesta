@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase'
-import { getCurrentVendor } from '@/lib/vendor'
+import { NextResponse, type NextRequest } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { createSupabaseServerClient } from '@/lib/supabase'
 
 const ATTACHMENT_BUCKET = 'inquiry-attachments'
 const MAX_FILES = 6
 const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25MB
+// Photos, videos, and common documents couples might share with a vendor.
 const ALLOWED_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic',
   'video/mp4', 'video/quicktime', 'video/webm',
@@ -18,42 +19,49 @@ const ALLOWED_TYPES = new Set([
 
 type Attachment = { url: string; name: string; type: string; size: number }
 
+async function getAuthenticatedEmail(): Promise<string | null> {
+  const { userId } = await auth()
+  if (!userId) return null
+  const clerkUser = await currentUser().catch(() => null)
+  return clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null
+}
+
 function safeName(name: string): string {
   return name.replace(/[^\w.\-]+/g, '_').slice(-80) || 'file'
 }
 
 export async function GET(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const email = await getAuthenticatedEmail()
 
-  const state = await getCurrentVendor()
-  if (state.kind !== 'live') {
+  if (!email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const vendorId = state.vendor.id
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = createSupabaseServerClient()
 
-  // Verify inquiry belongs to this vendor
   const { data: inquiry, error: inquiryErr } = await supabase
     .from('inquiries')
-    .select('id, name, message, created_at')
+    .select('id')
     .eq('id', id)
-    .eq('vendor_id', vendorId)
+    .eq('email', email)
     .maybeSingle()
 
   if (inquiryErr) {
-    console.error('[vendor/inquiries/messages] GET inquiry lookup failed', inquiryErr.code)
-    return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 })
+    console.error('[my/inquiries/messages] query failed', inquiryErr)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
+
   if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
-  // `select('*')` returns the `attachments` column once the migration is applied
-  // (and stays valid before it) so vendors can see images/files couples send.
+  // `select('*')` is intentional: it returns the `attachments` column when the
+  // migration has been applied, and stays valid before it has (the key is just
+  // absent), so the chat never breaks on the migration boundary.
   const { data: messages, error } = await supabase
     .from('inquiry_messages')
     .select('*')
@@ -61,44 +69,26 @@ export async function GET(
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('[vendor/inquiries/messages] GET failed', error)
+    console.error('[my/inquiries/messages] list failed', error)
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
   }
 
-  // Include the initial inquiry message so the vendor sees the full thread
-  const initialMessage = inquiry.message
-    ? {
-        id: 'initial',
-        sender_type: 'client' as const,
-        sender_name: inquiry.name ?? 'Client',
-        content: inquiry.message,
-        created_at: inquiry.created_at,
-        read_at: null,
-      }
-    : null
-
-  const thread = [
-    ...(initialMessage ? [initialMessage] : []),
-    ...(messages ?? []),
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-
-  return NextResponse.json({ messages: thread })
+  return NextResponse.json({ messages: messages ?? [] })
 }
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const email = await getAuthenticatedEmail()
 
-  const state = await getCurrentVendor()
-  if (state.kind !== 'live') {
+  if (!email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const vendorId = state.vendor.id
-  const vendorName = state.vendor.businessName
 
-  // Multipart form: text `content` plus any number of `files`.
+  // The composer sends multipart form data: a text `content` field plus any
+  // number of `files`.
   let content = ''
   let files: File[] = []
   try {
@@ -124,25 +114,25 @@ export async function POST(
     }
   }
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = createSupabaseServerClient()
 
-  // Confirm inquiry belongs to this vendor
-  const { data: existing, error: existingErr } = await supabase
+  const { data: inquiry, error: lookupErr } = await supabase
     .from('inquiries')
-    .select('id')
+    .select('id, name, email')
     .eq('id', id)
-    .eq('vendor_id', vendorId)
+    .eq('email', email)
     .maybeSingle()
 
-  if (existingErr) {
-    console.error('[vendor/inquiries/messages] POST inquiry lookup failed', existingErr.code)
-    return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 })
+  if (lookupErr) {
+    console.error('[my/inquiries/messages] lookup failed', lookupErr)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-  if (!existing) {
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
-  // Upload any attachments to the shared public bucket.
+  // Upload any attachments to the public bucket.
   const attachments: Attachment[] = []
   for (let i = 0; i < files.length; i += 1) {
     const file = files[i]
@@ -151,19 +141,19 @@ export async function POST(
       .from(ATTACHMENT_BUCKET)
       .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false })
     if (uploadErr) {
-      console.error('[vendor/inquiries/messages] attachment upload failed', uploadErr)
+      console.error('[my/inquiries/messages] attachment upload failed', uploadErr)
       return NextResponse.json({ error: 'Could not upload attachment. Please try again.' }, { status: 500 })
     }
     const { data: pub } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path)
     attachments.push({ url: pub.publicUrl, name: file.name, type: file.type || 'application/octet-stream', size: file.size })
   }
 
-  // Only set `attachments` when present so a text-only reply stays valid even
+  // Only set `attachments` when present so a text-only message stays valid even
   // before the column migration has been applied.
   const insertPayload: Record<string, unknown> = {
     inquiry_id: id,
-    sender_type: 'vendor',
-    sender_name: vendorName,
+    sender_type: 'client',
+    sender_name: inquiry.name,
     content,
   }
   if (attachments.length > 0) insertPayload.attachments = attachments
@@ -175,17 +165,9 @@ export async function POST(
     .single()
 
   if (insertErr || !message) {
-    console.error('[vendor/inquiries/messages] POST failed', insertErr)
+    console.error('[my/inquiries/messages] insert failed', insertErr)
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
   }
-
-  // Update inquiry status to responded if it was pending
-  const { error: statusErr } = await supabase
-    .from('inquiries')
-    .update({ status: 'responded', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('status', 'pending')
-  if (statusErr) console.error('[vendor/inquiries/messages] status update failed', statusErr.code)
 
   return NextResponse.json({ message }, { status: 201 })
 }
