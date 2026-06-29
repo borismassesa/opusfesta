@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Calendar, MapPin, Users, Send, CheckCircle2, Loader2, Plus, Image as ImageIcon, FileText, X } from 'lucide-react'
+import { Calendar, MapPin, Users, Send, CheckCircle2, Loader2, Plus, Image as ImageIcon, FileText, X, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   type InquiryDetail,
@@ -148,24 +148,39 @@ function ProposalCard({
 
   return (
     <div className="rounded-2xl border border-(--accent)/30 bg-(--accent)/[0.06] p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Proposal</p>
-          <p className="text-sm font-semibold text-[#1A1A1A] mt-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#8e57b3]">Proposal</p>
+          <p className="mt-0.5 text-base font-bold text-[#1A1A1A]">
             {proposal.status === 'sent' && 'Review the vendor proposal'}
             {proposal.status === 'countered' && 'Counter sent to vendor'}
             {proposal.status === 'accepted' && 'Proposal agreed'}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{proposal.status}</span>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold capitalize ${statusClass}`}>{proposal.status}</span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 text-sm text-gray-700">
-        <div><strong>Date:</strong> {formatInquiryDate(proposal.eventDate)}</div>
-        <div><strong>Venue:</strong> {proposal.venue ?? 'TBC'}</div>
-        <div><strong>Guests:</strong> {proposal.guestCount ? `${proposal.guestCount} guests` : 'TBC'}</div>
-        <div><strong>Package:</strong> {proposal.packageName ?? 'TBC'}</div>
-        <div><strong>Invoice:</strong> {formatInquiryMoney(proposal.invoiceAmount)}</div>
+      {/* Headline figure */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-(--accent)/20 bg-white px-4 py-3">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
+        <span className="text-xl font-extrabold tracking-tight text-[#1A1A1A]">{formatInquiryMoney(proposal.invoiceAmount)}</span>
+      </div>
+
+      {/* Detail tiles */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { icon: Calendar, label: 'Date', value: formatInquiryDate(proposal.eventDate) },
+          { icon: MapPin, label: 'Venue', value: proposal.venue ?? 'TBC' },
+          { icon: Users, label: 'Guests', value: proposal.guestCount ? `${proposal.guestCount} guests` : 'TBC' },
+          { icon: Package, label: 'Package', value: proposal.packageName ?? 'TBC' },
+        ].map(({ icon: Icon, label, value }) => (
+          <div key={label} className="rounded-xl border border-(--accent)/15 bg-white/70 px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <Icon className="w-3 h-3" />{label}
+            </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-[#1A1A1A]">{value}</p>
+          </div>
+        ))}
       </div>
 
       {proposal.invoiceDetails && (
