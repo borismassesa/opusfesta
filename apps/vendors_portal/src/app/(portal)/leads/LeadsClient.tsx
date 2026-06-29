@@ -161,7 +161,6 @@ type ProposalPanelProps = {
   open: boolean
   sending: boolean
   draft: ProposalDraft
-  preview: string
   packages: VendorPricingPackage[]
   venueSuggestions: string[]
   onToggle: () => void
@@ -170,7 +169,7 @@ type ProposalPanelProps = {
   onSend: () => void
 }
 
-function ProposalPanel({ open, sending, draft, preview, packages, venueSuggestions, onToggle, onDraftChange, onCancel, onSend }: Readonly<ProposalPanelProps>) {
+function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onToggle, onDraftChange, onCancel, onSend }: Readonly<ProposalPanelProps>) {
   return (
     <div className="rounded-xl border border-gray-100 overflow-hidden">
       <button
@@ -281,9 +280,36 @@ function ProposalPanel({ open, sending, draft, preview, packages, venueSuggestio
             />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Preview</p>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap">
-              {preview}
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Preview</p>
+            <div className="rounded-2xl border border-[#C9A0DC]/30 bg-[#C9A0DC]/[0.06] p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A0DC]/20 bg-white px-4 py-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
+                <span className="text-lg font-extrabold tracking-tight text-gray-900">
+                  {draft.invoiceAmount && Number(draft.invoiceAmount) > 0
+                    ? `TZS ${Number(draft.invoiceAmount).toLocaleString('en-GB')}`
+                    : 'TBC'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { icon: Calendar, label: 'Date', value: draft.eventDate ? formatProposalDate(draft.eventDate) : 'TBC' },
+                  { icon: MapPin, label: 'Venue', value: draft.venue.trim() || 'TBC' },
+                  { icon: Users, label: 'Guests', value: draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : 'TBC' },
+                  { icon: Package, label: 'Package', value: draft.packageName.trim() || 'TBC' },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <Icon className="w-3 h-3" />{label}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {draft.invoiceDetails.trim() && (
+                <div className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5 text-sm text-gray-700 whitespace-pre-wrap">
+                  {draft.invoiceDetails.trim()}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -439,39 +465,6 @@ function buildDefaultProposalDraft(row: InquiryRow, inquiryDetail?: InquiryDetai
     invoiceAmount,
     invoiceDetails: inquiryDetail?.proposal_invoice_details ?? '',
   }
-}
-
-function buildProposalMessage(row: InquiryRow, draft: ProposalDraft): string {
-  const parsed = Number(draft.invoiceAmount.replaceAll(/\D/g, ''))
-  const formattedAmount = parsed > 0 ? `TZS ${parsed.toLocaleString('en-GB')}` : 'TBC'
-  const guestText = draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : 'TBC'
-  const lines = [
-    'Proposal summary',
-    `- Client: ${row.couple}`,
-    `- Event date: ${draft.eventDate.trim() ? formatProposalDate(draft.eventDate.trim()) : 'Date TBC'}`,
-    `- Venue: ${draft.venue.trim() || 'TBC'}`,
-    `- Guests: ${guestText}`,
-    `- Package: ${draft.packageName.trim() || 'TBC'}`,
-    `- Invoice: ${formattedAmount}`,
-  ]
-
-  if (row.budget && row.budget !== '—') {
-    lines.push(`- Client budget: ${row.budget}`)
-  }
-  if (row.email) {
-    lines.push(`- Email: ${row.email}`)
-  }
-  if (row.phone) {
-    lines.push(`- Phone: ${row.phone}`)
-  }
-  if (draft.invoiceDetails.trim()) {
-    lines.push('', 'Invoice details:', draft.invoiceDetails.trim())
-  }
-  if (row.message?.trim()) {
-    lines.push('', 'Original client note:', row.message.trim())
-  }
-
-  return lines.join('\n')
 }
 
 function ProposalStateCard({
@@ -1411,7 +1404,6 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           open={proposalOpen}
                           sending={proposalSending}
                           draft={proposalDraft}
-                          preview={buildProposalMessage(selectedRow, proposalDraft)}
                           packages={packages}
                           venueSuggestions={venueSuggestions}
                           onToggle={() => { setProposalOpen((o) => !o); setDeclineOpen(false) }}
