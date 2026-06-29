@@ -1117,12 +1117,10 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
           </div>
         )}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
-          {/* Desktop: fixed viewport-fitting height so each column scrolls on its
-              own. Mobile: stacks and grows with the page. */}
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] lg:grid-rows-1 min-h-[70vh] lg:min-h-0 lg:h-[calc(100vh-9rem)]">
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] min-h-[70vh]">
 
             {/* ── List sidebar ── */}
-            <aside className="border-r border-gray-100 flex flex-col lg:min-h-0">
+            <aside className="border-r border-gray-100 flex flex-col">
               <div className="p-5 border-b border-gray-100">
                 <div className="flex gap-1 border-b border-gray-100 -mx-5 px-5">
                   {TABS.map((t) => {
@@ -1216,9 +1214,8 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
               </ul>
             </aside>
 
-            {/* ── Detail panel ── scrolls on its own (desktop) so the chat thread
-                 doesn't drag the list column. */}
-            <section className="p-8 flex flex-col lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain">
+            {/* ── Detail panel ── */}
+            <section className="p-8 flex flex-col">
               {selectedRow ? (
                 <>
                   <div className="flex items-start gap-4">
@@ -1321,7 +1318,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                         <span className="text-[10px] text-gray-400 animate-pulse">Loading…</span>
                       )}
                     </div>
-                    <div className="p-4 space-y-4 max-h-64 overflow-y-auto overscroll-contain bg-white lg:max-h-none lg:overflow-visible">
+                    <div className="p-4 space-y-4 max-h-[28rem] overflow-y-auto overscroll-contain bg-white">
                       {thread.length === 0 && !threadLoading ? (
                         <p className="text-xs text-gray-400 text-center py-4">
                           No messages yet. Use &ldquo;Reply&rdquo; to start the conversation.
