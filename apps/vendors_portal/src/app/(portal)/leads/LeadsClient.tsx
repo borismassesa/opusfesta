@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
-import { ArrowDownUp, Inbox, MapPin, Mail, Phone, Search, Wallet, Users, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp, Plus, Image as ImageIcon, FileText } from 'lucide-react'
+import { ArrowDownUp, Inbox, Mail, Phone, Search, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp, Plus, Image as ImageIcon, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import type { InquiryRow } from '@/lib/mock-data'
 import { TZ_REGIONS } from '@/lib/onboarding/regions'
@@ -1263,31 +1263,6 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <Wallet className="w-3.5 h-3.5" />
-                        Budget
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.budget}</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" />
-                        Location
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.location}</p>
-                    </div>
-                    {selectedRow.guestCount !== undefined && (
-                      <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5" />
-                          Guests
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.guestCount}+</p>
-                      </div>
-                    )}
-                  </div>
 
                   {selectedInquiryDetail && (
                     <ProposalStateCard

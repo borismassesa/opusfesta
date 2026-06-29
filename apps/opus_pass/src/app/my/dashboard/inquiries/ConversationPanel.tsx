@@ -441,6 +441,26 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
     }
   }
 
+  async function handleReopen() {
+    if (actionLoading || !inquiry) return
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'responded' }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) { toast.error(json.error ?? 'Failed to reopen.'); return }
+      applyInquiry({ ...inquiry, status: 'responded' })
+      toast.success('Conversation reopened')
+    } catch {
+      toast.error('Network error while reopening.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   async function handleDelete() {
     if (actionLoading) return
     if (!window.confirm('Delete this quote request? This cannot be undone.')) return
@@ -712,8 +732,22 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
           </form>
         </div>
       ) : (
-        <div className="shrink-0 border-t border-gray-100 px-5 py-4 text-xs text-gray-400 text-center">
-          {status === 'declined' ? 'This vendor declined the request. Browse other vendors to keep planning.' : 'This conversation is closed.'}
+        <div className="shrink-0 border-t border-gray-100 px-5 py-4 text-center">
+          {status === 'declined' ? (
+            <p className="text-xs text-gray-400">This vendor declined the request. Browse other vendors to keep planning.</p>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-gray-400">This conversation is closed.</p>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleReopen}
+                className="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-semibold text-[#7E5896] hover:bg-(--accent)/10 disabled:opacity-50 transition-colors"
+              >
+                {actionLoading ? 'Reopening…' : 'Reopen conversation'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

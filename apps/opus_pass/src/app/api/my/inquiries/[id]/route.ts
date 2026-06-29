@@ -82,14 +82,16 @@ export async function PATCH(
 
   const payload = body as Record<string, unknown>
   const nextStatus = payload.status
-  if (nextStatus !== 'closed') {
-    return NextResponse.json({ error: 'Only status "closed" is supported' }, { status: 400 })
+  // 'closed' = couple archives the thread; 'responded' = couple reopens a closed
+  // thread so they can message the vendor again.
+  if (nextStatus !== 'closed' && nextStatus !== 'responded') {
+    return NextResponse.json({ error: 'Unsupported status' }, { status: 400 })
   }
 
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
     .from('inquiries')
-    .update({ status: 'closed', updated_at: new Date().toISOString() })
+    .update({ status: nextStatus, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('email', email)
     .select('id')
