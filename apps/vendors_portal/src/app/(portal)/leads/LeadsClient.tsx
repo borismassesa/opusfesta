@@ -1125,10 +1125,12 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
           </div>
         )}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] min-h-[70vh]">
+          {/* Desktop: fixed-height cell so each column scrolls independently.
+              Mobile: stacks and grows with the page. */}
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] lg:grid-rows-1 min-h-[70vh] lg:min-h-0 lg:h-[calc(100vh-9rem)]">
 
             {/* ── List sidebar ── */}
-            <aside className="border-r border-gray-100 flex flex-col">
+            <aside className="border-r border-gray-100 flex flex-col lg:min-h-0">
               <div className="p-5 border-b border-gray-100">
                 <div className="flex gap-1 border-b border-gray-100 -mx-5 px-5">
                   {TABS.map((t) => {
@@ -1223,9 +1225,9 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
             </aside>
 
             {/* ── Detail panel ── */}
-            <section className="p-8 flex flex-col">
+            <section className="flex flex-col lg:min-h-0">
               {selectedRow ? (
-                <>
+                <div className="flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain p-8">
                   <div className="flex items-start gap-4">
                     <LeadAvatar name={selectedRow.couple} avatarUrl={selectedRow.avatarUrl} size="lg" />
                     <div className="flex-1 min-w-0">
@@ -1301,7 +1303,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                         <span className="text-[10px] text-gray-400 animate-pulse">Loading…</span>
                       )}
                     </div>
-                    <div className="p-4 space-y-4 max-h-[28rem] overflow-y-auto overscroll-contain bg-white">
+                    <div className="p-4 space-y-4 bg-white">
                       {thread.length === 0 && !threadLoading ? (
                         <p className="text-xs text-gray-400 text-center py-4">
                           No messages yet. Use &ldquo;Reply&rdquo; to start the conversation.
@@ -1468,7 +1470,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
 
                     </div>
                   )}
-                </>
+                </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
                   Select an inquiry to view details.
