@@ -199,12 +199,12 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
           </a>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[340px_1fr] rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm h-[calc(100dvh-11rem)] min-h-[24rem]">
+        <div className="grid lg:grid-cols-[340px_1fr] lg:grid-rows-1 rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm h-[calc(100dvh-11rem)] min-h-[24rem]">
           {/* List pane — its own scroll container; overscroll-contain stops wheel
               events from chaining out to the page or the conversation pane. */}
           <aside
             className={cn(
-              'flex-col border-r border-gray-100 lg:flex',
+              'flex-col border-r border-gray-100 lg:flex lg:min-h-0',
               mobileConversation ? 'hidden' : 'flex',
             )}
           >
@@ -311,7 +311,7 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
           {/* Conversation pane */}
           <section
             className={cn(
-              'min-w-0 flex-col bg-white lg:flex',
+              'min-w-0 flex-col bg-white lg:flex lg:min-h-0',
               mobileConversation ? 'flex' : 'hidden',
             )}
           >
