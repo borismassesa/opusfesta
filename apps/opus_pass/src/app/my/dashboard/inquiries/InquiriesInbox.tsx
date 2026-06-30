@@ -199,7 +199,7 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
           </a>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[340px_1fr] lg:grid-rows-1 rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm h-[calc(100dvh-11rem)] min-h-[24rem]">
+        <div className="grid lg:grid-cols-[340px_1fr] lg:grid-rows-1 rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm h-[calc(100vh-11rem)] min-h-[24rem]">
           {/* List pane — its own scroll container; overscroll-contain stops wheel
               events from chaining out to the page or the conversation pane. */}
           <aside

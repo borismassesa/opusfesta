@@ -290,6 +290,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
   const [counterMessage, setCounterMessage] = useState('')
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const prevCountRef = useRef(0)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const docInputRef = useRef<HTMLInputElement>(null)
 
@@ -345,12 +346,12 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
     return () => { cancelled = true }
   }, [inquiryId])
 
-  // Auto-scroll the message area to the bottom WITHOUT touching the page —
-  // scroll the container directly instead of scrollIntoView (which would scroll
-  // ancestor scrollers and clip the card top).
+  // Auto-scroll to the bottom only when a NEW message arrives (or on first load),
+  // so a background poll never yanks the user back while they scroll up to read.
   useEffect(() => {
     const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (el && messages.length > prevCountRef.current) el.scrollTop = el.scrollHeight
+    prevCountRef.current = messages.length
   }, [messages])
 
   // Live polling for new vendor replies + proposal updates.
@@ -542,8 +543,9 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
 
   return (
     // Single scroll container; the header and composer are sticky so they stay
-    // pinned without relying on flex height propagation (which was unreliable).
-    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+    // pinned. The explicit max-height guarantees a scroll boundary even if the
+    // flex/grid height chain above doesn't propagate (which was unreliable).
+    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-h-[calc(100vh-11rem)]">
       {/* Conversation header */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-5 py-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
