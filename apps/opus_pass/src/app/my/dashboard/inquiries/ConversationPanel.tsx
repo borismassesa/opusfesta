@@ -542,12 +542,12 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
   }
 
   return (
-    // Single scroll container; the header and composer are sticky so they stay
-    // pinned. The explicit max-height guarantees a scroll boundary even if the
-    // flex/grid height chain above doesn't propagate (which was unreliable).
+    // The whole column scrolls as one (header, proposal, messages, composer all
+    // flow inside this scroller). The explicit max-height guarantees a scroll
+    // boundary even if the flex/grid height chain above doesn't propagate.
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-h-[calc(100vh-11rem)]">
-      {/* Conversation header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-5 py-4">
+      {/* Conversation header (scrolls with the column) */}
+      <div className="bg-white border-b border-gray-100 px-5 py-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-[#1A1A1A] truncate">{vendorLabel}</h2>
@@ -631,7 +631,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
 
       {/* Compose */}
       {canSendMore ? (
-        <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 p-4">
+        <div className="bg-white border-t border-gray-100 p-4">
           {/* Selected attachments awaiting send */}
           {attachFiles.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">
@@ -750,7 +750,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
           </form>
         </div>
       ) : (
-        <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 px-5 py-4 text-center">
+        <div className="bg-white border-t border-gray-100 px-5 py-4 text-center">
           {status === 'declined' ? (
             <p className="text-xs text-gray-400">This vendor declined the request. Browse other vendors to keep planning.</p>
           ) : (
