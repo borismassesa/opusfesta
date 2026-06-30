@@ -121,9 +121,13 @@ export default function DashboardClient({
           </div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-min">
-          <div className="lg:col-span-12 flex items-start">
-            <ProfileCompletion sections={completion} />
-          </div>
+          {/* Only nudge while the storefront is incomplete; once every required
+              section is done the card just adds clutter, so hide it. */}
+          {!completion.every((s) => s.done) && (
+            <div className="lg:col-span-12 flex items-start">
+              <ProfileCompletion sections={completion} />
+            </div>
+          )}
 
           <SectionHeader label="Up next" hint="Upcoming events and reservations" />
           <div className="lg:col-span-4">
