@@ -289,8 +289,6 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
   const [counterAmount, setCounterAmount] = useState('')
   const [counterMessage, setCounterMessage] = useState('')
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const prevCountRef = useRef(0)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const docInputRef = useRef<HTMLInputElement>(null)
 
@@ -345,14 +343,6 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [inquiryId])
-
-  // Auto-scroll to the bottom only when a NEW message arrives (or on first load),
-  // so a background poll never yanks the user back while they scroll up to read.
-  useEffect(() => {
-    const el = scrollRef.current
-    if (el && messages.length > prevCountRef.current) el.scrollTop = el.scrollHeight
-    prevCountRef.current = messages.length
-  }, [messages])
 
   // Live polling for new vendor replies + proposal updates.
   useEffect(() => {
@@ -542,10 +532,9 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
   }
 
   return (
-    // The whole column scrolls as one (header, proposal, messages, composer all
-    // flow inside this scroller). The explicit max-height guarantees a scroll
-    // boundary even if the flex/grid height chain above doesn't propagate.
-    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-h-[calc(100vh-11rem)]">
+    // Plain content column. The scroll container is the parent (InquiriesInbox),
+    // matching the vendor portal Leads detail; the whole column scrolls there.
+    <div>
       {/* Conversation header (scrolls with the column) */}
       <div className="bg-white border-b border-gray-100 px-5 py-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">

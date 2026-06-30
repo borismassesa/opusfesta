@@ -199,7 +199,7 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
           </a>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[340px_1fr] lg:grid-rows-1 rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm h-[calc(100vh-11rem)] min-h-[24rem]">
+        <div className="grid lg:grid-cols-[340px_1fr] lg:grid-rows-1 rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm min-h-[70vh] lg:min-h-0 lg:h-[calc(100vh-9rem)]">
           {/* List pane — its own scroll container; overscroll-contain stops wheel
               events from chaining out to the page or the conversation pane. */}
           <aside
@@ -325,12 +325,17 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
                 >
                   <ArrowLeft className="w-4 h-4" /> All requests
                 </button>
-                <ConversationPanel
-                  key={selected.id}
-                  inquiryId={selected.id}
-                  onStatusChange={handleStatusChange}
-                  onDeleted={handleDeleted}
-                />
+                {/* This inner div is the scroll container (matches the vendor
+                    portal Leads detail): bounded by the grid cell, the whole
+                    conversation scrolls inside it. */}
+                <div className="flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain">
+                  <ConversationPanel
+                    key={selected.id}
+                    inquiryId={selected.id}
+                    onStatusChange={handleStatusChange}
+                    onDeleted={handleDeleted}
+                  />
+                </div>
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-gray-400">
