@@ -325,14 +325,12 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
                 >
                   <ArrowLeft className="w-4 h-4" /> All requests
                 </button>
-                <div className="flex-1 min-h-0">
-                  <ConversationPanel
-                    key={selected.id}
-                    inquiryId={selected.id}
-                    onStatusChange={handleStatusChange}
-                    onDeleted={handleDeleted}
-                  />
-                </div>
+                <ConversationPanel
+                  key={selected.id}
+                  inquiryId={selected.id}
+                  onStatusChange={handleStatusChange}
+                  onDeleted={handleDeleted}
+                />
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-gray-400">

@@ -383,7 +383,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
 
   if (loading && !inquiry) {
     return (
-      <div className="flex h-full min-h-80 items-center justify-center text-gray-400">
+      <div className="flex flex-1 min-h-80 items-center justify-center text-gray-400">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     )
@@ -391,7 +391,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
 
   if (!inquiry) {
     return (
-      <div className="flex h-full min-h-80 items-center justify-center px-6 text-center text-sm text-gray-400">
+      <div className="flex flex-1 min-h-80 items-center justify-center px-6 text-center text-sm text-gray-400">
         Could not load this conversation.
       </div>
     )
@@ -541,9 +541,11 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
   }
 
   return (
-    <div className="flex h-full flex-col">
+    // Single scroll container; the header and composer are sticky so they stay
+    // pinned without relying on flex height propagation (which was unreliable).
+    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {/* Conversation header */}
-      <div className="shrink-0 border-b border-gray-100 px-5 py-4">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-5 py-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-[#1A1A1A] truncate">{vendorLabel}</h2>
@@ -591,9 +593,8 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
         </div>
       </div>
 
-      {/* Scrollable body: proposal + accepted notice + thread. overscroll-contain
-          keeps wheel events inside this pane so the list column doesn't scroll. */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 space-y-4">
+      {/* Message area (flows inside the single scroller) */}
+      <div className="px-5 py-5 space-y-4">
         {status === 'accepted' && (
           <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl px-4 py-3">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -628,7 +629,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
 
       {/* Compose */}
       {canSendMore ? (
-        <div className="shrink-0 border-t border-gray-100 p-4">
+        <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 p-4">
           {/* Selected attachments awaiting send */}
           {attachFiles.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">
@@ -747,7 +748,7 @@ export default function ConversationPanel({ inquiryId, onStatusChange, onDeleted
           </form>
         </div>
       ) : (
-        <div className="shrink-0 border-t border-gray-100 px-5 py-4 text-center">
+        <div className="sticky bottom-0 z-10 bg-white border-t border-gray-100 px-5 py-4 text-center">
           {status === 'declined' ? (
             <p className="text-xs text-gray-400">This vendor declined the request. Browse other vendors to keep planning.</p>
           ) : (
