@@ -23,12 +23,12 @@ import {
   Store,
   MessageCircle,
   ChevronUp,
-  Search,
   type LucideIcon,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { useT } from '@/components/providers/UIStringsProvider'
 import { cn } from '@/lib/utils'
+import DashboardSearch from './DashboardSearch'
 
 // opus_website (the marketplace + couple planning dashboard) lives at a different
 // origin than this app. In production both share the opusfesta.com apex (and the
@@ -70,26 +70,17 @@ const NAV: NavItem[] = [
 function NavLinks({
   onNavigate,
   collapsed,
-  query = '',
 }: {
   onNavigate?: () => void
   collapsed?: boolean
-  query?: string
 }) {
   const pathname = usePathname()
   const t = useT('dashboard-chrome')
-  const q = query.trim().toLowerCase()
-  const items = NAV.map((item) => ({ item, label: item.label ?? t(item.labelKey as string) }))
-    .filter(({ label }) => !q || label.toLowerCase().includes(q))
-
-  if (items.length === 0) {
-    return <p className="px-3 py-2 text-sm text-[#1A1A1A]/40">No matches.</p>
-  }
-
   return (
     <nav className="flex flex-col gap-1">
-      {items.map(({ item, label }) => {
+      {NAV.map((item) => {
         const { href, icon: Icon, external } = item
+        const label = item.label ?? t(item.labelKey as string)
         const active = !external && (href === '/my/dashboard' ? pathname === href : pathname.startsWith(href))
         const className = cn(
           'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
@@ -147,22 +138,10 @@ export default function DashboardShell({
 }) {
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
-  const [query, setQuery] = useState('')
   const t = useT('dashboard-chrome')
 
-  const searchBox = (
-    <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#1A1A1A]/35" />
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search…"
-        aria-label="Search the dashboard menu"
-        className="w-full rounded-xl border border-black/[0.08] bg-black/[0.02] py-2 pl-9 pr-3 text-sm text-[#1A1A1A] placeholder:text-[#1A1A1A]/35 transition-colors focus:border-[#C9A0DC] focus:bg-white focus:outline-none"
-      />
-    </div>
-  )
+  // Resolved nav labels feed the search dropdown's "Pages" group.
+  const navPages = NAV.map((item) => ({ label: item.label ?? t(item.labelKey as string), href: item.href }))
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -210,9 +189,9 @@ export default function DashboardShell({
         {!collapsed && coupleName && coupleName !== 'The Couple' ? (
           <p className="mt-1 px-2 text-xs text-[#1A1A1A]/45">{coupleName}</p>
         ) : null}
-        {!collapsed ? <div className="mt-5 px-1">{searchBox}</div> : null}
+        {!collapsed ? <div className="mt-5 px-1"><DashboardSearch navItems={navPages} /></div> : null}
         <div className={cn('flex-1', collapsed ? 'mt-8' : 'mt-4')}>
-          <NavLinks collapsed={collapsed} query={collapsed ? '' : query} />
+          <NavLinks collapsed={collapsed} />
         </div>
         <div className="space-y-2 border-t border-black/[0.06] pt-4">
           <AccountFooter email={userEmail} initial={userInitial} collapsed={collapsed} />
@@ -258,10 +237,10 @@ export default function DashboardShell({
             {coupleName && coupleName !== 'The Couple' ? (
               <p className="mt-1 text-xs text-[#1A1A1A]/45">{coupleName}</p>
             ) : null}
-            <div className="mt-4">{searchBox}</div>
+            <div className="mt-4"><DashboardSearch navItems={navPages} onNavigate={() => setOpen(false)} /></div>
             {/* Nav grows to fill, pushing the account block to the bottom */}
             <div className="mt-4 flex-1 overflow-y-auto">
-              <NavLinks onNavigate={() => setOpen(false)} query={query} />
+              <NavLinks onNavigate={() => setOpen(false)} />
             </div>
             <div className="mt-6 border-t border-black/[0.06] pt-4">
               <AccountFooter
