@@ -6,9 +6,10 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, normalizePhone } from './share'
-import { getWhatsAppEntitlement } from './queries'
+import { coupleSlugBase, normalizePhone, publicOrigin } from './share'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
+import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -1355,6 +1356,7 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
       to,
       guestFirstName: g.full_name.trim().split(/\s+/)[0] || g.full_name,
       coupleName: ent.coupleName,
+      eventCategory: ent.eventCategory,
       headerImageUrl: ent.cardImageUrl,
       token: g.public_token,
     })
@@ -1393,6 +1395,151 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
   summary.remaining = remaining
   revalidateDashboard()
   return summary
+}
+
+/** Result of a Contact Collector / Pledge WhatsApp link-request broadcast. */
+export interface WhatsAppLinkSendSummary {
+  sent: number
+  failed: number
+  /** Contacts with no usable phone number. */
+  skipped: number
+  /** True when handled by the dry-run stub (no live Meta account yet). */
+  dryRun: boolean
+}
+
+/**
+ * Send the couple's Contact Collector or Pledge link to the given saved
+ * contacts via a templated WhatsApp message (image header + CTA URL button
+ * pointing at /collect/<token> or /pledge/<token>). Unlike invites this isn't
+ * quota-gated — it's a free-form "please fill this in" nudge.
+ */
+async function sendWhatsAppLinkRequests(
+  kind: LinkRequestKind,
+  guestIds: string[],
+  token: string | null,
+): Promise<WhatsAppLinkSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getWhatsAppProvider()
+  const summary: WhatsAppLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !provider.live }
+
+  if (!token || !guestIds.length) return summary
+
+  const ent = await getWhatsAppEntitlement()
+  // Generic OpusPass banner — collector/pledge links aren't tied to a paid card.
+  const headerImageUrl = `${publicOrigin()}/assets/images/couples_together.jpg`
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, phone, whatsapp_phone')
+    .eq('user_id', user.id)
+    .in('id', guestIds)
+  if (error) throw new Error(error.message)
+
+  for (const g of (guests ?? []) as {
+    id: string
+    full_name: string
+    phone: string | null
+    whatsapp_phone: string | null
+  }[]) {
+    const to = normalizePhone(g.whatsapp_phone ?? g.phone)
+    if (!to) {
+      summary.skipped += 1
+      continue
+    }
+
+    const result = await provider.sendLinkRequest(kind, {
+      to,
+      contactFirstName: g.full_name.trim().split(/\s+/)[0] || g.full_name,
+      coupleName: ent.coupleName,
+      headerImageUrl,
+      token,
+    })
+
+    await supabase.from('whatsapp_messages').insert({
+      user_id: user.id,
+      guest_contact_id: g.id,
+      direction: 'out',
+      wamid: result.wamid ?? null,
+      kind,
+      status: result.ok ? 'sent' : 'failed',
+      error: result.error ?? null,
+    })
+
+    if (result.ok) {
+      summary.sent += 1
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        channel: 'whatsapp',
+      })
+    } else {
+      summary.failed += 1
+    }
+  }
+
+  revalidateDashboard()
+  return summary
+}
+
+/** Send the Contact Collector link to selected saved contacts via WhatsApp. */
+export async function sendWhatsAppCollectorRequests(guestIds: string[]): Promise<WhatsAppLinkSendSummary> {
+  const token = await getMyCollectorToken()
+  return sendWhatsAppLinkRequests('collector', guestIds, token)
+}
+
+/** Send the self-pledge link to selected saved contacts via WhatsApp. */
+export async function sendWhatsAppPledgeRequests(guestIds: string[]): Promise<WhatsAppLinkSendSummary> {
+  const token = await getMyPledgeToken()
+  return sendWhatsAppLinkRequests('pledge', guestIds, token)
+}
+
+/**
+ * Nudge already-invited guests who haven't responded yet. Reuses the same
+ * approved invite template (no new Meta template needed) — resends are free
+ * per sendWhatsAppInvites' existing quota logic.
+ */
+export async function sendWhatsAppRsvpReminders(guestIds?: string[]): Promise<WhatsAppSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  let gq = supabase
+    .from('guest_contacts')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('review_status', 'confirmed')
+    .not('last_invited_at', 'is', null)
+  if (guestIds && guestIds.length) gq = gq.in('id', guestIds)
+  const { data: candidates } = await gq
+  const candidateIds = (candidates ?? []).map((g) => g.id as string)
+
+  const zeroSummary: WhatsAppSendSummary = {
+    sent: 0,
+    failed: 0,
+    skipped: 0,
+    blocked: 0,
+    dryRun: true,
+    hasPaidOrder: false,
+    purchased: 0,
+    remaining: 0,
+  }
+  if (!candidateIds.length) return zeroSummary
+
+  const { data: invitations } = await supabase
+    .from('guest_invitations')
+    .select('guest_contact_id, rsvp_status')
+    .eq('user_id', user.id)
+    .in('guest_contact_id', candidateIds)
+
+  const respondedIds = new Set(
+    (invitations ?? [])
+      .filter((i) => i.rsvp_status === 'attending' || i.rsvp_status === 'declined')
+      .map((i) => i.guest_contact_id as string),
+  )
+  const pendingIds = candidateIds.filter((id) => !respondedIds.has(id))
+  if (!pendingIds.length) return zeroSummary
+
+  return sendWhatsAppInvites(pendingIds)
 }
 
 // ---------------------------------------------------------------- Seat collection

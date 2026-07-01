@@ -611,6 +611,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     submitted_title: 'Your RSVP is saved',
     submitted_body: 'Thank you! You can update your response below if anything changes.',
     submitted_change: 'Change my response',
+    entry_pass_hint: 'Show this QR code at the door',
     dress_code_prefix: 'Dress code:',
     status_attending: "I'll be there",
     status_maybe: 'Maybe',
@@ -1712,6 +1713,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'submitted_title', label: 'Title', kind: 'text', max: 60 },
         { key: 'submitted_body', label: 'Body', kind: 'textarea', max: 160 },
         { key: 'submitted_change', label: 'Change-response link', kind: 'text', max: 40 },
+        { key: 'entry_pass_hint', label: 'Entry pass hint', kind: 'text', max: 60, hint: 'Shown above each QR entry pass for confirmed events.' },
       ],
     },
     {

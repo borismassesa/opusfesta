@@ -1,7 +1,7 @@
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { createNotification } from '@/lib/dashboard/notifications'
 import { formatLongDate } from '@/lib/dashboard/share'
-import { BTN, getWhatsAppProvider, parseInboundButtons, webhookVerifyToken } from '@/lib/whatsapp'
+import { BTN, getWhatsAppProvider, parseInboundButtons, verifyWebhookSignature, webhookVerifyToken } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,9 +22,16 @@ export async function GET(req: Request) {
 // returns 200 fast so Meta doesn't retry on slow processing; idempotency is
 // enforced by the unique wamid in whatsapp_messages.
 export async function POST(req: Request) {
+  // Read the raw body first: the signature is computed over the exact bytes,
+  // so we cannot let the framework parse/re-serialize it before verifying.
+  const raw = await req.text()
+  if (!verifyWebhookSignature(raw, req.headers.get('x-hub-signature-256'))) {
+    return new Response('invalid signature', { status: 403 })
+  }
+
   let body: unknown
   try {
-    body = await req.json()
+    body = JSON.parse(raw)
   } catch {
     return new Response('ok', { status: 200 })
   }

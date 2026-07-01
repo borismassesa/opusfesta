@@ -7,33 +7,72 @@ import { submitCollectorEntry } from './actions'
 import { useT } from '@/components/providers/UIStringsProvider'
 import {
   resolveCollectorPage,
-  COVER_TONES,
   accentInk,
   PLEDGE_PREVIEW_MESSAGE,
   PLEDGE_PREVIEW_READY,
   type PledgePageConfig,
 } from '@/lib/dashboard/pledge-page'
+import { SaveTheDate } from '@/components/guests/invitation-templates'
+import type { InvitationPalette } from '@/components/guests/invitation-templates/_types'
 
 interface Props {
   token: string
   coupleName: string
   weddingDate: string | null
   city: string | null
+  venue: string | null
+  startsAt: string | null
+  dressCode: string | null
+  rsvpContact: string | null
   config: PledgePageConfig
 }
 
-/** Wedding date as DD.MM.YYYY, the elegant "save the date" format. */
+/** Same palette InvitationVisual uses for the 'save-the-date' treatment. */
+const SAVE_THE_DATE_PALETTE: InvitationPalette = {
+  background: '#00a79d',
+  surface: '#00a79d',
+  accent: '#6fc7b0',
+  textPrimary: '#ffffff',
+  textSecondary: '#ffffff',
+  muted: 'rgba(255,255,255,0.65)',
+}
+
+/** Wedding date as DD.MM.YY, the card's own "save the date" format. */
 function dotDate(value: string | null): string | null {
   if (!value) return null
   const d = new Date(value)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)}`
+}
+
+/** Time as "at H:MM am/pm". Omitted for midnight, which almost always means the
+ *  event was saved with a date only (no time picked), not an actual 12am event. */
+function dotTime(value: string | null): string | null {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  const hours = d.getHours()
+  const minutes = d.getMinutes()
+  if (hours === 0 && minutes === 0) return null
+  const h12 = hours % 12 || 12
+  const ampm = hours < 12 ? 'am' : 'pm'
+  return `at ${h12}:${String(minutes).padStart(2, '0')} ${ampm}`
 }
 
 const fieldClass =
   'block w-full rounded-xl border border-black/[0.12] bg-white px-4 py-3 text-[15px] text-[#1A1A1A] placeholder:text-[#1A1A1A]/30 transition focus:border-[#C9A0DC] focus:outline-none focus:ring-2 focus:ring-[#C9A0DC]/25'
 
-export default function CollectorForm({ token, coupleName, weddingDate, city, config }: Props) {
+export default function CollectorForm({
+  token,
+  coupleName,
+  weddingDate,
+  city,
+  venue,
+  startsAt,
+  dressCode,
+  rsvpContact,
+  config,
+}: Props) {
   const t = useT('forms-collect')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -56,27 +95,32 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
   }, [])
 
   const cfg = resolveCollectorPage(override ?? config)
-  const tone = COVER_TONES[cfg.coverTone]
   const hasCover = Boolean(cfg.coverImageUrl)
+  const isFullTemplate = hasCover && cfg.coverIsFullTemplate
   const onAccent = accentInk(cfg.accent)
 
-  const dateStr = dotDate(weddingDate)
+  const dateStr = dotDate(startsAt ?? weddingDate)
+  const timeStr = dotTime(startsAt)
   const parts = coupleName
     .split(/\s*(?:&|and|\bna\b|\+)\s*/i)
     .map((p) => p.trim())
     .filter(Boolean)
 
-  const ink = hasCover ? '#FFFFFF' : tone.ink
-  const soft = hasCover ? 'rgba(255,255,255,0.82)' : tone.soft
-  const rule = hasCover ? 'rgba(255,255,255,0.6)' : tone.rule
-  const leaf = hasCover ? 'rgba(255,255,255,0.7)' : tone.leaf
-  const coverStyle: React.CSSProperties = hasCover
+  // Photo-cover mode only (SaveTheDate template below handles its own styling).
+  const ink = '#FFFFFF'
+  const soft = 'rgba(255,255,255,0.82)'
+  const rule = 'rgba(255,255,255,0.6)'
+  const coverStyle: React.CSSProperties = isFullTemplate
     ? {
+        backgroundImage: `url("${cfg.coverImageUrl}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {
         backgroundImage: `linear-gradient(rgba(20,12,28,0.42),rgba(20,12,28,0.55)), url("${cfg.coverImageUrl}")`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
-    : { backgroundImage: tone.gradient, backgroundColor: tone.base }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -103,62 +147,68 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
       {/* ── Decorative cover ── */}
       <aside
         className="relative flex min-h-[360px] flex-col justify-center overflow-hidden px-8 py-14 sm:min-h-[420px] lg:sticky lg:top-0 lg:h-screen lg:px-14"
-        style={{ ...coverStyle, color: ink }}
+        style={hasCover ? { ...coverStyle, color: ink } : undefined}
       >
-        {!hasCover ? (
-          <>
-            <Sprig className="pointer-events-none absolute -left-5 -top-8 w-32 opacity-90 sm:w-44" style={{ color: leaf }} />
-            <Sprig
-              className="pointer-events-none absolute -bottom-10 -right-5 w-32 rotate-180 opacity-90 sm:w-44"
-              style={{ color: leaf }}
-            />
-          </>
-        ) : null}
+        {hasCover ? (
+          isFullTemplate ? null : (
+            <>
+              <span className="absolute left-8 top-8 text-sm font-bold tracking-tight lg:left-14" style={{ color: soft }}>
+                OpusPass
+              </span>
 
-        <span className="absolute left-8 top-8 text-sm font-bold tracking-tight lg:left-14" style={{ color: soft }}>
-          OpusPass
-        </span>
-
-        <div className="relative text-center">
-          <p className="font-serif text-[11px] uppercase tracking-[0.3em] sm:text-xs" style={{ color: soft }}>
-            {cfg.eyebrow}
-          </p>
-
-          <div className="mt-6 space-y-2.5">
-            {parts.length >= 2 ? (
-              <>
-                <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
-                  {parts[0]}
+              <div className="relative text-center">
+                <p className="font-serif text-[11px] uppercase tracking-[0.3em] sm:text-xs" style={{ color: soft }}>
+                  {cfg.eyebrow}
                 </p>
-                <p className="font-serif text-sm uppercase tracking-[0.3em]" style={{ color: soft }}>
-                  and
-                </p>
-                <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
-                  {parts[1]}
-                </p>
-              </>
-            ) : (
-              <p className="font-serif text-4xl uppercase leading-tight tracking-[0.08em] sm:text-5xl">
-                {coupleName}
-              </p>
-            )}
-          </div>
 
-          <div className="mx-auto mt-7 flex items-center justify-center gap-2.5">
-            <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
-            <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: rule }} />
-            <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
-          </div>
+                <div className="mt-6 space-y-2.5">
+                  {parts.length >= 2 ? (
+                    <>
+                      <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
+                        {parts[0]}
+                      </p>
+                      <p className="font-serif text-sm uppercase tracking-[0.3em]" style={{ color: soft }}>
+                        and
+                      </p>
+                      <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
+                        {parts[1]}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-serif text-4xl uppercase leading-tight tracking-[0.08em] sm:text-5xl">
+                      {coupleName}
+                    </p>
+                  )}
+                </div>
 
-          {dateStr ? (
-            <p className="mt-5 font-serif text-2xl tracking-[0.12em] sm:text-[26px]">{dateStr}</p>
-          ) : null}
-          {city ? (
-            <p className="mt-2 text-[11px] uppercase tracking-[0.25em]" style={{ color: soft }}>
-              {city}
-            </p>
-          ) : null}
-        </div>
+                <div className="mx-auto mt-7 flex items-center justify-center gap-2.5">
+                  <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
+                  <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: rule }} />
+                  <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
+                </div>
+
+                {dateStr ? (
+                  <p className="mt-5 font-serif text-2xl tracking-[0.12em] sm:text-[26px]">{dateStr}</p>
+                ) : null}
+                {city ? (
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.25em]" style={{ color: soft }}>
+                    {city}
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )
+        ) : (
+          <SaveTheDate
+            names={coupleName}
+            date={dateStr ?? ''}
+            venue={venue ?? city ?? ''}
+            time={timeStr ?? undefined}
+            dressCode={dressCode ?? undefined}
+            rsvpContact={rsvpContact ?? undefined}
+            palette={SAVE_THE_DATE_PALETTE}
+          />
+        )}
       </aside>
 
       {/* ── Form ── */}
@@ -234,29 +284,6 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
         </div>
       </main>
     </div>
-  )
-}
-
-/** A simple botanical sprig — leaves + a blossom — drawn inline. */
-function Sprig({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg viewBox="0 0 140 240" className={className} style={style} fill="currentColor" aria-hidden="true">
-      <path
-        d="M72 238 C66 180 64 110 76 28"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <ellipse cx="50" cy="66" rx="19" ry="8" transform="rotate(-38 50 66)" opacity="0.85" />
-      <ellipse cx="92" cy="88" rx="19" ry="8" transform="rotate(38 92 88)" opacity="0.85" />
-      <ellipse cx="48" cy="114" rx="22" ry="9" transform="rotate(-32 48 114)" opacity="0.85" />
-      <ellipse cx="94" cy="138" rx="22" ry="9" transform="rotate(34 94 138)" opacity="0.85" />
-      <ellipse cx="52" cy="168" rx="18" ry="8" transform="rotate(-30 52 168)" opacity="0.85" />
-      <ellipse cx="90" cy="192" rx="18" ry="8" transform="rotate(32 90 192)" opacity="0.85" />
-      <circle cx="76" cy="20" r="11" fill="#ffffff" opacity="0.95" />
-      <circle cx="76" cy="20" r="3.5" fill="#E8C26A" />
-    </svg>
   )
 }
 

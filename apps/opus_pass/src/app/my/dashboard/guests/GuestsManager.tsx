@@ -35,6 +35,8 @@ import {
   deleteGuest,
   bulkImportGuests,
   recordSend,
+  sendWhatsAppCollectorRequests,
+  sendWhatsAppRsvpReminders,
   type GuestInput,
 } from '@/lib/dashboard/actions'
 import { emailShareUrl, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
@@ -294,6 +296,42 @@ export default function GuestsManager({
         setPendingBulkDelete(false)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Bulk remove failed')
+      }
+    })
+  }
+
+  function bulkSendCollectorLink() {
+    if (selected.size === 0) return
+    const ids = [...selected]
+    startTransition(async () => {
+      try {
+        const r = await sendWhatsAppCollectorRequests(ids)
+        toast.success(
+          r.dryRun
+            ? `Dry run: would send Collector link to ${r.sent} contact${r.sent === 1 ? '' : 's'}`
+            : `Collector link sent to ${r.sent} contact${r.sent === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed` : ''}`,
+        )
+        clearSelection()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Send failed')
+      }
+    })
+  }
+
+  function bulkSendRsvpReminder() {
+    if (selected.size === 0) return
+    const ids = [...selected]
+    startTransition(async () => {
+      try {
+        const r = await sendWhatsAppRsvpReminders(ids)
+        toast.success(
+          r.dryRun
+            ? `Dry run: would remind ${r.sent} guest${r.sent === 1 ? '' : 's'}`
+            : `RSVP reminder sent to ${r.sent} guest${r.sent === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed` : ''}`,
+        )
+        clearSelection()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Send failed')
       }
     })
   }
@@ -731,6 +769,20 @@ export default function GuestsManager({
                   className="rounded-md px-2 py-1 text-xs text-white/70 hover:bg-white/10 hover:text-white"
                 >
                   Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={bulkSendCollectorLink}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/20"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp: Collector link
+                </button>
+                <button
+                  type="button"
+                  onClick={bulkSendRsvpReminder}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/20"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp: RSVP reminder
                 </button>
                 <button
                   type="button"

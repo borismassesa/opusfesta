@@ -3,7 +3,7 @@ import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
 import { formatLongDate, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
-import { eventTypeLabel } from './types'
+import { eventTypeLabel, eventTypeLabelSw } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import type { SiteDoc } from '@/lib/builder/types'
 import type {
@@ -501,14 +501,32 @@ export async function getPublicPledgeCouple(token: string): Promise<PublicPledge
     }>()
 
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const coupleName = names.length ? names.join(' & ') : await fallbackCoupleNameFromEvent(supabase, owner.id)
   return {
-    coupleName: names.length ? names.join(' & ') : 'The Couple',
+    coupleName,
     weddingDate: profile?.wedding_date ?? null,
     city: profile?.city ?? null,
     paymentInstructions: profile?.pledge_payment_instructions ?? null,
     paymentMethods: profile?.pledge_payment_methods ?? [],
     pageConfig: profile?.pledge_page ?? {},
   }
+}
+
+/** No partner names on the profile? Fall back to the couple's earliest event's
+ *  own title (e.g. "Asha & Juma's Wedding") before the generic placeholder. */
+export async function fallbackCoupleNameFromEvent(
+  supabase: ReturnType<typeof createDashboardClient>,
+  userId: string,
+): Promise<string> {
+  const { data: primaryEvent } = await supabase
+    .from('wedding_events')
+    .select('name')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+    .order('starts_at', { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{ name: string | null }>()
+  return primaryEvent?.name?.trim() || 'The Couple'
 }
 
 /** The signed-in couple's saved pledge-page customizations (for the editor). */
@@ -899,6 +917,8 @@ export interface WhatsAppEntitlement {
   addOns: string[]
   /** Couple/honoree display name for the template body ({{2}}). */
   coupleName: string
+  /** Swahili event category noun for the template body ({{3}}), e.g. "harusi". */
+  eventCategory: string
   /** guest_contact_ids already sent a WhatsApp invite (re-sends don't re-charge). */
   alreadySentIds: string[]
 }
@@ -921,7 +941,24 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     .eq('user_id', user.id)
     .maybeSingle<{ whatsapp_phone: string | null; partner1_name: string | null; partner2_name: string | null }>()
   const coupleNames = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
-  const coupleName = coupleNames.length ? coupleNames.join(' & ') : 'The Couple'
+
+  // The couple's earliest-scheduled event, used both for the event-category
+  // template variable ({{3}}) and as a coupleName fallback below.
+  const { data: primaryEvent } = await supabase
+    .from('wedding_events')
+    .select('name, event_type')
+    .eq('user_id', user.id)
+    .order('sort_order', { ascending: true })
+    .order('starts_at', { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{ name: string | null; event_type: string }>()
+  const eventCategory = eventTypeLabelSw(primaryEvent?.event_type ?? 'other')
+
+  // No partner names on the profile yet? Fall back to the event's own title
+  // (e.g. "Asha & Juma's Wedding") before the generic "The Couple" placeholder.
+  const coupleName = coupleNames.length
+    ? coupleNames.join(' & ')
+    : primaryEvent?.name?.trim() || 'The Couple'
 
   // Match paid orders to this couple: explicit user_id, or buyer email/phone.
   const ors = [`user_id.eq.${user.id}`]
@@ -977,6 +1014,7 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     cardName,
     addOns,
     coupleName,
+    eventCategory,
     alreadySentIds,
   }
 }

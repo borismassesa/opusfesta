@@ -92,7 +92,7 @@ async function nextEmployeeCode(): Promise<string> {
     .order('employee_code', { ascending: false })
     .limit(1)
     .returns<Array<{ employee_code: string }>>()
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not generate an employee code.')
   const last = data?.[0]?.employee_code
   const lastNum = last ? Number.parseInt(last.replace('OF-', ''), 10) : 0
   const next = Number.isFinite(lastNum) ? lastNum + 1 : 1
@@ -254,7 +254,7 @@ export async function deleteEmployee(id: string): Promise<void> {
   await requirePermission('workforce.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase.from('workforce_employees').delete().eq('id', id)
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not delete this employee.')
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/schedule')
 }
@@ -318,7 +318,11 @@ async function fetchEmployeeAccessSnapshot(employeeId: string): Promise<{
   const { data, error } = await supabase
     .from('workforce_employees')
     .select(
-      'id, email, full_name, dashboard_access, dashboard_role_id, workforce_roles(slug)',
+      // workforce_employees reaches workforce_roles two ways — the direct
+      // dashboard_role_id FK, and the M2M path via workforce_role_members —
+      // so the embed must name the FK explicitly or PostgREST rejects the
+      // query as ambiguous ("more than one relationship was found").
+      'id, email, full_name, dashboard_access, dashboard_role_id, workforce_roles!workforce_employees_dashboard_role_id_fkey(slug)',
     )
     .eq('id', employeeId)
     .maybeSingle<{
@@ -329,7 +333,7 @@ async function fetchEmployeeAccessSnapshot(employeeId: string): Promise<{
       dashboard_role_id: string | null
       workforce_roles: { slug: string } | null
     }>()
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not load employee access.')
   if (!data) return null
   return {
     id: data.id,
@@ -347,11 +351,13 @@ async function assertOtherActiveOwnerExists(excludeEmployeeId: string): Promise<
   const supabase = createSupabaseAdminClient()
   const { count, error } = await supabase
     .from('workforce_employees')
-    .select('id, workforce_roles!inner(slug)', { count: 'exact', head: true })
+    // Same ambiguous-relationship issue as fetchEmployeeAccessSnapshot above —
+    // must name the FK explicitly.
+    .select('id, workforce_roles!workforce_employees_dashboard_role_id_fkey!inner(slug)', { count: 'exact', head: true })
     .eq('dashboard_access', true)
     .eq('workforce_roles.slug', 'owner')
     .neq('id', excludeEmployeeId)
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not verify remaining owners.')
   if (!count || count < 1) {
     throw new Error(
       'There must be at least one active owner. Promote another teammate to Owner first.',
@@ -396,7 +402,7 @@ export async function setDashboardRole(
     .select('slug')
     .eq('id', roleId)
     .maybeSingle<{ slug: string }>()
-  if (roleError) throw roleError
+  if (roleError) throw new Error(roleError.message || 'Could not look up that role.')
   if (!nextRole) throw new Error('Role not found.')
 
   // Demoting the last active owner would lock the team out of admin
@@ -409,7 +415,7 @@ export async function setDashboardRole(
     .from('workforce_employees')
     .update({ dashboard_role_id: roleId })
     .eq('id', employeeId)
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not change this person’s role.')
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/roles')
@@ -445,7 +451,7 @@ export async function revokeDashboardAccess(employeeId: string): Promise<void> {
     .eq('id', employeeId)
     .select('id')
     .maybeSingle<{ id: string }>()
-  if (employeeError) throw employeeError
+  if (employeeError) throw new Error(employeeError.message || 'Could not revoke access.')
   if (!employee) throw new Error('Employee not found.')
 
   // Revoke any still-pending invitations so a stale email link can't

@@ -1,4 +1,5 @@
 import 'server-only'
+import crypto from 'node:crypto'
 import { MetaWhatsAppProvider, readMetaConfig } from './meta'
 import { StubWhatsAppProvider } from './stub'
 import { BTN, type ButtonKind, type InboundButton, type WhatsAppProvider } from './types'
@@ -15,6 +16,32 @@ export function getWhatsAppProvider(): WhatsAppProvider {
 /** The token the Meta webhook GET handshake must echo. */
 export function webhookVerifyToken(): string | undefined {
   return process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
+}
+
+/** The Meta app secret used to sign inbound webhook POSTs (X-Hub-Signature-256). */
+export function webhookAppSecret(): string | undefined {
+  return process.env.WHATSAPP_APP_SECRET
+}
+
+/**
+ * Verify Meta's `X-Hub-Signature-256` header against the raw request body using
+ * the app secret. The signature is `sha256=<hex>` of an HMAC-SHA256 over the
+ * exact bytes Meta sent — so the caller MUST pass the unparsed body string.
+ *
+ * When no app secret is configured (local dev / dry-run before go-live) this
+ * returns true so the pipeline stays testable; once WHATSAPP_APP_SECRET is set
+ * in production, every unsigned or mismatched POST is rejected.
+ */
+export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
+  const secret = webhookAppSecret()
+  if (!secret) return true // not configured → don't block dev/dry-run traffic
+  if (!signature) return false
+  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')
+  const a = Buffer.from(signature)
+  const b = Buffer.from(expected)
+  // Length-guard before timingSafeEqual (it throws on unequal-length buffers).
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
 }
 
 /** Split a button payload "kind:token" into its parts. */

@@ -4,11 +4,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Briefcase,
   Building2,
   CalendarCheck,
   ChevronDown,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   CreditCard,
@@ -18,7 +20,6 @@ import {
   Gift,
   Globe,
   Globe2,
-  HelpCircle,
   Home,
   Landmark,
   LayoutDashboard,
@@ -31,6 +32,7 @@ import {
   PanelLeftOpen,
   PanelTop,
   Plane,
+  QrCode,
   Receipt,
   RefreshCw,
   Search,
@@ -64,6 +66,12 @@ type NavItem = {
   // sidebar entry covers a group of routes that don't share a URL prefix
   // (e.g. Articles owns /operations/articles and /operations/authors).
   activePaths?: string[];
+  // Only match this item's href exactly — skips the default "any sub-path
+  // is active too" behavior. Needed when this item's own href is a literal
+  // path prefix of sibling items (e.g. Growth Tracker's "Dashboard" is
+  // /growth, and "Sales & Marketing" is /growth/marketing — without this,
+  // both light up on /growth/marketing).
+  exact?: boolean;
   // Permission required to see this item. Items without a permission
   // (Dashboard, Inbox, Help) stay visible to everyone in the dashboard.
   // The whole section drops out if all its items are filtered.
@@ -87,11 +95,19 @@ type NavSection = {
 
 const topItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: Clock, label: "My time clock", href: "/me/timeclock" },
-  { icon: FileText, label: "My reports", href: "/me/reports" },
 ];
 
 const sections: NavSection[] = [
+  {
+    id: "workspace",
+    label: "Work Space",
+    icon: Clock,
+    items: [
+      { icon: Clock, label: "Time Clock", href: "/me/timeclock" },
+      { icon: FileText, label: "Reports", href: "/me/reports" },
+      { icon: ClipboardCheck, label: "Tracker", href: "/workforce/daily-tracker", requiredPermission: "workforce.read" },
+    ],
+  },
   {
     id: "website-cms",
     label: "Website CMS",
@@ -132,15 +148,20 @@ const sections: NavSection[] = [
     ],
   },
   {
+    id: "opus-pass",
+    label: "OpusPass",
+    icon: CreditCard,
+    items: [
+      { icon: QrCode, label: "Event Check-in", href: "/operations/checkin", requiredPermission: "opuspass.checkin" },
+      { icon: CreditCard, label: "Invitation Payments", href: "/finance/payments", requiredPermission: "finance.read" },
+    ],
+  },
+  {
     id: "operations",
     label: "Operations",
     icon: Briefcase,
     items: [
       { icon: CalendarCheck, label: "Bookings", href: "/operations/bookings", requiredPermission: "bookings.read" },
-      { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors", requiredPermission: "vendor.read" },
-      { icon: Store, label: "Vendor Categories", href: "/operations/categories", requiredPermission: "vendor.read" },
-      { icon: HelpCircle, label: "Category Requests", href: "/operations/category-requests", requiredPermission: "vendor.read" },
-      { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews", requiredPermission: "vendor.moderate" },
       {
         icon: Newspaper,
         label: "Articles",
@@ -148,6 +169,17 @@ const sections: NavSection[] = [
         activePaths: ["/operations/authors", "/operations/articles/submissions"],
         requiredPermission: "cms.write",
       },
+    ],
+  },
+  {
+    id: "vendors-portal",
+    label: "Vendors Portal",
+    icon: Building2,
+    items: [
+      { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors", requiredPermission: "vendor.read" },
+      { icon: Store, label: "Vendor Categories", href: "/operations/categories", requiredPermission: "vendor.read" },
+      { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews", requiredPermission: "vendor.moderate" },
+      { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts", requiredPermission: "finance.write" },
     ],
   },
   {
@@ -177,10 +209,8 @@ const sections: NavSection[] = [
     requiredPermission: undefined,
     items: [
       { icon: Receipt, label: "Invoices", href: "/finance/invoices", requiredPermission: "finance.read" },
-      { icon: CreditCard, label: "Invitation Payments", href: "/finance/payments", requiredPermission: "finance.read" },
       { icon: Receipt, label: "Expenses", href: "/finance/expenses", requiredPermission: "finance.read" },
       { icon: Wallet, label: "Payroll", href: "/finance/payroll", requiredPermission: "workforce.payroll" },
-      { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts", requiredPermission: "finance.write" },
       { icon: RefreshCw, label: "Refunds", href: "/finance/refunds", requiredPermission: "finance.write" },
     ],
   },
@@ -200,6 +230,19 @@ const sections: NavSection[] = [
       { icon: Clock, label: "Timesheets", href: "/workforce/timesheets", requiredPermission: "workforce.read" },
       { icon: Shield, label: "Roles", href: "/workforce/roles", requiredPermission: "workforce.write" },
       { icon: UserPlus, label: "Recruitment", href: "/workforce/recruitment", requiredPermission: "workforce.write" },
+    ],
+  },
+  {
+    id: "growth-tracker",
+    label: "Growth Tracker",
+    icon: BarChart3,
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", href: "/growth", exact: true, requiredAnyPermission: ["growth.write", "growth.admin"] },
+      { icon: Building2, label: "Vendor Outreach", href: "/growth/vendor-outreach", requiredAnyPermission: ["growth.write", "growth.admin"] },
+      { icon: TrendingUp, label: "Sales & Marketing", href: "/growth/marketing", requiredAnyPermission: ["growth.write", "growth.admin"] },
+      { icon: Star, label: "Social Media", href: "/growth/social", requiredAnyPermission: ["growth.write", "growth.admin"] },
+      { icon: CalendarCheck, label: "Studio Performance", href: "/growth/studio", requiredAnyPermission: ["growth.write", "growth.admin"] },
+      { icon: Lightbulb, label: "Content Ideas", href: "/growth/content-ideas", requiredAnyPermission: ["growth.write", "growth.admin"] },
     ],
   },
   {
@@ -237,7 +280,7 @@ const MAX_WIDTH = 420
 const clampWidth = (n: number) => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, n))
 
 function isItemActive(pathname: string, item: NavItem) {
-  if (item.href === '/') return pathname === '/'
+  if (item.href === '/' || item.exact) return pathname === item.href
   if (pathname === item.href || pathname.startsWith(item.href + '/')) return true
   return (item.activePaths ?? []).some(
     (p) => pathname === p || pathname.startsWith(p + '/')
@@ -434,7 +477,7 @@ export function Sidebar({
                   key={item.label}
                   href={item.href}
                   className={cn(
-                    'w-full flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
+                    'w-full flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm font-medium transition-colors text-left outline-none focus-visible:ring-2 focus-visible:ring-[#7E5896] focus-visible:ring-offset-1',
                     itemActive
                       ? 'bg-[#F0DFF6] text-[#7E5896]'
                       : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
@@ -528,7 +571,7 @@ export function Sidebar({
                 href={item.href}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  'relative flex items-center rounded-xl text-sm font-semibold transition-colors',
+                  'relative flex items-center rounded-xl text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#7E5896] focus-visible:ring-offset-1',
                   collapsed
                     ? 'justify-center w-12 h-12 mx-auto'
                     : 'w-full justify-between px-3 py-2.5',

@@ -522,20 +522,43 @@ export async function getRoleMembers(roleId: string): Promise<string[]> {
   return (data ?? []).map((r) => r.employee_id)
 }
 
+// Who "holds" a role for display/assignment purposes — the union of the
+// employee's PRIMARY role (workforce_employees.dashboard_role_id) and any
+// SECONDARY memberships (workforce_role_members). The Roles page's read-only
+// "Members" count already did this union inline in RolesClient.tsx; this
+// query previously only read workforce_role_members, so the "Assign members"
+// modal (which sources its pre-checked state from here) silently disagreed
+// with the member count shown right next to it — e.g. showing "13 people
+// hold this role" but only 2 checkboxes ticked when the modal opened. Fixed
+// by unioning both sources here so every consumer sees the same truth.
 export async function getAllRoleMembers(): Promise<Map<string, string[]>> {
   const supabase = createSupabaseAdminClient()
-  const { data, error } = await supabase
-    .from('workforce_role_members')
-    .select('role_id, employee_id')
-    .returns<Array<{ role_id: string; employee_id: string }>>()
-  if (error) throw new Error(`[workforce] getAllRoleMembers: ${error.message}`)
-  const map = new Map<string, string[]>()
-  for (const row of data ?? []) {
-    const list = map.get(row.role_id) ?? []
-    list.push(row.employee_id)
-    map.set(row.role_id, list)
+  const [{ data: memberRows, error: memberError }, { data: employeeRows, error: employeeError }] = await Promise.all([
+    supabase
+      .from('workforce_role_members')
+      .select('role_id, employee_id')
+      .returns<Array<{ role_id: string; employee_id: string }>>(),
+    supabase
+      .from('workforce_employees')
+      .select('id, dashboard_role_id')
+      .not('dashboard_role_id', 'is', null)
+      .returns<Array<{ id: string; dashboard_role_id: string }>>(),
+  ])
+  if (memberError) throw new Error(`[workforce] getAllRoleMembers: ${memberError.message}`)
+  if (employeeError) throw new Error(`[workforce] getAllRoleMembers: ${employeeError.message}`)
+
+  const map = new Map<string, Set<string>>()
+  for (const row of memberRows ?? []) {
+    const set = map.get(row.role_id) ?? new Set<string>()
+    set.add(row.employee_id)
+    map.set(row.role_id, set)
   }
-  return map
+  for (const row of employeeRows ?? []) {
+    const set = map.get(row.dashboard_role_id) ?? new Set<string>()
+    set.add(row.id)
+    map.set(row.dashboard_role_id, set)
+  }
+  return new Map(Array.from(map, ([roleId, ids]) => [roleId, Array.from(ids)]))
 }
 
 // --- Jobs + Candidates ---
@@ -1070,6 +1093,8 @@ type ReportSubmissionRow = {
   submitted_at: string | null
   created_at: string
   updated_at: string
+  recipient_id: string | null
+  recipient_emails: string[] | null
   workforce_employees: {
     full_name: string
     employee_code: string
@@ -1077,6 +1102,7 @@ type ReportSubmissionRow = {
     avatar_color: string
     avatar_url: string | null
   } | null
+  recipient: { full_name: string; email: string } | null
   report_templates: { name: string; slug: string; sections: unknown } | null
 }
 
@@ -1106,6 +1132,10 @@ function mapSubmission(r: ReportSubmissionRow): ReportSubmission {
     department: e?.department ?? '',
     avatarColor: e?.avatar_color ?? '#F0DFF6',
     avatarUrl: e?.avatar_url ?? null,
+    recipientId: r.recipient_id,
+    recipientName: r.recipient?.full_name ?? null,
+    recipientEmail: r.recipient?.email ?? null,
+    recipientEmails: r.recipient_emails ?? [],
     reportDate: r.report_date,
     periodEnd: r.period_end,
     status: r.status,
@@ -1120,8 +1150,9 @@ function mapSubmission(r: ReportSubmissionRow): ReportSubmission {
 
 const SUBMISSION_COLUMNS =
   'id, template_id, template_snapshot, employee_id, report_date, period_end, status, ' +
-  'content, prepared_by_name, prepared_by_role, submitted_at, created_at, updated_at, ' +
-  'workforce_employees!inner(full_name, employee_code, department, avatar_color, avatar_url), ' +
+  'content, prepared_by_name, prepared_by_role, submitted_at, created_at, updated_at, recipient_id, recipient_emails, ' +
+  'workforce_employees!workforce_reports_employee_id_fkey!inner(full_name, employee_code, department, avatar_color, avatar_url), ' +
+  'recipient:workforce_employees!workforce_reports_recipient_id_fkey(full_name, email), ' +
   'report_templates(name, slug, sections)'
 
 // One employee's own reports (any status) for the My reports page.
@@ -1200,6 +1231,29 @@ export async function getTaskCountsByEmployee(
     m.set(r.employee_id, cur)
   }
   return m
+}
+
+// Most recent submission of a template by an employee, strictly before a
+// given report_date — used to seed a monthly report's follow-up section
+// from last period's goal_list content. Any status (draft counts too, since
+// a goal set while drafting is still a real commitment worth following up).
+export async function getLatestReportBefore(
+  employeeId: string,
+  templateId: string,
+  beforeDate: string,
+): Promise<ReportSubmission | null> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_reports')
+    .select(SUBMISSION_COLUMNS)
+    .eq('employee_id', employeeId)
+    .eq('template_id', templateId)
+    .lt('report_date', beforeDate)
+    .order('report_date', { ascending: false })
+    .limit(1)
+    .maybeSingle<ReportSubmissionRow>()
+  if (error) throw new Error(`[workforce] getLatestReportBefore: ${error.message}`)
+  return data ? mapSubmission(data) : null
 }
 
 export async function getReportById(id: string): Promise<ReportSubmission | null> {
