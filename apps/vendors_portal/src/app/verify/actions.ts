@@ -93,7 +93,17 @@ export async function uploadVerificationDocument(
     }
   }
 
-  const state = await getCurrentVendor()
+  let state
+  try {
+    state = await getCurrentVendor()
+  } catch (err) {
+    console.error('[verify] uploadVerificationDocument: getCurrentVendor threw', err)
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Something went wrong loading your vendor record. Please refresh and try again.',
+    }
+  }
   if (state.kind !== 'pending-approval') {
     return {
       ok: false,
@@ -364,7 +374,17 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     return { ok: false, reason: 'unauth', error: 'Sign in to continue.' }
   }
 
-  const state = await getCurrentVendor()
+  let state
+  try {
+    state = await getCurrentVendor()
+  } catch (err) {
+    console.error('[verify] signVendorAgreement: getCurrentVendor threw', err)
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Something went wrong loading your vendor record. Please refresh and try again.',
+    }
+  }
   if (state.kind !== 'pending-approval') {
     return {
       ok: false,
@@ -544,7 +564,17 @@ async function requirePendingVendor(): Promise<
   | { ok: true; vendorId: string }
   | { ok: false; error: string; reason: 'wrong-state' | 'unknown' }
 > {
-  const state = await getCurrentVendor()
+  let state
+  try {
+    state = await getCurrentVendor()
+  } catch (err) {
+    console.error('[verify] requirePendingVendor: getCurrentVendor threw', err)
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: 'Something went wrong loading your vendor record. Please refresh and try again.',
+    }
+  }
   if (state.kind !== 'pending-approval') {
     return {
       ok: false,
