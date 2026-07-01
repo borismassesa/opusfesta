@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/images/splash-icon.png",
       "backgroundColor": "#5B2D8E",
       "resizeMode": "contain"
     },
@@ -17,10 +18,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.opusfesta.mobile"
+      "bundleIdentifier": "com.opusfesta.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#5B2D8E"
       },
       "package": "com.opusfesta.mobile"
