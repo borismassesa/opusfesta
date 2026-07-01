@@ -7,7 +7,9 @@ export function ProfileCompletion({ sections }: { sections: CompletionSection[] 
   const done = sections.filter((s) => s.done).length
   const total = sections.length
   const remaining = total - done
-  const isComplete = remaining === 0
+
+  // Once every required section is done this nudge is just clutter — hide it.
+  if (remaining === 0) return null
 
   return (
     <div className="bg-white p-6 lg:p-8 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] w-full">
@@ -17,9 +19,7 @@ export function ProfileCompletion({ sections }: { sections: CompletionSection[] 
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-xl lg:text-2xl font-semibold text-gray-900 tracking-tight leading-snug">
-            {isComplete
-              ? 'Storefront complete — nice work!'
-              : `${remaining} section${remaining === 1 ? '' : 's'} needed before you can publish. Keep going!`}
+            {`${remaining} section${remaining === 1 ? '' : 's'} needed before you can publish. Keep going!`}
           </h3>
           <p className="text-sm text-gray-500 mt-2">
             To learn more about storefronts, please refer to{' '}
@@ -53,14 +53,12 @@ export function ProfileCompletion({ sections }: { sections: CompletionSection[] 
         </p>
       </div>
 
-      {!isComplete ? (
-        <Link
-          href="/storefront"
-          className="mt-6 inline-flex items-center justify-center bg-gray-900 text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-gray-800 transition-colors"
-        >
-          Complete storefront
-        </Link>
-      ) : null}
+      <Link
+        href="/storefront"
+        className="mt-6 inline-flex items-center justify-center bg-gray-900 text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-gray-800 transition-colors"
+      >
+        Complete storefront
+      </Link>
     </div>
   )
 }

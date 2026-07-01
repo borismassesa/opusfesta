@@ -3,6 +3,16 @@
 
 @import "tailwindcss";
 
+/* This app is light-only — no dark theme exists. Without declaring the
+   scheme explicitly, browsers apply the OS's native dark-mode UA styling to
+   unstyled form controls (textarea/input/select) when the OS is in dark
+   mode: a light-on-dark text color, even though every panel here forces a
+   white/light background via Tailwind classes. Result: genuinely invisible
+   white-on-white text while typing, on any OS-dark-mode machine. */
+:root {
+  color-scheme: light;
+}
+
 @keyframes contributor-shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-6px); }

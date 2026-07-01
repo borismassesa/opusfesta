@@ -1,5 +1,5 @@
 import 'server-only'
-import { BTN, type InviteSend, type SendResult, type WhatsAppProvider } from './types'
+import { BTN, type InviteSend, type LinkRequestKind, type LinkSend, type SendResult, type WhatsAppProvider } from './types'
 
 // Meta WhatsApp Cloud API provider. Sends business-initiated template messages
 // with an image header + dynamic body + quick-reply buttons whose payloads
@@ -26,6 +26,19 @@ export function readMetaConfig(): MetaConfig | null {
     accessToken,
     templateName,
     defaultLanguage: process.env.WHATSAPP_TEMPLATE_LANG || 'sw',
+  }
+}
+
+/** Per-kind template name + language for the collector/pledge link-request
+ *  templates. Independently configured since each needs its own Meta
+ *  approval; null when that specific kind's template isn't set up yet. */
+function readLinkTemplateConfig(kind: LinkRequestKind): { templateName: string; language: string } | null {
+  const envPrefix = kind === 'collector' ? 'COLLECTOR' : 'PLEDGE'
+  const templateName = process.env[`WHATSAPP_TEMPLATE_NAME_${envPrefix}`]
+  if (!templateName) return null
+  return {
+    templateName,
+    language: process.env[`WHATSAPP_TEMPLATE_LANG_${envPrefix}`] || 'sw',
   }
 }
 
@@ -81,6 +94,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
             parameters: [
               { type: 'text', text: send.guestFirstName }, // {{1}}
               { type: 'text', text: send.coupleName }, // {{2}}
+              { type: 'text', text: send.eventCategory }, // {{3}}
             ],
           },
           // Button labels ("Asante, Nitafika" / "Sitafika, Ninaudhuru" / "View
@@ -89,6 +103,33 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
           { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: payload(BTN.RSVP_YES) }] },
           { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: payload(BTN.RSVP_NO) }] },
           { type: 'button', sub_type: 'quick_reply', index: '2', parameters: [{ type: 'payload', payload: payload(BTN.VIEW_LOCATION) }] },
+        ],
+      },
+    })
+  }
+
+  async sendLinkRequest(kind: LinkRequestKind, send: LinkSend): Promise<SendResult> {
+    const linkCfg = readLinkTemplateConfig(kind)
+    if (!linkCfg) return { ok: false, error: `WhatsApp ${kind} template is not configured` }
+    return this.post({
+      messaging_product: 'whatsapp',
+      to: send.to,
+      type: 'template',
+      template: {
+        name: linkCfg.templateName,
+        language: { code: send.languageCode || linkCfg.language },
+        components: [
+          { type: 'header', parameters: [{ type: 'image', image: { link: send.headerImageUrl } }] },
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: send.contactFirstName }, // {{1}}
+              { type: 'text', text: send.coupleName }, // {{2}}
+            ],
+          },
+          // The CTA button's base URL (e.g. https://opuspass.opusfesta.com/collect/{{1}})
+          // is fixed in the approved template; only the trailing token is dynamic.
+          { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: send.token }] },
         ],
       },
     })

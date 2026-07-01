@@ -28,7 +28,7 @@ type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string }
 
 const topItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Inbox, label: 'Leads', href: '/leads', badge: '12' },
+  { icon: Inbox, label: 'Leads', href: '/leads' },
 ]
 
 const mainItems: NavItem[] = [
@@ -104,10 +104,17 @@ function SidebarLink({
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
   const pathname = usePathname()
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState(false)
+
+  // Live "new leads" count badge. Capped display at 99+ to keep the pill tidy.
+  const leadsBadge =
+    newLeadCount > 0 ? (newLeadCount > 99 ? '99+' : String(newLeadCount)) : undefined
+  const topItemsWithBadges: NavItem[] = topItems.map((item) =>
+    item.href === '/leads' ? { ...item, badge: leadsBadge } : item,
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -172,18 +179,15 @@ export function Sidebar() {
               placeholder="Search…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-12 py-2 bg-gray-50 border border-gray-100 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
+              className="pl-9 pr-3 py-2 bg-gray-50 border border-gray-100 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
             />
-            <span className="absolute right-2 text-[10px] text-gray-400 font-medium border border-gray-200 bg-white rounded px-1.5 py-0.5">
-              ⌘K
-            </span>
           </div>
         </div>
       )}
 
       <div className={cn('flex-1 overflow-y-auto overflow-x-hidden space-y-4')}>
         <nav className="space-y-1">
-          {topItems.map((item) => (
+          {topItemsWithBadges.map((item) => (
             <SidebarLink
               key={item.href}
               item={item}

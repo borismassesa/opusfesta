@@ -22,6 +22,10 @@ interface CoupleSummary {
   coupleName: string
   weddingDate: string | null
   city: string | null
+  venue: string | null
+  startsAt: string | null
+  dressCode: string | null
+  rsvpContact: string | null
   config: PledgePageConfig
 }
 
@@ -40,13 +44,14 @@ async function loadCouple(token: string): Promise<CoupleSummary | null> {
 
   const { data: profile, error: profileErr } = await supabase
     .from('couple_profiles')
-    .select('partner1_name, partner2_name, wedding_date, city, collector_page')
+    .select('partner1_name, partner2_name, wedding_date, city, whatsapp_phone, collector_page')
     .eq('user_id', owner.id)
     .maybeSingle<{
       partner1_name: string | null
       partner2_name: string | null
       wedding_date: string | null
       city: string | null
+      whatsapp_phone: string | null
       collector_page: PledgePageConfig | null
     }>()
   if (profileErr) {
@@ -54,12 +59,34 @@ async function loadCouple(token: string): Promise<CoupleSummary | null> {
     throw profileErr
   }
 
+  const { data: primaryEvent } = await supabase
+    .from('wedding_events')
+    .select('name, venue_name, city, starts_at, dress_code')
+    .eq('user_id', owner.id)
+    .order('sort_order', { ascending: true })
+    .order('starts_at', { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{
+      name: string | null
+      venue_name: string | null
+      city: string | null
+      starts_at: string | null
+      dress_code: string | null
+    }>()
+
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const coupleName = names.length ? names.join(' & ') : primaryEvent?.name?.trim() || 'The Couple'
+  const venue = [primaryEvent?.venue_name, primaryEvent?.city ?? profile?.city].filter(Boolean).join(', ') || null
+
   return {
     userId: owner.id,
-    coupleName: names.length ? names.join(' & ') : 'The Couple',
-    weddingDate: profile?.wedding_date ?? null,
-    city: profile?.city ?? null,
+    coupleName,
+    weddingDate: profile?.wedding_date ?? primaryEvent?.starts_at ?? null,
+    city: profile?.city ?? primaryEvent?.city ?? null,
+    venue,
+    startsAt: primaryEvent?.starts_at ?? null,
+    dressCode: primaryEvent?.dress_code ?? null,
+    rsvpContact: profile?.whatsapp_phone ?? null,
     config: profile?.collector_page ?? {},
   }
 }
@@ -77,6 +104,10 @@ export default async function CollectorPage({ params }: PageProps) {
         coupleName={couple.coupleName}
         weddingDate={couple.weddingDate}
         city={couple.city}
+        venue={couple.venue}
+        startsAt={couple.startsAt}
+        dressCode={couple.dressCode}
+        rsvpContact={couple.rsvpContact}
         config={couple.config}
       />
     </UIStringsProvider>

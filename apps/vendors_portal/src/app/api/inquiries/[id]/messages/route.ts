@@ -2,6 +2,26 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 
+const ATTACHMENT_BUCKET = 'inquiry-attachments'
+const MAX_FILES = 6
+const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25MB
+const ALLOWED_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic',
+  'video/mp4', 'video/quicktime', 'video/webm',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+])
+
+type Attachment = { url: string; name: string; type: string; size: number }
+
+function safeName(name: string): string {
+  return name.replace(/[^\w.\-]+/g, '_').slice(-80) || 'file'
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -32,9 +52,11 @@ export async function GET(
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
+  // `select('*')` returns the `attachments` column once the migration is applied
+  // (and stays valid before it) so vendors can see images/files couples send.
   const { data: messages, error } = await supabase
     .from('inquiry_messages')
-    .select('id, sender_type, sender_name, content, created_at, read_at')
+    .select('*')
     .eq('inquiry_id', id)
     .order('created_at', { ascending: true })
 
@@ -76,16 +98,30 @@ export async function POST(
   const vendorId = state.vendor.id
   const vendorName = state.vendor.businessName
 
-  let body: unknown
+  // Multipart form: text `content` plus any number of `files`.
+  let content = ''
+  let files: File[] = []
   try {
-    body = await request.json()
+    const form = await request.formData()
+    content = String(form.get('content') ?? '').trim()
+    files = form.getAll('files').filter((f): f is File => f instanceof File && f.size > 0)
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
   }
 
-  const { content } = body as Record<string, unknown>
-  if (!content || typeof content !== 'string' || !content.trim()) {
-    return NextResponse.json({ error: 'Message content is required' }, { status: 400 })
+  if (!content && files.length === 0) {
+    return NextResponse.json({ error: 'Message content or an attachment is required' }, { status: 400 })
+  }
+  if (files.length > MAX_FILES) {
+    return NextResponse.json({ error: `You can attach up to ${MAX_FILES} files` }, { status: 400 })
+  }
+  for (const file of files) {
+    if (file.size > MAX_FILE_BYTES) {
+      return NextResponse.json({ error: `"${file.name}" is larger than 25MB` }, { status: 400 })
+    }
+    if (file.type && !ALLOWED_TYPES.has(file.type)) {
+      return NextResponse.json({ error: `"${file.name}" is not a supported file type` }, { status: 400 })
+    }
   }
 
   const supabase = createSupabaseAdminClient()
@@ -106,15 +142,36 @@ export async function POST(
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
+  // Upload any attachments to the shared public bucket.
+  const attachments: Attachment[] = []
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i]
+    const path = `${id}/${Date.now()}-${i}-${safeName(file.name)}`
+    const { error: uploadErr } = await supabase.storage
+      .from(ATTACHMENT_BUCKET)
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false })
+    if (uploadErr) {
+      console.error('[vendor/inquiries/messages] attachment upload failed', uploadErr)
+      return NextResponse.json({ error: 'Could not upload attachment. Please try again.' }, { status: 500 })
+    }
+    const { data: pub } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path)
+    attachments.push({ url: pub.publicUrl, name: file.name, type: file.type || 'application/octet-stream', size: file.size })
+  }
+
+  // Only set `attachments` when present so a text-only reply stays valid even
+  // before the column migration has been applied.
+  const insertPayload: Record<string, unknown> = {
+    inquiry_id: id,
+    sender_type: 'vendor',
+    sender_name: vendorName,
+    content,
+  }
+  if (attachments.length > 0) insertPayload.attachments = attachments
+
   const { data: message, error: insertErr } = await supabase
     .from('inquiry_messages')
-    .insert({
-      inquiry_id: id,
-      sender_type: 'vendor',
-      sender_name: vendorName,
-      content: content.trim(),
-    })
-    .select('id, sender_type, sender_name, content, created_at, read_at')
+    .insert(insertPayload)
+    .select('*')
     .single()
 
   if (insertErr || !message) {

@@ -189,11 +189,18 @@ function resolveUserEmail(
 }
 
 export const getCallerEmail = cache(async (): Promise<string | null> => {
-  if (isAdminAuthDisabled()) return 'dev@opusfesta.com'
+  // A real Clerk session always wins, even under the dev bypass — someone
+  // actually signed in (e.g. locally against the Clerk dev instance) should
+  // resolve to their own workforce_employees row, not a placeholder that no
+  // row will ever match. Only fall back to the placeholder when there's no
+  // session at all, matching getCallerProfile's resolution order.
   const { userId, sessionClaims } = await auth()
-  if (!userId) return null
-  const user = await currentUser()
-  return resolveUserEmail(user, sessionClaims)
+  if (userId) {
+    const user = await currentUser()
+    const email = resolveUserEmail(user, sessionClaims)
+    if (email) return email
+  }
+  return isAdminAuthDisabled() ? 'dev@opusfesta.com' : null
 })
 
 export async function requireAdminRole(
@@ -263,6 +270,20 @@ const ALL_PERMISSION_KEYS: readonly PermissionKey[] = [
   'workforce.payroll',
   'insights.read',
   'platform.admin',
+  // OpusPass door-staff check-in: assigning attendants + viewing live scans.
+  'opuspass.checkin',
+  // OpusPass ticket generation: importing guest lists + printable entry-pass tickets.
+  'opuspass.tickets',
+  // MD Daily Tracker: each engine's MD can only write their own engine's rows.
+  'md_tracker.opusfesta.write',
+  'md_tracker.opusstudio.write',
+  'md_tracker.opuspass.write',
+  // MD Daily Tracker: CEO/owner review — edit ceo_comment + reviewed_by across all engines.
+  'md_tracker.review',
+  // Growth Tracker: log outreach contacts / campaigns / content posts / studio bookings.
+  'growth.write',
+  // Growth Tracker: edit KPI targets, the vendor-outreach roster, challenge definitions, content-ideas bank.
+  'growth.admin',
 ] as const
 
 // Wrapped in React.cache so that the layout's permission lookup and
@@ -319,6 +340,14 @@ function fallbackRolePermissions(role: AdminAccessRole): Set<PermissionKey> {
         'finance.read', 'finance.write',
         'workforce.read', 'workforce.write', 'workforce.payroll',
         'insights.read',
+        'opuspass.checkin',
+        'opuspass.tickets',
+        'md_tracker.opusfesta.write',
+        'md_tracker.opusstudio.write',
+        'md_tracker.opuspass.write',
+        'md_tracker.review',
+        'growth.write',
+        'growth.admin',
       ])
     case 'editor':
       return new Set(['cms.read', 'cms.write', 'cms.publish', 'vendor.read'])

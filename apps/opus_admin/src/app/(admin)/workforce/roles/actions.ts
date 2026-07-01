@@ -64,7 +64,7 @@ export async function createRole(input: {
     if ((error as { code?: string }).code === '23505') {
       throw new Error('A role with that name already exists.')
     }
-    throw error
+    throw new Error(error.message || 'Could not create this role.')
   }
   revalidatePath('/workforce/roles')
   return { id: data.id }
@@ -81,7 +81,7 @@ export async function updateRolePermissions(id: string, permissionKeys: string[]
     .select('is_system, slug')
     .eq('id', id)
     .single<{ is_system: boolean; slug: string }>()
-  if (fetchError) throw fetchError
+  if (fetchError) throw new Error(fetchError.message || 'Could not load this role.')
   if (existing.is_system) {
     throw new Error('System roles cannot be edited. Clone the role to customise.')
   }
@@ -90,7 +90,7 @@ export async function updateRolePermissions(id: string, permissionKeys: string[]
     .from('workforce_roles')
     .update({ permission_keys: perms })
     .eq('id', id)
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not save permissions.')
   revalidatePath('/workforce/roles')
 }
 
@@ -106,7 +106,7 @@ export async function duplicateRole(id: string): Promise<{ id: string }> {
     .select('name, description, permission_keys')
     .eq('id', id)
     .single<{ name: string; description: string; permission_keys: string[] }>()
-  if (fetchError) throw fetchError
+  if (fetchError) throw new Error(fetchError.message || 'Could not load the source role.')
 
   // Append " (copy)" — bump to "(copy 2)" / "(copy 3)" if there's a name
   // collision so duplicating twice doesn't fail.
@@ -135,7 +135,7 @@ export async function duplicateRole(id: string): Promise<{ id: string }> {
     })
     .select('id')
     .single<{ id: string }>()
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not duplicate this role.')
 
   revalidatePath('/workforce/roles')
   return { id: data.id }
@@ -149,12 +149,12 @@ export async function deleteRole(id: string): Promise<void> {
     .select('is_system')
     .eq('id', id)
     .single<{ is_system: boolean }>()
-  if (fetchError) throw fetchError
+  if (fetchError) throw new Error(fetchError.message || 'Could not load this role.')
   if (existing.is_system) {
     throw new Error('System roles cannot be deleted.')
   }
   const { error } = await supabase.from('workforce_roles').delete().eq('id', id)
-  if (error) throw error
+  if (error) throw new Error(error.message || 'Could not delete this role.')
   revalidatePath('/workforce/roles')
 }
 
@@ -167,33 +167,87 @@ export async function setRoleMembers(
   const supabase = createSupabaseAdminClient()
   const desired = new Set(employeeIds)
 
-  const { data: current, error: fetchError } = await supabase
-    .from('workforce_role_members')
-    .select('employee_id')
-    .eq('role_id', roleId)
-    .returns<Array<{ employee_id: string }>>()
-  if (fetchError) throw fetchError
-  const existing = new Set((current ?? []).map((r) => r.employee_id))
+  // "Holding a role" comes from two places — a PRIMARY assignment
+  // (workforce_employees.dashboard_role_id, one per employee) or a
+  // SECONDARY membership (workforce_role_members, many-to-many). The
+  // "Assign members" modal now pre-checks the union of both (see
+  // getAllRoleMembers in _lib/queries.ts), so saving must be able to
+  // revoke access via whichever mechanism actually granted it — previously
+  // this only ever touched workforce_role_members, so unchecking someone
+  // whose access came from their primary role silently did nothing.
+  const [{ data: current, error: fetchError }, { data: employees, error: employeesError }] = await Promise.all([
+    supabase
+      .from('workforce_role_members')
+      .select('employee_id')
+      .eq('role_id', roleId)
+      .returns<Array<{ employee_id: string }>>(),
+    supabase
+      .from('workforce_employees')
+      .select('id, full_name, dashboard_role_id')
+      .returns<Array<{ id: string; full_name: string; dashboard_role_id: string | null }>>(),
+  ])
+  if (fetchError) throw new Error(fetchError.message || 'Could not load current members.')
+  if (employeesError) throw new Error(employeesError.message || 'Could not load employees.')
 
-  // Diff and apply — only insert what's new and delete what's been
-  // removed. This avoids touching unchanged rows so the trigger fires
-  // the minimum number of times for the members_count refresh.
+  const existingSecondary = new Set((current ?? []).map((r) => r.employee_id))
+  const dashboardRoleById = new Map((employees ?? []).map((e) => [e.id, e.dashboard_role_id]))
+  const nameById = new Map((employees ?? []).map((e) => [e.id, e.full_name]))
+  const primaryHolders = new Set((employees ?? []).filter((e) => e.dashboard_role_id === roleId).map((e) => e.id))
+  const existing = new Set([...existingSecondary, ...primaryHolders])
+
   const toAdd = [...desired].filter((id) => !existing.has(id))
   const toRemove = [...existing].filter((id) => !desired.has(id))
 
-  if (toAdd.length > 0) {
+  // Newly checked, no primary role yet → make this their primary role
+  // (matches "should hold this role" without a redundant secondary row).
+  // Newly checked, already has a DIFFERENT primary role → add as a
+  // secondary membership instead; permissions union, and this never
+  // demotes an existing primary assignment (e.g. an Owner staying Owner).
+  const toAddAsPrimary = toAdd.filter((id) => !dashboardRoleById.get(id))
+  const toAddAsSecondary = toAdd.filter((id) => dashboardRoleById.get(id))
+
+  // Newly unchecked, only ever a secondary membership → remove that row.
+  const toRemoveSecondary = toRemove.filter((id) => existingSecondary.has(id) && !primaryHolders.has(id))
+
+  // Newly unchecked, this WAS their primary role → CANNOT be done here.
+  // workforce_employees has a check constraint (dashboard_access = false OR
+  // dashboard_role_id IS NOT NULL) — every account with dashboard access
+  // must have exactly one primary role, so "remove the only role" isn't a
+  // valid state; it has to become a *different* role, a per-person decision
+  // this bulk checkbox list can't make. Apply everything else, then report
+  // this back clearly instead of silently no-oping (the bug this replaced)
+  // or violating the DB constraint (the bug the first fix introduced).
+  const toRemovePrimary = toRemove.filter((id) => primaryHolders.has(id))
+
+  if (toAddAsSecondary.length > 0) {
     const { error } = await supabase
       .from('workforce_role_members')
-      .insert(toAdd.map((employee_id) => ({ role_id: roleId, employee_id })))
-    if (error) throw error
+      .insert(toAddAsSecondary.map((employee_id) => ({ role_id: roleId, employee_id })))
+    if (error) throw new Error(error.message || 'Could not add members.')
   }
-  if (toRemove.length > 0) {
+  if (toRemoveSecondary.length > 0) {
     const { error } = await supabase
       .from('workforce_role_members')
       .delete()
       .eq('role_id', roleId)
-      .in('employee_id', toRemove)
-    if (error) throw error
+      .in('employee_id', toRemoveSecondary)
+    if (error) throw new Error(error.message || 'Could not remove members.')
+  }
+  if (toAddAsPrimary.length > 0) {
+    const { error } = await supabase
+      .from('workforce_employees')
+      .update({ dashboard_role_id: roleId })
+      .in('id', toAddAsPrimary)
+    if (error) throw new Error(error.message || 'Could not assign this role.')
+  }
+
+  if (toRemovePrimary.length > 0) {
+    const names = toRemovePrimary.map((id) => nameById.get(id) ?? id).join(', ')
+    revalidatePath('/workforce/roles')
+    revalidatePath('/workforce/employees')
+    throw new Error(
+      `Saved the other changes. Couldn't remove this role from ${names} here — every account needs exactly one primary role. Change their role from the Employees page instead (that flow lets you pick the replacement).`,
+    )
   }
 
   revalidatePath('/workforce/roles')

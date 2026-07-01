@@ -3,7 +3,15 @@ import { redirect } from 'next/navigation'
 import WorkforceHeading from '../../workforce/_components/PageHeading'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { escapeLike, hasPermission } from '@/lib/admin-auth'
-import { getReportsForEmployee, getReportTemplates } from '../../workforce/_lib/queries'
+import { getEmployees, getReportsForEmployee, getReportTemplates } from '../../workforce/_lib/queries'
+import {
+  readGoals,
+  REPORT_CADENCES,
+  seedFollowupFromGoals,
+  type FollowupItem,
+  type ReportSubmission,
+  type ReportTemplate,
+} from '../../workforce/_lib/report-schema'
 import MyReportsClient from './MyReportsClient'
 import { saveReport } from './actions'
 
@@ -23,6 +31,28 @@ function todayInTz(): string {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date())
+}
+
+// For each monthly-style template with a follow-up section, find that
+// employee's most recent past submission of the same template and carry its
+// goal_list content forward as the seed for a brand-new report's follow-up.
+// `reports` is already ordered report_date desc, so the first match is the
+// most recent one — good enough without an extra per-template query.
+function computeFollowupSeeds(
+  templates: ReportTemplate[],
+  reports: ReportSubmission[],
+): Record<string, FollowupItem[]> {
+  const out: Record<string, FollowupItem[]> = {}
+  for (const t of templates) {
+    const followup = t.sections.find((s) => s.type === 'followup_list' && s.followsSectionId)
+    if (!followup?.followsSectionId) continue
+    const goalsSection = t.sections.find((s) => s.id === followup.followsSectionId)
+    if (!goalsSection) continue
+    const prior = reports.find((r) => r.templateId === t.id)
+    if (!prior) continue
+    out[t.id] = seedFollowupFromGoals(readGoals(prior.content, goalsSection))
+  }
+  return out
 }
 
 export default async function MyReportsPage() {
@@ -54,20 +84,34 @@ export default async function MyReportsPage() {
     )
   }
 
-  const [allTemplates, reports, canSeeAll] = await Promise.all([
+  const [allTemplates, reports, canSeeAll, allEmployees] = await Promise.all([
     getReportTemplates({ activeOnly: true }),
     getReportsForEmployee(employee.id),
     hasPermission('workforce.write'),
+    getEmployees(),
   ])
+
+  const recipients = allEmployees
+    .filter((e) => e.id !== employee.id)
+    .map((e) => ({ id: e.id, name: e.name, jobTitle: e.jobTitle }))
 
   // Admins/owners (workforce.write) oversee everything, so they can write
   // any report type. Regular employees see unrestricted templates plus the
   // ones offered to their department.
-  const templates = canSeeAll
+  const scoped = canSeeAll
     ? allTemplates
     : allTemplates.filter(
         (t) => t.departments.length === 0 || t.departments.includes(employee.department),
       )
+
+  // Cadence order (daily → weekly → biweekly → monthly → quarterly) instead
+  // of alphabetical by name, so the picker reads like a calendar.
+  const templates = [...scoped].sort((a, b) => {
+    const byCadence = REPORT_CADENCES.indexOf(a.cadence) - REPORT_CADENCES.indexOf(b.cadence)
+    return byCadence !== 0 ? byCadence : a.name.localeCompare(b.name)
+  })
+
+  const followupSeeds = computeFollowupSeeds(templates, reports)
 
   return (
     <div className="pb-12">
@@ -79,6 +123,8 @@ export default async function MyReportsPage() {
         <MyReportsClient
           templates={templates}
           reports={reports}
+          recipients={recipients}
+          followupSeeds={followupSeeds}
           today={todayInTz()}
           saveReport={saveReport}
         />

@@ -16,6 +16,10 @@ export interface PledgePageConfig {
   coverTone?: PledgeCoverTone
   /** Optional cover background image URL (overrides the tone gradient). */
   coverImageUrl?: string | null
+  /** True when coverImageUrl is a fully pre-designed template (names/date/venue
+   *  already baked into the artwork) — suppresses the text overlay so nothing
+   *  doubles up. False/unset means coverImageUrl is a plain photo backdrop. */
+  coverIsFullTemplate?: boolean
 }
 
 /** `{couple}` in privacyNote is replaced with the couple's name at render time. */
@@ -29,6 +33,7 @@ export const PLEDGE_PAGE_DEFAULTS = {
   accent: '#C9A0DC',
   coverTone: 'cream' as PledgeCoverTone,
   coverImageUrl: null as string | null,
+  coverIsFullTemplate: false,
 }
 
 /** Contact Collector page defaults (same shape, collector-flavoured copy). */
@@ -40,8 +45,9 @@ export const COLLECTOR_PAGE_DEFAULTS = {
   buttonLabel: 'Send my details',
   privacyNote: 'Your details go straight to {couple}. We’ll never use them for anything else.',
   accent: '#C9A0DC',
-  coverTone: 'cream' as PledgeCoverTone,
-  coverImageUrl: null as string | null,
+  coverTone: 'sage' as PledgeCoverTone,
+  coverImageUrl: '/assets/covers/floral-rose-invite.png' as string | null,
+  coverIsFullTemplate: true,
 }
 
 export type ResolvedPledgePage = typeof PLEDGE_PAGE_DEFAULTS
@@ -59,7 +65,8 @@ function mergeConfig(
     privacyNote: c.privacyNote?.trim() || defaults.privacyNote,
     accent: c.accent?.trim() || defaults.accent,
     coverTone: c.coverTone || defaults.coverTone,
-    coverImageUrl: c.coverImageUrl?.trim() || null,
+    coverImageUrl: c.coverImageUrl?.trim() || defaults.coverImageUrl,
+    coverIsFullTemplate: c.coverImageUrl?.trim() ? Boolean(c.coverIsFullTemplate) : defaults.coverIsFullTemplate,
   }
 }
 

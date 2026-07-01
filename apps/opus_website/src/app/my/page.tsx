@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+// Couple dashboard is unified on OpusPass — hand off there (see my/dashboard).
 export default function MyPage() {
-  redirect('/my/dashboard')
+  redirect('/opuspass/my/dashboard')
 }

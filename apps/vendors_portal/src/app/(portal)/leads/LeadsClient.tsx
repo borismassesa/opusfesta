@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
-import { Filter, MapPin, Mail, Search, Wallet, Users, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowDownUp, Inbox, Mail, Phone, Search, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp, Plus, Image as ImageIcon, FileText, Calendar, MapPin, Users, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import type { InquiryRow } from '@/lib/mock-data'
 import { TZ_REGIONS } from '@/lib/onboarding/regions'
@@ -11,12 +11,27 @@ import type { VendorPricingPackage } from '@/lib/vendors'
 
 const TABS = ['Prospects', 'Inquiries', 'Conversations'] as const
 
+// One-line description of what each tab holds, surfaced as a tooltip so the
+// three labels read as a clear funnel: to-do -> in progress -> resolved.
+const TAB_HINT: Record<(typeof TABS)[number], string> = {
+  Prospects: 'New leads awaiting your first reply',
+  Inquiries: 'Active conversations you have replied to',
+  Conversations: 'Booked, declined, and archived leads',
+}
+
 export type LeadsSource =
   | { kind: 'live' }
   | { kind: 'no-application' }
   | { kind: 'pending-approval' }
   | { kind: 'suspended' }
   | { kind: 'no-env' }
+
+type MessageAttachment = {
+  url: string
+  name: string
+  type: string
+  size: number
+}
 
 type ThreadMessage = {
   id: string
@@ -25,6 +40,7 @@ type ThreadMessage = {
   content: string
   created_at: string
   read_at: string | null
+  attachments?: MessageAttachment[] | null
 }
 
 type PersistedProposalStatus = 'sent' | 'countered' | 'accepted'
@@ -78,10 +94,29 @@ const VENUE_SUGGESTIONS = [
   'Best Western Dodoma City Hotel, Dodoma',
 ]
 
+// Mutually-exclusive funnel: every lead lands in exactly one tab.
+//   Prospects     -> needs a first reply        (new)
+//   Inquiries     -> in active discussion        (replied)
+//   Conversations -> resolved / archived         (booked | declined | closed)
 function matchesTab(active: (typeof TABS)[number], status: InquiryRow['status']) {
   if (active === 'Prospects') return status === 'new'
-  if (active === 'Conversations') return status !== 'new'
-  return status === 'new' || status === 'replied'
+  if (active === 'Inquiries') return status === 'replied'
+  return status === 'booked' || status === 'declined' || status === 'closed'
+}
+
+function countByTab(inquiries: InquiryRow[]): Record<(typeof TABS)[number], number> {
+  return {
+    Prospects: inquiries.filter((row) => matchesTab('Prospects', row.status)).length,
+    Inquiries: inquiries.filter((row) => matchesTab('Inquiries', row.status)).length,
+    Conversations: inquiries.filter((row) => matchesTab('Conversations', row.status)).length,
+  }
+}
+
+// Land the vendor on the first tab that actually has leads (preferring the
+// to-do end of the funnel) so they never open onto an empty list when work
+// is waiting in another tab.
+function firstNonEmptyTab(counts: Record<(typeof TABS)[number], number>): (typeof TABS)[number] {
+  return TABS.find((tab) => counts[tab] > 0) ?? 'Prospects'
 }
 
 function getEmptyListMessage(source: LeadsSource['kind'], active: (typeof TABS)[number], searchQuery: string) {
@@ -91,9 +126,9 @@ function getEmptyListMessage(source: LeadsSource['kind'], active: (typeof TABS)[
 
   const q = searchQuery.trim()
   if (q) return `No ${active.toLowerCase()} found for "${q}".`
-  if (active === 'Prospects') return 'No new prospects right now.'
-  if (active === 'Conversations') return 'No conversations yet.'
-  return 'No active inquiries yet.'
+  if (active === 'Prospects') return 'No new prospects right now. Fresh leads land here first.'
+  if (active === 'Conversations') return 'No resolved leads yet. Booked and archived leads appear here.'
+  return 'No active inquiries yet. Reply to a prospect to start a conversation.'
 }
 
 function getReplyButtonClass(isSampleData: boolean, replyOpen: boolean) {
@@ -126,7 +161,6 @@ type ProposalPanelProps = {
   open: boolean
   sending: boolean
   draft: ProposalDraft
-  preview: string
   packages: VendorPricingPackage[]
   venueSuggestions: string[]
   onToggle: () => void
@@ -135,7 +169,7 @@ type ProposalPanelProps = {
   onSend: () => void
 }
 
-function ProposalPanel({ open, sending, draft, preview, packages, venueSuggestions, onToggle, onDraftChange, onCancel, onSend }: Readonly<ProposalPanelProps>) {
+function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onToggle, onDraftChange, onCancel, onSend }: Readonly<ProposalPanelProps>) {
   return (
     <div className="rounded-xl border border-gray-100 overflow-hidden">
       <button
@@ -246,9 +280,36 @@ function ProposalPanel({ open, sending, draft, preview, packages, venueSuggestio
             />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Preview</p>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap">
-              {preview}
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Preview</p>
+            <div className="rounded-2xl border border-[#C9A0DC]/30 bg-[#C9A0DC]/[0.06] p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A0DC]/20 bg-white px-4 py-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
+                <span className="text-lg font-extrabold tracking-tight text-gray-900">
+                  {draft.invoiceAmount && Number(draft.invoiceAmount) > 0
+                    ? `TZS ${Number(draft.invoiceAmount).toLocaleString('en-GB')}`
+                    : 'TBC'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { icon: Calendar, label: 'Date', value: draft.eventDate ? formatProposalDate(draft.eventDate) : 'TBC' },
+                  { icon: MapPin, label: 'Venue', value: draft.venue.trim() || 'TBC' },
+                  { icon: Users, label: 'Guests', value: draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : 'TBC' },
+                  { icon: Package, label: 'Package', value: draft.packageName.trim() || 'TBC' },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <Icon className="w-3 h-3" />{label}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {draft.invoiceDetails.trim() && (
+                <div className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5 text-sm text-gray-700 whitespace-pre-wrap">
+                  {draft.invoiceDetails.trim()}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -406,46 +467,17 @@ function buildDefaultProposalDraft(row: InquiryRow, inquiryDetail?: InquiryDetai
   }
 }
 
-function buildProposalMessage(row: InquiryRow, draft: ProposalDraft): string {
-  const parsed = Number(draft.invoiceAmount.replaceAll(/\D/g, ''))
-  const formattedAmount = parsed > 0 ? `TZS ${parsed.toLocaleString('en-GB')}` : 'TBC'
-  const guestText = draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : 'TBC'
-  const lines = [
-    'Proposal summary',
-    `- Client: ${row.couple}`,
-    `- Event date: ${draft.eventDate.trim() ? formatProposalDate(draft.eventDate.trim()) : 'Date TBC'}`,
-    `- Venue: ${draft.venue.trim() || 'TBC'}`,
-    `- Guests: ${guestText}`,
-    `- Package: ${draft.packageName.trim() || 'TBC'}`,
-    `- Invoice: ${formattedAmount}`,
-  ]
-
-  if (row.budget && row.budget !== '—') {
-    lines.push(`- Client budget: ${row.budget}`)
-  }
-  if (row.email) {
-    lines.push(`- Email: ${row.email}`)
-  }
-  if (row.phone) {
-    lines.push(`- Phone: ${row.phone}`)
-  }
-  if (draft.invoiceDetails.trim()) {
-    lines.push('', 'Invoice details:', draft.invoiceDetails.trim())
-  }
-  if (row.message?.trim()) {
-    lines.push('', 'Original client note:', row.message.trim())
-  }
-
-  return lines.join('\n')
-}
-
 function ProposalStateCard({
   inquiryDetail,
   onAcceptCounter,
+  onCounterBack,
+  onDecline,
   acceptingCounter,
 }: Readonly<{
   inquiryDetail: InquiryDetail
   onAcceptCounter: () => void
+  onCounterBack: () => void
+  onDecline: () => void
   acceptingCounter: boolean
 }>) {
   if (!inquiryDetail.proposal_status) return null
@@ -457,27 +489,42 @@ function ProposalStateCard({
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Proposal</p>
-          <p className="text-sm font-semibold text-gray-900 mt-1">
+    <div className="mt-6 rounded-2xl border border-[#C9A0DC]/30 bg-[#C9A0DC]/[0.06] p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#7E5896]">Proposal</p>
+          <p className="mt-0.5 text-base font-bold text-gray-900">
             {inquiryDetail.proposal_status === 'sent' && 'Waiting for client response'}
             {inquiryDetail.proposal_status === 'countered' && 'Client sent a counter'}
             {inquiryDetail.proposal_status === 'accepted' && 'Proposal accepted'}
           </p>
         </div>
-        <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-bold', statusClass)}>
+        <span className={cn('shrink-0 rounded-full px-3 py-1 text-xs font-bold capitalize', statusClass)}>
           {inquiryDetail.proposal_status}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
-        <div><strong>Date:</strong> {formatProposalDate(inquiryDetail.proposal_event_date ?? '')}</div>
-        <div><strong>Venue:</strong> {inquiryDetail.proposal_venue ?? 'TBC'}</div>
-        <div><strong>Guests:</strong> {inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : 'TBC'}</div>
-        <div><strong>Package:</strong> {inquiryDetail.proposal_package ?? 'TBC'}</div>
-        <div><strong>Invoice:</strong> {formatProposalMoney(inquiryDetail.proposal_invoice_amount)}</div>
+      {/* Headline figure */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A0DC]/20 bg-white px-4 py-3">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
+        <span className="text-xl font-extrabold tracking-tight text-gray-900">{formatProposalMoney(inquiryDetail.proposal_invoice_amount)}</span>
+      </div>
+
+      {/* Detail tiles */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { icon: Calendar, label: 'Date', value: formatProposalDate(inquiryDetail.proposal_event_date ?? '') },
+          { icon: MapPin, label: 'Venue', value: inquiryDetail.proposal_venue ?? 'TBC' },
+          { icon: Users, label: 'Guests', value: inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : 'TBC' },
+          { icon: Package, label: 'Package', value: inquiryDetail.proposal_package ?? 'TBC' },
+        ].map(({ icon: Icon, label, value }) => (
+          <div key={label} className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <Icon className="w-3 h-3" />{label}
+            </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">{value}</p>
+          </div>
+        ))}
       </div>
 
       {inquiryDetail.proposal_invoice_details && (
@@ -495,7 +542,23 @@ function ProposalStateCard({
           {inquiryDetail.proposal_counter_message && (
             <p className="text-sm text-amber-900 whitespace-pre-wrap">{inquiryDetail.proposal_counter_message}</p>
           )}
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <button
+              type="button"
+              disabled={acceptingCounter}
+              onClick={onDecline}
+              className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+            >
+              Decline
+            </button>
+            <button
+              type="button"
+              disabled={acceptingCounter}
+              onClick={onCounterBack}
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              Counter back
+            </button>
             <button
               type="button"
               disabled={acceptingCounter}
@@ -505,6 +568,9 @@ function ProposalStateCard({
               {acceptingCounter ? 'Accepting…' : 'Accept counter'}
             </button>
           </div>
+          <p className="text-[11px] text-amber-700/80">
+            &ldquo;Counter back&rdquo; sends a revised proposal. Use the proposal form below to set new terms.
+          </p>
         </div>
       )}
     </div>
@@ -524,10 +590,94 @@ function MessageBubble({ msg }: Readonly<MessageBubbleProps>) {
       </div>
       <div className={`flex flex-col gap-1 max-w-[80%] ${isVendor ? 'items-end' : 'items-start'}`}>
         <span className="text-[10px] text-gray-400 font-semibold">{msg.sender_name}</span>
-        <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isVendor ? 'bg-[#F0DFF6] text-[#1A1A1A] rounded-tr-sm' : 'bg-gray-100 text-gray-800 rounded-tl-sm'}`}>
-          {msg.content}
-        </div>
+        {msg.content && (
+          <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isVendor ? 'bg-[#F0DFF6] text-[#1A1A1A] rounded-tr-sm' : 'bg-gray-100 text-gray-800 rounded-tl-sm'}`}>
+            {msg.content}
+          </div>
+        )}
+        {msg.attachments && msg.attachments.length > 0 && (
+          <div className={`flex flex-col gap-2 ${isVendor ? 'items-end' : 'items-start'}`}>
+            {msg.attachments.map((att) =>
+              att.type.startsWith('image/') ? (
+                <a key={att.url} href={att.url} target="_blank" rel="noreferrer" className="block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={att.url} alt={att.name} className="max-h-48 max-w-full rounded-xl border border-gray-100 object-cover" />
+                </a>
+              ) : att.type.startsWith('video/') ? (
+                <video key={att.url} src={att.url} controls className="max-h-48 max-w-full rounded-xl border border-gray-100" />
+              ) : (
+                <a
+                  key={att.url}
+                  href={att.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors max-w-[15rem]"
+                >
+                  <Receipt className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span className="truncate font-medium">{att.name}</span>
+                </a>
+              ),
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+/* ── Initials avatar ── */
+
+// Soft, on-brand backgrounds for the fallback avatar. The lead with no uploaded
+// photo gets a stable colour + initials derived from their name, so the list
+// reads as distinct people instead of one repeated stock photo.
+const AVATAR_PALETTE = [
+  'bg-[#F0DFF6] text-[#7E5896]',
+  'bg-rose-100 text-rose-700',
+  'bg-amber-100 text-amber-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-sky-100 text-sky-700',
+  'bg-indigo-100 text-indigo-700',
+]
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase()
+}
+
+function paletteFor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i += 1) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]
+}
+
+function LeadAvatar({
+  name,
+  avatarUrl,
+  size,
+}: Readonly<{ name: string; avatarUrl: string | null; size: 'sm' | 'lg' }>) {
+  const dim = size === 'lg' ? 56 : 40
+  const sizeCls = size === 'lg' ? 'w-14 h-14 text-base' : 'w-10 h-10 text-sm'
+  if (avatarUrl) {
+    return (
+      <Image
+        src={avatarUrl}
+        alt={name}
+        width={dim}
+        height={dim}
+        className={cn(sizeCls, 'rounded-full object-cover shrink-0')}
+      />
+    )
+  }
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(sizeCls, 'rounded-full shrink-0 flex items-center justify-center font-bold', paletteFor(name))}
+    >
+      {getInitials(name)}
     </div>
   )
 }
@@ -539,58 +689,93 @@ function filterInquiry(row: InquiryRow, active: (typeof TABS)[number], q: string
   return haystack.includes(q)
 }
 
-function ContactSidebar({ selectedRow }: Readonly<{ selectedRow: InquiryRow | null }>) {
-  return (
-    <aside className="p-6">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-        Contact information
-      </h3>
-      {selectedRow ? (
-        <ul className="mt-4 space-y-3 text-sm">
-          {selectedRow.email && (
-            <li className="flex items-center gap-2.5 text-gray-700 break-all">
-              <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-              <a href={`mailto:${selectedRow.email}`} className="hover:underline">
-                {selectedRow.email}
-              </a>
-            </li>
-          )}
-          {selectedRow.phone && (
-            <li className="flex items-center gap-2.5 text-gray-700">
-              <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 7V5z"/></svg>
-              <a href={`tel:${selectedRow.phone}`} className="hover:underline">
-                {selectedRow.phone}
-              </a>
-            </li>
-          )}
-          {!selectedRow.email && !selectedRow.phone && (
-            <li className="text-gray-400 text-sm">No contact info provided.</li>
-          )}
-        </ul>
-      ) : (
-        <p className="text-sm text-gray-400 mt-4">No contact selected.</p>
-      )}
+type SortOption = 'newest' | 'oldest' | 'event'
 
-      <div className="mt-8 pt-6 border-t border-gray-100">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-          Lead source
-        </h4>
-        <div className="flex items-center gap-2">
-          <span className="bg-[#F0DFF6] text-[#7E5896] text-[11px] font-bold px-2.5 py-1 rounded-md">
-            OpusFesta search
-          </span>
-        </div>
-      </div>
-    </aside>
+const SORT_LABEL: Record<SortOption, string> = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  event: 'Event date soonest',
+}
+
+// Rows arrive newest-first from the DB query, so 'newest' is the identity order.
+function sortInquiries(rows: InquiryRow[], sortBy: SortOption): InquiryRow[] {
+  if (sortBy === 'newest') return rows
+  if (sortBy === 'oldest') return [...rows].reverse()
+  // Event date soonest; leads with no date sort to the bottom.
+  return [...rows].sort((a, b) => {
+    if (!a.eventDateIso) return 1
+    if (!b.eventDateIso) return -1
+    return a.eventDateIso.localeCompare(b.eventDateIso)
+  })
+}
+
+function SortMenu({
+  sortBy,
+  onChange,
+}: Readonly<{ sortBy: SortOption; onChange: (next: SortOption) => void }>) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-label="Sort leads"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={`Sort: ${SORT_LABEL[sortBy]}`}
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'p-2 rounded-lg border transition-colors',
+          open ? 'border-[#C9A0DC] bg-[#FCF7FF] text-[#7E5896]' : 'border-gray-200 text-gray-500 hover:bg-gray-50',
+        )}
+      >
+        <ArrowDownUp className="w-4 h-4" />
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            role="menu"
+            className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-gray-100 bg-white py-1 shadow-lg"
+          >
+            {(Object.keys(SORT_LABEL) as SortOption[]).map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="menuitemradio"
+                aria-checked={sortBy === option}
+                onClick={() => { onChange(option); setOpen(false) }}
+                className={cn(
+                  'flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50',
+                  sortBy === option ? 'font-semibold text-[#7E5896]' : 'text-gray-600',
+                )}
+              >
+                {SORT_LABEL[option]}
+                {sortBy === option && <Check className="w-3.5 h-3.5" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
 function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
-  const [active, setActive] = useState<(typeof TABS)[number]>('Inquiries')
+  const [active, setActive] = useState<(typeof TABS)[number]>(() =>
+    firstNonEmptyTab(countByTab(initialInquiries)),
+  )
   const [inquiries, setInquiries] = useState(initialInquiries)
   const [selected, setSelected] = useState<string | null>(initialInquiries[0]?.id ?? null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [replyText, setReplyText] = useState('')
+  const [replyFiles, setReplyFiles] = useState<File[]>([])
   const [replyOpen, setReplyOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
@@ -613,8 +798,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
 
   const visibleInquiries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    return inquiries.filter((row) => filterInquiry(row, active, q))
-  }, [inquiries, active, searchQuery])
+    const filtered = inquiries.filter((row) => filterInquiry(row, active, q))
+    return sortInquiries(filtered, sortBy)
+  }, [inquiries, active, searchQuery, sortBy])
 
   useEffect(() => {
     if (visibleInquiries.length === 0) { setSelected(null); return }
@@ -702,19 +888,19 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
   }
 
   async function handleReply() {
-    if (!selectedRow || !replyText.trim()) return
+    if (!selectedRow || (!replyText.trim() && replyFiles.length === 0)) return
     setSending(true)
     try {
-      const res = await fetch(`/api/inquiries/${selectedRow.id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: replyText.trim() }),
-      })
+      const form = new FormData()
+      form.set('content', replyText.trim())
+      for (const file of replyFiles) form.append('files', file)
+      const res = await fetch(`/api/inquiries/${selectedRow.id}/messages`, { method: 'POST', body: form })
       if (!res.ok) throw new Error('send failed')
       const json = await res.json()
       setThread((prev) => [...prev, json.message])
       updateLocalStatus(selectedRow.id, 'replied')
       setReplyText('')
+      setReplyFiles([])
       setReplyOpen(false)
       toast.success('Reply sent.')
     } catch (err) {
@@ -851,7 +1037,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     inquiries,
     selected, setSelected,
     searchQuery, setSearchQuery,
+    sortBy, setSortBy,
     replyText, setReplyText,
+    replyFiles, setReplyFiles,
     replyOpen, setReplyOpen,
     sending,
     actionLoading,
@@ -889,14 +1077,44 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
   }, [initialInquiries])
   const {
     active, setActive, selected, setSelected, searchQuery, setSearchQuery,
-    replyText, setReplyText, replyOpen, setReplyOpen, sending, actionLoading,
+    sortBy, setSortBy,
+    replyText, setReplyText, replyFiles, setReplyFiles, replyOpen, setReplyOpen, sending, actionLoading,
     thread, threadLoading, selectedInquiryDetail, proposalOpen, setProposalOpen, proposalSending,
     proposalActionLoading,
     proposalDraft, setProposalDraft, declineOpen, setDeclineOpen,
-    declineReason, setDeclineReason, visibleInquiries, selectedRow,
+    declineReason, setDeclineReason, inquiries, visibleInquiries, selectedRow,
     handleReply, handleClose,
     handleDecline, handleSendProposal, handleAcceptCounter, handleStatusChange,
   } = useLeadsState(initialInquiries, isSampleData)
+
+  // Live per-tab counts recompute as lead statuses change (reply, book, decline…).
+  const tabCounts = useMemo(() => countByTab(inquiries), [inquiries])
+
+  // Reply attachments (vendor can send photos/videos/documents, like the couple side).
+  const [replyMenuOpen, setReplyMenuOpen] = useState(false)
+  const replyPhotoRef = useRef<HTMLInputElement>(null)
+  const replyDocRef = useRef<HTMLInputElement>(null)
+
+  function addReplyFiles(input: HTMLInputElement | null) {
+    const selected = input?.files
+    if (!selected || selected.length === 0) return
+    setReplyFiles((prev) => {
+      const next = [...prev]
+      for (const file of Array.from(selected)) {
+        if (file.size > 25 * 1024 * 1024) { toast.error(`"${file.name}" is larger than 25MB`); continue }
+        if (next.length >= 6) { toast.error('You can attach up to 6 files'); break }
+        next.push(file)
+      }
+      return next
+    })
+    if (input) input.value = ''
+  }
+
+  function openReplyPicker(which: 'photo' | 'doc') {
+    setReplyMenuOpen(false)
+    if (which === 'photo') replyPhotoRef.current?.click()
+    else replyDocRef.current?.click()
+  }
 
   return (
     <div className="p-8 pb-12">
@@ -907,27 +1125,44 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
           </div>
         )}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr_300px] min-h-[70vh]">
+          {/* Desktop: fixed-height cell so each column scrolls independently.
+              Mobile: stacks and grows with the page. */}
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] lg:grid-rows-1 min-h-[70vh] lg:min-h-0 lg:h-[calc(100vh-9rem)]">
 
             {/* ── List sidebar ── */}
-            <aside className="border-r border-gray-100 flex flex-col">
+            <aside className="border-r border-gray-100 flex flex-col lg:min-h-0">
               <div className="p-5 border-b border-gray-100">
                 <div className="flex gap-1 border-b border-gray-100 -mx-5 px-5">
-                  {TABS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setActive(t)}
-                      className={cn(
-                        'pb-3 px-3 text-sm font-semibold transition-colors border-b-2 -mb-px',
-                        active === t
-                          ? 'border-[#C9A0DC] text-[#7E5896]'
-                          : 'border-transparent text-gray-400 hover:text-gray-700',
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  {TABS.map((t) => {
+                    const isActive = active === t
+                    const count = tabCounts[t]
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        title={TAB_HINT[t]}
+                        onClick={() => setActive(t)}
+                        className={cn(
+                          'pb-3 px-3 text-sm font-semibold transition-colors border-b-2 -mb-px flex items-center gap-1.5',
+                          isActive
+                            ? 'border-[#C9A0DC] text-[#7E5896]'
+                            : 'border-transparent text-gray-400 hover:text-gray-700',
+                        )}
+                      >
+                        {t}
+                        {count > 0 && (
+                          <span
+                            className={cn(
+                              'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center tabular-nums',
+                              isActive ? 'bg-[#F0DFF6] text-[#7E5896]' : 'bg-gray-100 text-gray-500',
+                            )}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <div className="relative flex-1">
@@ -940,20 +1175,23 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                       className="pl-9 pr-3 py-2 bg-gray-50 border border-gray-100 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
                     />
                   </div>
-                  <button
-                    type="button"
-                    aria-label="Filter"
-                    className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
-                  >
-                    <Filter className="w-4 h-4" />
-                  </button>
+                  <SortMenu sortBy={sortBy} onChange={setSortBy} />
                 </div>
               </div>
 
-              <ul className="flex-1 overflow-y-auto">
+              <ul className="flex-1 overflow-y-auto overscroll-contain">
                 {visibleInquiries.length === 0 ? (
-                  <li className="px-5 py-10 text-center text-sm text-gray-400">
-                    {getEmptyListMessage(source.kind, active, searchQuery)}
+                  <li className="px-6 py-14 flex flex-col items-center text-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+                      {searchQuery.trim() ? (
+                        <Search className="w-5 h-5 text-gray-300" />
+                      ) : (
+                        <Inbox className="w-5 h-5 text-gray-300" />
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 max-w-[240px]">
+                      {getEmptyListMessage(source.kind, active, searchQuery)}
+                    </p>
                   </li>
                 ) : (
                   visibleInquiries.map((row) => (
@@ -966,17 +1204,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           selected === row.id ? 'bg-[#FCF7FF]' : 'hover:bg-gray-50',
                         )}
                       >
-                        {row.avatarUrl ? (
-                          <Image
-                            src={row.avatarUrl}
-                            alt={row.couple}
-                            width={40}
-                            height={40}
-                            className="w-10 h-10 rounded-full object-cover shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0" />
-                        )}
+                        <LeadAvatar name={row.couple} avatarUrl={row.avatarUrl} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <p className="text-sm font-semibold text-gray-900 truncate">
@@ -997,21 +1225,11 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
             </aside>
 
             {/* ── Detail panel ── */}
-            <section className="border-r border-gray-100 p-8 flex flex-col">
+            <section className="flex flex-col lg:min-h-0">
               {selectedRow ? (
-                <>
+                <div className="flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain p-8">
                   <div className="flex items-start gap-4">
-                    {selectedRow.avatarUrl ? (
-                      <Image
-                        src={selectedRow.avatarUrl}
-                        alt={selectedRow.couple}
-                        width={56}
-                        height={56}
-                        className="w-14 h-14 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-gray-100 shrink-0" />
-                    )}
+                    <LeadAvatar name={selectedRow.couple} avatarUrl={selectedRow.avatarUrl} size="lg" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-xl font-semibold text-gray-900">
@@ -1024,6 +1242,22 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                       <p className="text-sm text-gray-500 mt-0.5">
                         Wedding date · {selectedRow.date}
                       </p>
+                      {(selectedRow.email || selectedRow.phone) && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                          {selectedRow.email && (
+                            <a href={`mailto:${selectedRow.email}`} className="flex items-center gap-1.5 hover:text-gray-900 hover:underline break-all">
+                              <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              {selectedRow.email}
+                            </a>
+                          )}
+                          {selectedRow.phone && (
+                            <a href={`tel:${selectedRow.phone}`} className="flex items-center gap-1.5 hover:text-gray-900 hover:underline">
+                              <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              {selectedRow.phone}
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -1039,36 +1273,24 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <Wallet className="w-3.5 h-3.5" />
-                        Budget
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.budget}</p>
-                    </div>
-                    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" />
-                        Location
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.location}</p>
-                    </div>
-                    {selectedRow.guestCount !== undefined && (
-                      <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5" />
-                          Guests
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.guestCount}+</p>
-                      </div>
-                    )}
-                  </div>
 
                   {selectedInquiryDetail && (
                     <ProposalStateCard
                       inquiryDetail={selectedInquiryDetail}
                       onAcceptCounter={handleAcceptCounter}
+                      onCounterBack={() => {
+                        // Seed the proposal form with the client's counter amount
+                        // so the vendor revises from there, then open the panel.
+                        setDeclineOpen(false)
+                        setProposalDraft({
+                          ...buildDefaultProposalDraft(selectedRow, selectedInquiryDetail),
+                          invoiceAmount: selectedInquiryDetail.proposal_counter_amount
+                            ? String(selectedInquiryDetail.proposal_counter_amount)
+                            : '',
+                        })
+                        setProposalOpen(true)
+                      }}
+                      onDecline={() => { setProposalOpen(false); setDeclineOpen(true) }}
                       acceptingCounter={proposalActionLoading}
                     />
                   )}
@@ -1081,7 +1303,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                         <span className="text-[10px] text-gray-400 animate-pulse">Loading…</span>
                       )}
                     </div>
-                    <div className="p-4 space-y-4 max-h-64 overflow-y-auto bg-white">
+                    <div className="p-4 space-y-4 bg-white">
                       {thread.length === 0 && !threadLoading ? (
                         <p className="text-xs text-gray-400 text-center py-4">
                           No messages yet. Use &ldquo;Reply&rdquo; to start the conversation.
@@ -1099,24 +1321,71 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                     {/* Reply composer */}
                     {replyOpen && !isSampleData ? (
                       <div className="border-t border-gray-100 p-4 bg-[#FCF7FF]">
-                        <textarea
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder="Write a personalised reply…"
-                          rows={4}
-                          className="w-full resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC] transition-colors"
-                        />
-                        <div className="mt-3 flex justify-end gap-2">
+                        <input ref={replyPhotoRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => addReplyFiles(e.target)} />
+                        <input ref={replyDocRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" className="hidden" onChange={(e) => addReplyFiles(e.target)} />
+                        <div className="flex items-end gap-2">
+                          {/* WhatsApp-style "+" attach menu — sits at the left of the text box */}
+                          <div className="relative shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setReplyMenuOpen((o) => !o)}
+                              disabled={sending || replyFiles.length >= 6}
+                              aria-label="Add attachment"
+                              aria-haspopup="menu"
+                              aria-expanded={replyMenuOpen}
+                              title="Attach"
+                              className="flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                            {replyMenuOpen && (
+                              <>
+                                <button type="button" aria-hidden="true" tabIndex={-1} className="fixed inset-0 z-10 cursor-default" onClick={() => setReplyMenuOpen(false)} />
+                                <div role="menu" className="absolute bottom-full left-0 z-20 mb-2 w-56 overflow-hidden rounded-2xl border border-gray-100 bg-white py-1.5 shadow-lg">
+                                  <button type="button" role="menuitem" onClick={() => openReplyPicker('photo')} className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F0DFF6] text-[#7E5896]"><ImageIcon className="w-4 h-4" /></span>
+                                    Photos &amp; videos
+                                  </button>
+                                  <button type="button" role="menuitem" onClick={() => openReplyPicker('doc')} className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600"><FileText className="w-4 h-4" /></span>
+                                    Document
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Write a personalised reply…"
+                            rows={3}
+                            className="flex-1 resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC] transition-colors"
+                          />
+                        </div>
+                        {replyFiles.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {replyFiles.map((file, i) => (
+                              <span key={`${file.name}-${i}`} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 max-w-[14rem]">
+                                <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span className="truncate">{file.name}</span>
+                                <button type="button" onClick={() => setReplyFiles((prev) => prev.filter((_, idx) => idx !== i))} aria-label={`Remove ${file.name}`} className="text-gray-400 hover:text-gray-700 shrink-0">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-3 flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => { setReplyOpen(false); setReplyText('') }}
+                            onClick={() => { setReplyOpen(false); setReplyText(''); setReplyFiles([]) }}
                             className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                           >
                             Cancel
                           </button>
                           <button
                             type="button"
-                            disabled={sending || !replyText.trim()}
+                            disabled={sending || (!replyText.trim() && replyFiles.length === 0)}
                             onClick={handleReply}
                             className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
@@ -1137,7 +1406,6 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           open={proposalOpen}
                           sending={proposalSending}
                           draft={proposalDraft}
-                          preview={buildProposalMessage(selectedRow, proposalDraft)}
                           packages={packages}
                           venueSuggestions={venueSuggestions}
                           onToggle={() => { setProposalOpen((o) => !o); setDeclineOpen(false) }}
@@ -1202,16 +1470,13 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
 
                     </div>
                   )}
-                </>
+                </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
                   Select an inquiry to view details.
                 </div>
               )}
             </section>
-
-            {/* ── Contact sidebar ── */}
-            <ContactSidebar selectedRow={selectedRow} />
 
           </div>
         </div>

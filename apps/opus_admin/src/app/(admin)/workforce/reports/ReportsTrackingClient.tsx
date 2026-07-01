@@ -173,6 +173,7 @@ export default function ReportsTrackingClient({
                         <p className="truncate text-[11px] text-gray-500">
                           {r.templateName}
                           {r.department && <> · {r.department}</>}
+                          {r.recipientName && <> · To {r.recipientName}</>}
                         </p>
                       </div>
                       <button

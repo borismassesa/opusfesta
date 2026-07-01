@@ -2,13 +2,31 @@
 
 import { Printer, X } from 'lucide-react'
 import {
+  FOLLOWUP_STATUS_LABELS,
+  readBlockers,
   readBullets,
+  readFollowups,
+  readGoals,
   readGroupedBullets,
+  readMetrics,
   readNumber,
   readText,
   type ReportSection,
   type ReportSubmission,
 } from '../_lib/report-schema'
+
+function formatShortDate(iso: string): string {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const followupBadgeCls: Record<string, string> = {
+  done: 'bg-emerald-100 text-emerald-800',
+  partial: 'bg-amber-100 text-amber-800',
+  not_done: 'bg-rose-100 text-rose-800',
+  '': 'bg-gray-100 text-gray-500',
+}
 
 // Renders a submitted report in the OpusFesta letterhead — logo + company
 // address header, title / date / prepared-by block, numbered sections, and
@@ -48,7 +66,8 @@ function SectionBody({
   const { content } = submission
   switch (section.type) {
     case 'text':
-    case 'short_text': {
+    case 'short_text':
+    case 'department_select': {
       const v = readText(content, section)
       if (!v) return <p className="text-sm italic text-gray-400">—</p>
       return <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{v}</p>
@@ -91,6 +110,83 @@ function SectionBody({
         </div>
       )
     }
+    case 'metrics_table': {
+      const rows = readMetrics(content, section)
+      if (rows.length === 0) return <p className="text-sm italic text-gray-400">—</p>
+      return (
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-[10px] uppercase tracking-wider text-gray-400">
+              <th className="py-1.5 pr-3 font-semibold">Metric</th>
+              <th className="py-1.5 pr-3 font-semibold">This month</th>
+              <th className="py-1.5 pr-3 font-semibold">Last month</th>
+              <th className="py-1.5 font-semibold">Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b border-gray-100 text-gray-800">
+                <td className="py-1.5 pr-3">{r.name}</td>
+                <td className="py-1.5 pr-3">{r.thisMonth || '—'}</td>
+                <td className="py-1.5 pr-3">{r.lastMonth || '—'}</td>
+                <td className="py-1.5">{r.target || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    }
+    case 'goal_list': {
+      const items = readGoals(content, section)
+      if (items.length === 0) return <p className="text-sm italic text-gray-400">—</p>
+      return (
+        <ul className="space-y-2">
+          {items.map((it, i) => (
+            <li key={i} className="text-sm text-gray-800">
+              <p>• {it.text}</p>
+              <p className="pl-3 text-xs text-gray-500">
+                Owner: {it.owner || '—'} · Target date: {formatShortDate(it.targetDate)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    case 'blocker_list': {
+      const items = readBlockers(content, section)
+      if (items.length === 0) return <p className="text-sm italic text-gray-400">—</p>
+      return (
+        <ul className="space-y-2">
+          {items.map((it, i) => (
+            <li key={i} className="text-sm text-gray-800">
+              <p>• {it.text}</p>
+              <p className="pl-3 text-xs text-gray-500">
+                Waiting on: {it.waitingOn || '—'} · Since: {formatShortDate(it.since)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    case 'followup_list': {
+      const items = readFollowups(content, section)
+      if (items.length === 0) return <p className="text-sm italic text-gray-400">No carried-forward priorities this period.</p>
+      return (
+        <ul className="space-y-2">
+          {items.map((it, i) => (
+            <li key={i} className="text-sm text-gray-800">
+              <span className="mr-2">• {it.text}</span>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${followupBadgeCls[it.status]}`}>
+                {it.status ? FOLLOWUP_STATUS_LABELS[it.status] : 'No status set'}
+              </span>
+              {(it.status === 'partial' || it.status === 'not_done') && it.reason && (
+                <p className="pl-3 text-xs text-gray-500">Reason: {it.reason}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )
+    }
   }
 }
 
@@ -122,6 +218,11 @@ export function ReportDocument({ submission }: { submission: ReportSubmission })
             {submission.preparedByName ?? submission.employeeName}
           </p>
           {submission.preparedByRole && <p className="text-gray-600">{submission.preparedByRole}</p>}
+          {submission.recipientName && (
+            <p>
+              <span className="font-semibold">Submitted to:</span> {submission.recipientName}
+            </p>
+          )}
         </div>
       </div>
 
