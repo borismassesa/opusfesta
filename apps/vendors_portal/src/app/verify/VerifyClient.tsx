@@ -940,12 +940,16 @@ function AgreementDocCard({
       formData.append('signatureImage', signatureDataUrl)
     }
     startTransition(async () => {
-      const res = await signVendorAgreement(formData)
-      if (!res.ok) {
-        setError(res.error)
-        return
+      try {
+        const res = await signVendorAgreement(formData)
+        if (!res.ok) {
+          setError(res.error)
+          return
+        }
+        router.refresh()
+      } catch {
+        setError('Something went wrong while submitting your signature. Please try again.')
       }
-      router.refresh()
     })
   }
 
