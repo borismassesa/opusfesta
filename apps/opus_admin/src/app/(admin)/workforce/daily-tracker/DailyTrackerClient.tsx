@@ -123,18 +123,20 @@ function emptyReview(): ReviewDraft {
   return { wins: '', carriedToNextWeek: '', ceoComment: '' }
 }
 
-function isEntryFilled(d: EntryDraft): boolean {
-  return Boolean(d.topPriority.trim() || d.otherTasks.trim() || d.status || d.blockers.trim() || d.endOfDayNote.trim())
-}
-
 // Dot styling for the matrix + collapsed day summaries. `missed` days (in
 // the past, still empty) get a hollow rose ring instead of a solid fill so
 // they read distinctly from an explicit "Blocked" status, which is also
 // rose but solid.
-function dotToneFor(draft: EntryDraft, date: string, today: string): { tone: string; missed: boolean } {
-  if (date < today && !isEntryFilled(draft)) return { tone: MISSED_TONE, missed: true }
+//
+// `committed` (has this exact row actually been saved, not just carry-forward
+// -seeded into the draft) gates the missed/filled checks — a carry-forward
+// seed pre-fills the draft's topPriority for convenience, and checking the
+// draft's text alone would then treat an untouched day as "done" even though
+// nothing was ever saved, hiding a genuinely missed day.
+function dotToneFor(draft: EntryDraft, date: string, today: string, committed: boolean): { tone: string; missed: boolean } {
+  if (date < today && !committed) return { tone: MISSED_TONE, missed: true }
   if (draft.status) return { tone: STATUS_DOT[draft.status], missed: false }
-  if (isEntryFilled(draft)) return { tone: 'bg-gray-400', missed: false }
+  if (committed) return { tone: 'bg-gray-400', missed: false }
   return { tone: NO_ENTRY_DOT, missed: false }
 }
 
@@ -238,6 +240,13 @@ export default function DailyTrackerClient({
   })
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  // Rows genuinely saved (loaded from the server, or successfully committed
+  // this session) — distinct from `drafts`, which also holds carry-forward
+  // seeds that were never saved. See dotToneFor's comment for why this
+  // matters: the draft's text alone can't tell a real save from a seed.
+  const [committedKeys, setCommittedKeys] = useState<Set<string>>(
+    () => new Set(entries.map((e) => entryKey(e.engineId, e.entryDate))),
+  )
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set())
   const [savedAt, setSavedAt] = useState<Record<string, number>>({})
   const [updatedByOverride, setUpdatedByOverride] = useState<Record<string, string>>({})
@@ -351,6 +360,10 @@ export default function DailyTrackerClient({
     return drafts.get(entryKey(engineId, date)) ?? emptyEntry()
   }
 
+  function isCommitted(engineId: string, date: string): boolean {
+    return committedKeys.has(entryKey(engineId, date))
+  }
+
   function getReviewDraft(engineId: string): ReviewDraft {
     return reviewDrafts.get(engineId) ?? emptyReview()
   }
@@ -410,6 +423,7 @@ export default function DailyTrackerClient({
         if (res.ok) {
           setSavedAt((prev) => ({ ...prev, [key]: Date.now() }))
           setUpdatedByOverride((prev) => ({ ...prev, [key]: currentEmployeeName ?? 'You' }))
+          setCommittedKeys((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
           setErrors((prev) => {
             const next = { ...prev }
             delete next[key]
@@ -502,7 +516,7 @@ export default function DailyTrackerClient({
   )
   const filledSlots = dates.reduce(
     (sum, date) =>
-      sum + engines.filter((e) => engineAppliesToDate(e, date) && isEntryFilled(getDraft(e.id, date))).length,
+      sum + engines.filter((e) => engineAppliesToDate(e, date) && isCommitted(e.id, date)).length,
     0,
   )
   const progressPct = totalSlots === 0 ? 0 : Math.round((filledSlots / totalSlots) * 100)
@@ -839,7 +853,7 @@ export default function DailyTrackerClient({
               </th>
               {dates.map((date, i) => {
                 const missedCount = engines.filter(
-                  (e) => engineAppliesToDate(e, date) && date < today && !isEntryFilled(getDraft(e.id, date)),
+                  (e) => engineAppliesToDate(e, date) && date < today && !isCommitted(e.id, date),
                 ).length
                 return (
                   <th key={date} className="pb-2 text-center">
@@ -881,7 +895,7 @@ export default function DailyTrackerClient({
                     )
                   }
                   const draft = getDraft(engine.id, date)
-                  const { tone, missed } = dotToneFor(draft, date, today)
+                  const { tone, missed } = dotToneFor(draft, date, today, isCommitted(engine.id, date))
                   return (
                     <td key={date} className="py-1.5 text-center">
                       <button
@@ -920,7 +934,7 @@ export default function DailyTrackerClient({
         const expanded = expandedDays.has(date)
         const isToday = date === today
         const dayEngines = engines.filter((e) => engineAppliesToDate(e, date))
-        const missedEngines = dayEngines.filter((e) => date < today && !isEntryFilled(getDraft(e.id, date)))
+        const missedEngines = dayEngines.filter((e) => date < today && !isCommitted(e.id, date))
         return (
           <div
             key={date}
@@ -961,7 +975,7 @@ export default function DailyTrackerClient({
                   <div className="flex items-center gap-2">
                     {dayEngines.map((engine) => {
                       const draft = getDraft(engine.id, date)
-                      const { tone } = dotToneFor(draft, date, today)
+                      const { tone } = dotToneFor(draft, date, today, isCommitted(engine.id, date))
                       return (
                         <span key={engine.id} className="hidden items-center gap-1 sm:flex">
                           <span className={cn('h-2 w-2 rounded-full', tone)} />

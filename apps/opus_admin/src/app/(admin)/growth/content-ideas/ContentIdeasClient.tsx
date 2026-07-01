@@ -111,13 +111,15 @@ export default function ContentIdeasClient({ ideas, canAdmin }: { ideas: Content
 
   function updateField(id: string, patch: Partial<{ title: string; description: string; details: Record<string, string> }>) {
     startTransition(async () => {
-      await updateContentIdea(id, patch)
+      const res = await updateContentIdea(id, patch)
+      if (!res.ok) setError(res.error)
     })
   }
 
   function remove(id: string) {
     startTransition(async () => {
-      await deleteContentIdea(id)
+      const res = await deleteContentIdea(id)
+      if (!res.ok) setError(res.error)
     })
   }
 
@@ -160,6 +162,10 @@ export default function ContentIdeasClient({ ideas, canAdmin }: { ideas: Content
             </button>
           )}
         </div>
+
+        {error && !adding && (
+          <div className="border-b border-gray-100 px-4 py-2 text-[11px] text-red-600">{error}</div>
+        )}
 
         {adding && canAdmin && (
           <div className="space-y-2 border-b border-gray-100 p-4">

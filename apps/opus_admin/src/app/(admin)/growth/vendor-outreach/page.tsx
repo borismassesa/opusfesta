@@ -55,6 +55,7 @@ export default async function VendorOutreachPage({
   if (!canView) {
     throw new Error("You don't have permission to view Vendor Outreach.")
   }
+  const canWrite = await hasPermission('growth.write')
   const canAdmin = await hasPermission('growth.admin')
 
   const params = await searchParams
@@ -136,6 +137,7 @@ export default async function VendorOutreachPage({
       roster={roster}
       log={log}
       employeeNames={employeeOptions.map((e) => e.name)}
+      canWrite={canWrite}
       canAdmin={canAdmin}
       month={monthStart}
     />

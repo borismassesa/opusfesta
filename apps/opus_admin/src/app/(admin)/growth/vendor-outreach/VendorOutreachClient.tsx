@@ -127,12 +127,14 @@ export default function VendorOutreachClient({
   roster,
   log,
   employeeNames,
+  canWrite,
   canAdmin,
   month,
 }: {
   roster: RosterRow[]
   log: OutreachLogEntry[]
   employeeNames: string[]
+  canWrite: boolean
   canAdmin: boolean
   month: string
 }) {
@@ -160,7 +162,7 @@ export default function VendorOutreachClient({
           {
             key: 'log',
             label: `Outreach log (${log.length})`,
-            content: <OutreachLog log={log} staffOptions={staffOptions} />,
+            content: <OutreachLog log={log} staffOptions={staffOptions} canWrite={canWrite} />,
           },
           {
             key: 'roster',
@@ -329,21 +331,31 @@ function RosterRowItem({ row, canAdmin }: { row: RosterRow; canAdmin: boolean })
 // Outreach log
 // =============================================================================
 
-function OutreachLog({ log, staffOptions }: { log: OutreachLogEntry[]; staffOptions: string[] }) {
+function OutreachLog({
+  log,
+  staffOptions,
+  canWrite,
+}: {
+  log: OutreachLogEntry[]
+  staffOptions: string[]
+  canWrite: boolean
+}) {
   const [showAdd, setShowAdd] = useState(false)
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
         <div className="text-[12px] text-gray-500">Every vendor touch point, even if it didn&apos;t convert.</div>
-        <button
-          type="button"
-          onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#7E5896] px-3 py-2 text-sm font-semibold text-white hover:bg-[#6c4884]"
-        >
-          <Plus className="h-4 w-4" />
-          Add contact
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#7E5896] px-3 py-2 text-sm font-semibold text-white hover:bg-[#6c4884]"
+          >
+            <Plus className="h-4 w-4" />
+            Add contact
+          </button>
+        )}
       </div>
 
       <table className="w-full min-w-[1100px] text-[12px]">
@@ -358,19 +370,19 @@ function OutreachLog({ log, staffOptions }: { log: OutreachLogEntry[]; staffOpti
             <th className="px-3 py-2 font-medium">Outcome</th>
             <th className="px-3 py-2 font-medium">Travel Cost</th>
             <th className="px-3 py-2 font-medium">Notes</th>
-            <th className="px-3 py-2 font-medium" />
+            {canWrite && <th className="px-3 py-2 font-medium" />}
           </tr>
         </thead>
         <tbody>
           {log.length === 0 && (
             <tr>
-              <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
+              <td colSpan={canWrite ? 10 : 9} className="px-4 py-8 text-center text-gray-400">
                 No outreach logged yet.
               </td>
             </tr>
           )}
           {log.map((entry) => (
-            <LogRowItem key={entry.id} entry={entry} staffOptions={staffOptions} />
+            <LogRowItem key={entry.id} entry={entry} staffOptions={staffOptions} canWrite={canWrite} />
           ))}
         </tbody>
       </table>
@@ -380,7 +392,15 @@ function OutreachLog({ log, staffOptions }: { log: OutreachLogEntry[]; staffOpti
   )
 }
 
-function LogRowItem({ entry, staffOptions }: { entry: OutreachLogEntry; staffOptions: string[] }) {
+function LogRowItem({
+  entry,
+  staffOptions,
+  canWrite,
+}: {
+  entry: OutreachLogEntry
+  staffOptions: string[]
+  canWrite: boolean
+}) {
   const [isPending, startTransition] = useTransition()
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -465,6 +485,7 @@ function LogRowItem({ entry, staffOptions }: { entry: OutreachLogEntry; staffOpt
         )}
         {error && <div className="mt-1 text-[10px] text-red-600">{error}</div>}
       </td>
+      {canWrite && (
       <td className="whitespace-nowrap px-3 py-2 text-right">
         {editing ? (
           <div className="flex justify-end gap-2">
@@ -504,6 +525,7 @@ function LogRowItem({ entry, staffOptions }: { entry: OutreachLogEntry; staffOpt
           </div>
         )}
       </td>
+      )}
     </tr>
   )
 }

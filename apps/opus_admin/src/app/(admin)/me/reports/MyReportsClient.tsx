@@ -323,6 +323,20 @@ function ReportForm({
     setEmailDraft('')
   }
 
+  // Gates the confirm-submit panel — validates before showing "X will be
+  // emailed a PDF right away" so that copy is never shown when there's
+  // actually no recipient chosen yet (the real check inside submit() only
+  // ran once "Yes, submit" was clicked, by which point the panel had
+  // already misleadingly implied a valid recipient existed).
+  function requestSubmit() {
+    setError(null)
+    if (!recipientId) {
+      setError('Choose who to submit this report to.')
+      return
+    }
+    setConfirmingSubmit(true)
+  }
+
   function submit(status: 'draft' | 'submitted') {
     setError(null)
     setEmailNotice(null)
@@ -510,7 +524,7 @@ function ReportForm({
             <button
               type="button"
               disabled={pending}
-              onClick={() => setConfirmingSubmit(true)}
+              onClick={requestSubmit}
               className="inline-flex items-center gap-1.5 rounded-xl bg-[#9FE870] px-4 py-2 text-sm font-bold text-gray-900 hover:bg-[#8fd862] active:translate-y-[1px] disabled:opacity-50"
             >
               <Check className="h-4 w-4" /> Submit report

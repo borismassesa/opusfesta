@@ -348,6 +348,16 @@ function BookingDrawer({
   function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    // `Number(x) || 0` would silently turn a typo (e.g. pasted "1O0000", or a
+    // locale decimal separator Number() can't parse) into a valid-looking
+    // zero, quietly corrupting the revenue/margin stats derived from these
+    // fields instead of surfacing a validation error.
+    const parsedRevenue = revenue.trim() === '' ? 0 : Number(revenue)
+    const parsedDirectCost = directCost.trim() === '' ? 0 : Number(directCost)
+    if (!Number.isFinite(parsedRevenue) || !Number.isFinite(parsedDirectCost)) {
+      setError('Revenue and direct cost must be valid numbers.')
+      return
+    }
     const input: BookingInput = {
       bookingDate,
       sessionDate: sessionDate || null,
@@ -355,8 +365,8 @@ function BookingDrawer({
       service,
       photographerName: photographerName || null,
       videographerName: videographerName || null,
-      revenueTzs: Number(revenue) || 0,
-      directCostTzs: Number(directCost) || 0,
+      revenueTzs: parsedRevenue,
+      directCostTzs: parsedDirectCost,
       deliveryDate: deliveryDate || null,
       satisfaction: satisfaction.trim() === '' ? null : Number(satisfaction),
       notes: notes || null,
