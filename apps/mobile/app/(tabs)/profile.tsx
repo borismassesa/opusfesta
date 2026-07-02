@@ -324,6 +324,29 @@ export default function WebsiteTabScreen() {
             Theme
           </Text>
         </Pressable>
+        <Pressable
+          onPress={() => router.push('/website/guestbook-manage')}
+          style={[
+            {
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              backgroundColor: editorial.surfaceContainerLowest,
+              paddingVertical: 14,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: editorial.outlineVariant,
+            },
+            shadowSoftSm,
+          ]}
+        >
+          <Ionicons name="book-outline" size={18} color={editorial.primaryContainer} />
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.primaryContainer }}>
+            Guestbook
+          </Text>
+        </Pressable>
       </View>
 
       {/* Section list */}
