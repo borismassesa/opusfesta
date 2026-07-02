@@ -4,15 +4,19 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { DatePickerField } from '@/components/onboarding/DatePickerField';
+import { BudgetSelector } from '@/components/onboarding/BudgetSelector';
+import { BUDGET_RANGES, type BudgetKey } from '@/constants/onboarding';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { createBookingInquiry } from '@/lib/api/bookings';
+import { getVendorById } from '@/lib/api/vendors';
 
 const bookingSchema = z.object({
   eventDate: z.string().min(1, 'Event date is required'),
@@ -29,17 +33,26 @@ export default function BookingScreen() {
   const client = useAuthenticatedSupabase();
   const { user } = useOpusFestaAuth();
   const [guestCount, setGuestCount] = useState(250);
+  const [eventDate, setEventDate] = useState<Date | null>(null);
+  const [budgetKey, setBudgetKey] = useState<BudgetKey | null>(null);
+
+  const { data: vendor } = useQuery({
+    queryKey: ['vendor', vendorId],
+    queryFn: () => getVendorById(vendorId!),
+    enabled: !!vendorId,
+  });
 
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      eventDate: '2026-06-12',
+      eventDate: '',
       guestCount: 250,
-      budgetRange: 'TZS 2M - 5M',
+      budgetRange: '',
       message: '',
     },
   });
@@ -71,31 +84,30 @@ export default function BookingScreen() {
 
   return (
     <ScreenWrapper>
-      <Header title="Request a quote" subtitle="Serena Grand Ballroom" showBack />
+      <Header title="Request a quote" subtitle={vendor?.business_name ?? 'Vendor'} showBack />
 
       <View className="gap-5">
         {/* Event date */}
-        <Controller
-          control={control}
-          name="eventDate"
-          render={({ field: { onChange, value } }) => (
-            <View>
-              <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">
-                Event date
-              </Text>
-              <Card className="flex-row justify-between items-center">
-                <Text className="text-sm text-of-text">
-                  {new Date(value).toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </Text>
-                <Text className="text-of-muted">📅</Text>
-              </Card>
-            </View>
+        <View>
+          <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">
+            Event date
+          </Text>
+          <DatePickerField
+            value={eventDate}
+            onChange={(date) => {
+              setEventDate(date);
+              setValue('eventDate', date.toISOString().slice(0, 10), { shouldValidate: true });
+            }}
+            placeholder="Select a date"
+            formatValue={(date) =>
+              date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            }
+            minimumDate={new Date()}
+          />
+          {errors.eventDate && (
+            <Text className="text-xs text-red-600 mt-1">{errors.eventDate.message}</Text>
           )}
-        />
+        </View>
 
         {/* Guest count */}
         <View>
@@ -128,18 +140,14 @@ export default function BookingScreen() {
           <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">
             Budget range
           </Text>
-          <Card>
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-sm text-of-muted">TZS 2M</Text>
-              <Text className="text-sm font-work-sans-bold text-of-primary">
-                TZS 5M
-              </Text>
-              <Text className="text-sm text-of-muted">TZS 10M</Text>
-            </View>
-            <View className="h-1.5 bg-of-pale rounded-full">
-              <View className="h-1.5 w-[40%] bg-of-primary rounded-full" />
-            </View>
-          </Card>
+          <BudgetSelector
+            value={budgetKey ?? ''}
+            onSelect={(key) => {
+              setBudgetKey(key);
+              const range = BUDGET_RANGES.find((r) => r.key === key);
+              setValue('budgetRange', range?.label ?? '', { shouldValidate: true });
+            }}
+          />
         </View>
 
         {/* Message */}
