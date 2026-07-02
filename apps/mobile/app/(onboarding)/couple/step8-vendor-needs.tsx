@@ -20,7 +20,7 @@ export default function VendorNeedsStep() {
 
   const handleNext = () => {
     setVendorNeeds({ vendorNeeds: selected });
-    router.push('/(onboarding)/couple/step9-offers');
+    router.push('/(onboarding)/couple/step10-complete');
   };
 
   return (
@@ -29,7 +29,7 @@ export default function VendorNeedsStep() {
       titleAccent="do you need?"
       subtitle="Select all you're looking for. You can update this later."
       currentStep={8}
-      totalSteps={9}
+      totalSteps={8}
       onNext={handleNext}
       onBack={() => router.back()}
       nextDisabled={selected.length === 0}

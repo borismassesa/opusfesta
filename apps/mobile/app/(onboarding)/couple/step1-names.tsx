@@ -57,7 +57,7 @@ export default function CoupleStep1() {
       title="Let's start with your names"
       subtitle="We'll use these to personalize your wedding planning dashboard and invitations."
       currentStep={1}
-      totalSteps={9}
+      totalSteps={8}
       progressLabel="Getting Started"
       onBack={() => signOut()}
       onNext={handleNext}

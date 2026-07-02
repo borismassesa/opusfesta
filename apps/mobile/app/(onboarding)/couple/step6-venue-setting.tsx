@@ -28,7 +28,7 @@ export default function VenueSettingStep() {
       title="What's your dream setting?"
       subtitle="Select all that appeal to you."
       currentStep={6}
-      totalSteps={9}
+      totalSteps={8}
       onNext={handleNext}
       onBack={() => router.back()}
       nextDisabled={selected.length === 0}

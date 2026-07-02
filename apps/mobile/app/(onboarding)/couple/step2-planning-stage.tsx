@@ -23,7 +23,7 @@ export default function PlanningStageStep() {
       titleAccent="planning journey?"
       subtitle="Every great celebration starts with a single step. Tell us your status so we can tailor your dashboard."
       currentStep={2}
-      totalSteps={9}
+      totalSteps={8}
       onNext={handleNext}
       onBack={() => router.back()}
       nextDisabled={!selected}

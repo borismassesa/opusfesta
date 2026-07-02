@@ -29,7 +29,7 @@ export default function LocationStep() {
     <EditorialStepContainer
       title="Where are you celebrating?"
       currentStep={4}
-      totalSteps={9}
+      totalSteps={8}
       progressLabel="Location Planning"
       onNext={handleNext}
       onBack={() => router.back()}

@@ -23,7 +23,7 @@ export default function GuestsStep() {
       title="How many guests are you expecting?"
       subtitle="This helps us recommend venues and catering packages that perfectly fit your celebration's scale."
       currentStep={5}
-      totalSteps={9}
+      totalSteps={8}
       onNext={handleNext}
       onBack={() => router.back()}
       nextDisabled={!selected}

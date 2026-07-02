@@ -55,7 +55,7 @@ export default function DateStep() {
     <EditorialStepContainer
       title="When's the big day?"
       currentStep={3}
-      totalSteps={9}
+      totalSteps={8}
       onNext={handleNext}
       onBack={() => router.back()}
       nextDisabled={nextDisabled}

@@ -29,7 +29,7 @@ export default function DesignStyleStep() {
       titleAccent="speaks to you?"
       subtitle="Select all the aesthetics that match your dream celebration vision."
       currentStep={7}
-      totalSteps={9}
+      totalSteps={8}
       onNext={handleNext}
       onBack={() => router.back()}
       nextDisabled={selected.length === 0}
