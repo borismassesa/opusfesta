@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/ui/Avatar';
 import { getVendorById, getVendorReviews, getVendorPackages } from '@/lib/api/vendors';
+import { useSavedVendorIds, useToggleSavedVendor } from '@/hooks/useSavedVendors';
 import { formatCurrency } from '@opusfesta/lib';
 import { colors } from '@/constants/theme';
 
@@ -101,6 +102,10 @@ export default function VendorProfileScreen() {
     enabled: !!id,
   });
 
+  const { data: savedVendorIds = [] } = useSavedVendorIds();
+  const toggleSaved = useToggleSavedVendor();
+  const isSaved = savedVendorIds.includes(id!);
+
   const displayName = vendor?.business_name ?? 'Norfolk Botanical Garden';
   const displayLocation = vendor?.location?.city ?? 'Dar es Salaam';
   const displayAddress = vendor?.location?.address ?? '6700 Azalea Garden Road, Norfolk';
@@ -176,13 +181,15 @@ export default function VendorProfileScreen() {
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
             <Pressable
+              onPress={() => id && toggleSaved.mutate({ vendorId: id, isSaved })}
+              disabled={toggleSaved.isPending}
               style={{
                 width: 40, height: 40, borderRadius: 20,
                 backgroundColor: 'rgba(0,0,0,0.2)',
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <Ionicons name="heart-outline" size={22} color="#fff" />
+              <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={22} color={isSaved ? '#E0558A' : '#fff'} />
             </Pressable>
           </View>
         </View>

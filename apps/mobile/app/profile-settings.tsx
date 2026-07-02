@@ -10,7 +10,7 @@ import { colors, editorial } from '@/constants/theme';
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
 const MENU_ITEMS: { icon: IonIcon; label: string; route?: string; danger?: boolean }[] = [
-  { icon: 'heart-outline', label: 'Saved vendors', route: '/(tabs)/categories' },
+  { icon: 'heart-outline', label: 'Saved vendors', route: '/saved-vendors' },
   { icon: 'calendar-outline', label: 'Wedding details', route: '/website/section/wedding_details' },
   { icon: 'notifications-outline', label: 'Notifications' },
   { icon: 'settings-outline', label: 'Preferences' },
