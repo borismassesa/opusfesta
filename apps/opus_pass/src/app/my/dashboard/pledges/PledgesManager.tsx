@@ -48,6 +48,7 @@ import {
   whatsappShareUrl,
   smsShareUrl,
   emailShareUrl,
+  firstNameOf,
 } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { PledgesDashboardCopy } from '@/lib/cms/dashboard-copy'
@@ -225,6 +226,7 @@ export default function PledgesManager({
   hero,
   pledgeToken,
   copy,
+  whatsappLive,
 }: {
   initialPledges: PledgeWithContact[]
   stats: PledgeStats
@@ -237,6 +239,7 @@ export default function PledgesManager({
   hero: DashboardHeroContent
   pledgeToken: string | null
   copy: PledgesDashboardCopy
+  whatsappLive: boolean
 }) {
   const [section, setSection] = useState<Section>('manage')
   const [query, setQuery] = useState('')
@@ -586,6 +589,24 @@ export default function PledgesManager({
   }
 
   function remindWhatsApp(p: PledgeWithContact) {
+    // WhatsApp Business live → send the approved pledge template (image header +
+    // "Changia Sasa" button to their pledge page). The wa.me prefill with the
+    // owing-amount text remains as the pre-go-live fallback.
+    if (whatsappLive) {
+      startTransition(async () => {
+        try {
+          const r = await sendWhatsAppPledgeRequests([p.guest_contact_id])
+          if (r.sent > 0 && r.dryRun) toast.success('1 queued (dry run)')
+          else if (r.sent > 0) toast.success(`WhatsApp reminder sent to ${firstNameOf(p.full_name)}`)
+          else if (r.skipped > 0) toast.error('No usable phone number for this contributor')
+          else toast.error(`Could not send to ${firstNameOf(p.full_name)}`)
+          if (r.sent > 0) recordPledgeReminder(p.id, 'whatsapp').catch(() => {})
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Send failed')
+        }
+      })
+      return
+    }
     window.open(whatsappShareUrl(p, reminderText(p)), '_blank', 'noopener,noreferrer')
     recordPledgeReminder(p.id, 'whatsapp').catch(() => {})
   }
