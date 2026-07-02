@@ -12,6 +12,7 @@ import { tokenCache } from '@/lib/auth';
 import { hasSupabaseEnv, missingSupabaseEnvVars } from '@/lib/supabase';
 import { editorial } from '@/constants/theme';
 import { ErrorFallback } from '@/components/ErrorFallback';
+import { useInboundDeepLinks } from '@/hooks/useInboundDeepLinks';
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -22,6 +23,11 @@ const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <ErrorFallback error={error} retry={retry} title="App crashed during startup" />;
+}
+
+function DeepLinkListener() {
+  useInboundDeepLinks();
+  return null;
 }
 
 function MissingConfigScreen({ missingVars }: { missingVars: string[] }) {
@@ -107,6 +113,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <StatusBar style="dark" />
         <View style={{ flex: 1 }}>
+          <DeepLinkListener />
           <Slot />
         </View>
       </QueryClientProvider>

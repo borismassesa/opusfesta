@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Image, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Linking, Share, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { formatCurrency } from '@opusfesta/lib';
 import { colors } from '@/constants/theme';
 
 const HERO_HEIGHT = 384;
+const VENDOR_BASE_URL = 'https://opusfesta.com/vendors';
 
 function formatAddress(location: any): string | null {
   if (!location) return null;
@@ -148,6 +149,14 @@ export default function VendorProfileScreen() {
 
   const connectLinks = buildConnectLinks(vendor);
 
+  const handleShare = () => {
+    if (!vendor.slug) return;
+    Share.share({
+      message: `Check out ${displayName} on OpusFesta: ${VENDOR_BASE_URL}/${vendor.slug}`,
+      url: `${VENDOR_BASE_URL}/${vendor.slug}`,
+    });
+  };
+
   return (
     <View className="flex-1 bg-of-cream">
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -192,17 +201,31 @@ export default function VendorProfileScreen() {
             >
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
-            <Pressable
-              onPress={() => id && toggleSaved.mutate({ vendorId: id, isSaved })}
-              disabled={toggleSaved.isPending}
-              style={{
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: 'rgba(0,0,0,0.2)',
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={22} color={isSaved ? '#E0558A' : '#fff'} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {vendor.slug && (
+                <Pressable
+                  onPress={handleShare}
+                  style={{
+                    width: 40, height: 40, borderRadius: 20,
+                    backgroundColor: 'rgba(0,0,0,0.2)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="share-social-outline" size={20} color="#fff" />
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => id && toggleSaved.mutate({ vendorId: id, isSaved })}
+                disabled={toggleSaved.isPending}
+                style={{
+                  width: 40, height: 40, borderRadius: 20,
+                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={22} color={isSaved ? '#E0558A' : '#fff'} />
+              </Pressable>
+            </View>
           </View>
         </View>
 
