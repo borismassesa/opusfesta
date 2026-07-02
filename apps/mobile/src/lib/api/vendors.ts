@@ -81,13 +81,13 @@ export async function getVendorReviews(vendorId: string) {
 export async function getVendorPackages(vendorId: string) {
   if (!supabase) return [];
   const { data, error } = await supabase
-    .from('vendor_packages')
-    .select('*')
-    .eq('vendor_id', vendorId)
-    .order('price', { ascending: true });
+    .from('vendors')
+    .select('packages')
+    .eq('id', vendorId)
+    .single();
 
   if (error) throw error;
-  return data ?? [];
+  return data?.packages ?? [];
 }
 
 export async function getCategoryCounts() {
