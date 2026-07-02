@@ -1,27 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { getMyWeddingWebsite } from './api/wedding-website';
-
-// Links use either the custom scheme (opusfesta://vendor/123) or the
-// production https domain (https://opusfesta.com/vendors/some-slug). For the
-// custom scheme, WHATWG URL parsing puts the first path segment in
-// `hostname` rather than `pathname` — fold it back in so both forms resolve
-// through the same segment list.
-const APP_DOMAINS = new Set(['opusfesta.com', 'www.opusfesta.com']);
-
-function toSegments(url: string): string[] {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return [];
-  }
-  const pathSegments = parsed.pathname.split('/').filter(Boolean);
-  if (parsed.hostname && !APP_DOMAINS.has(parsed.hostname)) {
-    return [parsed.hostname, ...pathSegments];
-  }
-  return pathSegments;
-}
+import { toSegments } from './deepLinkSegments';
 
 export type DeepLinkTarget = { pathname: string; params?: Record<string, string> };
 
