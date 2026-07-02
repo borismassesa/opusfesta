@@ -14,7 +14,7 @@ export async function getMyWeddingWebsite(client: SupabaseClient) {
 
 export async function createWeddingWebsite(
   client: SupabaseClient,
-  opts: { slug: string; theme: WebsiteTheme; userId: string; coupleProfileId?: string },
+  opts: { slug: string; theme: WebsiteTheme; coupleProfileId?: string },
 ) {
   const themeConfig = {
     garden: { primary_color: '#2D5E3A', accent_color: '#C4920A', font_family: 'cormorant' },
@@ -22,11 +22,17 @@ export async function createWeddingWebsite(
     modern: { primary_color: '#5B2D8E', accent_color: '#FF6B6B', font_family: 'montserrat' },
   }[opts.theme];
 
+  // user_id must equal requesting_user_id() for the owner RLS policy to pass.
+  // We look up the caller's own row rather than trust a client-supplied id,
+  // since Clerk's id isn't a valid users.id UUID.
+  const { data: me, error: meError } = await client.from('users').select('id').single();
+  if (meError) throw meError;
+
   // Create website
   const { data: website, error: wsError } = await client
     .from('wedding_websites')
     .insert({
-      user_id: opts.userId,
+      user_id: me.id,
       couple_profile_id: opts.coupleProfileId ?? null,
       slug: opts.slug,
       theme: opts.theme,

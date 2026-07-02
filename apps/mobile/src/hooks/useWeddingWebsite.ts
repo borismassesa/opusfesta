@@ -23,7 +23,7 @@ export function useCreateWebsite() {
   const client = useAuthenticatedSupabase();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (opts: { slug: string; theme: WebsiteTheme; userId: string; coupleProfileId?: string }) =>
+    mutationFn: (opts: { slug: string; theme: WebsiteTheme; coupleProfileId?: string }) =>
       createWeddingWebsite(client, opts),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['wedding-website'] }),
   });

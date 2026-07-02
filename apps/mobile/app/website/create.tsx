@@ -50,7 +50,6 @@ export default function CreateWebsiteScreen() {
         await createWebsite.mutateAsync({
           slug,
           theme,
-          userId: user.id,
         });
       }
       router.back();
