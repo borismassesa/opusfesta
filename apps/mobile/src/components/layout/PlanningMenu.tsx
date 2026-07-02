@@ -15,7 +15,7 @@ const MENU_ITEMS: {
   { key: 'budget', label: 'Budget Advisor', icon: 'logo-usd', route: '/planning/budget' },
   { key: 'checklist', label: 'Checklist', icon: 'list-outline', route: '/planning/checklist' },
   { key: 'guests', label: 'Guest List', icon: 'people-outline', route: '/planning/guests' },
-  { key: 'inspiration', label: 'Inspiration', icon: 'play-circle-outline', route: '/(tabs)/dashboard' },
+  { key: 'inspiration', label: 'Inspiration', icon: 'images-outline', route: '/planning/inspiration' },
 ];
 
 const RADIUS = 120;

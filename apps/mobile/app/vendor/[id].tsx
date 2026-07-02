@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Image, Linking, Share, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Linking, Share, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getVendorById, getVendorReviews, getVendorPackages } from '@/lib/api/vendors';
 import { useSavedVendorIds, useToggleSavedVendor } from '@/hooks/useSavedVendors';
+import { useAddInspirationItem } from '@/hooks/useInspiration';
 import { formatCurrency } from '@opusfesta/lib';
 import { colors } from '@/constants/theme';
 
@@ -100,6 +101,7 @@ export default function VendorProfileScreen() {
   const { data: savedVendorIds = [] } = useSavedVendorIds();
   const toggleSaved = useToggleSavedVendor();
   const isSaved = savedVendorIds.includes(id!);
+  const addInspirationItem = useAddInspirationItem();
 
   if (isLoading) {
     return (
@@ -148,6 +150,14 @@ export default function VendorProfileScreen() {
   }));
 
   const connectLinks = buildConnectLinks(vendor);
+
+  const handleSaveToInspiration = () => {
+    if (!heroImage || !id) return;
+    addInspirationItem.mutate(
+      { imageUrl: heroImage, vendorId: id, category: displayCategory },
+      { onSuccess: () => Alert.alert('Saved', 'Added to your inspiration board.') },
+    );
+  };
 
   const handleShare = () => {
     if (!vendor.slug) return;
@@ -202,6 +212,19 @@ export default function VendorProfileScreen() {
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
             <View style={{ flexDirection: 'row', gap: 10 }}>
+              {heroImage && (
+                <Pressable
+                  onPress={handleSaveToInspiration}
+                  disabled={addInspirationItem.isPending}
+                  style={{
+                    width: 40, height: 40, borderRadius: 20,
+                    backgroundColor: 'rgba(0,0,0,0.2)',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="images-outline" size={20} color="#fff" />
+                </Pressable>
+              )}
               {vendor.slug && (
                 <Pressable
                   onPress={handleShare}
