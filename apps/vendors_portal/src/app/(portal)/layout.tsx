@@ -1,8 +1,31 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentVendor } from '@/lib/vendor'
+import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { ActiveVendorProvider } from '@/lib/onboarding/active-vendor-context'
 import PortalShell from './PortalShell'
+
+// Count leads that still need a first response (status 'pending' = "new" in the
+// UI). This drives the live badge on the sidebar "Leads" item so it reflects
+// the real to-do count instead of a hardcoded placeholder.
+async function loadNewLeadCount(vendorId: string): Promise<number> {
+  try {
+    const supabase = await createClerkSupabaseServerClient()
+    const { count, error } = await supabase
+      .from('inquiries')
+      .select('id', { count: 'exact', head: true })
+      .eq('vendor_id', vendorId)
+      .eq('status', 'pending')
+    if (error) {
+      console.error('[layout] new-lead count failed', error.code)
+      return 0
+    }
+    return count ?? 0
+  } catch (err) {
+    console.error('[layout] new-lead count threw', err)
+    return 0
+  }
+}
 
 export default async function PortalLayout({
   children,
@@ -36,9 +59,11 @@ export default async function PortalLayout({
   // fallback, which reads the shared 'onboarding' slot.
   const activeVendorId = state.kind === 'live' ? state.vendor.id : null
 
+  const newLeadCount = state.kind === 'live' ? await loadNewLeadCount(state.vendor.id) : 0
+
   return (
     <ActiveVendorProvider vendorId={activeVendorId}>
-      <PortalShell vendorName={vendorName} vendorSlug={vendorSlug}>
+      <PortalShell vendorName={vendorName} vendorSlug={vendorSlug} newLeadCount={newLeadCount}>
         {children}
       </PortalShell>
     </ActiveVendorProvider>

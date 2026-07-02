@@ -168,6 +168,9 @@ export type PermissionGroup =
   | 'Workforce'
   | 'Insights'
   | 'Platform'
+  | 'OpusPass'
+  | 'MD Tracker'
+  | 'Growth Tracker'
 
 export type Permission = {
   key: string
@@ -384,6 +387,14 @@ export const PERMISSIONS: Permission[] = [
   { key: 'workforce.payroll', group: 'Workforce', label: 'Run payroll', description: 'Approve and release monthly payroll.' },
   { key: 'insights.read', group: 'Insights', label: 'View analytics', description: 'Access dashboards, exports and audit logs.' },
   { key: 'platform.admin', group: 'Platform', label: 'Manage platform', description: 'Domain settings, secrets, feature flags.' },
+  { key: 'opuspass.checkin', group: 'OpusPass', label: 'Event check-in', description: 'Assign scanning attendants and watch live door arrivals.' },
+  { key: 'opuspass.tickets', group: 'OpusPass', label: 'Ticket generation', description: 'Import guest lists and generate printable entry-pass tickets.' },
+  { key: 'md_tracker.opusfesta.write', group: 'MD Tracker', label: 'OpusFesta daily entries', description: 'Log OpusFesta’s daily priorities, status and blockers.' },
+  { key: 'md_tracker.opusstudio.write', group: 'MD Tracker', label: 'OpusStudio daily entries', description: 'Log OpusStudio’s daily priorities, status and blockers.' },
+  { key: 'md_tracker.opuspass.write', group: 'MD Tracker', label: 'OpusPass daily entries', description: 'Log OpusPass’s daily priorities, status and blockers.' },
+  { key: 'md_tracker.review', group: 'MD Tracker', label: 'CEO review', description: 'Comment on and mark reviewed any engine’s weekly tracker.' },
+  { key: 'growth.write', group: 'Growth Tracker', label: 'Log entries', description: 'Log vendor outreach, campaigns, social posts and studio bookings.' },
+  { key: 'growth.admin', group: 'Growth Tracker', label: 'Edit targets', description: 'Edit KPI targets, the vendor-outreach roster, challenge schedule and content-ideas bank.' },
 ]
 
 export const JOB_STAGES: JobStage[] = [

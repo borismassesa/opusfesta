@@ -21,11 +21,14 @@ import {
   PanelLeftOpen,
   LogOut,
   Store,
+  MessageCircle,
   ChevronUp,
+  type LucideIcon,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { useT } from '@/components/providers/UIStringsProvider'
 import { cn } from '@/lib/utils'
+import DashboardSearch from './DashboardSearch'
 
 // opus_website (the marketplace + couple planning dashboard) lives at a different
 // origin than this app. In production both share the opusfesta.com apex (and the
@@ -38,7 +41,18 @@ const MARKETPLACE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:30
 // depend on at least one event existing, so it's the natural starting point.
 // `labelKey` resolves to an editable, bilingual label via useT('dashboard-chrome');
 // hrefs + icons stay hardcoded (routing/visuals are not content).
-const NAV = [
+type NavItem = {
+  href: string
+  icon: LucideIcon
+  // Internal items resolve a bilingual label via useT('dashboard-chrome');
+  // external items carry a plain `label` (they leave this app for the
+  // marketplace, so they aren't part of the dashboard CMS string set).
+  labelKey?: string
+  label?: string
+  external?: boolean
+}
+
+const NAV: NavItem[] = [
   { href: '/my/dashboard', labelKey: 'nav_overview', icon: LayoutDashboard },
   { href: '/my/dashboard/events', labelKey: 'nav_events', icon: CalendarHeart },
   { href: '/my/dashboard/pledges', labelKey: 'nav_pledges', icon: HandCoins },
@@ -48,7 +62,10 @@ const NAV = [
   { href: '/my/dashboard/rsvps', labelKey: 'nav_rsvps', icon: ClipboardCheck },
   { href: '/my/dashboard/website', labelKey: 'nav_website', icon: Globe },
   { href: '/my/dashboard/seating', labelKey: 'nav_seating', icon: Armchair },
-] as const
+  // Vendor inquiries (quote requests + conversations) now render inside the
+  // dashboard; the data is read from the shared marketplace tables.
+  { href: '/my/dashboard/inquiries', label: 'Inquiries', icon: MessageCircle },
+]
 
 function NavLinks({
   onNavigate,
@@ -61,31 +78,44 @@ function NavLinks({
   const t = useT('dashboard-chrome')
   return (
     <nav className="flex flex-col gap-1">
-      {NAV.map(({ href, labelKey, icon: Icon }) => {
-        const label = t(labelKey)
-        const active = href === '/my/dashboard' ? pathname === href : pathname.startsWith(href)
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            title={collapsed ? label : undefined}
-            aria-label={collapsed ? label : undefined}
-            className={cn(
-              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-              collapsed && 'justify-center px-0',
-              active
-                ? 'bg-[#C9A0DC]/15 text-[#1A1A1A]'
-                : 'text-[#1A1A1A]/60 hover:bg-black/[0.04] hover:text-[#1A1A1A]'
-            )}
-          >
+      {NAV.map((item) => {
+        const { href, icon: Icon, external } = item
+        const label = item.label ?? t(item.labelKey as string)
+        const active = !external && (href === '/my/dashboard' ? pathname === href : pathname.startsWith(href))
+        const className = cn(
+          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+          collapsed && 'justify-center px-0',
+          active
+            ? 'bg-[#C9A0DC]/15 text-[#1A1A1A]'
+            : 'text-[#1A1A1A]/60 hover:bg-black/[0.04] hover:text-[#1A1A1A]',
+        )
+        const inner = (
+          <>
             <Icon
               className={cn(
                 'h-[18px] w-[18px] shrink-0',
                 active ? 'text-[#8e57b3]' : 'text-[#1A1A1A]/40',
               )}
             />
-            {collapsed ? null : label}
+            {collapsed ? null : <span className="flex-1">{label}</span>}
+            {external && !collapsed ? (
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#1A1A1A]/30" />
+            ) : null}
+          </>
+        )
+        const shared = {
+          onClick: onNavigate,
+          title: collapsed ? label : undefined,
+          'aria-label': collapsed ? label : undefined,
+          className,
+        }
+        return external ? (
+          <a key={href} href={href} {...shared}>
+            {inner}
+          </a>
+        ) : (
+          <Link key={href} href={href} {...shared}>
+            {inner}
           </Link>
         )
       })}
@@ -109,6 +139,9 @@ export default function DashboardShell({
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const t = useT('dashboard-chrome')
+
+  // Resolved nav labels feed the search dropdown's "Pages" group.
+  const navPages = NAV.map((item) => ({ label: item.label ?? t(item.labelKey as string), href: item.href }))
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -156,7 +189,8 @@ export default function DashboardShell({
         {!collapsed && coupleName && coupleName !== 'The Couple' ? (
           <p className="mt-1 px-2 text-xs text-[#1A1A1A]/45">{coupleName}</p>
         ) : null}
-        <div className="mt-8 flex-1">
+        {!collapsed ? <div className="mt-5 px-1"><DashboardSearch navItems={navPages} /></div> : null}
+        <div className={cn('flex-1', collapsed ? 'mt-8' : 'mt-4')}>
           <NavLinks collapsed={collapsed} />
         </div>
         <div className="space-y-2 border-t border-black/[0.06] pt-4">
@@ -203,8 +237,9 @@ export default function DashboardShell({
             {coupleName && coupleName !== 'The Couple' ? (
               <p className="mt-1 text-xs text-[#1A1A1A]/45">{coupleName}</p>
             ) : null}
+            <div className="mt-4"><DashboardSearch navItems={navPages} onNavigate={() => setOpen(false)} /></div>
             {/* Nav grows to fill, pushing the account block to the bottom */}
-            <div className="mt-6 flex-1 overflow-y-auto">
+            <div className="mt-4 flex-1 overflow-y-auto">
               <NavLinks onNavigate={() => setOpen(false)} />
             </div>
             <div className="mt-6 border-t border-black/[0.06] pt-4">

@@ -193,6 +193,26 @@ export function eventTypeLabel(value: string): string {
   return EVENT_TYPE_LABELS[value as EventType] ?? value
 }
 
+/** Swahili noun form used in the WhatsApp invite body ("...kuhudhuria {category} ya..."). */
+export const EVENT_TYPE_LABELS_SW: Record<EventType, string> = {
+  wedding: 'harusi',
+  send_off: 'sendoff',
+  kitchen_party: 'kitchen party',
+  save_the_date: 'save the date',
+  kadi_za_michango: 'kadi za michango',
+  anniversary: 'kumbukumbu ya ndoa',
+  communio: 'komunyo',
+  birthday: 'siku ya kuzaliwa',
+  gala_dinner: 'gala dinner',
+  muslim_wedding: 'harusi ya kiislamu',
+  other: 'sherehe',
+}
+
+/** Swahili display label for a stored `event_type`, for the WhatsApp template's {{3}}. */
+export function eventTypeLabelSw(value: string): string {
+  return EVENT_TYPE_LABELS_SW[value as EventType] ?? 'sherehe'
+}
+
 export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {
   pending: 'Awaiting reply',
   attending: 'Attending',

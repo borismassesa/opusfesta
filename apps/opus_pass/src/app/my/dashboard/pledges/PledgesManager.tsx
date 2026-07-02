@@ -37,6 +37,7 @@ import {
   deletePledge,
   recordPledgeReminder,
   updatePledgeCollection,
+  sendWhatsAppPledgeRequests,
   type PledgeInput,
 } from '@/lib/dashboard/actions'
 import { PAYMENT_PROVIDERS, type PledgePaymentMethod } from '@/lib/dashboard/pledge-page'
@@ -710,6 +711,7 @@ export default function PledgesManager({
           coupleName={coupleName}
           onCopy={copyShareLink}
           copy={copy}
+          contacts={contacts}
         />
       ) : null}
 
@@ -1405,12 +1407,17 @@ function InviteSection({
   coupleName,
   onCopy,
   copy,
+  contacts,
 }: {
   shareLink: string | null
   coupleName: string
   onCopy: () => void
   copy: PledgesDashboardCopy
+  contacts: ContactLite[]
 }) {
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [pending, startTransition] = useTransition()
+
   if (!shareLink) {
     return (
       <EmptyState
@@ -1426,6 +1433,32 @@ function InviteSection({
   const waUrl = whatsappShareUrl(noone, message)
   const smsUrl = smsShareUrl(noone, message)
   const emailUrl = emailShareUrl({ email: null }, `You're invited to contribute — ${coupleName}`, message)
+
+  function togglePick(id: string) {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function sendToPicked() {
+    if (picked.size === 0) return
+    const ids = [...picked]
+    startTransition(async () => {
+      try {
+        const r = await sendWhatsAppPledgeRequests(ids)
+        toast.success(
+          r.dryRun
+            ? `Dry run: would send pledge link to ${r.sent} contact${r.sent === 1 ? '' : 's'}`
+            : `Pledge link sent to ${r.sent} contact${r.sent === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed` : ''}`,
+        )
+        setPicked(new Set())
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Send failed')
+      }
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -1499,6 +1532,46 @@ function InviteSection({
         </Card>
       </div>
 
+      <Card className="space-y-4 px-5 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-[#1A1A1A]">Send via WhatsApp</h3>
+            <p className="mt-1 text-sm text-[#1A1A1A]/55">
+              Pick saved contacts and OpusPass sends each one a WhatsApp message with the pledge link.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={sendToPicked}
+            disabled={picked.size === 0 || pending}
+            className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50"
+          >
+            <MessageCircle className="h-4 w-4" /> Send to {picked.size || ''} selected
+          </button>
+        </div>
+
+        {contacts.length === 0 ? (
+          <p className="text-sm text-[#1A1A1A]/55">No saved contacts yet — add some under Guests first.</p>
+        ) : (
+          <div className="max-h-64 divide-y divide-black/[0.05] overflow-y-auto rounded-xl border border-black/[0.08]">
+            {contacts.map((c) => (
+              <label
+                key={c.id}
+                className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-black/[0.02]"
+              >
+                <input
+                  type="checkbox"
+                  checked={picked.has(c.id)}
+                  onChange={() => togglePick(c.id)}
+                  className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
+                />
+                <span className="font-medium text-[#1A1A1A]">{c.full_name}</span>
+                <span className="text-[#1A1A1A]/50">{c.whatsapp_phone || c.phone || 'No phone'}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

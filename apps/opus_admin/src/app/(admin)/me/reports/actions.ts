@@ -3,6 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { escapeLike, getCallerEmail, hasPermission } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { sendEmail } from '@/lib/email'
+import { renderReportPdfBuffer } from '@/lib/report-pdf'
+import { getReportById } from '../../workforce/_lib/queries'
 import {
   cleanContent,
   parseSections,
@@ -14,9 +17,12 @@ import {
 // Server action for the personal "My reports" page. Scoped to the caller's
 // own employee row by email — you can only write your own reports. Upserts
 // on (template_id, employee_id, report_date) so re-saving the same day's
-// report edits it rather than duplicating.
+// report edits it rather than duplicating. On submit, also renders the
+// report to a branded PDF and emails it to the chosen recipient(s).
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_EXTRA_EMAILS = 10
 
 async function resolveCallerEmployee(): Promise<{
   id: string
@@ -35,15 +41,27 @@ async function resolveCallerEmployee(): Promise<{
   return data ?? null
 }
 
+function normalizeEmails(raw: string[] | undefined): string[] | { error: string } {
+  const cleaned = [...new Set((raw ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean))]
+  if (cleaned.length > MAX_EXTRA_EMAILS) return { error: `List at most ${MAX_EXTRA_EMAILS} email addresses.` }
+  const bad = cleaned.find((e) => !EMAIL_RE.test(e))
+  if (bad) return { error: `“${bad}” isn’t a valid email address.` }
+  return cleaned
+}
+
 export type SaveReportInput = {
   templateId: string
   reportDate: string
   periodEnd?: string | null
+  recipientId?: string | null
+  recipientEmails?: string[]
   content: ReportContent
   status: ReportStatus
 }
 
-export type SaveReportResult = { ok: true } | { ok: false; error: string }
+export type SaveReportResult =
+  | { ok: true; emailStatus: 'sent' | 'skipped' | 'failed' | null }
+  | { ok: false; error: string }
 
 export async function saveReport(input: SaveReportInput): Promise<SaveReportResult> {
   const employee = await resolveCallerEmployee()
@@ -56,6 +74,9 @@ export async function saveReport(input: SaveReportInput): Promise<SaveReportResu
   if (input.periodEnd && input.periodEnd < input.reportDate) {
     return { ok: false, error: 'Period end must be on or after the report date.' }
   }
+
+  const extraEmails = normalizeEmails(input.recipientEmails)
+  if ('error' in extraEmails) return { ok: false, error: extraEmails.error }
 
   const supabase = createSupabaseAdminClient()
   const { data: template, error: templateError } = await supabase
@@ -94,26 +115,44 @@ export async function saveReport(input: SaveReportInput): Promise<SaveReportResu
   if (input.status === 'submitted') {
     const valid = validateContent(sections, cleaned)
     if (!valid.ok) return valid
+    if (!input.recipientId) return { ok: false, error: 'Choose who to submit this report to.' }
+  }
+
+  let recipientId: string | null = null
+  if (input.recipientId) {
+    const { data: recipient } = await supabase
+      .from('workforce_employees')
+      .select('id')
+      .eq('id', input.recipientId)
+      .maybeSingle<{ id: string }>()
+    if (!recipient) return { ok: false, error: 'That recipient no longer exists.' }
+    recipientId = recipient.id
   }
 
   const snapshot = { slug: template.slug, name: template.name, sections }
   const nowIso = new Date().toISOString()
 
-  const { error } = await supabase.from('workforce_reports').upsert(
-    {
-      template_id: template.id,
-      template_snapshot: snapshot,
-      employee_id: employee.id,
-      report_date: input.reportDate,
-      period_end: input.periodEnd || null,
-      status: input.status,
-      content: cleaned,
-      prepared_by_name: employee.full_name,
-      prepared_by_role: employee.job_title,
-      submitted_at: input.status === 'submitted' ? nowIso : null,
-    },
-    { onConflict: 'template_id,employee_id,report_date' },
-  )
+  const { data: saved, error } = await supabase
+    .from('workforce_reports')
+    .upsert(
+      {
+        template_id: template.id,
+        template_snapshot: snapshot,
+        employee_id: employee.id,
+        report_date: input.reportDate,
+        period_end: input.periodEnd || null,
+        recipient_id: recipientId,
+        recipient_emails: extraEmails,
+        status: input.status,
+        content: cleaned,
+        prepared_by_name: employee.full_name,
+        prepared_by_role: employee.job_title,
+        submitted_at: input.status === 'submitted' ? nowIso : null,
+      },
+      { onConflict: 'template_id,employee_id,report_date' },
+    )
+    .select('id')
+    .single<{ id: string }>()
   if (error) {
     console.error('[reports] saveReport upsert failed', error)
     return { ok: false, error: error.message || 'Could not save your report.' }
@@ -121,5 +160,44 @@ export async function saveReport(input: SaveReportInput): Promise<SaveReportResu
 
   revalidatePath('/me/reports')
   revalidatePath('/workforce/reports')
-  return { ok: true }
+
+  let emailStatus: 'sent' | 'skipped' | 'failed' | null = null
+  if (input.status === 'submitted') {
+    emailStatus = await dispatchReportEmail(saved.id)
+  }
+
+  return { ok: true, emailStatus }
+}
+
+async function dispatchReportEmail(reportId: string): Promise<'sent' | 'skipped' | 'failed'> {
+  try {
+    const submission = await getReportById(reportId)
+    if (!submission) return 'skipped'
+    const to = [...new Set([submission.recipientEmail, ...submission.recipientEmails].filter(Boolean))] as string[]
+    if (to.length === 0) return 'skipped'
+
+    const pdf = await renderReportPdfBuffer(submission)
+    const periodLabel = submission.periodEnd
+      ? `${submission.reportDate} to ${submission.periodEnd}`
+      : submission.reportDate
+    const result = await sendEmail({
+      to,
+      subject: `${submission.templateName} — ${submission.employeeName} (${periodLabel})`,
+      html: `
+        <p>${submission.employeeName} (${submission.preparedByRole ?? submission.department}) has submitted a
+        <strong>${submission.templateName}</strong> for ${periodLabel}.</p>
+        <p>The full report is attached as a PDF.</p>
+      `,
+      attachments: [
+        {
+          filename: `${submission.templateSlug || 'report'}-${submission.reportDate}.pdf`,
+          content: pdf,
+        },
+      ],
+    })
+    return result.sent ? 'sent' : 'failed'
+  } catch (err) {
+    console.error('[reports] dispatchReportEmail failed', err)
+    return 'failed'
+  }
 }

@@ -430,37 +430,41 @@ export default function Navbar() {
             </>
           ) : isLoaded ? (
             <div className="flex items-center gap-3">
-              <Link
-                href="/my/dashboard"
-                className="hidden min-[1340px]:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
-              >
-                My Wedding
-              </Link>
-              {/* Same account, OpusPass zone — NavAnchor uses a plain <a> to cross
-                  the /opuspass rewrite boundary. Session is shared (one Clerk apex). */}
+              {/* The couple dashboard is unified on OpusPass. "Dashboard" is the
+                  single entry to it. NavAnchor uses a plain <a> to cross the
+                  /opuspass zone boundary (308 → subdomain); the session is shared
+                  (one Clerk apex). */}
               <NavAnchor
                 href="/opuspass/my/dashboard"
+                className="hidden min-[1340px]:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
+              >
+                Dashboard
+              </NavAnchor>
+              <NavAnchor
+                href="/opuspass/my/dashboard/invitations"
                 className="hidden 2xl:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
               >
                 Invitations &amp; RSVPs
               </NavAnchor>
               {/* Dashboard destinations also live in the avatar menu so they
                   stay reachable on mid-size desktops (1340–1535px) where the
-                  inline "Invitations & RSVPs" link is hidden for space. The
-                  /opuspass target crosses the rewrite boundary, so it uses a
-                  full-page nav (Action) rather than Clerk's client-side Link. */}
+                  inline links are hidden for space. Both targets cross the
+                  /opuspass zone boundary, so they use a full-page nav (Action)
+                  rather than Clerk's client-side Link. */}
               <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }}>
                 <UserButton.MenuItems>
-                  <UserButton.Link
-                    label="My Wedding"
+                  <UserButton.Action
+                    label="Dashboard"
                     labelIcon={<Heart size={16} />}
-                    href="/my/dashboard"
+                    onClick={() => {
+                      window.location.href = '/opuspass/my/dashboard'
+                    }}
                   />
                   <UserButton.Action
                     label="Invitations & RSVPs"
                     labelIcon={<CalendarCheck size={16} />}
                     onClick={() => {
-                      window.location.href = '/opuspass/my/dashboard'
+                      window.location.href = '/opuspass/my/dashboard/invitations'
                     }}
                   />
                 </UserButton.MenuItems>
@@ -671,15 +675,15 @@ export default function Navbar() {
                 </>
               ) : isLoaded ? (
                 <div className="flex flex-col gap-2.5">
-                  <Link
-                    href="/my/dashboard"
+                  <NavAnchor
+                    href="/opuspass/my/dashboard"
                     onClick={() => setMobileOpen(false)}
                     className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    My Wedding
-                  </Link>
+                    Dashboard
+                  </NavAnchor>
                   <NavAnchor
-                    href="/opuspass/my/dashboard"
+                    href="/opuspass/my/dashboard/invitations"
                     onClick={() => setMobileOpen(false)}
                     className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
                   >
