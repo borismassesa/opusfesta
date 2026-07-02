@@ -39,13 +39,15 @@ export async function getDashboardData(client: SupabaseClient) {
       .from('couple_profiles')
       .select('*')
       .maybeSingle(),
+    // `vendor_bookings` RLS only grants access to the owning vendor, not the
+    // couple — a couple's booked vendors live in `saved_vendors` instead.
     client
-      .from('vendor_bookings')
+      .from('saved_vendors')
       .select(`
         *,
         vendors:vendor_id (id, business_name, logo, category)
       `)
-      .in('stage', ['reserved', 'confirmed', 'completed'])
+      .eq('status', 'booked')
       .order('created_at', { ascending: false }),
   ]);
 

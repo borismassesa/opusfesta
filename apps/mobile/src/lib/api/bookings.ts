@@ -1,12 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+// `vendor_bookings` is a vendor-side pipeline table — its RLS only grants
+// access to the owning vendor, not the couple. A couple's confirmed
+// relationship with a vendor lives in `saved_vendors` (status = 'booked'),
+// which is RLS-scoped to the requesting user.
 export async function getMyBookings(client: SupabaseClient) {
   const { data, error } = await client
-    .from('vendor_bookings')
+    .from('saved_vendors')
     .select(`
       *,
       vendors:vendor_id (id, business_name, logo, category)
     `)
+    .eq('status', 'booked')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -15,7 +20,7 @@ export async function getMyBookings(client: SupabaseClient) {
 
 export async function getBookingById(client: SupabaseClient, id: string) {
   const { data, error } = await client
-    .from('vendor_bookings')
+    .from('saved_vendors')
     .select(`
       *,
       vendors:vendor_id (id, business_name, logo, category, contact_info)
