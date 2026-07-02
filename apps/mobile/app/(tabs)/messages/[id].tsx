@@ -1,95 +1,108 @@
 import { useState } from 'react';
-import { View, Text, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TextInput, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
+import { useMessages, useSendMessage } from '@/hooks/useMessages';
+import { useOpusFestaAuth } from '@/lib/auth';
 import { editorial, shadowSoftSm } from '@/constants/theme';
 
-const MOCK_MESSAGES = [
-  {
-    id: '1',
-    content: 'Hi! I wanted to confirm the booking details for June 12.',
-    sender: 'user',
-    time: '10:30 AM',
-  },
-  {
-    id: '2',
-    content:
-      "Great news! Your date is confirmed for June 12. We've reserved the Grand Ballroom for 250 guests.",
-    sender: 'vendor',
-    time: '10:32 AM',
-  },
-  {
-    id: '3',
-    content: 'Thank you! Can we schedule a walkthrough next week?',
-    sender: 'user',
-    time: '10:35 AM',
-  },
-];
-
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, vendorName } = useLocalSearchParams<{ id: string; vendorName?: string }>();
   const [message, setMessage] = useState('');
+  const { user } = useOpusFestaAuth();
+  const { data: messages, isLoading } = useMessages(id);
+  const sendMessage = useSendMessage();
+
+  const handleSend = () => {
+    const content = message.trim();
+    if (!content || !id) return;
+    setMessage('');
+    sendMessage.mutate({ threadId: id, content });
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }} edges={['top']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-        <Header title="Serena Grand" showBack />
+        <Header title={vendorName || 'Messages'} showBack />
       </View>
 
-      <FlatList
-        data={MOCK_MESSAGES}
-        keyExtractor={(item) => item.id}
-        style={{ flex: 1, paddingHorizontal: 20 }}
-        contentContainerStyle={{ gap: 12, paddingBottom: 16 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <View
-            style={[
-              {
-                maxWidth: '80%',
-                padding: 14,
-                borderRadius: 12,
-                ...(item.sender === 'user'
-                  ? {
-                      backgroundColor: editorial.primaryContainer,
-                      alignSelf: 'flex-end',
-                      borderBottomRightRadius: 4,
-                    }
-                  : {
-                      backgroundColor: editorial.surfaceContainerLowest,
-                      alignSelf: 'flex-start',
-                      borderBottomLeftRadius: 4,
-                      borderWidth: 1,
-                      borderColor: editorial.outlineVariant,
-                    }),
-              },
-              item.sender === 'vendor' ? shadowSoftSm : {},
-            ]}
-          >
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Regular',
-                fontSize: 14,
-                color: item.sender === 'user' ? '#ffffff' : editorial.onSurface,
-              }}
-            >
-              {item.content}
-            </Text>
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Regular',
-                fontSize: 10,
-                marginTop: 4,
-                color: item.sender === 'user' ? 'rgba(255,255,255,0.6)' : editorial.onSurfaceVariant,
-              }}
-            >
-              {item.time}
-            </Text>
-          </View>
-        )}
-      />
+      {isLoading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={editorial.primaryContainer} />
+        </View>
+      ) : (
+        <FlatList
+          data={messages ?? []}
+          keyExtractor={(item) => item.id}
+          style={{ flex: 1, paddingHorizontal: 20 }}
+          contentContainerStyle={{ gap: 12, paddingBottom: 16 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={{ paddingTop: 40, alignItems: 'center' }}>
+              <Text
+                style={{
+                  fontFamily: 'WorkSans-Regular',
+                  fontSize: 14,
+                  color: editorial.onSurfaceVariant,
+                  textAlign: 'center',
+                }}
+              >
+                No messages yet. Say hello!
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const isMe = item.sender_id === user?.id;
+            return (
+              <View
+                style={[
+                  {
+                    maxWidth: '80%',
+                    padding: 14,
+                    borderRadius: 12,
+                    ...(isMe
+                      ? {
+                          backgroundColor: editorial.primaryContainer,
+                          alignSelf: 'flex-end',
+                          borderBottomRightRadius: 4,
+                        }
+                      : {
+                          backgroundColor: editorial.surfaceContainerLowest,
+                          alignSelf: 'flex-start',
+                          borderBottomLeftRadius: 4,
+                          borderWidth: 1,
+                          borderColor: editorial.outlineVariant,
+                        }),
+                  },
+                  !isMe ? shadowSoftSm : {},
+                ]}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'WorkSans-Regular',
+                    fontSize: 14,
+                    color: isMe ? '#ffffff' : editorial.onSurface,
+                  }}
+                >
+                  {item.content}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: 'WorkSans-Regular',
+                    fontSize: 10,
+                    marginTop: 4,
+                    color: isMe ? 'rgba(255,255,255,0.6)' : editorial.onSurfaceVariant,
+                  }}
+                >
+                  {formatTime(item.created_at)}
+                </Text>
+              </View>
+            );
+          }}
+        />
+      )}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -123,9 +136,8 @@ export default function ChatScreen() {
             }}
           />
           <Pressable
-            onPress={() => {
-              if (message.trim()) setMessage('');
-            }}
+            onPress={handleSend}
+            disabled={sendMessage.isPending}
             style={[
               {
                 width: 40,
@@ -134,6 +146,7 @@ export default function ChatScreen() {
                 backgroundColor: editorial.primaryContainer,
                 alignItems: 'center',
                 justifyContent: 'center',
+                opacity: sendMessage.isPending ? 0.6 : 1,
               },
               shadowSoftSm,
             ]}
@@ -144,4 +157,12 @@ export default function ChatScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function formatTime(dateStr: string): string {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }

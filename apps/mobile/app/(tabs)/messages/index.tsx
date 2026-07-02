@@ -6,61 +6,23 @@ import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getConversations } from '@/lib/api/messages';
 import { editorial } from '@/constants/theme';
 
-const MOCK_CONVERSATIONS = [
-  {
-    id: '1',
-    vendorName: 'Serena Grand',
-    lastMessage: "Great news! Your date is confirmed for June 12...",
-    timestamp: '2m ago',
-    unreadCount: 1,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    vendorName: 'Amina Photos',
-    lastMessage: "I've uploaded the engagement shoot previews",
-    timestamp: '1h ago',
-    unreadCount: 0,
-    isOnline: false,
-  },
-  {
-    id: '3',
-    vendorName: 'Sweet Bites Cakes',
-    lastMessage: 'Tasting session booked for next Saturday at 2pm',
-    timestamp: 'Yesterday',
-    unreadCount: 0,
-    isOnline: false,
-  },
-  {
-    id: '4',
-    vendorName: 'Kanga Decor Studio',
-    lastMessage: "Here's the mood board with 3 theme options...",
-    timestamp: 'Mar 14',
-    unreadCount: 0,
-    isOnline: false,
-  },
-];
-
 export default function MessagesScreen() {
   const client = useAuthenticatedSupabase();
 
-  const { data: conversations } = useQuery({
+  const { data: conversations, isLoading } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => getConversations(client),
   });
 
-  const displayData =
-    conversations?.length
-      ? conversations.map((c: any) => ({
-          id: c.id,
-          vendorName: c.vendors?.business_name ?? 'Vendor',
-          vendorLogo: c.vendors?.logo,
-          lastMessage: c.last_message ?? '',
-          timestamp: formatRelativeTime(c.updated_at),
-          unreadCount: c.unread_count ?? 0,
-          isOnline: false,
-        }))
-      : MOCK_CONVERSATIONS;
+  const displayData = (conversations ?? []).map((c: any) => ({
+    id: c.id,
+    vendorName: c.vendors?.business_name ?? 'Vendor',
+    vendorLogo: c.vendors?.logo,
+    lastMessage: c.last_message ?? '',
+    timestamp: formatRelativeTime(c.updated_at),
+    unreadCount: c.unread_count ?? 0,
+    isOnline: false,
+  }));
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -76,23 +38,38 @@ export default function MessagesScreen() {
         Messages
       </Text>
 
-      <FlatList
-        data={displayData}
-        keyExtractor={(item: any) => item.id}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        renderItem={({ item }: any) => (
-          <ConversationItem
-            id={item.id}
-            vendorName={item.vendorName}
-            vendorLogo={item.vendorLogo}
-            lastMessage={item.lastMessage}
-            timestamp={item.timestamp}
-            unreadCount={item.unreadCount}
-            isOnline={item.isOnline}
-          />
-        )}
-      />
+      {!isLoading && displayData.length === 0 ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 }}>
+          <Text
+            style={{
+              fontFamily: 'WorkSans-Regular',
+              fontSize: 14,
+              color: editorial.onSurfaceVariant,
+              textAlign: 'center',
+            }}
+          >
+            No conversations yet.{'\n'}Message a vendor to start planning together.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={displayData}
+          keyExtractor={(item: any) => item.id}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          renderItem={({ item }: any) => (
+            <ConversationItem
+              id={item.id}
+              vendorName={item.vendorName}
+              vendorLogo={item.vendorLogo}
+              lastMessage={item.lastMessage}
+              timestamp={item.timestamp}
+              unreadCount={item.unreadCount}
+              isOnline={item.isOnline}
+            />
+          )}
+        />
+      )}
     </ScreenWrapper>
   );
 }

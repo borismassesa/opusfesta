@@ -26,7 +26,12 @@ export function ConversationItem({
 
   return (
     <Pressable
-      onPress={() => router.push(`/(tabs)/messages/${id}`)}
+      onPress={() =>
+        router.push({
+          pathname: '/(tabs)/messages/[id]',
+          params: { id, vendorName, vendorLogo: vendorLogo ?? '' },
+        })
+      }
       style={[
         {
           backgroundColor: editorial.surfaceContainerLowest,

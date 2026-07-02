@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
+import { useOpusFestaAuth } from '@/lib/auth';
 import { getConversations, getMessages, sendMessage } from '@/lib/api/messages';
 
 export function useConversations() {
@@ -52,10 +53,11 @@ export function useMessages(threadId: string | undefined) {
 export function useSendMessage() {
   const client = useAuthenticatedSupabase();
   const queryClient = useQueryClient();
+  const { user } = useOpusFestaAuth();
 
   return useMutation({
     mutationFn: ({ threadId, content }: { threadId: string; content: string }) =>
-      sendMessage(client, threadId, content),
+      sendMessage(client, threadId, user!.id, content),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['messages', variables.threadId],

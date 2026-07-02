@@ -27,11 +27,12 @@ export async function getMessages(client: SupabaseClient, threadId: string) {
 export async function sendMessage(
   client: SupabaseClient,
   threadId: string,
+  senderId: string,
   content: string
 ) {
   const { data, error } = await client
     .from('messages')
-    .insert({ thread_id: threadId, content })
+    .insert({ thread_id: threadId, sender_id: senderId, content })
     .select()
     .single();
 
