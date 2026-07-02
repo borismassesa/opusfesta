@@ -1,50 +1,59 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+// There is no standalone `events` table — a couple's wedding is represented
+// by their single `couple_profiles` row (one per user, enforced by a unique
+// constraint on user_id). We normalize it to `name`/`date`/`location` so
+// existing callers don't need to know about the underlying column names.
+function toEventShape(profile: Record<string, any> | null) {
+  if (!profile) return null;
+  const name = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || null;
+  const location = [profile.city, profile.region].filter(Boolean).join(', ') || null;
+  return { ...profile, name, date: profile.wedding_date, location };
+}
+
 export async function getMyEvents(client: SupabaseClient) {
   const { data, error } = await client
-    .from('events')
+    .from('couple_profiles')
     .select('*')
-    .eq('is_active', true)
-    .order('date', { ascending: true });
+    .maybeSingle();
 
   if (error) throw error;
-  return data ?? [];
+  const event = toEventShape(data);
+  return event ? [event] : [];
 }
 
 export async function getEventById(client: SupabaseClient, id: string) {
   const { data, error } = await client
-    .from('events')
+    .from('couple_profiles')
     .select('*')
     .eq('id', id)
     .single();
 
   if (error) throw error;
-  return data;
+  return toEventShape(data);
 }
 
 export async function getDashboardData(client: SupabaseClient) {
-  const [eventsRes, bookingsRes] = await Promise.all([
+  const [profileRes, bookingsRes] = await Promise.all([
     client
-      .from('events')
+      .from('couple_profiles')
       .select('*')
-      .eq('is_active', true)
-      .order('date', { ascending: true })
-      .limit(1),
+      .maybeSingle(),
     client
-      .from('bookings')
+      .from('vendor_bookings')
       .select(`
         *,
         vendors:vendor_id (id, business_name, logo, category)
       `)
-      .in('status', ['ACCEPTED', 'DEPOSIT_PAID', 'COMPLETED'])
+      .in('stage', ['reserved', 'confirmed', 'completed'])
       .order('created_at', { ascending: false }),
   ]);
 
-  if (eventsRes.error) throw eventsRes.error;
+  if (profileRes.error) throw profileRes.error;
   if (bookingsRes.error) throw bookingsRes.error;
 
   return {
-    event: eventsRes.data?.[0] ?? null,
+    event: toEventShape(profileRes.data),
     bookings: bookingsRes.data ?? [],
   };
 }

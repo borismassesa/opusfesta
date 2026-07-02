@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
+import { useOpusFestaAuth } from '@/lib/auth';
 import { createBookingInquiry } from '@/lib/api/bookings';
 
 const bookingSchema = z.object({
@@ -26,6 +27,7 @@ export default function BookingScreen() {
   const { vendorId } = useLocalSearchParams<{ vendorId: string }>();
   const router = useRouter();
   const client = useAuthenticatedSupabase();
+  const { user } = useOpusFestaAuth();
   const [guestCount, setGuestCount] = useState(250);
 
   const {
@@ -46,6 +48,8 @@ export default function BookingScreen() {
     mutationFn: (data: BookingForm) =>
       createBookingInquiry(client, {
         vendor_id: vendorId!,
+        name: user?.name ?? '',
+        email: user?.email ?? '',
         event_date: data.eventDate,
         guest_count: data.guestCount,
         budget_range: data.budgetRange,

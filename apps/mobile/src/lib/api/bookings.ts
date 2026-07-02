@@ -2,11 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function getMyBookings(client: SupabaseClient) {
   const { data, error } = await client
-    .from('bookings')
+    .from('vendor_bookings')
     .select(`
       *,
-      vendors:vendor_id (id, business_name, logo, category),
-      events:event_id (id, name, date)
+      vendors:vendor_id (id, business_name, logo, category)
     `)
     .order('created_at', { ascending: false });
 
@@ -16,11 +15,10 @@ export async function getMyBookings(client: SupabaseClient) {
 
 export async function getBookingById(client: SupabaseClient, id: string) {
   const { data, error } = await client
-    .from('bookings')
+    .from('vendor_bookings')
     .select(`
       *,
-      vendors:vendor_id (id, business_name, logo, category, contact_info),
-      events:event_id (id, name, date, location)
+      vendors:vendor_id (id, business_name, logo, category, contact_info)
     `)
     .eq('id', id)
     .single();
@@ -33,7 +31,8 @@ export async function createBookingInquiry(
   client: SupabaseClient,
   payload: {
     vendor_id: string;
-    event_id?: string;
+    name: string;
+    email: string;
     event_date: string;
     guest_count: number;
     budget_range?: string;
@@ -41,17 +40,17 @@ export async function createBookingInquiry(
   }
 ) {
   const { data, error } = await client
-    .from('bookings')
+    .from('inquiries')
     .insert({
       vendor_id: payload.vendor_id,
-      event_id: payload.event_id,
-      status: 'INQUIRY',
-      notes: payload.message,
-      metadata: {
-        event_date: payload.event_date,
-        guest_count: payload.guest_count,
-        budget_range: payload.budget_range,
-      },
+      name: payload.name,
+      email: payload.email,
+      event_type: 'wedding',
+      event_date: payload.event_date,
+      guest_count: payload.guest_count,
+      budget: payload.budget_range,
+      message: payload.message ?? '',
+      status: 'pending',
     })
     .select()
     .single();
