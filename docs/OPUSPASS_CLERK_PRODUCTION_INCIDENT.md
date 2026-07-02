@@ -20,6 +20,44 @@ production.
   user pool as production / the website.
 - The comment in `sign-in/[[...sign-in]]/page.tsx` is still inaccurate (stale basePath
   claim + "shares with vendors_portal"); correct it — see the end of this doc.
+- **`apps/opus_website/.env` points at the wrong Clerk instance (Vendors, not OpusFesta)
+  — fix was applied locally on 2026-07-01 but LOST to sparse-checkout; must be redone.**
+  See the 2026-07-01 addendum below.
+
+## 2026-07-01 addendum — instance mapping corrected; opus_website fix must be redone
+
+While debugging why mobile sign-ups weren't populating `public.users`, the actual Clerk
+app→instance mapping was verified live via `clerk apps list` (and confirmed by the repo
+owner). **The instance table further down in this doc was backwards** and has been
+corrected. The correct dev-instance mapping is:
+
+| Clerk app          | Dev frontend API (`pk_test_`)        |
+| ------------------ | ------------------------------------ |
+| **OpusFesta** (shared by opus_website + opus_pass + mobile) | `logical-chow-41.clerk.accounts.dev` |
+| **OpusFesta Vendors** (vendors_portal)                      | `tidy-coyote-86.clerk.accounts.dev`  |
+| **OpusFesta Admin** (opus_admin)                            | `enabled-moray-70.clerk.accounts.dev`|
+| **OpusStudio** (studio)                                     | `concise-lamb-47.clerk.accounts.dev` |
+
+Consequences of the corrected mapping:
+- `apps/mobile/.env` and `apps/opus_pass/.env` were already correct (`logical-chow-41` =
+  OpusFesta). Mobile was never the cause of the sync problem.
+- **`apps/opus_website/.env` was wrong**: it carried `tidy-coyote-86` (the *Vendors*
+  instance) instead of `logical-chow-41` (OpusFesta). On 2026-07-01 it was corrected
+  locally to OpusFesta's dev keys, but `apps/opus_website/.env` is gitignored and the app
+  was subsequently excluded from the working tree by a sparse-checkout setup, so **the fix
+  is gone and must be reapplied** whenever opus_website is next checked out and run
+  locally. Correct dev values (OpusFesta instance):
+  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_bG9naWNhbC1jaG93LTQxLmNsZXJrLmFjY291bnRzLmRldiQ`
+  - `CLERK_SECRET_KEY` = OpusFesta dev secret (pull with `clerk env pull` while linked to
+    the OpusFesta app, or copy from `apps/opus_pass/.env`).
+
+The actual mobile-sync fix landed elsewhere and is committed: `complete-onboarding` now
+self-provisions the `public.users` row from the Clerk Backend API when the webhook hasn't
+run (mirroring `apps/opus_pass/src/lib/dashboard/auth.ts`), so mobile onboarding no longer
+depends on a webhook. That path needs `CLERK_SECRET_KEY` set as a **Supabase Edge Function
+secret** on project `ppdapuqehwlfwofbpbvb` (separate from any app `.env`) — set it to the
+key matching whichever instance mobile ships against (mobile now uses OpusFesta **live**
+keys in both dev and prod builds, so use the `sk_live_` OpusFesta secret).
 
 ## Root cause
 
@@ -33,16 +71,26 @@ Two compounding faults:
 
 Decoding the publishable keys in each app's `.env`:
 
+> **Corrected 2026-07-01** — the mapping below was originally backwards (it had the
+> OpusFesta and Vendors instances swapped). Verified live via `clerk apps list`:
+> `logical-chow-41` = **OpusFesta** (shared), `tidy-coyote-86` = **Vendors**. The table
+> and the sentence that followed it have been rewritten to the verified mapping.
+
 | App              | Key prefix | Clerk instance (frontend API)        | Intended group        | OK? |
 | ---------------- | ---------- | ------------------------------------ | --------------------- | --- |
-| `opus_website`   | `pk_test_` | `tidy-coyote-86.clerk.accounts.dev`  | OpusFesta (shared)    | ✅  |
-| `opus_pass`      | `pk_test_` | `logical-chow-41.clerk.accounts.dev` | OpusFesta (shared)    | ❌ on Vendor's instance |
-| `vendors_portal` | `pk_test_` | `logical-chow-41.clerk.accounts.dev` | Vendor (own)          | ✅  |
+| `opus_website`   | `pk_test_` | `tidy-coyote-86.clerk.accounts.dev`  | OpusFesta (shared)    | ❌ on Vendor's instance |
+| `opus_pass`      | `pk_test_` | `logical-chow-41.clerk.accounts.dev` | OpusFesta (shared)    | ✅  |
+| `mobile`         | `pk_test_`¹| `logical-chow-41.clerk.accounts.dev` | OpusFesta (shared)    | ✅  |
+| `vendors_portal` | `pk_test_` | `tidy-coyote-86.clerk.accounts.dev`  | Vendor (own)          | ✅  |
 | `opus_admin`     | `pk_test_` | `enabled-moray-70.clerk.accounts.dev`| Admin (own)           | ✅  |
-| `studio`         | —          | (no key in local `.env`)             | Studio (own)          | —   |
+| `studio`         | —          | `concise-lamb-47.clerk.accounts.dev` | Studio (own)          | —   |
 
-So OpusPass should be on `tidy-coyote-86` (the OpusFesta instance, to share profiles with
-the marketing site) but is instead wired to `logical-chow-41` (the Vendor instance).
+¹ `mobile` was later switched to OpusFesta **live** (`pk_live_`) keys in both dev and prod
+builds — see the 2026-07-01 addendum near the top.
+
+So `opus_website` should be on `logical-chow-41` (the OpusFesta instance, to share profiles
+with opus_pass and mobile) but is instead wired to `tidy-coyote-86` (the Vendor instance) —
+the mirror image of the OpusPass symptom that opened this doc.
 
 A Clerk **development instance only initializes on `localhost` and `*.accounts.dev`**.
 It refuses to load `clerk.js` / establish a session on an arbitrary custom domain.
