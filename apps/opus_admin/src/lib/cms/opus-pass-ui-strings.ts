@@ -905,6 +905,10 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     toast_no_awaiting: 'No one is awaiting a reply right now.',
     toast_personal_copied: 'Personal link copied',
     toast_reminder_ready: 'Reminder ready for {name}',
+    toast_sent_one: 'Invitation sent to {name}',
+    toast_send_failed: 'Could not send to {name}. Check the number and try again.',
+    toast_nothing_sent: 'Nothing was sent. Only confirmed guests with a phone number can receive invites.',
+    send_failed_n: '{n} failed',
   },
 }
 
@@ -2229,6 +2233,10 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'toast_no_awaiting', label: 'No one awaiting', kind: 'text', max: 60 },
         { key: 'toast_personal_copied', label: 'Personal link copied', kind: 'text', max: 40 },
         { key: 'toast_reminder_ready', label: 'Reminder ready', kind: 'text', max: 40, hint: 'Use {name}' },
+        { key: 'toast_sent_one', label: 'Single invite sent', kind: 'text', max: 60, hint: 'Use {name}' },
+        { key: 'toast_send_failed', label: 'Single invite failed', kind: 'text', max: 80, hint: 'Use {name}' },
+        { key: 'toast_nothing_sent', label: 'Nothing sent', kind: 'text', max: 100 },
+        { key: 'send_failed_n', label: 'Summary: failed', kind: 'text', max: 30, hint: 'Use {n}' },
       ],
     },
   ],
