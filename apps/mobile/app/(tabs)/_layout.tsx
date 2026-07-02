@@ -41,9 +41,9 @@ const tabs: {
   },
   {
     name: 'messages',
-    title: 'Registry',
-    iconActive: 'gift',
-    iconInactive: 'gift-outline',
+    title: 'Messages',
+    iconActive: 'chatbubble',
+    iconInactive: 'chatbubble-outline',
   },
   {
     name: 'profile',
