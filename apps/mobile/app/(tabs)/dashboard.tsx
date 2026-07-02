@@ -2,56 +2,14 @@ import { View, Text, Pressable } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getDashboardData } from '@/lib/api/events';
-import { editorial, shadowSoft, shadowSoftSm, shadowSoftPrimary } from '@/constants/theme';
+import { editorial, shadowSoftSm, shadowSoftPrimary, VENDOR_CATEGORIES } from '@/constants/theme';
 
-const MOCK_TASKS = [
-  {
-    id: '1',
-    title: 'Finalize Catering Menu',
-    due: 'Due in 2 days • May 15',
-    priority: 'urgent' as const,
-    completed: false,
-  },
-  {
-    id: '2',
-    title: 'Send Digital Invitations',
-    due: 'Due in 5 days • May 18',
-    priority: 'medium' as const,
-    completed: false,
-  },
-  {
-    id: '3',
-    title: 'Book Wedding Photographer',
-    due: 'Completed on May 10',
-    completed: true,
-  },
-];
-
-const MOCK_VENDORS = [
-  {
-    id: '1',
-    name: 'Movenpick Catering',
-    detail: 'Catering & Service',
-    icon: 'restaurant-outline' as const,
-    status: 'Confirmed',
-  },
-  {
-    id: '2',
-    name: 'Studio Opus Photography',
-    detail: 'Photography',
-    icon: 'camera-outline' as const,
-    status: 'Confirmed',
-  },
-];
-
-const PRIORITY_STYLES = {
-  urgent: { bg: editorial.error, text: '#ffffff', label: 'URGENT' },
-  medium: { bg: editorial.secondaryContainer, text: editorial.tertiaryContainer, label: 'MEDIUM' },
-};
+function iconForCategory(category: string | null | undefined): keyof typeof Ionicons.glyphMap {
+  return (VENDOR_CATEGORIES.find((c) => c.key === category)?.icon ?? 'storefront-outline') as keyof typeof Ionicons.glyphMap;
+}
 
 export default function DashboardScreen() {
   const { user } = useOpusFestaAuth();
@@ -63,9 +21,10 @@ export default function DashboardScreen() {
   });
 
   const event = data?.event;
+  const bookedVendors = data?.bookings ?? [];
   const daysLeft = event?.date
     ? Math.max(0, Math.ceil((new Date(event.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 87;
+    : null;
 
   const weddingDate = event?.date
     ? new Date(event.date).toLocaleDateString('en-US', {
@@ -74,9 +33,9 @@ export default function DashboardScreen() {
         day: 'numeric',
         year: 'numeric',
       })
-    : 'Saturday, September 14, 2024';
+    : 'Add your wedding date to see a countdown';
 
-  const displayName = event?.name ?? user?.name ?? 'Fatma & Said';
+  const displayName = event?.name ?? user?.name ?? 'Your wedding';
 
   return (
     <ScreenWrapper>
@@ -144,7 +103,7 @@ export default function DashboardScreen() {
                 color: '#ffffff',
               }}
             >
-              {daysLeft} days left
+              {daysLeft !== null ? `${daysLeft} days left` : 'No date yet'}
             </Text>
             <Text
               style={{
@@ -172,182 +131,29 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* Overview */}
+      {/* Budget & Checklist */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <Ionicons name="analytics-outline" size={20} color={editorial.primaryContainer} />
+        <Ionicons name="checkbox-outline" size={20} color={editorial.primaryContainer} />
         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
-          Overview
+          Budget &amp; Checklist
         </Text>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
-        {/* Budget card */}
-        <View
-          style={[
-            {
-              flex: 1,
-              backgroundColor: editorial.surfaceContainerLowest,
-              padding: 20,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            },
-            shadowSoftSm,
-          ]}
-        >
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
-            Budget Used
-          </Text>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer, marginTop: 4 }}>
-            TZS 18M
-          </Text>
-          <ProgressBar progress={62} className="mt-3" />
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: editorial.onSurfaceVariant,
-              marginTop: 8,
-            }}
-          >
-            62% of TZS 29M
-          </Text>
-        </View>
-        {/* Tasks card */}
-        <View
-          style={[
-            {
-              flex: 1,
-              backgroundColor: editorial.surfaceContainerLowest,
-              padding: 20,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            },
-            shadowSoftSm,
-          ]}
-        >
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
-            Tasks Done
-          </Text>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: '#2D8E5B', marginTop: 4 }}>
-            14/22
-          </Text>
-          <ProgressBar progress={64} color="#2D8E5B" className="mt-3" />
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: editorial.onSurfaceVariant,
-              marginTop: 8,
-            }}
-          >
-            64% complete
-          </Text>
-        </View>
-      </View>
-
-      {/* Upcoming Tasks */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="checkbox-outline" size={20} color={editorial.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
-            Upcoming Tasks
-          </Text>
-        </View>
-        <Pressable>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
-            View All
-          </Text>
-        </Pressable>
       </View>
       <View
         style={[
           {
             backgroundColor: editorial.surfaceContainerLowest,
+            padding: 20,
             borderRadius: 20,
             borderWidth: 1,
             borderColor: editorial.outlineVariant,
-            overflow: 'hidden',
             marginBottom: 28,
           },
           shadowSoftSm,
         ]}
       >
-        {MOCK_TASKS.map((task, i) => (
-          <View
-            key={task.id}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: 12,
-              padding: 16,
-              borderBottomWidth: i < MOCK_TASKS.length - 1 ? 1 : 0,
-              borderBottomColor: editorial.surfaceContainerHigh,
-              backgroundColor: task.completed ? editorial.surfaceContainerLow : 'transparent',
-            }}
-          >
-            {/* Checkbox */}
-            <View
-              style={{
-                width: 24,
-                height: 24,
-                marginTop: 2,
-                borderRadius: 4,
-                borderWidth: 2,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: task.completed ? editorial.primaryContainer : editorial.surfaceContainerLowest,
-                borderColor: editorial.primaryContainer,
-              }}
-            >
-              {task.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
-            </View>
-            {/* Content */}
-            <View style={{ flex: 1, opacity: task.completed ? 0.5 : 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text
-                  style={{
-                    fontFamily: 'SpaceGrotesk-Bold',
-                    fontSize: 14,
-                    color: editorial.onSurface,
-                    textDecorationLine: task.completed ? 'line-through' : 'none',
-                  }}
-                >
-                  {task.title}
-                </Text>
-                {task.priority && !task.completed && (
-                  <View
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 4,
-                      backgroundColor: PRIORITY_STYLES[task.priority].bg,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: 'WorkSans-Bold',
-                        fontSize: 9,
-                        letterSpacing: 1,
-                        textTransform: 'uppercase',
-                        color: PRIORITY_STYLES[task.priority].text,
-                      }}
-                    >
-                      {PRIORITY_STYLES[task.priority].label}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
-                {task.due}
-              </Text>
-            </View>
-          </View>
-        ))}
+        <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
+          Budget tracking and a wedding checklist are coming soon.
+        </Text>
       </View>
 
       {/* Booked Vendors */}
@@ -364,67 +170,86 @@ export default function DashboardScreen() {
           </Text>
         </Pressable>
       </View>
-      <View style={{ gap: 12 }}>
-        {MOCK_VENDORS.map((vendor) => (
-          <View
-            key={vendor.id}
-            style={[
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: 16,
-                backgroundColor: editorial.surfaceContainerLowest,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-              },
-              shadowSoftSm,
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      {bookedVendors.length === 0 ? (
+        <View
+          style={[
+            {
+              backgroundColor: editorial.surfaceContainerLowest,
+              padding: 20,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: editorial.outlineVariant,
+            },
+            shadowSoftSm,
+          ]}
+        >
+          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
+            No booked vendors yet. Save a vendor as booked from their profile to see it here.
+          </Text>
+        </View>
+      ) : (
+        <View style={{ gap: 12 }}>
+          {bookedVendors.map((booking: any) => (
+            <View
+              key={booking.id}
+              style={[
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: 16,
+                  backgroundColor: editorial.surfaceContainerLowest,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: editorial.outlineVariant,
+                },
+                shadowSoftSm,
+              ]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 10,
+                    backgroundColor: editorial.tertiaryFixed,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name={iconForCategory(booking.vendors?.category)} size={22} color={editorial.tertiaryContainer} />
+                </View>
+                <View>
+                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
+                    {booking.vendors?.business_name ?? 'Vendor'}
+                  </Text>
+                  <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                    {booking.vendors?.category ?? ''}
+                  </Text>
+                </View>
+              </View>
               <View
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 10,
-                  backgroundColor: editorial.tertiaryFixed,
+                  flexDirection: 'row',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  gap: 4,
+                  backgroundColor: '#e8f5e9',
+                  borderRadius: 4,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderWidth: 1,
+                  borderColor: '#c8e6c9',
                 }}
               >
-                <Ionicons name={vendor.icon} size={22} color={editorial.tertiaryContainer} />
-              </View>
-              <View>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
-                  {vendor.name}
-                </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
-                  {vendor.detail}
+                <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
+                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: '#16a34a' }}>
+                  Booked
                 </Text>
               </View>
             </View>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                backgroundColor: '#e8f5e9',
-                borderRadius: 4,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderWidth: 1,
-                borderColor: '#c8e6c9',
-              }}
-            >
-              <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: '#16a34a' }}>
-                {vendor.status}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
     </ScreenWrapper>
   );
 }
