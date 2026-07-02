@@ -10,12 +10,13 @@ import { useOpusFestaAuth } from '@/lib/auth';
 import { getFeaturedVendors } from '@/lib/api/vendors';
 import { editorial, shadowSoftSm } from '@/constants/theme';
 
+// Keys are the actual `vendors.category` DB values — see VENDOR_CATEGORIES in constants/theme.ts.
 const CATEGORIES: { label: string; key: string | null }[] = [
   { label: 'All', key: null },
-  { label: 'Venues', key: 'venues' },
-  { label: 'Photo', key: 'photographers' },
-  { label: 'Catering', key: 'caterers' },
-  { label: 'Decor', key: 'decor' },
+  { label: 'Venues', key: 'Venues' },
+  { label: 'Photo', key: 'Photographers' },
+  { label: 'Catering', key: 'Caterers' },
+  { label: 'Decor', key: 'Decorators' },
 ];
 
 export default function HomeScreen() {
@@ -129,8 +130,8 @@ export default function HomeScreen() {
               name={vendor.business_name}
               category={vendor.category}
               location={vendor.location?.city}
-              rating={vendor.stats?.rating_avg ?? 0}
-              ratingCount={vendor.stats?.review_count ?? 0}
+              rating={vendor.stats?.averageRating ?? 0}
+              ratingCount={vendor.stats?.reviewCount ?? 0}
               priceRange={vendor.price_range}
               coverImage={vendor.cover_image}
             />

@@ -11,7 +11,8 @@ import { editorial, shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } f
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
-// Extended categories with colors from purple tint scale
+// Extended categories with colors from purple tint scale.
+// Keys are the actual `vendors.category` DB values — see VENDOR_CATEGORIES in constants/theme.ts.
 const BROWSE_CATEGORIES: {
   key: string;
   label: string;
@@ -20,14 +21,14 @@ const BROWSE_CATEGORIES: {
   iconColor: string;
   emoji: string;
 }[] = [
-  { key: 'venues', label: 'Venues', icon: 'business-outline', bg: purpleTints[100], iconColor: purpleTints[700], emoji: '🏛️' },
-  { key: 'photographers', label: 'Photo', icon: 'camera-outline', bg: purpleTints[50], iconColor: purpleTints[500], emoji: '📸' },
-  { key: 'caterers', label: 'Catering', icon: 'restaurant-outline', bg: purpleTints[150], iconColor: purpleTints[800], emoji: '🍽️' },
-  { key: 'decor', label: 'Decor', icon: 'sparkles-outline', bg: purpleTints[50], iconColor: purpleTints[700], emoji: '✨' },
-  { key: 'djs-mcs', label: 'Music', icon: 'musical-notes-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '🎵' },
-  { key: 'designers', label: 'Bridal', icon: 'shirt-outline', bg: purpleTints[150], iconColor: purpleTints[800], emoji: '👗' },
-  { key: 'rentals', label: 'Cakes', icon: 'cafe-outline', bg: purpleTints[50], iconColor: purpleTints[700], emoji: '🎂' },
-  { key: 'salons-makeup', label: 'Planning', icon: 'clipboard-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '📋' },
+  { key: 'Venues', label: 'Venues', icon: 'business-outline', bg: purpleTints[100], iconColor: purpleTints[700], emoji: '🏛️' },
+  { key: 'Photographers', label: 'Photo', icon: 'camera-outline', bg: purpleTints[50], iconColor: purpleTints[500], emoji: '📸' },
+  { key: 'Caterers', label: 'Catering', icon: 'restaurant-outline', bg: purpleTints[150], iconColor: purpleTints[800], emoji: '🍽️' },
+  { key: 'Decorators', label: 'Decor', icon: 'sparkles-outline', bg: purpleTints[50], iconColor: purpleTints[700], emoji: '✨' },
+  { key: 'DJs & Music', label: 'Music', icon: 'musical-notes-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '🎵' },
+  { key: 'Bridal Salons', label: 'Bridal', icon: 'shirt-outline', bg: purpleTints[150], iconColor: purpleTints[800], emoji: '👗' },
+  { key: 'Cake & Desserts', label: 'Cakes', icon: 'cafe-outline', bg: purpleTints[50], iconColor: purpleTints[700], emoji: '🎂' },
+  { key: 'Wedding Planners', label: 'Planning', icon: 'clipboard-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '📋' },
 ];
 
 const EMOJI_MAP: Record<string, string> = {};
@@ -46,7 +47,7 @@ export default function CategoriesScreen() {
 
   const { data: vendors = [] } = useQuery({
     queryKey: ['vendors', 'browse', selectedCategory],
-    queryFn: () => getVendorsByCategory(selectedCategory || 'venues'),
+    queryFn: () => getVendorsByCategory(selectedCategory || 'Venues'),
     enabled: !isSearching,
   });
 
@@ -62,8 +63,8 @@ export default function CategoriesScreen() {
     location: v.location,
     category: v.category,
     categoryLabel: v.category,
-    rating: v.stats?.rating_avg ?? 4.5,
-    reviews: v.stats?.review_count ?? 0,
+    rating: v.stats?.averageRating ?? null,
+    reviews: v.stats?.reviewCount ?? 0,
     price_min: v.price_range?.min ?? null,
     price_max: v.price_range?.max ?? null,
     cover_image: v.cover_image,
@@ -353,15 +354,17 @@ export default function CategoriesScreen() {
                           {heroVendor.categoryLabel}
                         </Text>
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                        <Ionicons name="star" size={12} color="#C4920A" />
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.onSurface }}>
-                          {heroVendor.rating}
-                        </Text>
-                        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
-                          ({heroVendor.reviews})
-                        </Text>
-                      </View>
+                      {heroVendor.rating != null && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <Ionicons name="star" size={12} color="#C4920A" />
+                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.onSurface }}>
+                            {heroVendor.rating}
+                          </Text>
+                          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                            ({heroVendor.reviews})
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <Text
                       style={{
@@ -510,12 +513,14 @@ export default function CategoriesScreen() {
                     {item.categoryLabel}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <Ionicons name="star" size={10} color="#C4920A" />
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 11, color: editorial.onSurface }}>
-                    {item.rating}
-                  </Text>
-                </View>
+                {item.rating != null && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Ionicons name="star" size={10} color="#C4920A" />
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 11, color: editorial.onSurface }}>
+                      {item.rating}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text
                 style={{

@@ -150,15 +150,18 @@ export const radii = {
   full: 9999,
 } as const;
 
+// Keys are the actual `vendors.category` DB values (see
+// supabase/migrations/20260611000002_vendor_categories_table.sql db_value column) —
+// they must match exactly for getVendorsByCategory()'s .eq('category', key) to return results.
 export const VENDOR_CATEGORIES = [
-  { key: 'venues', label: 'Venues', icon: 'business-outline' },
-  { key: 'photographers', label: 'Photography', icon: 'camera-outline' },
-  { key: 'caterers', label: 'Catering', icon: 'restaurant-outline' },
-  { key: 'decor', label: 'Decor', icon: 'sparkles-outline' },
-  { key: 'djs-mcs', label: 'Music & DJs', icon: 'musical-notes-outline' },
-  { key: 'designers', label: 'Bridal wear', icon: 'shirt-outline' },
-  { key: 'rentals', label: 'Cakes', icon: 'cafe-outline' },
-  { key: 'salons-makeup', label: 'Planning', icon: 'clipboard-outline' },
+  { key: 'Venues', label: 'Venues', icon: 'business-outline' },
+  { key: 'Photographers', label: 'Photography', icon: 'camera-outline' },
+  { key: 'Caterers', label: 'Catering', icon: 'restaurant-outline' },
+  { key: 'Decorators', label: 'Decor', icon: 'sparkles-outline' },
+  { key: 'DJs & Music', label: 'Music & DJs', icon: 'musical-notes-outline' },
+  { key: 'Bridal Salons', label: 'Bridal Wear', icon: 'shirt-outline' },
+  { key: 'Cake & Desserts', label: 'Cakes', icon: 'cafe-outline' },
+  { key: 'Wedding Planners', label: 'Planning', icon: 'clipboard-outline' },
 ] as const;
 
 export const TAB_ICONS = {

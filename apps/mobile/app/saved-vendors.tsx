@@ -41,7 +41,7 @@ export default function SavedVendorsScreen() {
               name={item.vendors?.business_name ?? 'Vendor'}
               category={item.vendors?.category ?? ''}
               location={item.vendors?.location?.city}
-              rating={item.vendors?.stats?.rating_avg ?? 0}
+              rating={item.vendors?.stats?.averageRating ?? 0}
               logo={item.vendors?.logo}
             />
           )}

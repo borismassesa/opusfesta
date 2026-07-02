@@ -44,7 +44,7 @@ export default function CategoryResultsScreen() {
               name={item.business_name}
               category={item.category}
               location={item.location?.city}
-              rating={item.stats?.rating_avg ?? 0}
+              rating={item.stats?.averageRating ?? 0}
               logo={item.logo}
               verified={item.verified}
             />
