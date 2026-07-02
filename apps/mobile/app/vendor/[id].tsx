@@ -1,10 +1,9 @@
-import { View, Text, ScrollView, Pressable, Image, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Linking, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar } from '@/components/ui/Avatar';
 import { getVendorById, getVendorReviews, getVendorPackages } from '@/lib/api/vendors';
 import { useSavedVendorIds, useToggleSavedVendor } from '@/hooks/useSavedVendors';
 import { formatCurrency } from '@opusfesta/lib';
@@ -12,57 +11,53 @@ import { colors } from '@/constants/theme';
 
 const HERO_HEIGHT = 384;
 
-// ── Fallback data ──
-const FALLBACK_TIERS = [
-  { id: '1', name: 'Intimate Garden Ceremony', description: 'Up to 50 guests \u2022 4 hours', price: 1200000 },
-  {
-    id: '2',
-    name: 'Classic Reception',
-    description: 'Up to 200 guests \u2022 Full day',
-    price: 5000000,
-    popular: true,
-    features: [
-      'Choice of 3 garden locations',
-      'Basic site management & security',
-      'Bridal preparation suite',
-    ],
-  },
-  { id: '3', name: 'The Arboretum Gala', description: 'Up to 300 guests \u2022 Exclusive access', price: 8500000 },
-];
+function formatAddress(location: any): string | null {
+  if (!location) return null;
+  if (typeof location.address === 'string' && location.address.trim()) return location.address;
+  const parts = [location.street, location.ward || location.district, location.city, location.region].filter(
+    (p) => typeof p === 'string' && p.trim(),
+  );
+  return parts.length > 0 ? parts.join(', ') : null;
+}
 
-const FALLBACK_DETAILS = {
-  amenities:
-    'Ceremony Area, Covered Outdoors Space, Dressing Room, Handicap Accessible, Indoor Event Space, Liability Insurance, Outdoor Event Space, Reception Area, Wireless Internet',
-  ceremony_types:
-    'Civil Union, Commitment Ceremony, Elopement, Interfaith Ceremony, Non-Religious Ceremony, Religious Ceremony, Second Wedding, Vow Renewal Ceremony',
-  settings: 'Ballroom, Garden, Historic Venue, Museum, Park, Tented, Trees',
-  service_offerings: 'Service Staff, Transportation',
-};
+function toUrl(value: string, base?: string): string {
+  if (/^https?:\/\//i.test(value)) return value;
+  if (base) return `${base}${value.replace(/^@/, '')}`;
+  return `https://${value}`;
+}
 
-const FALLBACK_REVIEW = {
-  id: '1',
-  user: { name: 'Lex C', initials: 'L' },
-  rating: 5,
-  date: '09/02/25',
-  content:
-    "It's 52 days later and we (and our guests) are still absolutely gushing over our outdoor, tented reception...",
-  highlighted: true,
-};
+function buildConnectLinks(vendor: any): { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] {
+  const contact = vendor?.contact_info ?? {};
+  const social = vendor?.social_links ?? {};
+  const links: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [];
 
-const FALLBACK_TEAM = {
-  name: 'Sarah Johnson',
-  role: 'Venue Coordinator',
-  quote:
-    "I've helped over 200 couples realize their dream garden wedding. I can't wait to hear your story!",
-};
-
-const CONNECT_LINKS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'call-outline', label: 'Call' },
-  { icon: 'globe-outline', label: 'Website' },
-  { icon: 'logo-whatsapp', label: 'WhatsApp' },
-  { icon: 'logo-instagram', label: 'Instagram' },
-  { icon: 'logo-facebook', label: 'Facebook' },
-];
+  if (contact.phone) {
+    links.push({ icon: 'call-outline', label: 'Call', onPress: () => Linking.openURL(`tel:${contact.phone}`) });
+  }
+  if (social.website) {
+    links.push({ icon: 'globe-outline', label: 'Website', onPress: () => Linking.openURL(toUrl(social.website)) });
+  }
+  const whatsapp = contact.whatsapp || social.whatsapp;
+  if (whatsapp) {
+    const digits = String(whatsapp).replace(/[^\d]/g, '');
+    links.push({ icon: 'logo-whatsapp', label: 'WhatsApp', onPress: () => Linking.openURL(`https://wa.me/${digits}`) });
+  }
+  if (social.instagram) {
+    links.push({
+      icon: 'logo-instagram',
+      label: 'Instagram',
+      onPress: () => Linking.openURL(toUrl(social.instagram, 'https://instagram.com/')),
+    });
+  }
+  if (social.facebook) {
+    links.push({
+      icon: 'logo-facebook',
+      label: 'Facebook',
+      onPress: () => Linking.openURL(toUrl(social.facebook, 'https://facebook.com/')),
+    });
+  }
+  return links;
+}
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -70,11 +65,10 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-function DetailBlock({ title, text }: { title: string; text: string }) {
+function EmptyState({ text }: { text: string }) {
   return (
-    <View className="mb-5">
-      <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">{title}</Text>
-      <Text className="text-sm text-of-muted leading-relaxed">{text}</Text>
+    <View className="p-5 rounded-xl bg-of-pale border border-of-border items-center">
+      <Text className="text-sm text-of-muted text-center">{text}</Text>
     </View>
   );
 }
@@ -84,7 +78,7 @@ export default function VendorProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { data: vendor } = useQuery({
+  const { data: vendor, isLoading } = useQuery({
     queryKey: ['vendor', id],
     queryFn: () => getVendorById(id!),
     enabled: !!id,
@@ -106,35 +100,53 @@ export default function VendorProfileScreen() {
   const toggleSaved = useToggleSavedVendor();
   const isSaved = savedVendorIds.includes(id!);
 
-  const displayName = vendor?.business_name ?? 'Norfolk Botanical Garden';
-  const displayLocation = vendor?.location?.city ?? 'Dar es Salaam';
-  const displayAddress = vendor?.location?.address ?? '6700 Azalea Garden Road, Norfolk';
-  const displayPrice = vendor?.price_range?.min ?? 5000000;
-  const displayRating = vendor?.stats?.rating_avg ?? 4.6;
-  const reviewCount = vendor?.stats?.reviewCount ?? 22;
-  const displayCategory = vendor?.category ?? 'Wedding Venue';
-  const displayCapacity = 'Up to 300 guests';
-  const displayDescription =
-    vendor?.description ??
-    'Norfolk Botanical Garden, located in the heart of Dar es Salaam, is a picturesque outdoor wedding venue spanning over 175 acres. With lush landscapes, water views on three sides, and curated floral displays, it offers a serene and scenic setting for weddings of all sizes.';
-  const isVerified = vendor?.verified ?? true;
-  const heroImage = vendor?.cover_image ?? null;
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-br-bg">
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
-  const tiers =
-    packages.length > 0
-      ? packages.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          price: p.price,
-          popular: p.is_featured,
-          features: p.features ?? [],
-        }))
-      : FALLBACK_TIERS;
+  if (!vendor) {
+    return (
+      <View className="flex-1 items-center justify-center bg-br-bg px-6">
+        <Ionicons name="alert-circle-outline" size={40} color={colors.muted} />
+        <Text className="font-work-sans-bold text-of-text mt-3">Vendor not found</Text>
+        <Pressable onPress={() => router.back()} className="mt-4">
+          <Text className="text-sm font-work-sans-bold text-of-primary">Go back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
-  const displayReviews = reviews.length > 0 ? reviews : [FALLBACK_REVIEW];
+  const displayName = vendor.business_name;
+  const displayLocation = vendor.location?.city ?? null;
+  const displayAddress = formatAddress(vendor.location);
+  const displayPrice = vendor.price_range?.min ?? null;
+  const displayRating = vendor.stats?.averageRating ?? null;
+  const reviewCount = vendor.stats?.reviewCount ?? 0;
+  const displayCategory = vendor.category;
+  const displayDescription = vendor.description ?? null;
+  const isVerified = vendor.verified ?? false;
+  const heroImage = vendor.cover_image ?? null;
+  const servicesOffered: string[] = Array.isArray(vendor.services_offered)
+    ? vendor.services_offered.filter((s: unknown) => typeof s === 'string' && s.trim())
+    : [];
+  const team: { id: string; name: string; role?: string; bio?: string; avatar?: string }[] = Array.isArray(vendor.team)
+    ? vendor.team.filter((m: any) => m?.name)
+    : [];
 
-  const contactInfo = vendor?.contact_info ?? {};
+  const tiers = packages.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    price: p.price,
+    popular: p.is_featured,
+    features: p.features ?? [],
+  }));
+
+  const connectLinks = buildConnectLinks(vendor);
 
   return (
     <View className="flex-1 bg-br-bg">
@@ -207,17 +219,19 @@ export default function VendorProfileScreen() {
             <Text className="font-playfair-bold text-2xl text-of-text mb-1">
               {displayName}
             </Text>
-            <View className="flex-row items-center gap-1 mb-4">
-              <Ionicons name="location-sharp" size={14} color={colors.muted} />
-              <Text className="text-sm text-of-muted">{displayLocation}</Text>
-            </View>
+            {displayLocation && (
+              <View className="flex-row items-center gap-1 mb-4">
+                <Ionicons name="location-sharp" size={14} color={colors.muted} />
+                <Text className="text-sm text-of-muted">{displayLocation}</Text>
+              </View>
+            )}
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-[10px] uppercase tracking-widest text-of-muted font-work-sans-bold">
                   Starting from
                 </Text>
                 <Text className="text-xl font-work-sans-bold text-of-primary">
-                  {formatCurrency(displayPrice)}
+                  {displayPrice != null ? formatCurrency(displayPrice) : 'Contact for pricing'}
                 </Text>
               </View>
               {isVerified && (
@@ -244,98 +258,106 @@ export default function VendorProfileScreen() {
               {displayCategory}
             </Text>
           </View>
-          <View className="flex-row items-center gap-1.5 bg-amber-50 rounded-xl px-3 h-8 border border-amber-100">
-            <Ionicons name="star" size={14} color="#f59e0b" />
-            <Text className="text-[10px] font-work-sans-bold text-amber-700 uppercase tracking-tight">
-              {displayRating} Rating
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-1.5 bg-slate-100 rounded-xl px-3 h-8 border border-slate-200">
-            <Ionicons name="people-outline" size={14} color="#475569" />
-            <Text className="text-[10px] font-work-sans-bold text-slate-700 uppercase tracking-tight">
-              {displayCapacity}
-            </Text>
-          </View>
+          {displayRating != null && (
+            <View className="flex-row items-center gap-1.5 bg-amber-50 rounded-xl px-3 h-8 border border-amber-100">
+              <Ionicons name="star" size={14} color="#f59e0b" />
+              <Text className="text-[10px] font-work-sans-bold text-amber-700 uppercase tracking-tight">
+                {displayRating} Rating
+              </Text>
+            </View>
+          )}
         </ScrollView>
 
         {/* ═══ 4. About ═══ */}
         <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
           <SectionTitle>About this Vendor</SectionTitle>
-          <Text className="text-sm text-of-muted leading-relaxed">{displayDescription}</Text>
+          <Text className="text-sm text-of-muted leading-relaxed">
+            {displayDescription || 'This vendor hasn’t added a description yet.'}
+          </Text>
         </View>
 
         {/* ═══ 5. Details ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
-          <SectionTitle>Details</SectionTitle>
-          <DetailBlock title="Amenities" text={FALLBACK_DETAILS.amenities} />
-          <DetailBlock title="Ceremony types" text={FALLBACK_DETAILS.ceremony_types} />
-          <DetailBlock title="Settings" text={FALLBACK_DETAILS.settings} />
-          <DetailBlock title="Venue service offerings" text={FALLBACK_DETAILS.service_offerings} />
-        </View>
+        {servicesOffered.length > 0 && (
+          <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+            <SectionTitle>Services offered</SectionTitle>
+            <View className="gap-2">
+              {servicesOffered.map((service, i) => (
+                <View key={i} className="flex-row items-center gap-2">
+                  <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                  <Text className="text-sm text-of-muted">{service}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* ═══ 6. Packages & Pricing ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
+        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
           <SectionTitle>Packages & Pricing</SectionTitle>
-          <View className="gap-4">
-            {tiers.map((tier: any) =>
-              tier.popular ? (
-                <View
-                  key={tier.id}
-                  className="p-5 rounded-xl relative"
-                  style={{ borderWidth: 2, borderColor: colors.primary, backgroundColor: 'rgba(91,45,142,0.02)' }}
-                >
+          {tiers.length === 0 ? (
+            <EmptyState text="This vendor hasn't published pricing packages yet. Request a quote to get custom pricing." />
+          ) : (
+            <View className="gap-4">
+              {tiers.map((tier: any) =>
+                tier.popular ? (
                   <View
-                    style={{
-                      position: 'absolute', top: -12, left: 16,
-                      backgroundColor: colors.primary,
-                      paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
-                    }}
+                    key={tier.id}
+                    className="p-5 rounded-xl relative"
+                    style={{ borderWidth: 2, borderColor: colors.primary, backgroundColor: 'rgba(91,45,142,0.02)' }}
                   >
-                    <Text className="text-[9px] font-work-sans-bold text-white uppercase tracking-widest">
-                      Most Popular
-                    </Text>
-                  </View>
-                  <View className="flex-row justify-between items-start mt-1">
-                    <View className="flex-1 mr-2">
-                      <Text className="font-work-sans-bold text-sm text-of-primary">{tier.name}</Text>
-                      <Text className="text-xs" style={{ color: 'rgba(91,45,142,0.6)' }}>
-                        {tier.description}
+                    <View
+                      style={{
+                        position: 'absolute', top: -12, left: 16,
+                        backgroundColor: colors.primary,
+                        paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
+                      }}
+                    >
+                      <Text className="text-[9px] font-work-sans-bold text-white uppercase tracking-widest">
+                        Most Popular
                       </Text>
                     </View>
-                    <Text className="font-work-sans-bold text-of-primary">
-                      {formatCurrency(tier.price)}
-                    </Text>
-                  </View>
-                  {tier.features?.length > 0 && (
-                    <View className="mt-3 gap-2">
-                      {tier.features.map((f: string, i: number) => (
-                        <View key={i} className="flex-row items-center gap-2">
-                          <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                          <Text className="text-xs text-of-muted">{f}</Text>
-                        </View>
-                      ))}
+                    <View className="flex-row justify-between items-start mt-1">
+                      <View className="flex-1 mr-2">
+                        <Text className="font-work-sans-bold text-sm text-of-primary">{tier.name}</Text>
+                        <Text className="text-xs" style={{ color: 'rgba(91,45,142,0.6)' }}>
+                          {tier.description}
+                        </Text>
+                      </View>
+                      <Text className="font-work-sans-bold text-of-primary">
+                        {formatCurrency(tier.price)}
+                      </Text>
                     </View>
-                  )}
-                </View>
-              ) : (
-                <View
-                  key={tier.id}
-                  className="p-5 rounded-xl bg-white border border-of-border"
-                  style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
-                >
-                  <View className="flex-row justify-between items-start">
-                    <View className="flex-1 mr-2">
-                      <Text className="font-work-sans-bold text-sm text-of-text">{tier.name}</Text>
-                      <Text className="text-xs text-of-muted">{tier.description}</Text>
-                    </View>
-                    <Text className="font-work-sans-bold text-of-text">
-                      {formatCurrency(tier.price)}
-                    </Text>
+                    {tier.features?.length > 0 && (
+                      <View className="mt-3 gap-2">
+                        {tier.features.map((f: string, i: number) => (
+                          <View key={i} className="flex-row items-center gap-2">
+                            <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                            <Text className="text-xs text-of-muted">{f}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
-                </View>
-              ),
-            )}
-          </View>
+                ) : (
+                  <View
+                    key={tier.id}
+                    className="p-5 rounded-xl bg-white border border-of-border"
+                    style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
+                  >
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 mr-2">
+                        <Text className="font-work-sans-bold text-sm text-of-text">{tier.name}</Text>
+                        <Text className="text-xs text-of-muted">{tier.description}</Text>
+                      </View>
+                      <Text className="font-work-sans-bold text-of-text">
+                        {formatCurrency(tier.price)}
+                      </Text>
+                    </View>
+                  </View>
+                ),
+              )}
+            </View>
+          )}
         </View>
 
         {/* ═══ 7. Availability ═══ */}
@@ -348,9 +370,12 @@ export default function VendorProfileScreen() {
               <View className="flex-1">
                 <Text className="font-work-sans-bold text-of-text mb-1">Availability</Text>
                 <Text className="text-sm text-of-muted leading-relaxed">
-                  Looking for the perfect match? We currently have limited dates for 2025. Continue browsing or request a date to check specific availability.
+                  Interested in this vendor? Request a quote to check their availability for your date.
                 </Text>
-                <Pressable className="flex-row items-center gap-1 mt-4">
+                <Pressable
+                  onPress={() => router.push(`/booking/${id}`)}
+                  className="flex-row items-center gap-1 mt-4"
+                >
                   <Text className="text-sm font-work-sans-bold text-of-primary">
                     Check available dates
                   </Text>
@@ -362,122 +387,135 @@ export default function VendorProfileScreen() {
         </View>
 
         {/* ═══ 8. Meet the Team ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
-          <SectionTitle>Meet the Team</SectionTitle>
-          <View
-            className="flex-row items-center gap-4 p-4 bg-white rounded-xl border border-of-border"
-            style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
-          >
-            <View className="w-20 h-20 rounded-full bg-of-pale items-center justify-center overflow-hidden">
-              <Text style={{ fontSize: 32 }}>👩</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-work-sans-bold text-of-text">{FALLBACK_TEAM.name}</Text>
-              <Text className="text-xs font-work-sans-bold text-of-primary uppercase mb-2">
-                {FALLBACK_TEAM.role}
-              </Text>
-              <Text className="text-xs text-of-muted leading-tight italic">
-                "{FALLBACK_TEAM.quote}"
-              </Text>
+        {team.length > 0 && (
+          <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+            <SectionTitle>Meet the Team</SectionTitle>
+            <View className="gap-3">
+              {team.map((member) => (
+                <View
+                  key={member.id}
+                  className="flex-row items-center gap-4 p-4 bg-white rounded-xl border border-of-border"
+                  style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
+                >
+                  <View className="w-20 h-20 rounded-full bg-of-pale items-center justify-center overflow-hidden">
+                    {member.avatar ? (
+                      <Image source={{ uri: member.avatar }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    ) : (
+                      <Text className="font-work-sans-bold text-of-primary text-xl">
+                        {member.name.charAt(0).toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-work-sans-bold text-of-text">{member.name}</Text>
+                    {member.role && (
+                      <Text className="text-xs font-work-sans-bold text-of-primary uppercase mb-2">
+                        {member.role}
+                      </Text>
+                    )}
+                    {member.bio && (
+                      <Text className="text-xs text-of-muted leading-tight">{member.bio}</Text>
+                    )}
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
+        )}
 
         {/* ═══ 9. Reviews ═══ */}
         <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
           <View className="flex-row items-center justify-between mb-5">
             <Text className="font-playfair-bold text-xl text-of-text">{reviewCount} reviews</Text>
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="star" size={16} color="#f59e0b" />
-              <Text className="font-work-sans-bold text-of-text">{displayRating}</Text>
-            </View>
+            {displayRating != null && (
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="star" size={16} color="#f59e0b" />
+                <Text className="font-work-sans-bold text-of-text">{displayRating}</Text>
+              </View>
+            )}
           </View>
 
-          {displayReviews.map((review: any) => (
-            <View
-              key={review.id}
-              className="bg-white rounded-xl p-5 border border-of-border mb-3"
-              style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
-            >
-              {review.highlighted && (
-                <View className="bg-slate-100 self-start px-2 py-0.5 rounded mb-3">
-                  <Text className="text-[10px] font-work-sans-bold text-of-muted uppercase tracking-wider">
-                    Highlighted review
-                  </Text>
-                </View>
-              )}
-              <View className="flex-row items-start gap-3 mb-3">
-                <View className="w-10 h-10 rounded-full bg-of-primary items-center justify-center">
-                  <Text className="font-work-sans-bold text-white text-sm">
-                    {review.user?.initials ?? review.user?.name?.charAt(0) ?? '?'}
-                  </Text>
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row justify-between items-start">
-                    <Text className="font-work-sans-bold text-sm text-of-text">
-                      {review.user?.name}
+          {reviews.length === 0 ? (
+            <EmptyState text="No reviews yet. Be the first to book and share your experience." />
+          ) : (
+            reviews.map((review: any) => (
+              <View
+                key={review.id}
+                className="bg-white rounded-xl p-5 border border-of-border mb-3"
+                style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
+              >
+                <View className="flex-row items-start gap-3 mb-3">
+                  <View className="w-10 h-10 rounded-full bg-of-primary items-center justify-center">
+                    <Text className="font-work-sans-bold text-white text-sm">
+                      {review.user?.name?.charAt(0) ?? '?'}
                     </Text>
-                    {review.date && (
-                      <Text className="text-[10px] text-of-muted">{review.date}</Text>
-                    )}
                   </View>
-                  <View className="flex-row gap-0.5 mt-0.5">
-                    {Array.from({ length: review.rating ?? 5 }).map((_, i) => (
-                      <Ionicons key={i} name="star" size={12} color="#f59e0b" />
-                    ))}
+                  <View className="flex-1">
+                    <View className="flex-row justify-between items-start">
+                      <Text className="font-work-sans-bold text-sm text-of-text">
+                        {review.user?.name}
+                      </Text>
+                      {review.created_at && (
+                        <Text className="text-[10px] text-of-muted">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                    <View className="flex-row gap-0.5 mt-0.5">
+                      {Array.from({ length: Math.round(review.rating ?? 0) }).map((_, i) => (
+                        <Ionicons key={i} name="star" size={12} color="#f59e0b" />
+                      ))}
+                    </View>
                   </View>
                 </View>
+                <Text className="text-sm text-of-muted leading-relaxed">{review.content}</Text>
               </View>
-              <Text className="text-sm text-of-muted leading-relaxed">
-                {review.content}
-                <Text className="text-of-primary font-work-sans-bold"> Read more</Text>
-              </Text>
-            </View>
-          ))}
-
-          <Pressable className="py-3 rounded-full border border-of-primary items-center mt-3">
-            <Text className="text-sm font-work-sans-bold text-of-primary">
-              See all {reviewCount} reviews
-            </Text>
-          </Pressable>
+            ))
+          )}
         </View>
 
         {/* ═══ 10. Location ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
-          <SectionTitle>Location and service area</SectionTitle>
-          {/* Map placeholder */}
-          <View
-            className="rounded-xl overflow-hidden mb-4 items-center justify-center"
-            style={{ height: 200, backgroundColor: '#e2e8f0' }}
-          >
-            <View className="bg-white p-3 rounded-full" style={{ shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 }}>
-              <Ionicons name="location" size={28} color={colors.primary} />
+        {(displayAddress || displayLocation) && (
+          <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+            <SectionTitle>Location and service area</SectionTitle>
+            <View className="flex-row items-start gap-2 mb-3">
+              <Ionicons name="location-sharp" size={18} color={colors.primary} />
+              <Text className="text-sm text-of-muted flex-1">{displayAddress ?? displayLocation}</Text>
             </View>
+            <Pressable
+              onPress={() => {
+                const query = encodeURIComponent(displayAddress ?? displayLocation ?? '');
+                Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+              }}
+              className="flex-row items-center gap-1.5 self-start"
+            >
+              <Ionicons name="map-outline" size={16} color={colors.primary} />
+              <Text className="text-sm font-work-sans-bold text-of-primary">Open in Maps</Text>
+            </Pressable>
           </View>
-          <View className="flex-row items-start gap-2">
-            <Ionicons name="location-sharp" size={18} color={colors.primary} />
-            <Text className="text-sm text-of-muted flex-1">{displayAddress}</Text>
-          </View>
-        </View>
+        )}
 
         {/* ═══ 11. Connect ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40, marginBottom: 48 }}>
-          <SectionTitle>Connect with this vendor</SectionTitle>
-          <View>
-            {CONNECT_LINKS.map((link, i) => (
-              <Pressable
-                key={link.label}
-                className={`flex-row items-center gap-4 py-3.5 ${
-                  i < CONNECT_LINKS.length - 1 ? 'border-b border-of-border' : ''
-                }`}
-              >
-                <Ionicons name={link.icon} size={20} color={colors.primary} />
-                <Text className="flex-1 font-work-sans-medium text-of-text">{link.label}</Text>
-                <Ionicons name="chevron-forward" size={14} color={colors.muted} />
-              </Pressable>
-            ))}
+        {connectLinks.length > 0 && (
+          <View style={{ paddingHorizontal: 20, marginTop: 40, marginBottom: 48 }}>
+            <SectionTitle>Connect with this vendor</SectionTitle>
+            <View>
+              {connectLinks.map((link, i) => (
+                <Pressable
+                  key={link.label}
+                  onPress={link.onPress}
+                  className={`flex-row items-center gap-4 py-3.5 ${
+                    i < connectLinks.length - 1 ? 'border-b border-of-border' : ''
+                  }`}
+                >
+                  <Ionicons name={link.icon} size={20} color={colors.primary} />
+                  <Text className="flex-1 font-work-sans-medium text-of-text">{link.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Bottom spacer for sticky CTA */}
         <View style={{ height: 100 }} />
