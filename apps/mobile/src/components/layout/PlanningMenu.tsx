@@ -12,9 +12,9 @@ const MENU_ITEMS: {
   icon: IonIcon;
   route: string;
 }[] = [
-  { key: 'budget', label: 'Budget Advisor', icon: 'logo-usd', route: '/(tabs)/dashboard' },
-  { key: 'checklist', label: 'Checklist', icon: 'list-outline', route: '/(tabs)/dashboard' },
-  { key: 'guests', label: 'Guest List', icon: 'people-outline', route: '/(tabs)/dashboard' },
+  { key: 'budget', label: 'Budget Advisor', icon: 'logo-usd', route: '/planning/budget' },
+  { key: 'checklist', label: 'Checklist', icon: 'list-outline', route: '/planning/checklist' },
+  { key: 'guests', label: 'Guest List', icon: 'people-outline', route: '/planning/guests' },
   { key: 'inspiration', label: 'Inspiration', icon: 'play-circle-outline', route: '/(tabs)/dashboard' },
 ];
 
