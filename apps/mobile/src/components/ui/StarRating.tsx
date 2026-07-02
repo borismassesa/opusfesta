@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 interface StarRatingProps {
   rating: number;
@@ -26,7 +26,7 @@ export function StarRating({ rating, count, size = 'sm' }: StarRatingProps) {
           style={{
             fontFamily: 'WorkSans-Regular',
             fontSize: 12,
-            color: brutalist.onSurfaceVariant,
+            color: editorial.onSurfaceVariant,
             marginLeft: 4,
           }}
         >

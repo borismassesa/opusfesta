@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite, useGuestbook, useApproveGuestbook } from '@/hooks/useWeddingWebsite';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 import type { GuestbookEntry } from '@/types/wedding-website';
 
 export default function GuestbookManageScreen() {
@@ -12,7 +12,7 @@ export default function GuestbookManageScreen() {
   const approve = useApproveGuestbook();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
         <Header title="Guestbook" showBack />
       </View>

@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
-import { brutalist, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoftSm } from '@/constants/theme';
 
 const MOCK_MESSAGES = [
   {
@@ -33,7 +33,7 @@ export default function ChatScreen() {
   const [message, setMessage] = useState('');
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }} edges={['top']}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
         <Header title="Serena Grand" showBack />
       </View>
@@ -53,26 +53,26 @@ export default function ChatScreen() {
                 borderRadius: 12,
                 ...(item.sender === 'user'
                   ? {
-                      backgroundColor: brutalist.primaryContainer,
+                      backgroundColor: editorial.primaryContainer,
                       alignSelf: 'flex-end',
                       borderBottomRightRadius: 4,
                     }
                   : {
-                      backgroundColor: brutalist.surfaceContainerLowest,
+                      backgroundColor: editorial.surfaceContainerLowest,
                       alignSelf: 'flex-start',
                       borderBottomLeftRadius: 4,
                       borderWidth: 1,
-                      borderColor: brutalist.outlineVariant,
+                      borderColor: editorial.outlineVariant,
                     }),
               },
-              item.sender === 'vendor' ? brutalistShadowSm : {},
+              item.sender === 'vendor' ? shadowSoftSm : {},
             ]}
           >
             <Text
               style={{
                 fontFamily: 'WorkSans-Regular',
                 fontSize: 14,
-                color: item.sender === 'user' ? '#ffffff' : brutalist.onSurface,
+                color: item.sender === 'user' ? '#ffffff' : editorial.onSurface,
               }}
             >
               {item.content}
@@ -82,7 +82,7 @@ export default function ChatScreen() {
                 fontFamily: 'WorkSans-Regular',
                 fontSize: 10,
                 marginTop: 4,
-                color: item.sender === 'user' ? 'rgba(255,255,255,0.6)' : brutalist.onSurfaceVariant,
+                color: item.sender === 'user' ? 'rgba(255,255,255,0.6)' : editorial.onSurfaceVariant,
               }}
             >
               {item.time}
@@ -99,8 +99,8 @@ export default function ChatScreen() {
             paddingHorizontal: 20,
             paddingVertical: 12,
             borderTopWidth: 2,
-            borderTopColor: brutalist.outlineVariant,
-            backgroundColor: brutalist.surfaceContainerLowest,
+            borderTopColor: editorial.outlineVariant,
+            backgroundColor: editorial.surfaceContainerLowest,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 12,
@@ -110,16 +110,16 @@ export default function ChatScreen() {
             value={message}
             onChangeText={setMessage}
             placeholder="Type a message..."
-            placeholderTextColor={brutalist.outlineVariant}
+            placeholderTextColor={editorial.outlineVariant}
             style={{
               flex: 1,
-              backgroundColor: brutalist.surfaceContainerLow,
+              backgroundColor: editorial.surfaceContainerLow,
               borderRadius: 12,
               paddingHorizontal: 16,
               paddingVertical: 12,
               fontFamily: 'WorkSans-Regular',
               fontSize: 14,
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
             }}
           />
           <Pressable
@@ -131,11 +131,11 @@ export default function ChatScreen() {
                 width: 40,
                 height: 40,
                 borderRadius: 8,
-                backgroundColor: brutalist.primaryContainer,
+                backgroundColor: editorial.primaryContainer,
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              brutalistShadowSm,
+              shadowSoftSm,
             ]}
           >
             <Ionicons name="send" size={18} color="#fff" />

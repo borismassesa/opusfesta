@@ -19,14 +19,14 @@ export const colors = {
 } as const;
 
 /**
- * Brutalist editorial design tokens
+ * Editorial Romance design tokens
  * Built from brand palette:
  *   Primary  #5B2D8E  (Deep Purple)
  *   Accent   #7B4FA2  (Accent Purple)
  *   Soft     #C9A0DC  (Lavender)
  *   Tints    950→50 purple scale
  */
-export const brutalist = {
+export const editorial = {
   /* Backgrounds */
   bg: '#faf7fc',               // very faint purple-tinted white
   surface: '#faf7fc',
@@ -68,6 +68,24 @@ export const brutalist = {
   error: '#ba1a1a',
 } as const;
 
+/**
+ * Auth flow design tokens — matches the flat, monochrome OpusFesta/OpusPass
+ * web auth screens (apps/opus_website, apps/opus_pass) rather than the
+ * Editorial Romance system above. Scoped to app/(auth)/* and src/components/auth/*.
+ */
+export const authTheme = {
+  bg: '#FFFFFF',
+  ink: '#1A1A1A',
+  textSecondary: '#6B7280',
+  placeholder: '#9CA3AF',  // muted text: input placeholders, disabled/cooldown labels
+  chipBg: '#F3F4F6',       // neutral pill/chip background
+  border: '#D1D5DB',
+  borderFocus: '#C9A0DC',
+  accent: '#7E5896',
+  danger: '#DC2626',
+  radius: 8,
+} as const;
+
 /** Brand purple tint scale for direct use */
 export const purpleTints = {
   950: '#1A0A2E',
@@ -87,9 +105,8 @@ export const purpleTints = {
 /**
  * Soft elevation shadows (OpusFesta "Editorial Romance" system).
  * Blurred, low-opacity, minimal offset — the shared web look, not hard offset.
- * Export names are retained so existing call sites soften without churn.
  */
-export const brutalistShadow = {
+export const shadowSoft = {
   shadowColor: '#2A1245',
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.08,
@@ -97,7 +114,7 @@ export const brutalistShadow = {
   elevation: 6,
 } as const;
 
-export const brutalistShadowSm = {
+export const shadowSoftSm = {
   shadowColor: '#2A1245',
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.06,
@@ -105,18 +122,13 @@ export const brutalistShadowSm = {
   elevation: 3,
 } as const;
 
-export const brutalistShadowPrimary = {
+export const shadowSoftPrimary = {
   shadowColor: '#5B2D8E',
   shadowOffset: { width: 0, height: 10 },
   shadowOpacity: 0.22,
   shadowRadius: 28,
   elevation: 8,
 } as const;
-
-/** Preferred aliases for the soft-shadow tokens (use these in new code). */
-export const shadowSoft = brutalistShadow;
-export const shadowSoftSm = brutalistShadowSm;
-export const shadowSoftPrimary = brutalistShadowPrimary;
 
 export const spacing = {
   xs: 4,

@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'count';
 
@@ -10,10 +10,10 @@ interface BadgeProps {
 }
 
 const variantConfig: Record<BadgeVariant, { bg: string; text: string }> = {
-  default: { bg: brutalist.tertiaryFixed, text: brutalist.tertiaryContainer },
+  default: { bg: editorial.tertiaryFixed, text: editorial.tertiaryContainer },
   success: { bg: '#dcfce7', text: '#16a34a' },
   warning: { bg: '#fff7ed', text: '#C4920A' },
-  count: { bg: brutalist.primaryContainer, text: '#ffffff' },
+  count: { bg: editorial.primaryContainer, text: '#ffffff' },
 };
 
 export function Badge({

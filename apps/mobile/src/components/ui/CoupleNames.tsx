@@ -1,5 +1,5 @@
 import { Text, type TextStyle } from 'react-native';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 interface CoupleNamesProps {
   partner1?: string;
@@ -29,7 +29,7 @@ export function CoupleNames({
   partner2,
   joiner = '&',
   size = 'lg',
-  color = brutalist.primaryContainer,
+  color = editorial.primaryContainer,
   align = 'center',
   style,
 }: CoupleNamesProps) {

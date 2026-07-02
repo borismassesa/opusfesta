@@ -1,7 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 interface HeaderProps {
   title: string;
@@ -23,7 +23,7 @@ export function Header({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
         {showBack && (
           <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-            <Ionicons name="arrow-back" size={22} color={brutalist.primaryContainer} />
+            <Ionicons name="arrow-back" size={22} color={editorial.primaryContainer} />
           </Pressable>
         )}
         <View style={{ flex: 1 }}>
@@ -32,7 +32,7 @@ export function Header({
               style={{
                 fontFamily: 'WorkSans-Regular',
                 fontSize: 13,
-                color: brutalist.onSurfaceVariant,
+                color: editorial.onSurfaceVariant,
               }}
             >
               {subtitle}
@@ -43,7 +43,7 @@ export function Header({
               fontFamily: 'SpaceGrotesk-Bold',
               fontSize: 24,
               letterSpacing: -0.5,
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
             }}
             numberOfLines={1}
           >

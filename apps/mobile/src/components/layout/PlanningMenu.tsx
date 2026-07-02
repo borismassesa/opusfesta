@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { editorial, shadowSoft } from '@/constants/theme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -137,11 +137,11 @@ export function PlanningMenu({ visible, onClose }: PlanningMenuProps) {
                     width: 60,
                     height: 60,
                     borderRadius: 12,
-                    backgroundColor: brutalist.primaryContainer,
+                    backgroundColor: editorial.primaryContainer,
                     alignItems: 'center',
                     justifyContent: 'center',
                   },
-                  brutalistShadow,
+                  shadowSoft,
                 ]}
               >
                 <Ionicons name={item.icon} size={26} color="#fff" />

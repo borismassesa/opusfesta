@@ -10,7 +10,7 @@ import { useCreateWebsite, useWeddingWebsite, useUpdateWebsite } from '@/hooks/u
 import { useOpusFestaAuth } from '@/lib/auth';
 import { generateSlug } from '@/lib/api/wedding-website';
 import { WEBSITE_THEMES } from '@/constants/wedding-sections';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 import type { WebsiteTheme } from '@/types/wedding-website';
 
 export default function CreateWebsiteScreen() {
@@ -60,7 +60,7 @@ export default function CreateWebsiteScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
         <Header title={isEdit ? 'Edit Theme' : 'Create Website'} showBack />
 

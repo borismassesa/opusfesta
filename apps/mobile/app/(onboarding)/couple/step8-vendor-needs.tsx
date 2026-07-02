@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { VENDOR_NEED_ITEMS } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
@@ -24,7 +24,7 @@ export default function VendorNeedsStep() {
   };
 
   return (
-    <BrutalistStepContainer
+    <EditorialStepContainer
       title="What vendors"
       titleAccent="do you need?"
       subtitle="Select all you're looking for. You can update this later."
@@ -46,11 +46,11 @@ export default function VendorNeedsStep() {
                   width: '47%',
                   padding: 16,
                   borderRadius: 12,
-                  backgroundColor: isSelected ? brutalist.tertiaryFixed : brutalist.surfaceContainerLow,
+                  backgroundColor: isSelected ? editorial.tertiaryFixed : editorial.surfaceContainerLow,
                   borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? brutalist.primaryContainer : 'transparent',
+                  borderColor: isSelected ? editorial.primaryContainer : 'transparent',
                 },
-                brutalistShadow,
+                shadowSoft,
               ]}
             >
               {isSelected && (
@@ -62,7 +62,7 @@ export default function VendorNeedsStep() {
                     width: 22,
                     height: 22,
                     borderRadius: 11,
-                    backgroundColor: brutalist.primaryContainer,
+                    backgroundColor: editorial.primaryContainer,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -74,10 +74,10 @@ export default function VendorNeedsStep() {
                 <Ionicons
                   name={item.icon as any}
                   size={32}
-                  color={brutalist.tertiaryContainer}
+                  color={editorial.tertiaryContainer}
                 />
               </View>
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: brutalist.onSurface }}>
+              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface }}>
                 {item.label}
               </Text>
             </Pressable>
@@ -85,9 +85,9 @@ export default function VendorNeedsStep() {
         })}
       </View>
 
-      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
+      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
         You can always modify these preferences in your planning dashboard.
       </Text>
-    </BrutalistStepContainer>
+    </EditorialStepContainer>
   );
 }

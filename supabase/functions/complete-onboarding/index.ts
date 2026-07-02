@@ -30,6 +30,48 @@ function primaryEmail(user: ClerkApiUser): string | null {
   return primary?.email_address ?? user.email_addresses[0]?.email_address ?? null;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Writes onboarding state to Clerk publicMetadata. This is the authoritative
+ * source the mobile app gates its redirect on, so the write must not be
+ * best-effort: we retry transient failures with backoff and let the caller
+ * fail the whole request if it never lands, so the client can retry rather
+ * than end up "complete" in our DB but not in Clerk.
+ */
+async function patchClerkMetadata(
+  clerkUserId: string,
+  publicMetadata: Record<string, unknown>,
+  attempts = 4,
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${CLERK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ public_metadata: publicMetadata }),
+      });
+
+      if (res.ok) return true;
+
+      // 4xx (other than 429) won't succeed on retry — stop early.
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        console.error("Clerk metadata update rejected:", res.status, await res.text());
+        return false;
+      }
+      console.error(`Clerk metadata update failed (attempt ${attempt}):`, res.status, await res.text());
+    } catch (clerkErr) {
+      console.error(`Clerk API error (attempt ${attempt}):`, clerkErr);
+    }
+
+    if (attempt < attempts) await sleep(250 * 2 ** (attempt - 1));
+  }
+  return false;
+}
+
 /**
  * Provisions a public.users row for a Clerk identity when the sync webhook
  * hasn't run yet, mirroring the fallback in apps/opus_pass's dashboard auth
@@ -275,33 +317,28 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", supabaseUserId);
 
-    // Update Clerk publicMetadata
-    if (CLERK_SECRET_KEY && clerkUserId) {
-      try {
-        const clerkRes = await fetch(
-          `https://api.clerk.com/v1/users/${clerkUserId}`,
-          {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${CLERK_SECRET_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              public_metadata: {
-                onboardingComplete: true,
-                userType: type,
-                supabaseUserId,
-              },
-            }),
-          }
-        );
+    // Update Clerk publicMetadata — the authoritative onboarding flag the
+    // mobile app reads. This must succeed; if it can't, fail the request so
+    // the client retries instead of being left inconsistent with our DB.
+    if (!CLERK_SECRET_KEY || !clerkUserId) {
+      console.error("Missing CLERK_SECRET_KEY or clerkUserId; cannot persist onboarding flag.");
+      return new Response(
+        JSON.stringify({ error: "Failed to finalize onboarding. Please try again." }),
+        { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
+    }
 
-        if (!clerkRes.ok) {
-          console.error("Failed to update Clerk metadata:", await clerkRes.text());
-        }
-      } catch (clerkErr) {
-        console.error("Clerk API error:", clerkErr);
-      }
+    const clerkUpdated = await patchClerkMetadata(clerkUserId, {
+      onboardingComplete: true,
+      userType: type,
+      supabaseUserId,
+    });
+
+    if (!clerkUpdated) {
+      return new Response(
+        JSON.stringify({ error: "Failed to finalize onboarding. Please try again." }),
+        { status: 502, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
     }
 
     return new Response(

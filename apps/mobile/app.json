@@ -50,7 +50,9 @@
         }
       ],
       "expo-image-picker",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

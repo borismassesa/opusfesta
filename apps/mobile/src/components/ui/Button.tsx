@@ -1,6 +1,6 @@
 import { Pressable, Text, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -19,22 +19,22 @@ interface ButtonProps {
 // OF web system (opus_website hero CTA is a flat lavender pill, color transition only).
 const variantConfig: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
   primary: {
-    bg: brutalist.primaryContainer,
-    text: brutalist.onPrimary,
+    bg: editorial.primaryContainer,
+    text: editorial.onPrimary,
   },
   outline: {
     bg: 'transparent',
-    text: brutalist.primaryContainer,
-    border: brutalist.primaryContainer,
+    text: editorial.primaryContainer,
+    border: editorial.primaryContainer,
   },
   ghost: {
     bg: 'transparent',
-    text: brutalist.primaryContainer,
+    text: editorial.primaryContainer,
   },
   danger: {
     bg: 'transparent',
-    text: brutalist.error,
-    border: brutalist.error,
+    text: editorial.error,
+    border: editorial.error,
   },
 };
 
@@ -80,7 +80,7 @@ export function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? '#fff' : brutalist.primaryContainer}
+          color={variant === 'primary' ? '#fff' : editorial.primaryContainer}
           size="small"
         />
       ) : (

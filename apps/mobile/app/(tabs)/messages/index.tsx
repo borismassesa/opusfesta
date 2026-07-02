@@ -4,7 +4,7 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { ConversationItem } from '@/components/messages/ConversationItem';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getConversations } from '@/lib/api/messages';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 const MOCK_CONVERSATIONS = [
   {
@@ -69,7 +69,7 @@ export default function MessagesScreen() {
           fontFamily: 'SpaceGrotesk-Bold',
           fontSize: 22,
           letterSpacing: -0.5,
-          color: brutalist.onSurface,
+          color: editorial.onSurface,
           marginBottom: 20,
         }}
       >

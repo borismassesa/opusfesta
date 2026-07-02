@@ -1,5 +1,5 @@
 import { View, type ViewProps } from 'react-native';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { editorial, shadowSoft } from '@/constants/theme';
 
 interface CardProps extends ViewProps {
   variant?: 'default' | 'elevated' | 'outlined';
@@ -15,21 +15,21 @@ export function Card({
 }: CardProps) {
   const variantStyles = {
     default: {
-      backgroundColor: brutalist.surfaceContainerLowest,
+      backgroundColor: editorial.surfaceContainerLowest,
       borderRadius: 24,
       borderWidth: 1,
-      borderColor: brutalist.outlineVariant,
+      borderColor: editorial.outlineVariant,
     },
     elevated: {
-      backgroundColor: brutalist.surfaceContainerLowest,
+      backgroundColor: editorial.surfaceContainerLowest,
       borderRadius: 24,
-      ...brutalistShadow,
+      ...shadowSoft,
     },
     outlined: {
-      backgroundColor: brutalist.surfaceContainerLowest,
+      backgroundColor: editorial.surfaceContainerLowest,
       borderRadius: 24,
       borderWidth: 1.5,
-      borderColor: brutalist.primaryContainer,
+      borderColor: editorial.primaryContainer,
     },
   };
 

@@ -1,7 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Avatar } from '../ui/Avatar';
-import { brutalist, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoftSm } from '@/constants/theme';
 
 interface ConversationItemProps {
   id: string;
@@ -29,16 +29,16 @@ export function ConversationItem({
       onPress={() => router.push(`/(tabs)/messages/${id}`)}
       style={[
         {
-          backgroundColor: brutalist.surfaceContainerLowest,
+          backgroundColor: editorial.surfaceContainerLowest,
           borderWidth: 1,
-          borderColor: brutalist.outlineVariant,
+          borderColor: editorial.outlineVariant,
           borderRadius: 12,
           padding: 16,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 14,
         },
-        brutalistShadowSm,
+        shadowSoftSm,
       ]}
     >
       <View style={{ position: 'relative' }}>
@@ -54,7 +54,7 @@ export function ConversationItem({
               borderRadius: 5,
               backgroundColor: '#16a34a',
               borderWidth: 2,
-              borderColor: brutalist.surfaceContainerLowest,
+              borderColor: editorial.surfaceContainerLowest,
             }}
           />
         )}
@@ -65,7 +65,7 @@ export function ConversationItem({
             style={{
               fontFamily: 'SpaceGrotesk-Bold',
               fontSize: 15,
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
             }}
           >
             {vendorName}
@@ -74,7 +74,7 @@ export function ConversationItem({
             style={{
               fontFamily: 'WorkSans-Regular',
               fontSize: 11,
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
             }}
           >
             {timestamp}
@@ -84,7 +84,7 @@ export function ConversationItem({
           style={{
             fontFamily: 'WorkSans-Regular',
             fontSize: 14,
-            color: brutalist.onSurfaceVariant,
+            color: editorial.onSurfaceVariant,
             marginTop: 2,
           }}
           numberOfLines={1}
@@ -98,7 +98,7 @@ export function ConversationItem({
             width: 22,
             height: 22,
             borderRadius: 11,
-            backgroundColor: brutalist.primaryContainer,
+            backgroundColor: editorial.primaryContainer,
             alignItems: 'center',
             justifyContent: 'center',
           }}

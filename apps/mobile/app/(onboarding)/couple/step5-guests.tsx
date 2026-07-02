@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow, brutalistShadowPrimary } from '@/constants/theme';
+import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { editorial, shadowSoft, shadowSoftPrimary } from '@/constants/theme';
 import { GUEST_COUNT_OPTIONS } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
@@ -19,7 +19,7 @@ export default function GuestsStep() {
   };
 
   return (
-    <BrutalistStepContainer
+    <EditorialStepContainer
       title="How many guests are you expecting?"
       subtitle="This helps us recommend venues and catering packages that perfectly fit your celebration's scale."
       currentStep={5}
@@ -42,34 +42,34 @@ export default function GuestsStep() {
                   justifyContent: 'space-between',
                   padding: 18,
                   borderRadius: 12,
-                  backgroundColor: isSelected ? brutalist.secondaryContainer : brutalist.surfaceContainerLow,
+                  backgroundColor: isSelected ? editorial.secondaryContainer : editorial.surfaceContainerLow,
                   borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? brutalist.primaryContainer : 'transparent',
+                  borderColor: isSelected ? editorial.primaryContainer : 'transparent',
                 },
-                isSelected ? brutalistShadowPrimary : brutalistShadow,
+                isSelected ? shadowSoftPrimary : shadowSoft,
               ]}
             >
               <View>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, color: isSelected ? brutalist.onSecondaryContainer : brutalist.onSurface, marginBottom: 2 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, color: isSelected ? editorial.onSecondaryContainer : editorial.onSurface, marginBottom: 2 }}>
                   {opt.label}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: brutalist.onSurfaceVariant }}>
+                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
                   {opt.subtitle}
                 </Text>
               </View>
               {isSelected ? (
-                <Ionicons name="checkmark-circle" size={24} color={brutalist.primaryContainer} />
+                <Ionicons name="checkmark-circle" size={24} color={editorial.primaryContainer} />
               ) : (
-                <Ionicons name="person-outline" size={20} color={brutalist.onSurfaceVariant} />
+                <Ionicons name="person-outline" size={20} color={editorial.onSurfaceVariant} />
               )}
             </Pressable>
           );
         })}
 
-        <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: brutalist.onSurfaceVariant, textAlign: 'center', marginTop: 8 }}>
+        <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 8 }}>
           You can adjust this guest count later in your event dashboard.
         </Text>
       </View>
-    </BrutalistStepContainer>
+    </EditorialStepContainer>
   );
 }

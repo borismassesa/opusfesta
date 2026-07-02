@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { useCoupleOnboarding } from './_layout';
 
 const OFFERS = [
@@ -43,7 +43,7 @@ export default function OffersStep() {
   };
 
   return (
-    <BrutalistStepContainer
+    <EditorialStepContainer
       title="Exclusive offers from our partners"
       subtitle="We've curated special deals from East Africa's top vendors to make your celebration even more memorable."
       currentStep={9}
@@ -62,11 +62,11 @@ export default function OffersStep() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: 14,
-            backgroundColor: brutalist.surfaceContainerLow,
+            backgroundColor: editorial.surfaceContainerLow,
             borderRadius: 12,
           }}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: brutalist.onSurface }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: editorial.onSurface }}>
             Claim all available offers
           </Text>
           <Switch
@@ -75,7 +75,7 @@ export default function OffersStep() {
               setClaimAll(val);
               setClaimed(val ? OFFERS.map((o) => o.id) : []);
             }}
-            trackColor={{ false: brutalist.surfaceContainerHighest, true: brutalist.primaryContainer }}
+            trackColor={{ false: editorial.surfaceContainerHighest, true: editorial.primaryContainer }}
             thumbColor="#fff"
           />
         </View>
@@ -89,35 +89,35 @@ export default function OffersStep() {
               onPress={() => toggleClaim(offer.id)}
               style={[
                 {
-                  backgroundColor: brutalist.surfaceContainerHighest,
+                  backgroundColor: editorial.surfaceContainerHighest,
                   borderRadius: 12,
                   overflow: 'hidden',
                 },
-                brutalistShadow,
+                shadowSoft,
               ]}
             >
               {/* Image placeholder */}
               <View
                 style={{
                   height: 120,
-                  backgroundColor: brutalist.surfaceContainerHigh,
+                  backgroundColor: editorial.surfaceContainerHigh,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="gift-outline" size={40} color={brutalist.onSurfaceVariant} style={{ opacity: 0.3 }} />
+                <Ionicons name="gift-outline" size={40} color={editorial.onSurfaceVariant} style={{ opacity: 0.3 }} />
               </View>
               <View style={{ padding: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <View
                     style={{
-                      backgroundColor: brutalist.tertiaryFixed,
+                      backgroundColor: editorial.tertiaryFixed,
                       paddingHorizontal: 10,
                       paddingVertical: 4,
                       borderRadius: 12,
                     }}
                   >
-                    <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: brutalist.onTertiaryFixed }}>
+                    <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onTertiaryFixed }}>
                       {offer.badge}
                     </Text>
                   </View>
@@ -127,8 +127,8 @@ export default function OffersStep() {
                       height: 22,
                       borderRadius: 4,
                       borderWidth: 2,
-                      borderColor: brutalist.onSurface,
-                      backgroundColor: isActive ? brutalist.primaryContainer : 'transparent',
+                      borderColor: editorial.onSurface,
+                      backgroundColor: isActive ? editorial.primaryContainer : 'transparent',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -136,15 +136,15 @@ export default function OffersStep() {
                     {isActive && <Ionicons name="checkmark" size={14} color="#fff" />}
                   </View>
                 </View>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: brutalist.onSurface, marginBottom: 6 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onSurface, marginBottom: 6 }}>
                   {offer.name}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, lineHeight: 19, color: brutalist.onSurfaceVariant }}>
+                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, lineHeight: 19, color: editorial.onSurfaceVariant }}>
                   {offer.description}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
-                  <Ionicons name="checkmark-circle" size={14} color={brutalist.primaryContainer} />
-                  <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: brutalist.primaryContainer, fontStyle: 'italic' }}>
+                  <Ionicons name="checkmark-circle" size={14} color={editorial.primaryContainer} />
+                  <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: editorial.primaryContainer, fontStyle: 'italic' }}>
                     Verified Partner
                   </Text>
                 </View>
@@ -153,6 +153,6 @@ export default function OffersStep() {
           );
         })}
       </View>
-    </BrutalistStepContainer>
+    </EditorialStepContainer>
   );
 }

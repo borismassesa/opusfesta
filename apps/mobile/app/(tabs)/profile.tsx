@@ -5,7 +5,7 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useWeddingWebsite, useUpdateWebsite } from '@/hooks/useWeddingWebsite';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { WEDDING_SECTIONS } from '@/constants/wedding-sections';
-import { brutalist, brutalistShadow, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoft, shadowSoftSm } from '@/constants/theme';
 import type { WeddingWebsiteSection } from '@/types/wedding-website';
 
 export default function WebsiteTabScreen() {
@@ -18,7 +18,7 @@ export default function WebsiteTabScreen() {
     return (
       <ScreenWrapper>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
-          <ActivityIndicator size="large" color={brutalist.primaryContainer} />
+          <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       </ScreenWrapper>
     );
@@ -35,22 +35,22 @@ export default function WebsiteTabScreen() {
                 width: 80,
                 height: 80,
                 borderRadius: 12,
-                backgroundColor: brutalist.tertiaryFixed,
+                backgroundColor: editorial.tertiaryFixed,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 24,
               },
-              brutalistShadowSm,
+              shadowSoftSm,
             ]}
           >
-            <Ionicons name="globe-outline" size={40} color={brutalist.tertiaryContainer} />
+            <Ionicons name="globe-outline" size={40} color={editorial.tertiaryContainer} />
           </View>
           <Text
             style={{
               fontFamily: 'SpaceGrotesk-Bold',
               fontSize: 22,
               letterSpacing: -0.5,
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
               textAlign: 'center',
               marginBottom: 8,
             }}
@@ -62,7 +62,7 @@ export default function WebsiteTabScreen() {
               fontFamily: 'WorkSans-Regular',
               fontSize: 15,
               lineHeight: 22,
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               textAlign: 'center',
               marginBottom: 32,
               paddingHorizontal: 32,
@@ -74,7 +74,7 @@ export default function WebsiteTabScreen() {
             onPress={() => router.push('/website/create')}
             style={[
               {
-                backgroundColor: brutalist.primaryContainer,
+                backgroundColor: editorial.primaryContainer,
                 paddingVertical: 16,
                 paddingHorizontal: 32,
                 borderRadius: 12,
@@ -82,7 +82,7 @@ export default function WebsiteTabScreen() {
                 alignItems: 'center',
                 gap: 8,
               },
-              brutalistShadow,
+              shadowSoft,
             ]}
           >
             <Ionicons name="add-circle-outline" size={20} color="#fff" />
@@ -121,7 +121,7 @@ export default function WebsiteTabScreen() {
             fontFamily: 'SpaceGrotesk-Bold',
             fontSize: 22,
             letterSpacing: -0.5,
-            color: brutalist.onSurface,
+            color: editorial.onSurface,
           }}
         >
           My Website
@@ -133,16 +133,16 @@ export default function WebsiteTabScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 4,
-              backgroundColor: brutalist.tertiaryFixed,
+              backgroundColor: editorial.tertiaryFixed,
               paddingHorizontal: 12,
               paddingVertical: 8,
               borderRadius: 8,
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Ionicons name="share-outline" size={16} color={brutalist.tertiaryContainer} />
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: brutalist.tertiaryContainer }}>
+          <Ionicons name="share-outline" size={16} color={editorial.tertiaryContainer} />
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.tertiaryContainer }}>
             Share
           </Text>
         </Pressable>
@@ -154,17 +154,17 @@ export default function WebsiteTabScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               padding: 16,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
               alignItems: 'center',
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: brutalist.primaryContainer }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer }}>
             {publishedCount}
           </Text>
           <Text
@@ -173,7 +173,7 @@ export default function WebsiteTabScreen() {
               fontSize: 10,
               letterSpacing: 1,
               textTransform: 'uppercase',
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginTop: 4,
             }}
           >
@@ -184,17 +184,17 @@ export default function WebsiteTabScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               padding: 16,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
               alignItems: 'center',
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: brutalist.primaryContainer }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer }}>
             {website.view_count}
           </Text>
           <Text
@@ -203,7 +203,7 @@ export default function WebsiteTabScreen() {
               fontSize: 10,
               letterSpacing: 1,
               textTransform: 'uppercase',
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginTop: 4,
             }}
           >
@@ -215,24 +215,24 @@ export default function WebsiteTabScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               padding: 16,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
               alignItems: 'center',
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Ionicons name="mail-outline" size={20} color={brutalist.primaryContainer} />
+          <Ionicons name="mail-outline" size={20} color={editorial.primaryContainer} />
           <Text
             style={{
               fontFamily: 'WorkSans-Bold',
               fontSize: 10,
               letterSpacing: 1,
               textTransform: 'uppercase',
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginTop: 4,
             }}
           >
@@ -248,15 +248,15 @@ export default function WebsiteTabScreen() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: brutalist.surfaceContainerLowest,
+            backgroundColor: editorial.surfaceContainerLowest,
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderRadius: 20,
             borderWidth: 1,
-            borderColor: brutalist.outlineVariant,
+            borderColor: editorial.outlineVariant,
             marginBottom: 24,
           },
-          brutalistShadowSm,
+          shadowSoftSm,
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -265,18 +265,18 @@ export default function WebsiteTabScreen() {
               width: 8,
               height: 8,
               borderRadius: 4,
-              backgroundColor: website.is_published ? '#16a34a' : brutalist.outline,
+              backgroundColor: website.is_published ? '#16a34a' : editorial.outline,
             }}
           />
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: brutalist.onSurface }}>
+          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: editorial.onSurface }}>
             {website.is_published ? 'Published' : 'Unpublished'}
           </Text>
         </View>
         <Switch
           value={website.is_published}
           onValueChange={handleTogglePublish}
-          trackColor={{ false: brutalist.surfaceContainerHighest, true: brutalist.primaryFixed }}
-          thumbColor={website.is_published ? brutalist.primaryContainer : brutalist.surfaceContainerLowest}
+          trackColor={{ false: editorial.surfaceContainerHighest, true: editorial.primaryFixed }}
+          thumbColor={website.is_published ? editorial.primaryContainer : editorial.surfaceContainerLowest}
         />
       </View>
 
@@ -291,11 +291,11 @@ export default function WebsiteTabScreen() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              backgroundColor: brutalist.primaryContainer,
+              backgroundColor: editorial.primaryContainer,
               paddingVertical: 14,
               borderRadius: 12,
             },
-            brutalistShadow,
+            shadowSoft,
           ]}
         >
           <Ionicons name="eye-outline" size={18} color="#fff" />
@@ -310,17 +310,17 @@ export default function WebsiteTabScreen() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               paddingVertical: 14,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Ionicons name="color-palette-outline" size={18} color={brutalist.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: brutalist.primaryContainer }}>
+          <Ionicons name="color-palette-outline" size={18} color={editorial.primaryContainer} />
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.primaryContainer }}>
             Theme
           </Text>
         </Pressable>
@@ -331,7 +331,7 @@ export default function WebsiteTabScreen() {
         style={{
           fontFamily: 'SpaceGrotesk-Bold',
           fontSize: 16,
-          color: brutalist.onSurface,
+          color: editorial.onSurface,
           marginBottom: 12,
         }}
       >
@@ -349,13 +349,13 @@ export default function WebsiteTabScreen() {
                 {
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: brutalist.surfaceContainerLowest,
+                  backgroundColor: editorial.surfaceContainerLowest,
                   borderRadius: 20,
                   borderWidth: 1,
-                  borderColor: brutalist.outlineVariant,
+                  borderColor: editorial.outlineVariant,
                   padding: 16,
                 },
-                brutalistShadowSm,
+                shadowSoftSm,
               ]}
             >
               <View
@@ -363,16 +363,16 @@ export default function WebsiteTabScreen() {
                   width: 40,
                   height: 40,
                   borderRadius: 8,
-                  backgroundColor: brutalist.tertiaryFixed,
+                  backgroundColor: editorial.tertiaryFixed,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 12,
                 }}
               >
-                <Ionicons name={config.icon as any} size={20} color={brutalist.tertiaryContainer} />
+                <Ionicons name={config.icon as any} size={20} color={editorial.tertiaryContainer} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: brutalist.onSurface }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
                   {config.label}
                 </Text>
                 <Text
@@ -381,14 +381,14 @@ export default function WebsiteTabScreen() {
                     fontSize: 10,
                     letterSpacing: 1,
                     textTransform: 'uppercase',
-                    color: brutalist.onSurfaceVariant,
+                    color: editorial.onSurfaceVariant,
                     marginTop: 2,
                   }}
                 >
                   {section.is_published ? 'Visible' : 'Hidden'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={brutalist.outline} />
+              <Ionicons name="chevron-forward" size={16} color={editorial.outline} />
             </Pressable>
           );
         })}

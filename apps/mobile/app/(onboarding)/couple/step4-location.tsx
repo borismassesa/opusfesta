@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow, brutalistShadowSm } from '@/constants/theme';
+import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { editorial, shadowSoft, shadowSoftSm } from '@/constants/theme';
 import { CITIES } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
@@ -26,7 +26,7 @@ export default function LocationStep() {
     : [];
 
   return (
-    <BrutalistStepContainer
+    <EditorialStepContainer
       title="Where are you celebrating?"
       currentStep={4}
       totalSteps={9}
@@ -45,19 +45,19 @@ export default function LocationStep() {
                 height: 22,
                 borderRadius: 11,
                 borderWidth: 2,
-                borderColor: !deciding ? brutalist.primaryContainer : brutalist.outlineVariant,
-                backgroundColor: !deciding ? brutalist.primaryContainer : 'transparent',
+                borderColor: !deciding ? editorial.primaryContainer : editorial.outlineVariant,
+                backgroundColor: !deciding ? editorial.primaryContainer : 'transparent',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              {!deciding && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: brutalist.bg }} />}
+              {!deciding && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: editorial.bg }} />}
             </View>
             <View>
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: brutalist.onSurface }}>
+              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onSurface }}>
                 I have a city in mind
               </Text>
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: brutalist.onSurfaceVariant, marginTop: 2 }}>
+              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginTop: 2 }}>
                 Discover venues in Tanzania's most iconic locations.
               </Text>
             </View>
@@ -66,14 +66,14 @@ export default function LocationStep() {
           {/* Search */}
           {!deciding && (
             <View style={{ marginLeft: 32, gap: 14 }}>
-              <View style={[{ backgroundColor: brutalist.surfaceContainerLowest, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderWidth: 1, borderColor: 'rgba(30,27,23,0.1)' }, brutalistShadow]}>
-                <Ionicons name="search" size={18} color={brutalist.outline} />
+              <View style={[{ backgroundColor: editorial.surfaceContainerLowest, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderWidth: 1, borderColor: 'rgba(30,27,23,0.1)' }, shadowSoft]}>
+                <Ionicons name="search" size={18} color={editorial.outline} />
                 <TextInput
                   value={searchText}
                   onChangeText={(t) => { setSearchText(t); setDeciding(false); }}
                   placeholder="Search for a city..."
-                  placeholderTextColor={brutalist.outlineVariant}
-                  style={{ flex: 1, fontFamily: 'WorkSans-Regular', fontSize: 16, color: brutalist.onSurface, paddingVertical: 14, paddingLeft: 10 }}
+                  placeholderTextColor={editorial.outlineVariant}
+                  style={{ flex: 1, fontFamily: 'WorkSans-Regular', fontSize: 16, color: editorial.onSurface, paddingVertical: 14, paddingLeft: 10 }}
                 />
               </View>
 
@@ -87,10 +87,10 @@ export default function LocationStep() {
                       style={{
                         padding: 12,
                         borderRadius: 8,
-                        backgroundColor: selected === c.key ? brutalist.secondaryContainer : brutalist.surfaceContainerLow,
+                        backgroundColor: selected === c.key ? editorial.secondaryContainer : editorial.surfaceContainerLow,
                       }}
                     >
-                      <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: brutalist.onSurface }}>
+                      <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: editorial.onSurface }}>
                         {c.icon} {c.label}
                       </Text>
                     </Pressable>
@@ -100,7 +100,7 @@ export default function LocationStep() {
 
               {/* Popular Destinations */}
               <View>
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: brutalist.onSurfaceVariant, marginBottom: 10 }}>
+                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginBottom: 10 }}>
                   Popular Destinations
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }}>
@@ -117,11 +117,11 @@ export default function LocationStep() {
                             height: 140,
                             borderRadius: 12,
                             overflow: 'hidden',
-                            backgroundColor: brutalist.surfaceContainerHighest,
+                            backgroundColor: editorial.surfaceContainerHighest,
                             borderWidth: selected === city.key ? 2 : 1,
-                            borderColor: selected === city.key ? brutalist.primaryContainer : 'rgba(30,27,23,0.15)',
+                            borderColor: selected === city.key ? editorial.primaryContainer : 'rgba(30,27,23,0.15)',
                           },
-                          brutalistShadowSm,
+                          shadowSoftSm,
                         ]}
                       >
                         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -153,25 +153,25 @@ export default function LocationStep() {
                 height: 22,
                 borderRadius: 11,
                 borderWidth: 2,
-                borderColor: deciding ? brutalist.primaryContainer : brutalist.outlineVariant,
-                backgroundColor: deciding ? brutalist.primaryContainer : 'transparent',
+                borderColor: deciding ? editorial.primaryContainer : editorial.outlineVariant,
+                backgroundColor: deciding ? editorial.primaryContainer : 'transparent',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              {deciding && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: brutalist.bg }} />}
+              {deciding && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: editorial.bg }} />}
             </View>
             <View>
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: brutalist.onSurface }}>
+              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: editorial.onSurface }}>
                 Still deciding
               </Text>
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant }}>
+              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
                 We'll show you the best across the region.
               </Text>
             </View>
           </Pressable>
         </View>
       </View>
-    </BrutalistStepContainer>
+    </EditorialStepContainer>
   );
 }

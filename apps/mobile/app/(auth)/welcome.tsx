@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
-import { brutalist, brutalistShadowSm, brutalistShadowPrimary, purpleTints } from '@/constants/theme';
+import { editorial, shadowSoftSm, shadowSoftPrimary, purpleTints } from '@/constants/theme';
 
 const logoMark = require('../../assets/images/logo-mark.png');
 
@@ -18,7 +18,7 @@ export default function WelcomeScreen() {
   const [videoError, setVideoError] = useState(false);
 
   return (
-    <View style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <View style={{ flex: 1, backgroundColor: editorial.bg }}>
       {/* ─── Top: Video Hero ─── */}
       <View style={{ flex: 0.45, position: 'relative', overflow: 'hidden' }}>
         {!videoError ? (
@@ -84,7 +84,7 @@ export default function WelcomeScreen() {
       </View>
 
       {/* ─── Bottom: Content + CTAs ─── */}
-      <SafeAreaView edges={['bottom']} style={{ flex: 0.55, backgroundColor: brutalist.bg }}>
+      <SafeAreaView edges={['bottom']} style={{ flex: 0.55, backgroundColor: editorial.bg }}>
         <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24 }}>
           {/* Subtitle */}
           <Text
@@ -92,7 +92,7 @@ export default function WelcomeScreen() {
               fontFamily: 'WorkSans-Regular',
               fontSize: 15,
               lineHeight: 22,
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
             }}
           >
             Discover East Africa's premier wedding vendors and create moments that last a lifetime.
@@ -141,7 +141,7 @@ export default function WelcomeScreen() {
                     fontSize: 9,
                     letterSpacing: 1,
                     textTransform: 'uppercase',
-                    color: brutalist.outline,
+                    color: editorial.outline,
                     marginTop: 2,
                   }}
                 >
@@ -167,7 +167,7 @@ export default function WelcomeScreen() {
                 flexDirection: 'row',
                 gap: 8,
               },
-              brutalistShadowPrimary,
+              shadowSoftPrimary,
             ]}
           >
             <Text
@@ -193,17 +193,17 @@ export default function WelcomeScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 1,
-                borderColor: brutalist.outlineVariant,
-                backgroundColor: brutalist.surfaceContainerLowest,
+                borderColor: editorial.outlineVariant,
+                backgroundColor: editorial.surfaceContainerLowest,
               },
-              brutalistShadowSm,
+              shadowSoftSm,
             ]}
           >
             <Text
               style={{
                 fontFamily: 'SpaceGrotesk-Bold',
                 fontSize: 15,
-                color: brutalist.onSurface,
+                color: editorial.onSurface,
               }}
             >
               I already have an account

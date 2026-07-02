@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { DESIGN_STYLES } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
@@ -24,7 +24,7 @@ export default function DesignStyleStep() {
   };
 
   return (
-    <BrutalistStepContainer
+    <EditorialStepContainer
       title="What design style"
       titleAccent="speaks to you?"
       subtitle="Select all the aesthetics that match your dream celebration vision."
@@ -49,11 +49,11 @@ export default function DesignStyleStep() {
                     aspectRatio: 0.8,
                     borderRadius: 12,
                     overflow: 'hidden',
-                    backgroundColor: brutalist.surfaceContainerHighest,
+                    backgroundColor: editorial.surfaceContainerHighest,
                     alignItems: 'center',
                     justifyContent: 'center',
                   },
-                  brutalistShadow,
+                  shadowSoft,
                 ]}
               >
                 <Text style={{ fontSize: 48 }}>{style.emoji}</Text>
@@ -66,7 +66,7 @@ export default function DesignStyleStep() {
                       width: 28,
                       height: 28,
                       borderRadius: 14,
-                      backgroundColor: brutalist.tertiaryContainer,
+                      backgroundColor: editorial.tertiaryContainer,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -79,7 +79,7 @@ export default function DesignStyleStep() {
                 style={{
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 15,
-                  color: brutalist.onSurface,
+                  color: editorial.onSurface,
                   marginTop: 8,
                   paddingLeft: 2,
                 }}
@@ -90,6 +90,6 @@ export default function DesignStyleStep() {
           );
         })}
       </View>
-    </BrutalistStepContainer>
+    </EditorialStepContainer>
   );
 }

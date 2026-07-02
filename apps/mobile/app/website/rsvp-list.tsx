@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite, useRsvpList } from '@/hooks/useWeddingWebsite';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 import type { WeddingRsvp } from '@/types/wedding-website';
 
 const FILTERS = [
@@ -38,7 +38,7 @@ export default function RsvpListScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
         <Header title="RSVPs" showBack />
       </View>

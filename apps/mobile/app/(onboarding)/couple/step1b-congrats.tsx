@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { useCoupleOnboarding } from './_layout';
 
 export default function CongratsScreen() {
@@ -15,7 +15,7 @@ export default function CongratsScreen() {
   const names = partner2 ? `${partner1} & ${partner2}` : partner1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       {/* Decorative blurs */}
       <View style={{ position: 'absolute', top: -40, left: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(66,20,104,0.06)' }} />
       <View style={{ position: 'absolute', top: '25%', right: -60, width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(219,180,254,0.15)' }} />
@@ -31,16 +31,16 @@ export default function CongratsScreen() {
               width: '100%',
               height: 220,
               borderRadius: 12,
-              backgroundColor: brutalist.surfaceContainerHighest,
+              backgroundColor: editorial.surfaceContainerHighest,
               marginBottom: 32,
               overflow: 'hidden',
               alignItems: 'center',
               justifyContent: 'center',
             },
-            brutalistShadow,
+            shadowSoft,
           ]}
         >
-          <Ionicons name="sparkles" size={64} color={brutalist.onPrimaryContainer} style={{ opacity: 0.4 }} />
+          <Ionicons name="sparkles" size={64} color={editorial.onPrimaryContainer} style={{ opacity: 0.4 }} />
         </View>
 
         {/* Label */}
@@ -50,7 +50,7 @@ export default function CongratsScreen() {
             fontSize: 11,
             letterSpacing: 4,
             textTransform: 'uppercase',
-            color: brutalist.onSecondaryContainer,
+            color: editorial.onSecondaryContainer,
             marginBottom: 12,
           }}
         >
@@ -64,12 +64,12 @@ export default function CongratsScreen() {
             fontSize: 32,
             lineHeight: 36,
             letterSpacing: -1,
-            color: brutalist.onSurface,
+            color: editorial.onSurface,
             textAlign: 'center',
           }}
         >
           {names},{'\n'}
-          <Text style={{ color: brutalist.onPrimaryContainer }}>congratulations!</Text>
+          <Text style={{ color: editorial.onPrimaryContainer }}>congratulations!</Text>
         </Text>
 
         {/* Body */}
@@ -78,7 +78,7 @@ export default function CongratsScreen() {
             fontFamily: 'WorkSans-Regular',
             fontSize: 17,
             lineHeight: 26,
-            color: brutalist.onSurfaceVariant,
+            color: editorial.onSurfaceVariant,
             textAlign: 'center',
             marginTop: 16,
             maxWidth: 340,
@@ -92,7 +92,7 @@ export default function CongratsScreen() {
           onPress={() => router.push('/(onboarding)/couple/step2-planning-stage')}
           style={[
             {
-              backgroundColor: brutalist.primaryContainer,
+              backgroundColor: editorial.primaryContainer,
               paddingVertical: 18,
               paddingHorizontal: 40,
               borderRadius: 12,
@@ -101,13 +101,13 @@ export default function CongratsScreen() {
               gap: 10,
               marginTop: 32,
             },
-            brutalistShadow,
+            shadowSoft,
           ]}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: brutalist.onPrimary }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onPrimary }}>
             Let's Go
           </Text>
-          <Ionicons name="arrow-forward" size={22} color={brutalist.onPrimary} />
+          <Ionicons name="arrow-forward" size={22} color={editorial.onPrimary} />
         </Pressable>
 
         {/* Decorative chips */}
@@ -118,7 +118,7 @@ export default function CongratsScreen() {
               style={{
                 paddingHorizontal: 16,
                 paddingVertical: 8,
-                backgroundColor: label === 'Traditional' ? brutalist.tertiaryFixed : label === 'Destination' ? '#f0dbff' : brutalist.surfaceContainerHigh,
+                backgroundColor: label === 'Traditional' ? editorial.tertiaryFixed : label === 'Destination' ? '#f0dbff' : editorial.surfaceContainerHigh,
                 borderRadius: 20,
               }}
             >
@@ -128,7 +128,7 @@ export default function CongratsScreen() {
                   fontSize: 10,
                   letterSpacing: 2,
                   textTransform: 'uppercase',
-                  color: brutalist.onSurfaceVariant,
+                  color: editorial.onSurfaceVariant,
                 }}
               >
                 {label}

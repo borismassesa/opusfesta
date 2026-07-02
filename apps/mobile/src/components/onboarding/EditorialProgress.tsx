@@ -1,14 +1,14 @@
 import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
-interface BrutalistProgressProps {
+interface EditorialProgressProps {
   currentStep: number;
   totalSteps: number;
   label?: string;
 }
 
-export function BrutalistProgress({ currentStep, totalSteps, label }: BrutalistProgressProps) {
+export function EditorialProgress({ currentStep, totalSteps, label }: EditorialProgressProps) {
   const progress = (currentStep / totalSteps) * 100;
   const percentLabel = `${Math.round(progress)}% Complete`;
 
@@ -21,7 +21,7 @@ export function BrutalistProgress({ currentStep, totalSteps, label }: BrutalistP
             fontSize: 11,
             letterSpacing: 2,
             textTransform: 'uppercase',
-            color: brutalist.onSurfaceVariant,
+            color: editorial.onSurfaceVariant,
           }}
         >
           Step {String(currentStep).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
@@ -30,7 +30,7 @@ export function BrutalistProgress({ currentStep, totalSteps, label }: BrutalistP
           style={{
             fontFamily: 'SpaceGrotesk-Bold',
             fontSize: label ? 12 : 16,
-            color: label ? brutalist.primaryContainer : brutalist.tertiaryContainer,
+            color: label ? editorial.primaryContainer : editorial.tertiaryContainer,
           }}
         >
           {label || percentLabel}
@@ -39,13 +39,13 @@ export function BrutalistProgress({ currentStep, totalSteps, label }: BrutalistP
       <View
         style={{
           height: 10,
-          backgroundColor: brutalist.surfaceContainerHighest,
+          backgroundColor: editorial.surfaceContainerHighest,
           borderRadius: 5,
           overflow: 'hidden',
         }}
       >
         <LinearGradient
-          colors={[brutalist.primaryContainer, brutalist.surfaceTint]}
+          colors={[editorial.primaryContainer, editorial.surfaceTint]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{

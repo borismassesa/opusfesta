@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getVendorsByCategory } from '@/lib/api/vendors';
 import { formatCurrency } from '@opusfesta/lib';
-import { brutalist, brutalistShadow, brutalistShadowSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
+import { editorial, shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -138,7 +138,7 @@ export default function CategoriesScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <FlatList
         data={listVendors}
         keyExtractor={(item: any) => item.id}
@@ -154,7 +154,7 @@ export default function CategoriesScreen() {
                   fontSize: 10,
                   letterSpacing: 3,
                   textTransform: 'uppercase',
-                  color: brutalist.onSurfaceVariant,
+                  color: editorial.onSurfaceVariant,
                   marginBottom: 4,
                 }}
               >
@@ -165,11 +165,11 @@ export default function CategoriesScreen() {
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 26,
                   letterSpacing: -0.5,
-                  color: brutalist.onSurface,
+                  color: editorial.onSurface,
                 }}
               >
                 Find your{' '}
-                <Text style={{ color: brutalist.tertiaryContainer }}>dream team</Text>
+                <Text style={{ color: editorial.tertiaryContainer }}>dream team</Text>
               </Text>
             </View>
 
@@ -180,25 +180,25 @@ export default function CategoriesScreen() {
                   {
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: brutalist.surfaceContainerLowest,
+                    backgroundColor: editorial.surfaceContainerLowest,
                     borderRadius: 12,
                     paddingHorizontal: 14,
                     gap: 10,
                   },
-                  brutalistShadowSm,
+                  shadowSoftSm,
                 ]}
               >
-                <Ionicons name="search-outline" size={18} color={brutalist.outline} />
+                <Ionicons name="search-outline" size={18} color={editorial.outline} />
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholder="Search vendors, venues..."
-                  placeholderTextColor={brutalist.outline}
+                  placeholderTextColor={editorial.outline}
                   style={{
                     flex: 1,
                     fontFamily: 'WorkSans-Regular',
                     fontSize: 15,
-                    color: brutalist.onSurface,
+                    color: editorial.onSurface,
                     paddingVertical: 14,
                   }}
                 />
@@ -207,12 +207,12 @@ export default function CategoriesScreen() {
                     width: 32,
                     height: 32,
                     borderRadius: 8,
-                    backgroundColor: brutalist.surfaceContainerHigh,
+                    backgroundColor: editorial.surfaceContainerHigh,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="options-outline" size={16} color={brutalist.onSurfaceVariant} />
+                  <Ionicons name="options-outline" size={16} color={editorial.onSurfaceVariant} />
                 </Pressable>
               </View>
             </View>
@@ -225,7 +225,7 @@ export default function CategoriesScreen() {
                   fontSize: 10,
                   letterSpacing: 2,
                   textTransform: 'uppercase',
-                  color: brutalist.onSurfaceVariant,
+                  color: editorial.onSurfaceVariant,
                   marginBottom: 14,
                 }}
               >
@@ -245,11 +245,11 @@ export default function CategoriesScreen() {
                           borderRadius: 12,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: isActive ? brutalist.primaryContainer : cat.bg,
+                          backgroundColor: isActive ? editorial.primaryContainer : cat.bg,
                           borderWidth: isActive ? 0 : 2,
-                          borderColor: brutalist.outlineVariant,
+                          borderColor: editorial.outlineVariant,
                         },
-                        brutalistShadowSm,
+                        shadowSoftSm,
                       ]}
                     >
                       <Ionicons
@@ -262,7 +262,7 @@ export default function CategoriesScreen() {
                           fontFamily: 'WorkSans-Bold',
                           fontSize: 10,
                           letterSpacing: 0.5,
-                          color: isActive ? '#fff' : brutalist.onSurface,
+                          color: isActive ? '#fff' : editorial.onSurface,
                           marginTop: 6,
                           textAlign: 'center',
                         }}
@@ -284,7 +284,7 @@ export default function CategoriesScreen() {
                       fontFamily: 'SpaceGrotesk-Bold',
                       fontSize: 18,
                       letterSpacing: -0.3,
-                      color: brutalist.onSurface,
+                      color: editorial.onSurface,
                     }}
                   >
                     Featured
@@ -296,14 +296,14 @@ export default function CategoriesScreen() {
                       gap: 4,
                     }}
                   >
-                    <Ionicons name="sparkles" size={14} color={brutalist.tertiaryContainer} />
+                    <Ionicons name="sparkles" size={14} color={editorial.tertiaryContainer} />
                     <Text
                       style={{
                         fontFamily: 'WorkSans-Bold',
                         fontSize: 10,
                         letterSpacing: 1,
                         textTransform: 'uppercase',
-                        color: brutalist.tertiaryContainer,
+                        color: editorial.tertiaryContainer,
                       }}
                     >
                       Editor's Pick
@@ -314,13 +314,13 @@ export default function CategoriesScreen() {
                   onPress={() => router.push(`/vendor/${heroVendor.id}`)}
                   style={[
                     {
-                      backgroundColor: brutalist.surfaceContainerLowest,
+                      backgroundColor: editorial.surfaceContainerLowest,
                       borderRadius: 16,
                       overflow: 'hidden',
                       borderWidth: 1,
-                      borderColor: brutalist.outlineVariant,
+                      borderColor: editorial.outlineVariant,
                     },
-                    brutalistShadow,
+                    shadowSoft,
                   ]}
                 >
                   {/* Hero Image */}
@@ -333,7 +333,7 @@ export default function CategoriesScreen() {
                       />
                     ) : (
                       <LinearGradient
-                        colors={[brutalist.tertiaryContainer, brutalist.secondaryContainer, brutalist.tertiaryFixed]}
+                        colors={[editorial.tertiaryContainer, editorial.secondaryContainer, editorial.tertiaryFixed]}
                         style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
                       >
                         <Text style={{ fontSize: 56 }}>{EMOJI_MAP[heroVendor.id] ?? '🏛️'}</Text>
@@ -345,7 +345,7 @@ export default function CategoriesScreen() {
                         position: 'absolute',
                         top: 14,
                         left: 14,
-                        backgroundColor: brutalist.primaryContainer,
+                        backgroundColor: editorial.primaryContainer,
                         paddingHorizontal: 10,
                         paddingVertical: 4,
                         borderRadius: 4,
@@ -377,7 +377,7 @@ export default function CategoriesScreen() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Ionicons name="heart-outline" size={18} color={brutalist.primaryContainer} />
+                      <Ionicons name="heart-outline" size={18} color={editorial.primaryContainer} />
                     </Pressable>
                   </View>
                   {/* Hero Content */}
@@ -385,7 +385,7 @@ export default function CategoriesScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <View
                         style={{
-                          backgroundColor: brutalist.tertiaryFixed,
+                          backgroundColor: editorial.tertiaryFixed,
                           paddingHorizontal: 8,
                           paddingVertical: 3,
                           borderRadius: 4,
@@ -397,7 +397,7 @@ export default function CategoriesScreen() {
                             fontSize: 10,
                             letterSpacing: 1,
                             textTransform: 'uppercase',
-                            color: brutalist.tertiaryContainer,
+                            color: editorial.tertiaryContainer,
                           }}
                         >
                           {heroVendor.categoryLabel}
@@ -405,10 +405,10 @@ export default function CategoriesScreen() {
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                         <Ionicons name="star" size={12} color="#C4920A" />
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: brutalist.onSurface }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.onSurface }}>
                           {heroVendor.rating}
                         </Text>
-                        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant }}>
+                        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
                           ({heroVendor.reviews})
                         </Text>
                       </View>
@@ -418,7 +418,7 @@ export default function CategoriesScreen() {
                         fontFamily: 'SpaceGrotesk-Bold',
                         fontSize: 20,
                         letterSpacing: -0.3,
-                        color: brutalist.onSurface,
+                        color: editorial.onSurface,
                         marginBottom: 4,
                       }}
                     >
@@ -428,7 +428,7 @@ export default function CategoriesScreen() {
                       style={{
                         fontFamily: 'WorkSans-Regular',
                         fontSize: 14,
-                        color: brutalist.onSurfaceVariant,
+                        color: editorial.onSurfaceVariant,
                         marginBottom: 16,
                       }}
                     >
@@ -442,10 +442,10 @@ export default function CategoriesScreen() {
                         justifyContent: 'space-between',
                         paddingTop: 16,
                         borderTopWidth: 2,
-                        borderTopColor: brutalist.surfaceContainerHigh,
+                        borderTopColor: editorial.surfaceContainerHigh,
                       }}
                     >
-                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: brutalist.primaryContainer }}>
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.primaryContainer }}>
                         {formatPrice(heroVendor.price_min, heroVendor.price_max)}
                       </Text>
                       <View
@@ -454,12 +454,12 @@ export default function CategoriesScreen() {
                             flexDirection: 'row',
                             alignItems: 'center',
                             gap: 6,
-                            backgroundColor: brutalist.primaryContainer,
+                            backgroundColor: editorial.primaryContainer,
                             paddingHorizontal: 14,
                             paddingVertical: 8,
                             borderRadius: 8,
                           },
-                          brutalistShadowSm,
+                          shadowSoftSm,
                         ]}
                       >
                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, color: '#fff' }}>
@@ -481,7 +481,7 @@ export default function CategoriesScreen() {
                     fontFamily: 'SpaceGrotesk-Bold',
                     fontSize: 18,
                     letterSpacing: -0.3,
-                    color: brutalist.onSurface,
+                    color: editorial.onSurface,
                   }}
                 >
                   {selectedCategory
@@ -492,7 +492,7 @@ export default function CategoriesScreen() {
                   style={{
                     fontFamily: 'WorkSans-Bold',
                     fontSize: 12,
-                    color: brutalist.onSurfaceVariant,
+                    color: editorial.onSurfaceVariant,
                   }}
                 >
                   {listVendors.length} found
@@ -509,13 +509,13 @@ export default function CategoriesScreen() {
                 flexDirection: 'row',
                 marginHorizontal: 20,
                 marginBottom: 12,
-                backgroundColor: brutalist.surfaceContainerLowest,
+                backgroundColor: editorial.surfaceContainerLowest,
                 borderRadius: 12,
                 overflow: 'hidden',
                 borderWidth: 1,
-                borderColor: brutalist.outlineVariant,
+                borderColor: editorial.outlineVariant,
               },
-              brutalistShadowSm,
+              shadowSoftSm,
             ]}
           >
             {/* Thumbnail */}
@@ -528,7 +528,7 @@ export default function CategoriesScreen() {
                 />
               ) : (
                 <LinearGradient
-                  colors={[brutalist.secondaryContainer, brutalist.tertiaryFixed]}
+                  colors={[editorial.secondaryContainer, editorial.tertiaryFixed]}
                   style={{ width: '100%', minHeight: 120, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Text style={{ fontSize: 32 }}>{EMOJI_MAP[item.id] ?? '🏛️'}</Text>
@@ -540,7 +540,7 @@ export default function CategoriesScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 <View
                   style={{
-                    backgroundColor: brutalist.tertiaryFixed,
+                    backgroundColor: editorial.tertiaryFixed,
                     paddingHorizontal: 6,
                     paddingVertical: 2,
                     borderRadius: 3,
@@ -552,7 +552,7 @@ export default function CategoriesScreen() {
                       fontSize: 9,
                       letterSpacing: 1,
                       textTransform: 'uppercase',
-                      color: brutalist.tertiaryContainer,
+                      color: editorial.tertiaryContainer,
                     }}
                   >
                     {item.categoryLabel}
@@ -560,7 +560,7 @@ export default function CategoriesScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                   <Ionicons name="star" size={10} color="#C4920A" />
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 11, color: brutalist.onSurface }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 11, color: editorial.onSurface }}>
                     {item.rating}
                   </Text>
                 </View>
@@ -570,7 +570,7 @@ export default function CategoriesScreen() {
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 15,
                   letterSpacing: -0.2,
-                  color: brutalist.onSurface,
+                  color: editorial.onSurface,
                   marginBottom: 4,
                 }}
                 numberOfLines={1}
@@ -581,7 +581,7 @@ export default function CategoriesScreen() {
                 style={{
                   fontFamily: 'WorkSans-Regular',
                   fontSize: 12,
-                  color: brutalist.onSurfaceVariant,
+                  color: editorial.onSurfaceVariant,
                   marginBottom: 8,
                 }}
                 numberOfLines={1}
@@ -589,7 +589,7 @@ export default function CategoriesScreen() {
                 {item.location?.city}
                 {item.tagline ? ` · ${item.tagline}` : ''}
               </Text>
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: brutalist.primaryContainer }}>
+              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.primaryContainer }}>
                 {formatPrice(item.price_min, item.price_max)}
               </Text>
             </View>
@@ -597,12 +597,12 @@ export default function CategoriesScreen() {
         )}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 }}>
-            <Ionicons name="search-outline" size={48} color={brutalist.outlineVariant} />
+            <Ionicons name="search-outline" size={48} color={editorial.outlineVariant} />
             <Text
               style={{
                 fontFamily: 'SpaceGrotesk-Bold',
                 fontSize: 18,
-                color: brutalist.onSurface,
+                color: editorial.onSurface,
                 marginTop: 16,
                 textAlign: 'center',
               }}
@@ -613,7 +613,7 @@ export default function CategoriesScreen() {
               style={{
                 fontFamily: 'WorkSans-Regular',
                 fontSize: 14,
-                color: brutalist.onSurfaceVariant,
+                color: editorial.onSurfaceVariant,
                 marginTop: 8,
                 textAlign: 'center',
               }}

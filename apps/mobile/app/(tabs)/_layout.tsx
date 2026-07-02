@@ -3,7 +3,7 @@ import { Redirect, Tabs, type ErrorBoundaryProps } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { View, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { PlanningMenu } from '@/components/layout/PlanningMenu';
 import { ErrorFallback } from '@/components/ErrorFallback';
 
@@ -76,11 +76,11 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: brutalist.primaryContainer,
-          tabBarInactiveTintColor: brutalist.outline,
+          tabBarActiveTintColor: editorial.primaryContainer,
+          tabBarInactiveTintColor: editorial.outline,
           tabBarStyle: {
-            backgroundColor: brutalist.surfaceContainerLowest,
-            borderTopColor: brutalist.outlineVariant,
+            backgroundColor: editorial.surfaceContainerLowest,
+            borderTopColor: editorial.outlineVariant,
             borderTopWidth: 2,
             height: 84,
             paddingBottom: 16,
@@ -124,12 +124,12 @@ export default function TabLayout() {
                               width: 52,
                               height: 52,
                               borderRadius: 12,
-                              backgroundColor: menuOpen ? brutalist.onSurface : brutalist.primaryContainer,
+                              backgroundColor: menuOpen ? editorial.onSurface : editorial.primaryContainer,
                               alignItems: 'center',
                               justifyContent: 'center',
                               marginTop: -28,
                             },
-                            brutalistShadow,
+                            shadowSoft,
                           ]}
                         >
                           <Ionicons

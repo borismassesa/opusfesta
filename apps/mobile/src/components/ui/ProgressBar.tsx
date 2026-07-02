@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
 interface ProgressBarProps {
   progress: number; // 0-100
@@ -19,7 +19,7 @@ export function ProgressBar({
       className={className}
       style={{
         height: 6,
-        backgroundColor: brutalist.surfaceContainerHigh,
+        backgroundColor: editorial.surfaceContainerHigh,
         borderRadius: 3,
       }}
     >
@@ -27,7 +27,7 @@ export function ProgressBar({
         style={{
           height: 6,
           borderRadius: 3,
-          backgroundColor: color || brutalist.primaryContainer,
+          backgroundColor: color || editorial.primaryContainer,
           width: `${clampedProgress}%`,
         }}
       />

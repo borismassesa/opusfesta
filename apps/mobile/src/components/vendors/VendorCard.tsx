@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Badge } from '../ui/Badge';
 import { StarRating } from '../ui/StarRating';
 import { formatCurrency } from '@opusfesta/lib';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { editorial, shadowSoft } from '@/constants/theme';
 
 interface VendorCardProps {
   id: string;
@@ -37,14 +37,14 @@ export function VendorCard({
       onPress={() => router.push(`/vendor/${id}`)}
       style={[
         {
-          backgroundColor: brutalist.surfaceContainerLowest,
+          backgroundColor: editorial.surfaceContainerLowest,
           borderRadius: 24,
           borderWidth: 1,
-          borderColor: brutalist.outlineVariant,
+          borderColor: editorial.outlineVariant,
           overflow: 'hidden',
           width: compact ? '100%' : 224,
         },
-        brutalistShadow,
+        shadowSoft,
       ]}
     >
       {coverImage ? (
@@ -55,7 +55,7 @@ export function VendorCard({
         />
       ) : (
         <LinearGradient
-          colors={[brutalist.secondaryContainer, brutalist.tertiaryFixed]}
+          colors={[editorial.secondaryContainer, editorial.tertiaryFixed]}
           style={{ width: '100%', height: 144, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{ fontSize: 32 }}>📸</Text>
@@ -67,7 +67,7 @@ export function VendorCard({
           style={{
             fontFamily: 'SpaceGrotesk-Bold',
             fontSize: 15,
-            color: brutalist.onSurface,
+            color: editorial.onSurface,
           }}
           numberOfLines={1}
         >
@@ -78,7 +78,7 @@ export function VendorCard({
             style={{
               fontFamily: 'WorkSans-Regular',
               fontSize: 12,
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginTop: 4,
             }}
           >

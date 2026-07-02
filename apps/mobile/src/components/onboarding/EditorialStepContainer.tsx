@@ -1,11 +1,11 @@
 import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { brutalist, brutalistShadowPrimary } from '@/constants/theme';
-import { BrutalistHeader } from './BrutalistHeader';
-import { BrutalistProgress } from './BrutalistProgress';
+import { editorial, shadowSoftPrimary } from '@/constants/theme';
+import { EditorialHeader } from './EditorialHeader';
+import { EditorialProgress } from './EditorialProgress';
 
-interface BrutalistStepContainerProps {
+interface EditorialStepContainerProps {
   title: string;
   titleAccent?: string;
   subtitle?: string;
@@ -22,7 +22,7 @@ interface BrutalistStepContainerProps {
   onSkip?: () => void;
 }
 
-export function BrutalistStepContainer({
+export function EditorialStepContainer({
   title,
   titleAccent,
   subtitle,
@@ -37,16 +37,16 @@ export function BrutalistStepContainer({
   nextLoading = false,
   showSkip = false,
   onSkip,
-}: BrutalistStepContainerProps) {
+}: EditorialStepContainerProps) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <BrutalistHeader onBack={onBack} />
+        <EditorialHeader onBack={onBack} />
 
-        <BrutalistProgress
+        <EditorialProgress
           currentStep={currentStep}
           totalSteps={totalSteps}
           label={progressLabel}
@@ -61,12 +61,12 @@ export function BrutalistStepContainer({
               lineHeight: 34,
               letterSpacing: -0.8,
               textTransform: 'uppercase',
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
             }}
           >
             {title}
             {titleAccent ? (
-              <Text style={{ color: brutalist.primaryContainer }}>{' '}{titleAccent}</Text>
+              <Text style={{ color: editorial.primaryContainer }}>{' '}{titleAccent}</Text>
             ) : null}
           </Text>
           {subtitle && (
@@ -75,7 +75,7 @@ export function BrutalistStepContainer({
                 fontFamily: 'WorkSans-Regular',
                 fontSize: 16,
                 lineHeight: 24,
-                color: brutalist.onSurfaceVariant,
+                color: editorial.onSurfaceVariant,
                 marginTop: 8,
                 maxWidth: 320,
               }}
@@ -101,7 +101,7 @@ export function BrutalistStepContainer({
             disabled={nextDisabled || nextLoading}
             style={[
               {
-                backgroundColor: nextDisabled ? brutalist.surfaceContainerHighest : brutalist.primaryContainer,
+                backgroundColor: nextDisabled ? editorial.surfaceContainerHighest : editorial.primaryContainer,
                 paddingVertical: 18,
                 borderRadius: 9999,
                 alignItems: 'center',
@@ -110,20 +110,20 @@ export function BrutalistStepContainer({
                 gap: 8,
                 opacity: nextLoading ? 0.7 : 1,
               },
-              nextDisabled ? {} : brutalistShadowPrimary,
+              nextDisabled ? {} : shadowSoftPrimary,
             ]}
           >
             <Text
               style={{
                 fontFamily: 'SpaceGrotesk-Bold',
                 fontSize: 18,
-                color: nextDisabled ? brutalist.outline : brutalist.onPrimary,
+                color: nextDisabled ? editorial.outline : editorial.onPrimary,
               }}
             >
               {nextLoading ? 'Please wait...' : nextLabel}
             </Text>
             {!nextLoading && !nextDisabled && (
-              <Ionicons name="arrow-forward" size={20} color={brutalist.onPrimary} />
+              <Ionicons name="arrow-forward" size={20} color={editorial.onPrimary} />
             )}
           </Pressable>
           {showSkip && onSkip && (
@@ -134,7 +134,7 @@ export function BrutalistStepContainer({
                   fontSize: 12,
                   letterSpacing: 2,
                   textTransform: 'uppercase',
-                  color: brutalist.onSurfaceVariant,
+                  color: editorial.onSurfaceVariant,
                 }}
               >
                 Skip for now
