@@ -77,7 +77,7 @@ export function StepContainer({
 
         {/* ─── Question ─── */}
         <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: brutalist.onSurface, lineHeight: 32, marginBottom: 6 }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.8, textTransform: 'uppercase', color: brutalist.onSurface, lineHeight: 32, marginBottom: 6 }}>
             {title}
           </Text>
           {subtitle && (
@@ -104,9 +104,7 @@ export function StepContainer({
             style={{
               backgroundColor: nextDisabled ? brutalist.surfaceContainerHighest : brutalist.primaryContainer,
               paddingVertical: 16,
-              borderRadius: 12,
-              borderWidth: 2,
-              borderColor: nextDisabled ? brutalist.outlineVariant : brutalist.primaryContainer,
+              borderRadius: 9999,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: nextLoading ? 0.7 : 1,

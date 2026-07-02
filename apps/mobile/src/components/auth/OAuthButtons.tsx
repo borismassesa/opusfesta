@@ -20,7 +20,7 @@ export function OAuthButtons({ onGooglePress, loading }: OAuthButtonsProps) {
       ) : (
         <>
           <Ionicons name="logo-google" size={20} color="#4285F4" style={{ marginRight: 10 }} />
-          <Text className="font-dm-sans-bold text-sm text-of-text">Continue with Google</Text>
+          <Text className="font-work-sans-bold text-sm text-of-text">Continue with Google</Text>
         </>
       )}
     </Pressable>

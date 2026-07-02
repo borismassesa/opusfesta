@@ -20,7 +20,7 @@ export function OurStoryEditor({ content, onSave, saving }: Props) {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, gap: 16, paddingTop: 16 }}>
       <Input label="Section title" value={title} onChangeText={setTitle} placeholder="Our Story" />
       <View>
-        <Text className="text-sm font-dm-sans-bold text-of-text mb-1.5">Your love story</Text>
+        <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">Your love story</Text>
         <TextInput
           value={story}
           onChangeText={setStory}
@@ -29,11 +29,11 @@ export function OurStoryEditor({ content, onSave, saving }: Props) {
           multiline
           numberOfLines={8}
           textAlignVertical="top"
-          className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-dm-sans text-of-text min-h-[160px]"
+          className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-work-sans text-of-text min-h-[160px]"
         />
       </View>
       <View>
-        <Text className="text-sm font-dm-sans-bold text-of-text mb-2">Photos</Text>
+        <Text className="text-sm font-work-sans-bold text-of-text mb-2">Photos</Text>
         <PhotoUploader photos={photos} onPhotosChange={setPhotos} maxPhotos={8} />
       </View>
       <Button title="Save" onPress={() => onSave({ title, story, photos, timeline: content.timeline ?? [] })} loading={saving} />

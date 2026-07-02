@@ -5,6 +5,102 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CLERK_SECRET_KEY = Deno.env.get("CLERK_SECRET_KEY")!;
 
+type ClerkApiUser = {
+  id: string;
+  email_addresses: { id: string; email_address: string }[];
+  primary_email_address_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  image_url: string | null;
+};
+
+async function fetchClerkUser(clerkUserId: string): Promise<ClerkApiUser | null> {
+  const res = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
+    headers: { Authorization: `Bearer ${CLERK_SECRET_KEY}` },
+  });
+  if (!res.ok) {
+    console.error("Failed to fetch Clerk user:", await res.text());
+    return null;
+  }
+  return await res.json();
+}
+
+function primaryEmail(user: ClerkApiUser): string | null {
+  const primary = user.email_addresses.find((e) => e.id === user.primary_email_address_id);
+  return primary?.email_address ?? user.email_addresses[0]?.email_address ?? null;
+}
+
+/**
+ * Provisions a public.users row for a Clerk identity when the sync webhook
+ * hasn't run yet, mirroring the fallback in apps/opus_pass's dashboard auth
+ * (src/lib/dashboard/auth.ts) so mobile onboarding never has to wait on it.
+ */
+async function provisionUser(
+  supabase: ReturnType<typeof createClient>,
+  clerkUserId: string,
+): Promise<string | null> {
+  const clerkUser = await fetchClerkUser(clerkUserId);
+  const email = clerkUser ? primaryEmail(clerkUser) : null;
+  const name = clerkUser
+    ? [clerkUser.first_name, clerkUser.last_name].filter(Boolean).join(" ") || null
+    : null;
+
+  const { data: inserted, error } = await supabase
+    .from("users")
+    .upsert(
+      {
+        id: crypto.randomUUID(),
+        clerk_id: clerkUserId,
+        email,
+        name,
+        avatar: clerkUser?.image_url ?? null,
+        role: "user",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "clerk_id", ignoreDuplicates: true },
+    )
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (inserted) return inserted.id;
+
+  // No row + no error: a concurrent request already provisioned this clerk_id.
+  if (!error) {
+    const { data: byClerk } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", clerkUserId)
+      .maybeSingle<{ id: string }>();
+    if (byClerk) return byClerk.id;
+  }
+
+  // Email already belongs to a row (email is UNIQUE) — adopt it only if unclaimed,
+  // otherwise return it read-only so we never hijack another app's binding.
+  const isEmailConflict =
+    (error as { code?: string } | null)?.code === "23505" &&
+    (error?.message?.includes("email") ?? false);
+  if (email && isEmailConflict) {
+    const { data: byEmail } = await supabase
+      .from("users")
+      .select("id, clerk_id")
+      .eq("email", email)
+      .maybeSingle<{ id: string; clerk_id: string | null }>();
+    if (byEmail) {
+      if (!byEmail.clerk_id) {
+        await supabase
+          .from("users")
+          .update({ clerk_id: clerkUserId, updated_at: new Date().toISOString() })
+          .eq("id", byEmail.id)
+          .is("clerk_id", null);
+      }
+      return byEmail.id;
+    }
+  }
+
+  console.error("Failed to provision Clerk user", { clerkUserId, upsertError: error?.message ?? null });
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -68,14 +164,14 @@ Deno.serve(async (req: Request) => {
         .eq("clerk_id", clerkUserId)
         .maybeSingle();
 
-      if (!dbUser?.id) {
+      supabaseUserId = dbUser?.id ?? (await provisionUser(supabaseAuth, clerkUserId));
+
+      if (!supabaseUserId) {
         return new Response(
-          JSON.stringify({ error: "Account not yet synced. Please wait a moment and try again." }),
-          { status: 409, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Failed to provision account. Please try again." }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
         );
       }
-
-      supabaseUserId = dbUser.id;
     }
 
     const { type, profile } = await req.json();

@@ -20,7 +20,7 @@ export function CountdownEditor({ content, onSave, saving }: Props) {
       <Input label="Wedding date" value={targetDate} onChangeText={setTargetDate} placeholder="2025-09-14" />
       <Input label="Countdown message" value={message} onChangeText={setMessage} placeholder="We can't wait to celebrate with you!" />
       <View className="flex-row items-center justify-between bg-white border border-of-border rounded-xl px-4 py-3">
-        <Text className="font-dm-sans-medium text-sm text-of-text">Show on homepage</Text>
+        <Text className="font-work-sans-medium text-sm text-of-text">Show on homepage</Text>
         <Switch
           value={showOnHomepage}
           onValueChange={setShowOnHomepage}

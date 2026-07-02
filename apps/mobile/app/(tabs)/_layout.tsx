@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, type ErrorBoundaryProps } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { View, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { brutalist, brutalistShadow } from '@/constants/theme';
 import { PlanningMenu } from '@/components/layout/PlanningMenu';
+import { ErrorFallback } from '@/components/ErrorFallback';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <ErrorFallback error={error} retry={retry} title="This screen hit a snag" />;
+}
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 

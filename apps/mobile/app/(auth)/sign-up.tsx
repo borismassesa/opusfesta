@@ -244,7 +244,7 @@ export default function SignUpScreen() {
               {
                 backgroundColor: (!email.includes('@') || password.length < 8) ? brutalist.surfaceContainerHighest : brutalist.primaryContainer,
                 paddingVertical: 16,
-                borderRadius: 12,
+                borderRadius: 9999,
                 alignItems: 'center',
                 opacity: loading ? 0.7 : 1,
               },
@@ -290,7 +290,7 @@ export default function SignUpScreen() {
               {
                 backgroundColor: brutalist.onSurface,
                 paddingVertical: 14,
-                borderRadius: 12,
+                borderRadius: 9999,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -310,12 +310,12 @@ export default function SignUpScreen() {
             style={{
               backgroundColor: 'transparent',
               paddingVertical: 14,
-              borderRadius: 12,
+              borderRadius: 9999,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 10,
-              borderWidth: 2,
+              borderWidth: 1.5,
               borderColor: brutalist.onSurface,
             }}
           >

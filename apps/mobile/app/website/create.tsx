@@ -65,7 +65,7 @@ export default function CreateWebsiteScreen() {
         <Header title={isEdit ? 'Edit Theme' : 'Create Website'} showBack />
 
         {/* Theme picker */}
-        <Text className="font-dm-sans-bold text-base text-of-text mb-4 mt-4">
+        <Text className="font-work-sans-bold text-base text-of-text mb-4 mt-4">
           Choose a theme
         </Text>
         <View className="gap-3 mb-8">
@@ -94,7 +94,7 @@ export default function CreateWebsiteScreen() {
                 </View>
                 <View className="flex-1">
                   <Text
-                    className={`font-dm-sans-bold text-sm ${
+                    className={`font-work-sans-bold text-sm ${
                       isSelected ? 'text-of-primary' : 'text-of-text'
                     }`}
                   >
@@ -111,12 +111,12 @@ export default function CreateWebsiteScreen() {
         </View>
 
         {/* Slug input */}
-        <Text className="font-dm-sans-bold text-base text-of-text mb-2">
+        <Text className="font-work-sans-bold text-base text-of-text mb-2">
           Website URL
         </Text>
         <View className="flex-row items-center bg-white border border-of-border rounded-input overflow-hidden mb-2">
           <View className="bg-of-pale px-3 py-3.5 border-r border-of-border">
-            <Text className="text-xs text-of-muted font-dm-sans-medium">opusfesta.com/w/</Text>
+            <Text className="text-xs text-of-muted font-work-sans-medium">opusfesta.com/w/</Text>
           </View>
           <Input
             value={slug}

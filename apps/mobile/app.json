@@ -28,7 +28,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#5B2D8E"
       },
-      "package": "com.opusfesta.mobile"
+      "package": "com.opusfesta.mobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -51,6 +54,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2cc3d826-2eb3-4ecc-8c82-47f64d73d266"
+      }
     }
   }
 }

@@ -15,7 +15,7 @@ export function DressCodeEditor({ content, onSave, saving }: Props) {
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, gap: 16, paddingTop: 16 }}>
       <Input label="Section title" value={title} onChangeText={setTitle} placeholder="Dress Code" />
       <View>
-        <Text className="text-sm font-dm-sans-bold text-of-text mb-1.5">Description</Text>
+        <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">Description</Text>
         <TextInput
           value={description}
           onChangeText={setDescription}
@@ -24,7 +24,7 @@ export function DressCodeEditor({ content, onSave, saving }: Props) {
           multiline
           numberOfLines={5}
           textAlignVertical="top"
-          className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-dm-sans text-of-text min-h-[120px]"
+          className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-work-sans text-of-text min-h-[120px]"
         />
       </View>
       <Input label="Colors to avoid (comma-separated)" value={colorsToAvoid} onChangeText={setColorsToAvoid} placeholder="White, Cream, Red" />

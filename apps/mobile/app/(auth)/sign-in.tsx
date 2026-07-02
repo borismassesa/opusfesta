@@ -188,7 +188,7 @@ export default function SignInScreen() {
               {
                 backgroundColor: brutalist.primaryContainer,
                 paddingVertical: 16,
-                borderRadius: 12,
+                borderRadius: 9999,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',

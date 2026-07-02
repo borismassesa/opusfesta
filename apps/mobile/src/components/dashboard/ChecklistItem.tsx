@@ -33,7 +33,7 @@ export function ChecklistItem({
       </View>
       <View className="flex-1">
         <Text
-          className={`font-dm-sans-bold text-sm ${
+          className={`font-work-sans-bold text-sm ${
             completed
               ? 'text-of-muted line-through'
               : 'text-of-text'

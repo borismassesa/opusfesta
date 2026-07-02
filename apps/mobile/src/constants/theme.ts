@@ -84,30 +84,39 @@ export const purpleTints = {
   50:  '#F8F1FC',
 } as const;
 
-/** Brutalist shadow style for React Native */
+/**
+ * Soft elevation shadows (OpusFesta "Editorial Romance" system).
+ * Blurred, low-opacity, minimal offset — the shared web look, not hard offset.
+ * Export names are retained so existing call sites soften without churn.
+ */
 export const brutalistShadow = {
   shadowColor: '#2A1245',
-  shadowOffset: { width: 4, height: 4 },
-  shadowOpacity: 0.8,
-  shadowRadius: 0,
-  elevation: 4,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  elevation: 6,
 } as const;
 
 export const brutalistShadowSm = {
   shadowColor: '#2A1245',
-  shadowOffset: { width: 2, height: 2 },
-  shadowOpacity: 0.6,
-  shadowRadius: 0,
-  elevation: 2,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.06,
+  shadowRadius: 12,
+  elevation: 3,
 } as const;
 
 export const brutalistShadowPrimary = {
   shadowColor: '#5B2D8E',
-  shadowOffset: { width: 4, height: 4 },
-  shadowOpacity: 1,
-  shadowRadius: 0,
-  elevation: 4,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.22,
+  shadowRadius: 28,
+  elevation: 8,
 } as const;
+
+/** Preferred aliases for the soft-shadow tokens (use these in new code). */
+export const shadowSoft = brutalistShadow;
+export const shadowSoftSm = brutalistShadowSm;
+export const shadowSoftPrimary = brutalistShadowPrimary;
 
 export const spacing = {
   xs: 4,
@@ -121,10 +130,11 @@ export const spacing = {
 } as const;
 
 export const radii = {
-  card: 16,
-  button: 14,
-  pill: 20,
-  input: 12,
+  card: 24,
+  button: 9999,
+  pill: 9999,
+  chip: 20,
+  input: 14,
   full: 9999,
 } as const;
 

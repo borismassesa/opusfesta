@@ -6,7 +6,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getDashboardData } from '@/lib/api/events';
-import { brutalist, brutalistShadow, brutalistShadowSm } from '@/constants/theme';
+import { brutalist, brutalistShadow, brutalistShadowSm, brutalistShadowPrimary } from '@/constants/theme';
 
 const MOCK_TASKS = [
   {
@@ -86,11 +86,11 @@ export default function DashboardScreen() {
           <Ionicons name="menu" size={24} color={brutalist.primaryContainer} />
         </Pressable>
         <Text
+          numberOfLines={1}
           style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 20,
-            letterSpacing: -0.5,
-            color: brutalist.tertiaryContainer,
+            fontFamily: 'DancingScript-Bold',
+            fontSize: 30,
+            color: brutalist.primaryContainer,
           }}
         >
           {displayName}
@@ -115,12 +115,12 @@ export default function DashboardScreen() {
       <View
         style={[
           {
-            borderRadius: 12,
+            borderRadius: 24,
             padding: 24,
             marginBottom: 28,
             backgroundColor: brutalist.primaryContainer,
           },
-          brutalistShadow,
+          brutalistShadowPrimary,
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -187,8 +187,8 @@ export default function DashboardScreen() {
               flex: 1,
               backgroundColor: brutalist.surfaceContainerLowest,
               padding: 20,
-              borderRadius: 12,
-              borderWidth: 2,
+              borderRadius: 20,
+              borderWidth: 1,
               borderColor: brutalist.outlineVariant,
             },
             brutalistShadowSm,
@@ -221,8 +221,8 @@ export default function DashboardScreen() {
               flex: 1,
               backgroundColor: brutalist.surfaceContainerLowest,
               padding: 20,
-              borderRadius: 12,
-              borderWidth: 2,
+              borderRadius: 20,
+              borderWidth: 1,
               borderColor: brutalist.outlineVariant,
             },
             brutalistShadowSm,
@@ -268,8 +268,8 @@ export default function DashboardScreen() {
         style={[
           {
             backgroundColor: brutalist.surfaceContainerLowest,
-            borderRadius: 12,
-            borderWidth: 2,
+            borderRadius: 20,
+            borderWidth: 1,
             borderColor: brutalist.outlineVariant,
             overflow: 'hidden',
             marginBottom: 28,
@@ -375,8 +375,8 @@ export default function DashboardScreen() {
                 justifyContent: 'space-between',
                 padding: 16,
                 backgroundColor: brutalist.surfaceContainerLowest,
-                borderRadius: 12,
-                borderWidth: 2,
+                borderRadius: 20,
+                borderWidth: 1,
                 borderColor: brutalist.outlineVariant,
               },
               brutalistShadowSm,

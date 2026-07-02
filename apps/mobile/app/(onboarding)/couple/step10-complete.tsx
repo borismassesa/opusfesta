@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Animated, Easing, Alert } from 'react-native';
+import { View, Text, Animated, Easing, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { brutalist, brutalistShadow } from '@/constants/theme';
+import { CoupleNames } from '@/components/ui/CoupleNames';
 import { useCoupleOnboarding } from './_layout';
 
 const SETUP_TASKS = [
@@ -24,6 +25,8 @@ export default function CompleteScreen() {
   const { data } = useCoupleOnboarding();
 
   const [completedTasks, setCompletedTasks] = useState(0);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnims = useRef(SETUP_TASKS.map(() => new Animated.Value(0))).current;
   const checkAnims = useRef(SETUP_TASKS.map(() => new Animated.Value(0))).current;
@@ -59,6 +62,45 @@ export default function CompleteScreen() {
     }
   };
 
+  const submit = async () => {
+    setSubmitError(null);
+    try {
+      const partner1Name = [data.names?.partner1FirstName, data.names?.partner1LastName].filter(Boolean).join(' ');
+      const partner2Name = [data.names?.partner2FirstName, data.names?.partner2LastName].filter(Boolean).join(' ') || null;
+
+      const payload = {
+        partner1_name: partner1Name,
+        partner2_name: partner2Name,
+        wedding_date: data.date?.dateOption === 'not_sure' ? null : data.date?.weddingDate,
+        date_undecided: data.date?.dateOption === 'not_sure',
+        budget_range: null,
+        guest_count: data.guests?.guestCount ?? null,
+        city: data.location?.city ?? null,
+        region: null,
+        planning_stage: data.planningStage?.stage ?? null,
+        preferred_categories: data.vendorNeeds?.vendorNeeds ?? [],
+        preferred_styles: data.venueSetting?.venueSettings ?? [],
+        preferred_designs: data.designStyle?.designStyles ?? [],
+        whatsapp_phone: null,
+        avatar_url: null,
+      };
+
+      await callOnboardingFunction(payload);
+
+      await user?.update({
+        unsafeMetadata: {
+          ...(user?.unsafeMetadata ?? {}),
+          onboardingComplete: true,
+          user_type: 'couple',
+        },
+      });
+      await user?.reload();
+      router.replace('/');
+    } catch (err: any) {
+      setSubmitError(err.message || 'Something went wrong. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const taskDelay = 900;
 
@@ -87,46 +129,52 @@ export default function CompleteScreen() {
     }).start();
 
     // Submit data and navigate
-    const timeout = setTimeout(async () => {
-      try {
-        const partner1Name = [data.names?.partner1FirstName, data.names?.partner1LastName].filter(Boolean).join(' ');
-        const partner2Name = [data.names?.partner2FirstName, data.names?.partner2LastName].filter(Boolean).join(' ') || null;
-
-        const payload = {
-          partner1_name: partner1Name,
-          partner2_name: partner2Name,
-          wedding_date: data.date?.dateOption === 'not_sure' ? null : data.date?.weddingDate,
-          date_undecided: data.date?.dateOption === 'not_sure',
-          budget_range: null,
-          guest_count: data.guests?.guestCount ?? null,
-          city: data.location?.city ?? null,
-          region: null,
-          planning_stage: data.planningStage?.stage ?? null,
-          preferred_categories: data.vendorNeeds?.vendorNeeds ?? [],
-          preferred_styles: data.venueSetting?.venueSettings ?? [],
-          preferred_designs: data.designStyle?.designStyles ?? [],
-          whatsapp_phone: null,
-          avatar_url: null,
-        };
-
-        await callOnboardingFunction(payload);
-
-        await user?.update({
-          unsafeMetadata: {
-            ...(user?.unsafeMetadata ?? {}),
-            onboardingComplete: true,
-            user_type: 'couple',
-          },
-        });
-        await user?.reload();
-        router.replace('/');
-      } catch (err: any) {
-        Alert.alert('Error', err.message || 'Something went wrong. Please try again.');
-      }
-    }, SETUP_TASKS.length * taskDelay + 1200);
+    const timeout = setTimeout(submit, SETUP_TASKS.length * taskDelay + 1200);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [attempt]);
+
+  if (submitError) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <View
+            style={[
+              {
+                width: '100%',
+                maxWidth: 360,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: '#FCA5A5',
+                backgroundColor: '#FEF2F2',
+                padding: 20,
+              },
+              brutalistShadow,
+            ]}
+          >
+            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: '#7F1D1D' }}>
+              Couldn't finish setting up your plan
+            </Text>
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: '#991B1B', marginTop: 8, lineHeight: 20 }}>
+              {submitError}
+            </Text>
+            <Pressable
+              onPress={() => setAttempt((a) => a + 1)}
+              style={[
+                { marginTop: 16, backgroundColor: brutalist.primaryContainer, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+                brutalistShadow,
+              ]}
+            >
+              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#fff' }}>Try again</Text>
+            </Pressable>
+            <Pressable onPress={() => router.back()} style={{ marginTop: 12, alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: brutalist.onSurfaceVariant }}>Go back</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const spinRotation = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -170,26 +218,35 @@ export default function CompleteScreen() {
             <Ionicons name="sparkles" size={48} color={brutalist.onPrimaryContainer} />
           </View>
           {/* Floating accents */}
-          <View style={[{ position: 'absolute', top: 0, right: 16, backgroundColor: brutalist.secondaryContainer, padding: 8, borderRadius: 8 }, brutalistShadow]}>
+          <View style={[{ position: 'absolute', top: 0, right: 16, backgroundColor: brutalist.secondaryContainer, padding: 8, borderRadius: 14 }, brutalistShadow]}>
             <Ionicons name="heart" size={16} color={brutalist.onSecondaryContainer} />
           </View>
-          <View style={[{ position: 'absolute', bottom: 24, left: 0, backgroundColor: brutalist.primaryFixed, padding: 8, borderRadius: 8 }, brutalistShadow]}>
+          <View style={[{ position: 'absolute', bottom: 24, left: 0, backgroundColor: brutalist.primaryFixed, padding: 8, borderRadius: 14 }, brutalistShadow]}>
             <Ionicons name="sparkles-outline" size={16} color={brutalist.primaryContainer} />
           </View>
         </View>
+
+        {/* Couple names — the romantic signature moment */}
+        <CoupleNames
+          partner1={data.names?.partner1FirstName}
+          partner2={data.names?.partner2FirstName}
+          size="lg"
+          style={{ marginBottom: 4 }}
+        />
 
         {/* Header */}
         <Text
           style={{
             fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 24,
-            letterSpacing: -0.3,
+            fontSize: 22,
+            letterSpacing: -0.6,
+            textTransform: 'uppercase',
             color: brutalist.onSurface,
             textAlign: 'center',
             marginBottom: 8,
           }}
         >
-          Creating your wedding plan...
+          Creating your wedding plan
         </Text>
         <Text
           style={{

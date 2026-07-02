@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { brutalist, brutalistShadowSm } from '@/constants/theme';
+import { CoupleNames } from '@/components/ui/CoupleNames';
 import { useCoupleOnboarding } from './_layout';
 
 function BrutalistField({ label, value, onChangeText, placeholder }: {
@@ -15,7 +16,7 @@ function BrutalistField({ label, value, onChangeText, placeholder }: {
       <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: brutalist.onSurfaceVariant, marginLeft: 2 }}>
         {label}
       </Text>
-      <View style={[{ backgroundColor: '#fff', borderRadius: 12 }, brutalistShadow]}>
+      <View style={[{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: brutalist.outlineVariant }, brutalistShadowSm]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -81,11 +82,15 @@ export default function CoupleStep1() {
           </View>
         </View>
 
-        {/* Infinity symbol */}
-        <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: brutalist.tertiaryFixed, alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}>
-            <Ionicons name="infinite" size={40} color={brutalist.tertiaryContainer} />
-          </View>
+        {/* Live romantic preview — the couple's names in script as they type */}
+        <View style={{ alignItems: 'center', paddingVertical: 4, minHeight: 64, justifyContent: 'center' }}>
+          {firstName.trim() || partnerFirst.trim() ? (
+            <CoupleNames partner1={firstName} partner2={partnerFirst} size="md" />
+          ) : (
+            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: brutalist.tertiaryFixed, alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}>
+              <Ionicons name="infinite" size={40} color={brutalist.tertiaryContainer} />
+            </View>
+          )}
         </View>
 
         {/* Your Partner */}

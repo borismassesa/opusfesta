@@ -6,11 +6,12 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { tokenCache } from '@/lib/auth';
 import { hasSupabaseEnv, missingSupabaseEnvVars } from '@/lib/supabase';
 import { brutalist } from '@/constants/theme';
+import { ErrorFallback } from '@/components/ErrorFallback';
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -20,37 +21,24 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
-  return (
-    <View className="flex-1 items-center justify-center bg-white px-6">
-      <View className="w-full max-w-md rounded-2xl border border-red-200 bg-red-50 p-5">
-        <Text className="font-dm-sans-bold text-base text-red-900">App crashed during startup</Text>
-        <Text className="mt-2 font-dm-sans text-sm leading-5 text-red-800">{error.message}</Text>
-        <Pressable
-          onPress={retry}
-          className="mt-4 self-start rounded-button bg-of-primary px-4 py-2.5"
-        >
-          <Text className="font-dm-sans-bold text-xs text-white">Try again</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
+  return <ErrorFallback error={error} retry={retry} title="App crashed during startup" />;
 }
 
 function MissingConfigScreen({ missingVars }: { missingVars: string[] }) {
   return (
     <View className="flex-1 items-center justify-center bg-white px-6">
       <View className="w-full max-w-md rounded-2xl border border-red-200 bg-red-50 p-5">
-        <Text className="font-dm-sans-bold text-lg text-red-900">Missing environment configuration</Text>
-        <Text className="mt-2 font-dm-sans text-sm leading-5 text-red-800">
+        <Text className="font-work-sans-bold text-lg text-red-900">Missing environment configuration</Text>
+        <Text className="mt-2 font-work-sans text-sm leading-5 text-red-800">
           The mobile app is configured to use Clerk + Supabase, but required environment variables are missing.
         </Text>
-        <Text className="mt-3 font-dm-sans-medium text-sm text-red-900">Missing keys:</Text>
+        <Text className="mt-3 font-work-sans-medium text-sm text-red-900">Missing keys:</Text>
         {missingVars.map((key) => (
-          <Text key={key} className="mt-1 font-dm-sans text-sm text-red-800">
+          <Text key={key} className="mt-1 font-work-sans text-sm text-red-800">
             - {key}
           </Text>
         ))}
-        <Text className="mt-4 font-dm-sans text-xs leading-5 text-red-700">
+        <Text className="mt-4 font-work-sans text-xs leading-5 text-red-700">
           Add them to apps/mobile/.env and restart Expo.
         </Text>
       </View>
@@ -61,9 +49,6 @@ function MissingConfigScreen({ missingVars }: { missingVars: string[] }) {
 export default function RootLayout() {
   const [fontStartupTimedOut, setFontStartupTimedOut] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
-    DMSans: require('../assets/fonts/DMSans-Regular.ttf'),
-    'DMSans-Medium': require('../assets/fonts/DMSans-Medium.ttf'),
-    'DMSans-Bold': require('../assets/fonts/DMSans-Bold.ttf'),
     'PlayfairDisplay-SemiBold': require('../assets/fonts/PlayfairDisplay-SemiBold.ttf'),
     'PlayfairDisplay-Bold': require('../assets/fonts/PlayfairDisplay-Bold.ttf'),
     'SpaceGrotesk-Regular': require('../assets/fonts/SpaceGrotesk-Regular.ttf'),
@@ -72,6 +57,9 @@ export default function RootLayout() {
     'WorkSans-Medium': require('../assets/fonts/WorkSans-Medium.ttf'),
     'WorkSans-SemiBold': require('../assets/fonts/WorkSans-SemiBold.ttf'),
     'WorkSans-Bold': require('../assets/fonts/WorkSans-Bold.ttf'),
+    // Romantic script accent — couple names & dates only (Editorial Romance system)
+    'DancingScript-Regular': require('../assets/fonts/DancingScript-Regular.ttf'),
+    'DancingScript-Bold': require('../assets/fonts/DancingScript-Bold.ttf'),
   });
   const canRenderApp = fontsLoaded || Boolean(fontError) || fontStartupTimedOut;
 

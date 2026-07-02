@@ -26,18 +26,18 @@ export function RegistryEditor({ content, onSave, saving }: Props) {
       <Input label="Section title" value={title} onChangeText={setTitle} placeholder="Gift Registry" />
       <Input label="Message to guests" value={message} onChangeText={setMessage} placeholder="Your presence is the best gift..." multiline />
 
-      <Text className="font-dm-sans-bold text-sm text-of-text mt-2">Mobile Money</Text>
+      <Text className="font-work-sans-bold text-sm text-of-text mt-2">Mobile Money</Text>
       <View className="bg-white border border-of-border rounded-xl p-4 gap-3">
         <Input label="Provider" value={mmProvider} onChangeText={setMmProvider} placeholder="M-Pesa / Airtel / Tigo" />
         <Input label="Number" value={mmNumber} onChangeText={setMmNumber} placeholder="+255 712 345 678" keyboardType="phone-pad" />
         <Input label="Registered name" value={mmName} onChangeText={setMmName} placeholder="Fatma Said" />
       </View>
 
-      <Text className="font-dm-sans-bold text-sm text-of-text mt-2">Wishlist Items</Text>
+      <Text className="font-work-sans-bold text-sm text-of-text mt-2">Wishlist Items</Text>
       {items.map((item, i) => (
         <View key={i} className="bg-white border border-of-border rounded-xl p-4 gap-3">
           <View className="flex-row justify-between items-center">
-            <Text className="font-dm-sans-bold text-xs text-of-muted">Item #{i + 1}</Text>
+            <Text className="font-work-sans-bold text-xs text-of-muted">Item #{i + 1}</Text>
             <Pressable onPress={() => removeItem(i)}><Ionicons name="trash-outline" size={16} color={colors.coral} /></Pressable>
           </View>
           <Input label="Item name" value={item.name} onChangeText={(v) => updateItem(i, 'name', v)} placeholder="Kitchen mixer" />
@@ -47,7 +47,7 @@ export function RegistryEditor({ content, onSave, saving }: Props) {
       ))}
       <Pressable onPress={addItem} className="flex-row items-center justify-center gap-2 py-3 border border-dashed border-of-border rounded-xl">
         <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-        <Text className="font-dm-sans-bold text-sm text-of-primary">Add Item</Text>
+        <Text className="font-work-sans-bold text-sm text-of-primary">Add Item</Text>
       </Pressable>
       <Button title="Save" onPress={() => onSave({
         title, message, items,

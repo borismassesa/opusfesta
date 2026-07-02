@@ -25,7 +25,7 @@ export function TravelEditor({ content, onSave, saving }: Props) {
       {hotels.map((h, i) => (
         <View key={i} className="bg-white border border-of-border rounded-xl p-4 gap-3">
           <View className="flex-row justify-between items-center">
-            <Text className="font-dm-sans-bold text-xs text-of-muted">Hotel #{i + 1}</Text>
+            <Text className="font-work-sans-bold text-xs text-of-muted">Hotel #{i + 1}</Text>
             <Pressable onPress={() => removeHotel(i)}><Ionicons name="trash-outline" size={16} color={colors.coral} /></Pressable>
           </View>
           <Input label="Name" value={h.name} onChangeText={(v) => updateHotel(i, 'name', v)} placeholder="Serena Hotel" />
@@ -36,7 +36,7 @@ export function TravelEditor({ content, onSave, saving }: Props) {
       ))}
       <Pressable onPress={addHotel} className="flex-row items-center justify-center gap-2 py-3 border border-dashed border-of-border rounded-xl">
         <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-        <Text className="font-dm-sans-bold text-sm text-of-primary">Add Hotel</Text>
+        <Text className="font-work-sans-bold text-sm text-of-primary">Add Hotel</Text>
       </Pressable>
       <Input label="Transport tips" value={transportTips} onChangeText={setTransportTips} placeholder="Uber and Bolt are available..." multiline />
       <Input label="Local tips" value={localTips} onChangeText={setLocalTips} placeholder="Best restaurants nearby..." multiline />

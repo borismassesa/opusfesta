@@ -49,7 +49,7 @@ export default function VendorStep3() {
     >
       <View className="gap-5">
         <View>
-          <Text className="font-dm-sans-bold text-sm text-of-text mb-3">City</Text>
+          <Text className="font-work-sans-bold text-sm text-of-text mb-3">City</Text>
           <CitySelector value={city} onSelect={(key: CityKey) => setCity(key)} />
         </View>
 

@@ -20,7 +20,7 @@ export function FaqEditor({ content, onSave, saving }: Props) {
       {items.map((item, i) => (
         <View key={i} className="bg-white border border-of-border rounded-xl p-4 gap-3">
           <View className="flex-row justify-between items-center">
-            <Text className="font-dm-sans-bold text-xs text-of-muted">Q&A #{i + 1}</Text>
+            <Text className="font-work-sans-bold text-xs text-of-muted">Q&A #{i + 1}</Text>
             <Pressable onPress={() => removeItem(i)}><Ionicons name="trash-outline" size={16} color={colors.coral} /></Pressable>
           </View>
           <Input label="Question" value={item.question} onChangeText={(v) => updateItem(i, 'question', v)} placeholder="When should I arrive?" />
@@ -29,7 +29,7 @@ export function FaqEditor({ content, onSave, saving }: Props) {
       ))}
       <Pressable onPress={addItem} className="flex-row items-center justify-center gap-2 py-3 border border-dashed border-of-border rounded-xl">
         <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-        <Text className="font-dm-sans-bold text-sm text-of-primary">Add Question</Text>
+        <Text className="font-work-sans-bold text-sm text-of-primary">Add Question</Text>
       </Pressable>
       <Button title="Save" onPress={() => onSave({ items })} loading={saving} />
     </ScrollView>

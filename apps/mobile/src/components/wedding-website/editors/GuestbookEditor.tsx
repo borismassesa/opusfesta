@@ -17,7 +17,7 @@ export function GuestbookEditor({ content, onSave, saving }: Props) {
       <Input label="Subtitle" value={subtitle} onChangeText={setSubtitle} placeholder="Share your wishes for the happy couple" />
       <View className="flex-row items-center justify-between bg-white border border-of-border rounded-xl px-4 py-3">
         <View>
-          <Text className="font-dm-sans-bold text-sm text-of-text">Moderate messages</Text>
+          <Text className="font-work-sans-bold text-sm text-of-text">Moderate messages</Text>
           <Text className="text-xs text-of-muted">Approve messages before they appear</Text>
         </View>
         <Switch

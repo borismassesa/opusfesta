@@ -1,5 +1,10 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
+import { ErrorFallback } from '@/components/ErrorFallback';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return <ErrorFallback error={error} retry={retry} title="Sign-in hit a snag" />;
+}
 
 export default function AuthLayout() {
   const { isSignedIn } = useAuth();

@@ -35,7 +35,7 @@ export default function VendorStep2() {
     >
       <View className="gap-5">
         <View>
-          <Text className="font-dm-sans-bold text-sm text-of-text mb-1.5">
+          <Text className="font-work-sans-bold text-sm text-of-text mb-1.5">
             Description
           </Text>
           <TextInput
@@ -46,7 +46,7 @@ export default function VendorStep2() {
             multiline
             numberOfLines={5}
             textAlignVertical="top"
-            className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-dm-sans text-of-text min-h-[120px]"
+            className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-work-sans text-of-text min-h-[120px]"
           />
           <Text
             className={`text-xs mt-1 ${
@@ -58,7 +58,7 @@ export default function VendorStep2() {
         </View>
 
         <View>
-          <Text className="font-dm-sans-bold text-sm text-of-text mb-3">Price range</Text>
+          <Text className="font-work-sans-bold text-sm text-of-text mb-3">Price range</Text>
           <View className="gap-2.5">
             {PRICE_RANGE_OPTIONS.map((option) => {
               const isSelected = priceRange === option.key;
@@ -74,7 +74,7 @@ export default function VendorStep2() {
                 >
                   <View>
                     <Text
-                      className={`font-dm-sans-medium text-sm ${
+                      className={`font-work-sans-medium text-sm ${
                         isSelected ? 'text-of-primary' : 'text-of-text'
                       }`}
                     >
@@ -83,7 +83,7 @@ export default function VendorStep2() {
                     <Text className="text-xs text-of-muted">{option.description}</Text>
                   </View>
                   <Text
-                    className={`font-dm-sans-bold text-lg ${
+                    className={`font-work-sans-bold text-lg ${
                       isSelected ? 'text-of-primary' : 'text-of-muted'
                     }`}
                   >

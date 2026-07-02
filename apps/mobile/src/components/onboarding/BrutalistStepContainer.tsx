@@ -52,20 +52,21 @@ export function BrutalistStepContainer({
           label={progressLabel}
         />
 
-        {/* Editorial Header */}
+        {/* Editorial Header — loud uppercase display type */}
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
           <Text
             style={{
               fontFamily: 'SpaceGrotesk-Bold',
-              fontSize: 28,
+              fontSize: 30,
               lineHeight: 34,
-              letterSpacing: -0.5,
+              letterSpacing: -0.8,
+              textTransform: 'uppercase',
               color: brutalist.onSurface,
             }}
           >
             {title}
             {titleAccent ? (
-              <Text style={{ color: brutalist.onPrimaryContainer }}>{' '}{titleAccent}</Text>
+              <Text style={{ color: brutalist.primaryContainer }}>{' '}{titleAccent}</Text>
             ) : null}
           </Text>
           {subtitle && (
@@ -102,7 +103,7 @@ export function BrutalistStepContainer({
               {
                 backgroundColor: nextDisabled ? brutalist.surfaceContainerHighest : brutalist.primaryContainer,
                 paddingVertical: 18,
-                borderRadius: 12,
+                borderRadius: 9999,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',

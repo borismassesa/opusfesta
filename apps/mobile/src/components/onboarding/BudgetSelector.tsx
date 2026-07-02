@@ -22,7 +22,7 @@ export function BudgetSelector({ value, onSelect }: BudgetSelectorProps) {
             }`}
           >
             <Text
-              className={`font-dm-sans-medium text-sm ${
+              className={`font-work-sans-medium text-sm ${
                 isSelected ? 'text-of-primary' : 'text-of-text'
               }`}
             >

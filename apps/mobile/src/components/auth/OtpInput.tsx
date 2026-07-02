@@ -31,7 +31,7 @@ export function OtpInput({ length = 6, onComplete, error }: OtpInputProps) {
                 i < code.length ? 'border-of-primary bg-of-pale' : 'border-of-border bg-white'
               }`}
             >
-              <Text className="font-dm-sans-bold text-xl text-of-text">
+              <Text className="font-work-sans-bold text-xl text-of-text">
                 {code[i] ?? ''}
               </Text>
             </View>

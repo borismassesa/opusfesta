@@ -51,16 +51,16 @@ export default function ProfileSettingsScreen() {
           <Pressable onPress={() => router.back()} style={{ padding: 4, marginRight: 12 }}>
             <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
           </Pressable>
-          <Text style={{ fontFamily: 'DMSans-Bold', fontSize: 20, color: '#1a1a1a' }}>Profile</Text>
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 20, color: '#1a1a1a' }}>Profile</Text>
         </View>
 
         {/* User card */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <Avatar name={user?.name ?? undefined} imageUrl={user?.imageUrl} size="lg" />
-          <Text style={{ fontFamily: 'DMSans-Bold', fontSize: 20, color: '#1a1a1a', marginTop: 14 }}>
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 20, color: '#1a1a1a', marginTop: 14 }}>
             {user?.name ?? 'Your Profile'}
           </Text>
-          <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: '#6B7280', marginTop: 4 }}>
             {user?.email}
           </Text>
         </View>
@@ -88,7 +88,7 @@ export default function ProfileSettingsScreen() {
               <Text
                 style={{
                   flex: 1,
-                  fontFamily: 'DMSans-Medium',
+                  fontFamily: 'WorkSans-Medium',
                   fontSize: 15,
                   color: item.danger ? '#DC2626' : '#1a1a1a',
                 }}

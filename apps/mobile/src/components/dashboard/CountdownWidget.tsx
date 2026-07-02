@@ -8,7 +8,7 @@ interface CountdownWidgetProps {
 export function CountdownWidget({ daysLeft, eventName }: CountdownWidgetProps) {
   return (
     <View className="bg-of-primary rounded-button p-3 items-center">
-      <Text className="text-2xl font-dm-sans-bold text-white">{daysLeft}</Text>
+      <Text className="text-2xl font-work-sans-bold text-white">{daysLeft}</Text>
       <Text className="text-[10px] text-of-light">Days left</Text>
     </View>
   );

@@ -45,7 +45,7 @@ export default function VendorStep1() {
         />
 
         <View>
-          <Text className="font-dm-sans-bold text-sm text-of-text mb-3">Category</Text>
+          <Text className="font-work-sans-bold text-sm text-of-text mb-3">Category</Text>
           <CategoryGrid
             categories={VENDOR_CATEGORY_OPTIONS}
             selected={category ? [category] : []}

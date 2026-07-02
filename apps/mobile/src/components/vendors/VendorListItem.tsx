@@ -32,8 +32,8 @@ export function VendorListItem({
       style={[
         {
           backgroundColor: brutalist.surfaceContainerLowest,
-          borderRadius: 12,
-          borderWidth: 2,
+          borderRadius: 20,
+          borderWidth: 1,
           borderColor: brutalist.outlineVariant,
           padding: 14,
           flexDirection: 'row',

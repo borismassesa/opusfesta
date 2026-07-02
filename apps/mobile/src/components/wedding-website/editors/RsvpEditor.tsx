@@ -29,7 +29,7 @@ export function RsvpEditor({ content, onSave, saving }: Props) {
       <View className="bg-white border border-of-border rounded-xl p-4 gap-3">
         <View className="flex-row items-center justify-between">
           <View>
-            <Text className="font-dm-sans-bold text-sm text-of-text">WhatsApp RSVP</Text>
+            <Text className="font-work-sans-bold text-sm text-of-text">WhatsApp RSVP</Text>
             <Text className="text-xs text-of-muted">Allow guests to RSVP via WhatsApp</Text>
           </View>
           <Switch

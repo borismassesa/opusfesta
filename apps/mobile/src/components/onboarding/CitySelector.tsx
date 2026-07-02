@@ -23,7 +23,7 @@ export function CitySelector({ value, onSelect }: CitySelectorProps) {
           >
             <Text className="text-lg mb-1">{city.icon}</Text>
             <Text
-              className={`font-dm-sans-medium text-sm ${
+              className={`font-work-sans-medium text-sm ${
                 isSelected ? 'text-white' : 'text-of-text'
               }`}
             >

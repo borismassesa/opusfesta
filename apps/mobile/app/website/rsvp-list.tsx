@@ -56,7 +56,7 @@ export default function RsvpListScreen() {
                 backgroundColor: isActive ? colors.primary : '#F3EBF9',
               }}
             >
-              <Text className="text-xs font-dm-sans-bold" style={{ color: isActive ? '#fff' : colors.muted }}>
+              <Text className="text-xs font-work-sans-bold" style={{ color: isActive ? '#fff' : colors.muted }}>
                 {f.label} ({counts[f.key as keyof typeof counts] ?? 0})
               </Text>
             </Pressable>
@@ -83,9 +83,9 @@ export default function RsvpListScreen() {
             return (
               <View className="bg-white rounded-xl border border-of-border p-4">
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className="font-dm-sans-bold text-sm text-of-text">{item.guest_name}</Text>
+                  <Text className="font-work-sans-bold text-sm text-of-text">{item.guest_name}</Text>
                   <View className={`px-2.5 py-1 rounded-full ${statusStyle.bg}`}>
-                    <Text className={`text-[10px] font-dm-sans-bold uppercase ${statusStyle.text}`}>
+                    <Text className={`text-[10px] font-work-sans-bold uppercase ${statusStyle.text}`}>
                       {item.attending}
                     </Text>
                   </View>

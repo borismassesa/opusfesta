@@ -38,14 +38,14 @@ export default function GuestbookManageScreen() {
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center gap-2">
                   <View className="w-8 h-8 rounded-full bg-of-primary items-center justify-center">
-                    <Text className="text-white font-dm-sans-bold text-xs">
+                    <Text className="text-white font-work-sans-bold text-xs">
                       {item.guest_name.charAt(0)}
                     </Text>
                   </View>
-                  <Text className="font-dm-sans-bold text-sm text-of-text">{item.guest_name}</Text>
+                  <Text className="font-work-sans-bold text-sm text-of-text">{item.guest_name}</Text>
                 </View>
                 <View className={`px-2 py-0.5 rounded-full ${item.is_approved ? 'bg-green-50' : 'bg-amber-50'}`}>
-                  <Text className={`text-[10px] font-dm-sans-bold uppercase ${item.is_approved ? 'text-green-700' : 'text-amber-700'}`}>
+                  <Text className={`text-[10px] font-work-sans-bold uppercase ${item.is_approved ? 'text-green-700' : 'text-amber-700'}`}>
                     {item.is_approved ? 'Approved' : 'Pending'}
                   </Text>
                 </View>
@@ -58,7 +58,7 @@ export default function GuestbookManageScreen() {
                     className="flex-row items-center gap-1 bg-green-50 px-3 py-1.5 rounded-button border border-green-100"
                   >
                     <Ionicons name="checkmark" size={14} color="#16a34a" />
-                    <Text className="text-xs font-dm-sans-bold text-green-700">Approve</Text>
+                    <Text className="text-xs font-work-sans-bold text-green-700">Approve</Text>
                   </Pressable>
                 )}
                 {item.is_approved && (
@@ -67,7 +67,7 @@ export default function GuestbookManageScreen() {
                     className="flex-row items-center gap-1 bg-red-50 px-3 py-1.5 rounded-button border border-red-100"
                   >
                     <Ionicons name="close" size={14} color="#dc2626" />
-                    <Text className="text-xs font-dm-sans-bold text-red-600">Hide</Text>
+                    <Text className="text-xs font-work-sans-bold text-red-600">Hide</Text>
                   </Pressable>
                 )}
               </View>

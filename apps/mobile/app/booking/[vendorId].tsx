@@ -76,7 +76,7 @@ export default function BookingScreen() {
           name="eventDate"
           render={({ field: { onChange, value } }) => (
             <View>
-              <Text className="text-sm font-dm-sans-bold text-of-text mb-1.5">
+              <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">
                 Event date
               </Text>
               <Card className="flex-row justify-between items-center">
@@ -95,7 +95,7 @@ export default function BookingScreen() {
 
         {/* Guest count */}
         <View>
-          <Text className="text-sm font-dm-sans-bold text-of-text mb-1.5">
+          <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">
             Number of guests
           </Text>
           <Card className="flex-row justify-between items-center">
@@ -121,13 +121,13 @@ export default function BookingScreen() {
 
         {/* Budget range */}
         <View>
-          <Text className="text-sm font-dm-sans-bold text-of-text mb-1.5">
+          <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">
             Budget range
           </Text>
           <Card>
             <View className="flex-row justify-between mb-2">
               <Text className="text-sm text-of-muted">TZS 2M</Text>
-              <Text className="text-sm font-dm-sans-bold text-of-primary">
+              <Text className="text-sm font-work-sans-bold text-of-primary">
                 TZS 5M
               </Text>
               <Text className="text-sm text-of-muted">TZS 10M</Text>

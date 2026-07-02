@@ -13,7 +13,7 @@ export function BudgetTracker({ total, allocated }: BudgetTrackerProps) {
   return (
     <View className="bg-of-pale p-4 rounded-card">
       <Text className="text-xs text-of-medium mb-1">Budget</Text>
-      <Text className="text-xl font-dm-sans-bold text-of-primary">
+      <Text className="text-xl font-work-sans-bold text-of-primary">
         {formatCurrency(total)}
       </Text>
       <ProgressBar progress={percentage} className="mt-2" />

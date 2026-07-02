@@ -1,6 +1,6 @@
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
 import { forwardRef } from 'react';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { brutalist, brutalistShadowSm } from '@/constants/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -31,11 +31,13 @@ export const Input = forwardRef<TextInput, InputProps>(
           style={[
             {
               backgroundColor: brutalist.surfaceContainerLowest,
-              borderRadius: 12,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: brutalist.outlineVariant,
             },
             error
-              ? { borderWidth: 2, borderColor: brutalist.error }
-              : brutalistShadow,
+              ? { borderWidth: 1.5, borderColor: brutalist.error }
+              : brutalistShadowSm,
           ]}
         >
           <TextInput

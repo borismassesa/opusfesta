@@ -61,7 +61,7 @@ export default function ChatScreen() {
                       backgroundColor: brutalist.surfaceContainerLowest,
                       alignSelf: 'flex-start',
                       borderBottomLeftRadius: 4,
-                      borderWidth: 2,
+                      borderWidth: 1,
                       borderColor: brutalist.outlineVariant,
                     }),
               },

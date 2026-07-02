@@ -17,10 +17,10 @@ export function CategoryPill({
       onPress={onPress}
       style={[
         {
-          borderRadius: 20,
+          borderRadius: 9999,
           paddingHorizontal: 16,
           paddingVertical: 8,
-          borderWidth: 2,
+          borderWidth: active ? 1.5 : 1,
           backgroundColor: active ? brutalist.primaryContainer : brutalist.surfaceContainerLowest,
           borderColor: active ? brutalist.primaryContainer : brutalist.outlineVariant,
         },

@@ -72,7 +72,7 @@ function SectionTitle({ children }: { children: string }) {
 function DetailBlock({ title, text }: { title: string; text: string }) {
   return (
     <View className="mb-5">
-      <Text className="text-sm font-dm-sans-bold text-of-text mb-1.5">{title}</Text>
+      <Text className="text-sm font-work-sans-bold text-of-text mb-1.5">{title}</Text>
       <Text className="text-sm text-of-muted leading-relaxed">{text}</Text>
     </View>
   );
@@ -206,17 +206,17 @@ export default function VendorProfileScreen() {
             </View>
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className="text-[10px] uppercase tracking-widest text-of-muted font-dm-sans-bold">
+                <Text className="text-[10px] uppercase tracking-widest text-of-muted font-work-sans-bold">
                   Starting from
                 </Text>
-                <Text className="text-xl font-dm-sans-bold text-of-primary">
+                <Text className="text-xl font-work-sans-bold text-of-primary">
                   {formatCurrency(displayPrice)}
                 </Text>
               </View>
               {isVerified && (
                 <View className="flex-row items-center gap-1 bg-green-50 rounded-full px-3 py-1.5 border border-green-100">
                   <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
-                  <Text className="text-[10px] font-dm-sans-bold text-green-700 uppercase">
+                  <Text className="text-[10px] font-work-sans-bold text-green-700 uppercase">
                     Verified
                   </Text>
                 </View>
@@ -233,19 +233,19 @@ export default function VendorProfileScreen() {
         >
           <View className="flex-row items-center gap-1.5 bg-of-pale rounded-xl px-3 h-8 border border-of-border">
             <Ionicons name="storefront-outline" size={14} color={colors.primary} />
-            <Text className="text-[10px] font-dm-sans-bold text-of-primary uppercase tracking-tight">
+            <Text className="text-[10px] font-work-sans-bold text-of-primary uppercase tracking-tight">
               {displayCategory}
             </Text>
           </View>
           <View className="flex-row items-center gap-1.5 bg-amber-50 rounded-xl px-3 h-8 border border-amber-100">
             <Ionicons name="star" size={14} color="#f59e0b" />
-            <Text className="text-[10px] font-dm-sans-bold text-amber-700 uppercase tracking-tight">
+            <Text className="text-[10px] font-work-sans-bold text-amber-700 uppercase tracking-tight">
               {displayRating} Rating
             </Text>
           </View>
           <View className="flex-row items-center gap-1.5 bg-slate-100 rounded-xl px-3 h-8 border border-slate-200">
             <Ionicons name="people-outline" size={14} color="#475569" />
-            <Text className="text-[10px] font-dm-sans-bold text-slate-700 uppercase tracking-tight">
+            <Text className="text-[10px] font-work-sans-bold text-slate-700 uppercase tracking-tight">
               {displayCapacity}
             </Text>
           </View>
@@ -284,18 +284,18 @@ export default function VendorProfileScreen() {
                       paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
                     }}
                   >
-                    <Text className="text-[9px] font-dm-sans-bold text-white uppercase tracking-widest">
+                    <Text className="text-[9px] font-work-sans-bold text-white uppercase tracking-widest">
                       Most Popular
                     </Text>
                   </View>
                   <View className="flex-row justify-between items-start mt-1">
                     <View className="flex-1 mr-2">
-                      <Text className="font-dm-sans-bold text-sm text-of-primary">{tier.name}</Text>
+                      <Text className="font-work-sans-bold text-sm text-of-primary">{tier.name}</Text>
                       <Text className="text-xs" style={{ color: 'rgba(91,45,142,0.6)' }}>
                         {tier.description}
                       </Text>
                     </View>
-                    <Text className="font-dm-sans-bold text-of-primary">
+                    <Text className="font-work-sans-bold text-of-primary">
                       {formatCurrency(tier.price)}
                     </Text>
                   </View>
@@ -318,10 +318,10 @@ export default function VendorProfileScreen() {
                 >
                   <View className="flex-row justify-between items-start">
                     <View className="flex-1 mr-2">
-                      <Text className="font-dm-sans-bold text-sm text-of-text">{tier.name}</Text>
+                      <Text className="font-work-sans-bold text-sm text-of-text">{tier.name}</Text>
                       <Text className="text-xs text-of-muted">{tier.description}</Text>
                     </View>
-                    <Text className="font-dm-sans-bold text-of-text">
+                    <Text className="font-work-sans-bold text-of-text">
                       {formatCurrency(tier.price)}
                     </Text>
                   </View>
@@ -339,12 +339,12 @@ export default function VendorProfileScreen() {
                 <Ionicons name="calendar-outline" size={22} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="font-dm-sans-bold text-of-text mb-1">Availability</Text>
+                <Text className="font-work-sans-bold text-of-text mb-1">Availability</Text>
                 <Text className="text-sm text-of-muted leading-relaxed">
                   Looking for the perfect match? We currently have limited dates for 2025. Continue browsing or request a date to check specific availability.
                 </Text>
                 <Pressable className="flex-row items-center gap-1 mt-4">
-                  <Text className="text-sm font-dm-sans-bold text-of-primary">
+                  <Text className="text-sm font-work-sans-bold text-of-primary">
                     Check available dates
                   </Text>
                   <Ionicons name="arrow-forward" size={14} color={colors.primary} />
@@ -365,8 +365,8 @@ export default function VendorProfileScreen() {
               <Text style={{ fontSize: 32 }}>👩</Text>
             </View>
             <View className="flex-1">
-              <Text className="font-dm-sans-bold text-of-text">{FALLBACK_TEAM.name}</Text>
-              <Text className="text-xs font-dm-sans-bold text-of-primary uppercase mb-2">
+              <Text className="font-work-sans-bold text-of-text">{FALLBACK_TEAM.name}</Text>
+              <Text className="text-xs font-work-sans-bold text-of-primary uppercase mb-2">
                 {FALLBACK_TEAM.role}
               </Text>
               <Text className="text-xs text-of-muted leading-tight italic">
@@ -382,7 +382,7 @@ export default function VendorProfileScreen() {
             <Text className="font-playfair-bold text-xl text-of-text">{reviewCount} reviews</Text>
             <View className="flex-row items-center gap-1">
               <Ionicons name="star" size={16} color="#f59e0b" />
-              <Text className="font-dm-sans-bold text-of-text">{displayRating}</Text>
+              <Text className="font-work-sans-bold text-of-text">{displayRating}</Text>
             </View>
           </View>
 
@@ -394,20 +394,20 @@ export default function VendorProfileScreen() {
             >
               {review.highlighted && (
                 <View className="bg-slate-100 self-start px-2 py-0.5 rounded mb-3">
-                  <Text className="text-[10px] font-dm-sans-bold text-of-muted uppercase tracking-wider">
+                  <Text className="text-[10px] font-work-sans-bold text-of-muted uppercase tracking-wider">
                     Highlighted review
                   </Text>
                 </View>
               )}
               <View className="flex-row items-start gap-3 mb-3">
                 <View className="w-10 h-10 rounded-full bg-of-primary items-center justify-center">
-                  <Text className="font-dm-sans-bold text-white text-sm">
+                  <Text className="font-work-sans-bold text-white text-sm">
                     {review.user?.initials ?? review.user?.name?.charAt(0) ?? '?'}
                   </Text>
                 </View>
                 <View className="flex-1">
                   <View className="flex-row justify-between items-start">
-                    <Text className="font-dm-sans-bold text-sm text-of-text">
+                    <Text className="font-work-sans-bold text-sm text-of-text">
                       {review.user?.name}
                     </Text>
                     {review.date && (
@@ -423,13 +423,13 @@ export default function VendorProfileScreen() {
               </View>
               <Text className="text-sm text-of-muted leading-relaxed">
                 {review.content}
-                <Text className="text-of-primary font-dm-sans-bold"> Read more</Text>
+                <Text className="text-of-primary font-work-sans-bold"> Read more</Text>
               </Text>
             </View>
           ))}
 
           <Pressable className="py-3 rounded-full border border-of-primary items-center mt-3">
-            <Text className="text-sm font-dm-sans-bold text-of-primary">
+            <Text className="text-sm font-work-sans-bold text-of-primary">
               See all {reviewCount} reviews
             </Text>
           </Pressable>
@@ -465,7 +465,7 @@ export default function VendorProfileScreen() {
                 }`}
               >
                 <Ionicons name={link.icon} size={20} color={colors.primary} />
-                <Text className="flex-1 font-dm-sans-medium text-of-text">{link.label}</Text>
+                <Text className="flex-1 font-work-sans-medium text-of-text">{link.label}</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.muted} />
               </Pressable>
             ))}
@@ -497,7 +497,7 @@ export default function VendorProfileScreen() {
           }}
         >
           <Ionicons name="mail-outline" size={20} color="#fff" />
-          <Text className="font-dm-sans-bold text-base text-white">Request a quote</Text>
+          <Text className="font-work-sans-bold text-base text-white">Request a quote</Text>
         </Pressable>
       </View>
     </View>

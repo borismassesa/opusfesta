@@ -1,6 +1,6 @@
 import { Pressable, Text, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { brutalist, brutalistShadow, brutalistShadowPrimary } from '@/constants/theme';
+import { brutalist } from '@/constants/theme';
 
 type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -15,28 +15,26 @@ interface ButtonProps {
   className?: string;
 }
 
-const variantConfig: Record<ButtonVariant, { bg: string; text: string; border?: string; shadow: object }> = {
+// Editorial Romance buttons: pill-shaped, flat fill, no shadow — the shared
+// OF web system (opus_website hero CTA is a flat lavender pill, color transition only).
+const variantConfig: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
   primary: {
     bg: brutalist.primaryContainer,
     text: brutalist.onPrimary,
-    shadow: brutalistShadowPrimary,
   },
   outline: {
     bg: 'transparent',
     text: brutalist.primaryContainer,
     border: brutalist.primaryContainer,
-    shadow: {},
   },
   ghost: {
     bg: 'transparent',
     text: brutalist.primaryContainer,
-    shadow: {},
   },
   danger: {
     bg: 'transparent',
     text: brutalist.error,
     border: brutalist.error,
-    shadow: {},
   },
 };
 
@@ -68,20 +66,17 @@ export function Button({
       onPress={handlePress}
       disabled={disabled || loading}
       className={className}
-      style={[
-        {
-          backgroundColor: v.bg,
-          paddingVertical: s.py,
-          paddingHorizontal: s.px,
-          borderRadius: 12,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          opacity: disabled ? 0.5 : 1,
-          ...(v.border ? { borderWidth: 2, borderColor: v.border } : {}),
-        },
-        disabled ? {} : v.shadow,
-      ]}
+      style={{
+        backgroundColor: v.bg,
+        paddingVertical: s.py,
+        paddingHorizontal: s.px,
+        borderRadius: 9999,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        opacity: disabled ? 0.5 : 1,
+        ...(v.border ? { borderWidth: 1.5, borderColor: v.border } : {}),
+      }}
     >
       {loading ? (
         <ActivityIndicator

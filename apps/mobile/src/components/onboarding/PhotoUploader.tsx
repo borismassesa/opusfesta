@@ -55,7 +55,7 @@ export function PhotoUploader({
               <Ionicons name="camera-outline" size={32} color={colors.muted} />
             </View>
           )}
-          <Text className="mt-3 font-dm-sans-medium text-sm text-of-primary">
+          <Text className="mt-3 font-work-sans-medium text-sm text-of-primary">
             {hasPhoto ? 'Change photo' : label}
           </Text>
         </Pressable>

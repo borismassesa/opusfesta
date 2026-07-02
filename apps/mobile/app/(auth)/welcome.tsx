@@ -161,7 +161,7 @@ export default function WelcomeScreen() {
               {
                 backgroundColor: purpleTints[700],
                 paddingVertical: 18,
-                borderRadius: 12,
+                borderRadius: 9999,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
@@ -189,10 +189,10 @@ export default function WelcomeScreen() {
               {
                 marginTop: 12,
                 paddingVertical: 16,
-                borderRadius: 12,
+                borderRadius: 9999,
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderWidth: 2,
+                borderWidth: 1,
                 borderColor: brutalist.outlineVariant,
                 backgroundColor: brutalist.surfaceContainerLowest,
               },

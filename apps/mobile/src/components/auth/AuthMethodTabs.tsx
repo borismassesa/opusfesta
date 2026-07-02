@@ -37,7 +37,7 @@ export function AuthMethodTabs({ active, onSelect }: AuthMethodTabsProps) {
             />
             <Text
               className={`text-xs ${
-                isActive ? 'font-dm-sans-bold text-of-primary' : 'font-dm-sans text-of-muted'
+                isActive ? 'font-work-sans-bold text-of-primary' : 'font-work-sans text-of-muted'
               }`}
             >
               {m.label}

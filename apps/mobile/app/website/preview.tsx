@@ -27,12 +27,12 @@ export default function PreviewScreen() {
           <Text className="text-sm text-of-muted text-center mb-2 px-4">
             Your wedding website is{' '}
             {website?.is_published ? (
-              <Text className="text-of-green font-dm-sans-bold">live</Text>
+              <Text className="text-of-green font-work-sans-bold">live</Text>
             ) : (
-              <Text className="text-amber-600 font-dm-sans-bold">unpublished</Text>
+              <Text className="text-amber-600 font-work-sans-bold">unpublished</Text>
             )}
           </Text>
-          <Text className="text-xs text-of-primary font-dm-sans-medium mb-8" selectable>
+          <Text className="text-xs text-of-primary font-work-sans-medium mb-8" selectable>
             {url}
           </Text>
           <Button title="Open in Browser" onPress={() => url && Linking.openURL(url)} />

@@ -30,7 +30,7 @@ export function ConversationItem({
       style={[
         {
           backgroundColor: brutalist.surfaceContainerLowest,
-          borderWidth: 2,
+          borderWidth: 1,
           borderColor: brutalist.outlineVariant,
           borderRadius: 12,
           padding: 16,

@@ -38,8 +38,8 @@ export function VendorCard({
       style={[
         {
           backgroundColor: brutalist.surfaceContainerLowest,
-          borderRadius: 12,
-          borderWidth: 2,
+          borderRadius: 24,
+          borderWidth: 1,
           borderColor: brutalist.outlineVariant,
           overflow: 'hidden',
           width: compact ? '100%' : 224,

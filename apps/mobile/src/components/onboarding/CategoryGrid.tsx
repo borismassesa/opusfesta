@@ -31,7 +31,7 @@ export function CategoryGrid({ categories, selected, onToggle, singleSelect }: C
             />
             <Text
               className={`mt-2 text-xs text-center ${
-                isSelected ? 'font-dm-sans-bold text-of-primary' : 'font-dm-sans text-of-muted'
+                isSelected ? 'font-work-sans-bold text-of-primary' : 'font-work-sans text-of-muted'
               }`}
               numberOfLines={2}
             >

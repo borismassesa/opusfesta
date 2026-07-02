@@ -16,26 +16,26 @@ export function Card({
   const variantStyles = {
     default: {
       backgroundColor: brutalist.surfaceContainerLowest,
-      borderRadius: 12,
-      borderWidth: 2,
+      borderRadius: 24,
+      borderWidth: 1,
       borderColor: brutalist.outlineVariant,
     },
     elevated: {
       backgroundColor: brutalist.surfaceContainerLowest,
-      borderRadius: 12,
+      borderRadius: 24,
       ...brutalistShadow,
     },
     outlined: {
       backgroundColor: brutalist.surfaceContainerLowest,
-      borderRadius: 12,
-      borderWidth: 2,
+      borderRadius: 24,
+      borderWidth: 1.5,
       borderColor: brutalist.primaryContainer,
     },
   };
 
   return (
     <View
-      style={[{ padding: 16 }, variantStyles[variant], style]}
+      style={[{ padding: 20 }, variantStyles[variant], style]}
       className={className}
       {...props}
     >

@@ -38,10 +38,10 @@ export default function ShareScreen() {
 
         {/* URL display */}
         <View className="bg-white border border-of-border rounded-xl p-4 mt-4 mb-6">
-          <Text className="text-xs text-of-muted font-dm-sans-bold uppercase tracking-wider mb-2">
+          <Text className="text-xs text-of-muted font-work-sans-bold uppercase tracking-wider mb-2">
             Your website link
           </Text>
-          <Text className="text-sm font-dm-sans-medium text-of-primary" selectable>
+          <Text className="text-sm font-work-sans-medium text-of-primary" selectable>
             {url}
           </Text>
         </View>
@@ -53,7 +53,7 @@ export default function ShareScreen() {
               <Ionicons name="copy-outline" size={22} color={colors.primary} />
             </View>
             <View className="flex-1">
-              <Text className="font-dm-sans-bold text-sm text-of-text">Copy Link</Text>
+              <Text className="font-work-sans-bold text-sm text-of-text">Copy Link</Text>
               <Text className="text-xs text-of-muted">Paste anywhere</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
@@ -64,7 +64,7 @@ export default function ShareScreen() {
               <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
             </View>
             <View className="flex-1">
-              <Text className="font-dm-sans-bold text-sm text-of-text">Share via WhatsApp</Text>
+              <Text className="font-work-sans-bold text-sm text-of-text">Share via WhatsApp</Text>
               <Text className="text-xs text-of-muted">Send to contacts or groups</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
@@ -75,7 +75,7 @@ export default function ShareScreen() {
               <Ionicons name="chatbubble-outline" size={22} color="#3B82F6" />
             </View>
             <View className="flex-1">
-              <Text className="font-dm-sans-bold text-sm text-of-text">Share via SMS</Text>
+              <Text className="font-work-sans-bold text-sm text-of-text">Share via SMS</Text>
               <Text className="text-xs text-of-muted">Text the link to guests</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
@@ -86,7 +86,7 @@ export default function ShareScreen() {
               <Ionicons name="share-social-outline" size={22} color={colors.primary} />
             </View>
             <View className="flex-1">
-              <Text className="font-dm-sans-bold text-sm text-of-text">More Options</Text>
+              <Text className="font-work-sans-bold text-sm text-of-text">More Options</Text>
               <Text className="text-xs text-of-muted">Email, Instagram, Facebook...</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />

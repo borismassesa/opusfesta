@@ -23,7 +23,7 @@ export function BridalPartyEditor({ content, onSave, saving }: Props) {
       {members.map((m, i) => (
         <View key={i} className="bg-white border border-of-border rounded-xl p-4 gap-3">
           <View className="flex-row justify-between items-center">
-            <Text className="font-dm-sans-bold text-xs text-of-muted">Member #{i + 1}</Text>
+            <Text className="font-work-sans-bold text-xs text-of-muted">Member #{i + 1}</Text>
             <Pressable onPress={() => removeMember(i)}><Ionicons name="trash-outline" size={16} color={colors.coral} /></Pressable>
           </View>
           <Input label="Name" value={m.name} onChangeText={(v) => updateMember(i, 'name', v)} placeholder="Sarah Mwangi" />
@@ -33,7 +33,7 @@ export function BridalPartyEditor({ content, onSave, saving }: Props) {
       ))}
       <Pressable onPress={addMember} className="flex-row items-center justify-center gap-2 py-3 border border-dashed border-of-border rounded-xl">
         <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-        <Text className="font-dm-sans-bold text-sm text-of-primary">Add Member</Text>
+        <Text className="font-work-sans-bold text-sm text-of-primary">Add Member</Text>
       </Pressable>
       <Button title="Save" onPress={() => onSave({ title, members })} loading={saving} />
     </ScrollView>
