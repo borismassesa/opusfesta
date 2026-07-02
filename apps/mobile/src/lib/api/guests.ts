@@ -42,7 +42,9 @@ export async function getOrCreateDefaultEvent(client: SupabaseClient, userId: st
 export async function getGuestList(client: SupabaseClient, eventId: string) {
   const { data, error } = await client
     .from('guest_contacts')
-    .select('*, guest_invitations(id, event_id, rsvp_status, party_size)')
+    .select(
+      '*, guest_invitations(id, event_id, rsvp_status, party_size, meal_choice, dietary_notes, guest_message, responded_at)',
+    )
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -56,11 +58,47 @@ export async function getGuestList(client: SupabaseClient, eventId: string) {
       phone: guest.phone,
       group_tag: guest.group_tag,
       max_party_size: guest.max_party_size,
+      public_token: guest.public_token,
+      last_invited_at: guest.last_invited_at,
+      invite_count: guest.invite_count,
       rsvp_status: invite?.rsvp_status ?? 'pending',
       party_size: invite?.party_size ?? 1,
+      meal_choice: invite?.meal_choice ?? null,
+      dietary_notes: invite?.dietary_notes ?? null,
+      guest_message: invite?.guest_message ?? null,
+      responded_at: invite?.responded_at ?? null,
       invitation_id: invite?.id ?? null,
     };
   });
+}
+
+// The public RSVP page lives on OpusPass's own subdomain (opuspass.opusfesta.com/rsvp/:token),
+// not in this app — mobile has no guest-facing RSVP screen of its own, so sharing just hands
+// off to that page via the guest's public_token (apps/opus_pass/src/lib/dashboard/queries.ts).
+const RSVP_BASE_URL = 'https://opuspass.opusfesta.com/rsvp';
+
+export function buildRsvpLink(publicToken: string): string {
+  return `${RSVP_BASE_URL}/${publicToken}`;
+}
+
+export async function recordInvitationSend(
+  client: SupabaseClient,
+  userId: string,
+  guestContactId: string,
+  currentInviteCount: number,
+) {
+  const { error: updateError } = await client
+    .from('guest_contacts')
+    .update({ last_invited_at: new Date().toISOString(), invite_count: currentInviteCount + 1 })
+    .eq('id', guestContactId);
+
+  if (updateError) throw updateError;
+
+  const { error: logError } = await client
+    .from('guest_message_log')
+    .insert({ user_id: userId, guest_contact_id: guestContactId, channel: 'link' });
+
+  if (logError) throw logError;
 }
 
 export async function addGuest(

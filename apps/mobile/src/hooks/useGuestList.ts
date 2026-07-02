@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { useOpusFestaAuth } from '@/lib/auth';
-import { getOrCreateDefaultEvent, getGuestList, addGuest, updateGuestRsvp, deleteGuest } from '@/lib/api/guests';
+import {
+  getOrCreateDefaultEvent,
+  getGuestList,
+  addGuest,
+  updateGuestRsvp,
+  deleteGuest,
+  recordInvitationSend,
+} from '@/lib/api/guests';
 
 export function useWeddingEvent() {
   const client = useAuthenticatedSupabase();
@@ -46,6 +53,20 @@ export function useUpdateGuestRsvp(eventId: string | undefined) {
   return useMutation({
     mutationFn: ({ guestContactId, rsvpStatus }: { guestContactId: string; rsvpStatus: string }) =>
       updateGuestRsvp(client, user!.id, eventId!, guestContactId, rsvpStatus),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guest-list', eventId] });
+    },
+  });
+}
+
+export function useRecordInvitationSend(eventId: string | undefined) {
+  const client = useAuthenticatedSupabase();
+  const queryClient = useQueryClient();
+  const { user } = useOpusFestaAuth();
+
+  return useMutation({
+    mutationFn: ({ guestContactId, currentInviteCount }: { guestContactId: string; currentInviteCount: number }) =>
+      recordInvitationSend(client, user!.id, guestContactId, currentInviteCount),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guest-list', eventId] });
     },

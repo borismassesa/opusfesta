@@ -1,12 +1,20 @@
 import { useState } from 'react';
-import { View, Text, Pressable, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, FlatList, Alert, Share, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { useWeddingEvent, useGuestList, useAddGuest, useUpdateGuestRsvp, useDeleteGuest } from '@/hooks/useGuestList';
+import {
+  useWeddingEvent,
+  useGuestList,
+  useAddGuest,
+  useUpdateGuestRsvp,
+  useDeleteGuest,
+  useRecordInvitationSend,
+} from '@/hooks/useGuestList';
+import { buildRsvpLink } from '@/lib/api/guests';
 import { editorial, shadowSoftSm } from '@/constants/theme';
 
 const RSVP_CYCLE = ['pending', 'attending', 'declined'];
@@ -53,6 +61,7 @@ export default function GuestListScreen() {
   const addGuest = useAddGuest(event?.id);
   const updateRsvp = useUpdateGuestRsvp(event?.id);
   const deleteGuest = useDeleteGuest(event?.id);
+  const recordSend = useRecordInvitationSend(event?.id);
 
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState('');
@@ -87,6 +96,18 @@ export default function GuestListScreen() {
     const idx = RSVP_CYCLE.indexOf(guest.rsvp_status);
     const next = RSVP_CYCLE[(idx + 1) % RSVP_CYCLE.length];
     updateRsvp.mutate({ guestContactId: guest.id, rsvpStatus: next });
+  };
+
+  const handleSendInvite = async (guest: any) => {
+    if (!guest.public_token) return;
+    const link = buildRsvpLink(guest.public_token);
+    const result = await Share.share({
+      message: `You're invited! Please RSVP here: ${link}`,
+      url: link,
+    });
+    if (result.action !== Share.dismissedAction) {
+      recordSend.mutate({ guestContactId: guest.id, currentInviteCount: guest.invite_count ?? 0 });
+    }
   };
 
   const confirmDelete = (guest: any) => {
@@ -195,7 +216,28 @@ export default function GuestListScreen() {
                         {[item.group_tag, item.phone].filter(Boolean).join(' · ')}
                       </Text>
                     )}
+                    {item.responded_at && (item.meal_choice || item.guest_message || item.party_size > 1) && (
+                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginTop: 4 }} numberOfLines={2}>
+                        {[
+                          item.party_size > 1 ? `Party of ${item.party_size}` : null,
+                          item.meal_choice,
+                          item.guest_message ? `"${item.guest_message}"` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                    )}
+                    {item.last_invited_at && (
+                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 10, color: editorial.outline, marginTop: 2 }}>
+                        Invited {new Date(item.last_invited_at).toLocaleDateString()}
+                      </Text>
+                    )}
                   </View>
+                  {item.public_token && (
+                    <Pressable onPress={() => handleSendInvite(item)} style={{ padding: 4 }}>
+                      <Ionicons name="paper-plane-outline" size={18} color={editorial.primaryContainer} />
+                    </Pressable>
+                  )}
                   <Pressable onPress={() => cycleRsvp(item)}>
                     <Badge label={RSVP_LABEL[item.rsvp_status] ?? item.rsvp_status} variant={RSVP_VARIANT[item.rsvp_status] ?? 'default'} />
                   </Pressable>
