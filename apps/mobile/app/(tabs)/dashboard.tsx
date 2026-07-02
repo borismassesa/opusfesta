@@ -1,10 +1,12 @@
 import { View, Text, Pressable } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getDashboardData } from '@/lib/api/events';
+import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { editorial, shadowSoftSm, shadowSoftPrimary, VENDOR_CATEGORIES } from '@/constants/theme';
 
 function iconForCategory(category: string | null | undefined): keyof typeof Ionicons.glyphMap {
@@ -14,11 +16,14 @@ function iconForCategory(category: string | null | undefined): keyof typeof Ioni
 export default function DashboardScreen() {
   const { user } = useOpusFestaAuth();
   const client = useAuthenticatedSupabase();
+  const router = useRouter();
 
   const { data } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => getDashboardData(client),
   });
+
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
 
   const event = data?.event;
   const bookedVendors = data?.bookings ?? [];
@@ -41,7 +46,7 @@ export default function DashboardScreen() {
     <ScreenWrapper>
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Pressable style={{ padding: 4 }}>
+        <Pressable style={{ padding: 4 }} onPress={() => router.push('/profile-settings')}>
           <Ionicons name="menu" size={24} color={editorial.primaryContainer} />
         </Pressable>
         <Text
@@ -54,19 +59,21 @@ export default function DashboardScreen() {
         >
           {displayName}
         </Text>
-        <Pressable style={{ position: 'relative', padding: 4 }}>
+        <Pressable style={{ position: 'relative', padding: 4 }} onPress={() => router.push('/notifications')}>
           <Ionicons name="notifications-outline" size={24} color={editorial.primaryContainer} />
-          <View
-            style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: editorial.error,
-            }}
-          />
+          {unreadCount > 0 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: editorial.error,
+              }}
+            />
+          )}
         </Pressable>
       </View>
 
