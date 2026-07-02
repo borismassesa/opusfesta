@@ -25,6 +25,33 @@ function isInquiryStatus(value: string): value is InquiryStatus {
   return (INQUIRY_STATUSES as readonly string[]).includes(value)
 }
 
+/**
+ * Best-effort push notification to the couple when a vendor-side status
+ * decision lands. Never throws — a failed push must not roll back the
+ * underlying status change.
+ */
+async function notifyInquiryResponsePush(inquiryId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceRoleKey) return
+
+  try {
+    const res = await fetch(`${url}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ event: 'inquiry_response', inquiryId }),
+    })
+    if (!res.ok) {
+      console.warn(`[push] send-push failed for inquiry=${inquiryId}: ${res.status}`)
+    }
+  } catch (error) {
+    console.warn(`[push] send-push threw for inquiry=${inquiryId}:`, error)
+  }
+}
+
 export async function updateInquiryStatus(
   inquiryId: string,
   status: string,
@@ -38,6 +65,8 @@ export async function updateInquiryStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', inquiryId)
   if (error) throw error
+
+  void notifyInquiryResponsePush(inquiryId)
 
   void recordAuditEvent({
     eventType: 'inquiries.status_changed',

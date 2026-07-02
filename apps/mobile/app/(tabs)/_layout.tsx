@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { editorial, shadowSoft } from '@/constants/theme';
 import { PlanningMenu } from '@/components/layout/PlanningMenu';
 import { ErrorFallback } from '@/components/ErrorFallback';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return <ErrorFallback error={error} retry={retry} title="This screen hit a snag" />;
@@ -57,6 +58,7 @@ export default function TabLayout() {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  usePushNotifications();
 
   if (!isLoaded || !isSignedIn) {
     return <Redirect href="/(auth)/welcome" />;

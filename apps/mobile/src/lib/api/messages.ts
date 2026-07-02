@@ -37,5 +37,10 @@ export async function sendMessage(
     .single();
 
   if (error) throw error;
+
+  // Fire-and-forget push to the other thread participant — never blocks or
+  // fails the send.
+  client.functions.invoke('send-push', { body: { event: 'message', messageId: data.id } }).catch(() => {});
+
   return data;
 }
