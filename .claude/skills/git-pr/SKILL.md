@@ -63,11 +63,12 @@ gh pr create --title "OF-MPS-0003: feat: add booking lifecycle management" --bod
 - [ ] Admin transitions booking through each status
 - [ ] Verify deposit amount displays correctly in TZS
 - [ ] Check mobile responsiveness of booking cards
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```
+
+**Never add a Claude attribution footer** (`🤖 Generated with Claude Code`) or a
+`Co-Authored-By: Claude` line to the PR body. The body ends with the test plan.
 
 ## Dual Remote Awareness
 
@@ -82,3 +83,4 @@ EOF
 - Include meaningful test plan with checkboxes
 - List key files changed in the Changes section
 - Analyze ALL commits on the branch, not just the latest
+- No Claude attribution footer or `Co-Authored-By: Claude` line in the PR body
