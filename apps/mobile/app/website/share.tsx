@@ -1,7 +1,7 @@
 import { View, Text, Pressable, Alert, Share, Linking } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// expo-clipboard — install if needed: npx expo install expo-clipboard
 import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
 import { colors, editorial } from '@/constants/theme';
@@ -13,8 +13,8 @@ export default function ShareScreen() {
   const url = website ? `${BASE_URL}/${website.slug}` : '';
 
   const handleCopy = async () => {
-    // Uses native share as clipboard fallback
-    await Share.share({ message: url });
+    await Clipboard.setStringAsync(url);
+    Alert.alert('Copied', 'Your wedding website link has been copied to the clipboard.');
   };
 
   const handleWhatsApp = () => {

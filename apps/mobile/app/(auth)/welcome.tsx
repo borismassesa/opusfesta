@@ -1,43 +1,23 @@
-import { useRef, useState } from 'react';
 import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { editorial, shadowSoftSm, shadowSoftPrimary, purpleTints } from '@/constants/theme';
 
 const logoMark = require('../../assets/images/logo-mark.png');
 
-// Small 720p stock video — replace with your own MP4 URL or local file
-const WELCOME_VIDEO_URI = 'https://cdn.pixabay.com/video/2020/02/07/32005-390674385_large.mp4';
-
 export default function WelcomeScreen() {
   const router = useRouter();
-  const videoRef = useRef<Video>(null);
-  const [videoError, setVideoError] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: editorial.bg }}>
-      {/* ─── Top: Video Hero ─── */}
+      {/* ─── Top: Hero ─── */}
       <View style={{ flex: 0.45, position: 'relative', overflow: 'hidden' }}>
-        {!videoError ? (
-          <Video
-            ref={videoRef}
-            source={{ uri: WELCOME_VIDEO_URI }}
-            resizeMode={ResizeMode.COVER}
-            shouldPlay
-            isLooping
-            isMuted
-            style={StyleSheet.absoluteFill}
-            onError={() => setVideoError(true)}
-          />
-        ) : (
-          <LinearGradient
-            colors={[purpleTints[200], purpleTints[300], purpleTints[400]]}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+        <LinearGradient
+          colors={[purpleTints[200], purpleTints[300], purpleTints[400]]}
+          style={StyleSheet.absoluteFill}
+        />
         {/* Dark overlay for readability */}
         <LinearGradient
           colors={['transparent', 'rgba(26,10,46,0.4)', 'rgba(26,10,46,0.7)']}
