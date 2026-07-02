@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, FlatList, Image, ScrollView, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getVendorsByCategory } from '@/lib/api/vendors';
+import { getVendorsByCategory, searchVendors } from '@/lib/api/vendors';
 import { formatCurrency } from '@opusfesta/lib';
 import { editorial, shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
 
@@ -30,102 +30,49 @@ const BROWSE_CATEGORIES: {
   { key: 'salons-makeup', label: 'Planning', icon: 'clipboard-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '📋' },
 ];
 
-const DEMO_VENDORS = [
-  {
-    id: 'demo-1',
-    business_name: 'Grand Majestic Hotel',
-    location: { city: 'Mlimani City, Dar es Salaam' },
-    category: 'venues',
-    categoryLabel: 'Venues',
-    rating: 4.9,
-    reviews: 127,
-    price_min: 1500000,
-    price_max: 5000000,
-    cover_image: null,
-    featured: true,
-    tagline: 'Up to 800 Guests · Premium',
-  },
-  {
-    id: 'demo-2',
-    business_name: 'Oyster Bay Gardens',
-    location: { city: 'Msasani Peninsula' },
-    category: 'venues',
-    categoryLabel: 'Outdoor Venue',
-    rating: 4.7,
-    reviews: 89,
-    price_min: 2000000,
-    price_max: 4500000,
-    cover_image: null,
-    featured: false,
-    tagline: 'Garden & Waterfront',
-  },
-  {
-    id: 'demo-3',
-    business_name: 'Emerald Sky Deck',
-    location: { city: 'Posta CBD' },
-    category: 'venues',
-    categoryLabel: 'Rooftop',
-    rating: 4.8,
-    reviews: 63,
-    price_min: 1200000,
-    price_max: 3000000,
-    cover_image: null,
-    featured: false,
-    tagline: 'City views · Modern',
-  },
-  {
-    id: 'demo-4',
-    business_name: 'Lush Lavender Hall',
-    location: { city: 'Kijitonyama' },
-    category: 'venues',
-    categoryLabel: 'Banquet Hall',
-    rating: 4.6,
-    reviews: 41,
-    price_min: 800000,
-    price_max: 2500000,
-    cover_image: null,
-    featured: false,
-    tagline: 'Elegant · Affordable',
-  },
-];
-
-const EMOJI_MAP: Record<string, string> = {
-  'demo-1': '🏨',
-  'demo-2': '🌿',
-  'demo-3': '🌅',
-  'demo-4': '💐',
-};
+const EMOJI_MAP: Record<string, string> = {};
 
 export default function CategoriesScreen() {
   const router = useRouter();
+  const { category: initialCategory } = useLocalSearchParams<{ category?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory ?? null);
+
+  useEffect(() => {
+    if (initialCategory) setSelectedCategory(initialCategory);
+  }, [initialCategory]);
+
+  const isSearching = searchQuery.trim().length > 0;
 
   const { data: vendors = [] } = useQuery({
     queryKey: ['vendors', 'browse', selectedCategory],
-    queryFn: () => getVendorsByCategory(selectedCategory || 'Venues'),
+    queryFn: () => getVendorsByCategory(selectedCategory || 'venues'),
+    enabled: !isSearching,
   });
 
-  const displayVendors =
-    vendors.length > 0
-      ? vendors.map((v: any) => ({
-          id: v.id,
-          business_name: v.business_name,
-          location: v.location,
-          category: v.category,
-          categoryLabel: v.category,
-          rating: v.stats?.rating_avg ?? 4.5,
-          reviews: v.stats?.review_count ?? 0,
-          price_min: v.price_range?.min ?? null,
-          price_max: v.price_range?.max ?? null,
-          cover_image: v.cover_image,
-          featured: v.tier === 'premium',
-          tagline: v.subcategories?.[0] ?? null,
-        }))
-      : DEMO_VENDORS;
+  const { data: searchResults = [] } = useQuery({
+    queryKey: ['vendors', 'search', searchQuery],
+    queryFn: () => searchVendors(searchQuery.trim()),
+    enabled: isSearching,
+  });
 
-  const heroVendor = displayVendors.find((v: any) => v.featured) || displayVendors[0];
-  const listVendors = displayVendors.filter((v: any) => v.id !== heroVendor?.id);
+  const displayVendors = (isSearching ? searchResults : vendors).map((v: any) => ({
+    id: v.id,
+    business_name: v.business_name,
+    location: v.location,
+    category: v.category,
+    categoryLabel: v.category,
+    rating: v.stats?.rating_avg ?? 4.5,
+    reviews: v.stats?.review_count ?? 0,
+    price_min: v.price_range?.min ?? null,
+    price_max: v.price_range?.max ?? null,
+    cover_image: v.cover_image,
+    featured: v.tier === 'premium',
+    tagline: v.subcategories?.[0] ?? null,
+  }));
+
+  const heroVendor = isSearching ? null : displayVendors.find((v: any) => v.featured) || displayVendors[0];
+  const listVendors = isSearching ? displayVendors : displayVendors.filter((v: any) => v.id !== heroVendor?.id);
 
   function formatPrice(min: number | null, max: number | null) {
     if (!min && !max) return '';
@@ -237,7 +184,10 @@ export default function CategoriesScreen() {
                   return (
                     <Pressable
                       key={cat.key}
-                      onPress={() => setSelectedCategory(isActive ? null : cat.key)}
+                      onPress={() => {
+                        setSearchQuery('');
+                        setSelectedCategory(isActive ? null : cat.key);
+                      }}
                       style={[
                         {
                           width: '23%',
@@ -484,9 +434,11 @@ export default function CategoriesScreen() {
                     color: editorial.onSurface,
                   }}
                 >
-                  {selectedCategory
-                    ? BROWSE_CATEGORIES.find((c) => c.key === selectedCategory)?.label || 'Results'
-                    : 'All Vendors'}
+                  {isSearching
+                    ? 'Search Results'
+                    : selectedCategory
+                      ? BROWSE_CATEGORIES.find((c) => c.key === selectedCategory)?.label || 'Results'
+                      : 'All Vendors'}
                 </Text>
                 <Text
                   style={{
