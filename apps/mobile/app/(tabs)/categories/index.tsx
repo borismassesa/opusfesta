@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getVendorsByCategory, searchVendors } from '@/lib/api/vendors';
-import { formatCurrency } from '@opusfesta/lib';
+import { formatCompactCurrencyRange } from '@opusfesta/lib';
 import { editorial, shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
@@ -74,16 +74,6 @@ export default function CategoriesScreen() {
 
   const heroVendor = isSearching ? null : displayVendors.find((v: any) => v.featured) || displayVendors[0];
   const listVendors = isSearching ? displayVendors : displayVendors.filter((v: any) => v.id !== heroVendor?.id);
-
-  function formatPrice(min: number | null, max: number | null) {
-    if (!min && !max) return '';
-    if (min && max) {
-      const fmtMin = min >= 1000000 ? `${(min / 1000000).toFixed(1)}M` : `${(min / 1000).toFixed(0)}k`;
-      const fmtMax = max >= 1000000 ? `${(max / 1000000).toFixed(1)}M` : `${(max / 1000).toFixed(0)}k`;
-      return `TZS ${fmtMin} – ${fmtMax}`;
-    }
-    return min ? `From ${formatCurrency(min)}` : '';
-  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
@@ -399,7 +389,7 @@ export default function CategoriesScreen() {
                       }}
                     >
                       <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.primaryContainer }}>
-                        {formatPrice(heroVendor.price_min, heroVendor.price_max)}
+                        {formatCompactCurrencyRange(heroVendor.price_min, heroVendor.price_max)}
                       </Text>
                       <View
                         style={[
@@ -547,7 +537,7 @@ export default function CategoriesScreen() {
                 {item.tagline ? ` · ${item.tagline}` : ''}
               </Text>
               <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.primaryContainer }}>
-                {formatPrice(item.price_min, item.price_max)}
+                {formatCompactCurrencyRange(item.price_min, item.price_max)}
               </Text>
             </View>
           </Pressable>

@@ -102,7 +102,7 @@ export default function VendorProfileScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-br-bg">
+      <View className="flex-1 items-center justify-center bg-of-cream">
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -110,7 +110,7 @@ export default function VendorProfileScreen() {
 
   if (!vendor) {
     return (
-      <View className="flex-1 items-center justify-center bg-br-bg px-6">
+      <View className="flex-1 items-center justify-center bg-of-cream px-6">
         <Ionicons name="alert-circle-outline" size={40} color={colors.muted} />
         <Text className="font-work-sans-bold text-of-text mt-3">Vendor not found</Text>
         <Pressable onPress={() => router.back()} className="mt-4">
@@ -149,7 +149,7 @@ export default function VendorProfileScreen() {
   const connectLinks = buildConnectLinks(vendor);
 
   return (
-    <View className="flex-1 bg-br-bg">
+    <View className="flex-1 bg-of-cream">
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
         {/* ═══ 1. Hero Image ═══ */}
         <View style={{ height: HERO_HEIGHT, overflow: 'hidden' }}>

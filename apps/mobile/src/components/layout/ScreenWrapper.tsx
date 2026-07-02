@@ -19,12 +19,12 @@ export function ScreenWrapper({
 
   if (!scrollable) {
     return (
-      <SafeAreaView className="flex-1 bg-br-bg">{content}</SafeAreaView>
+      <SafeAreaView className="flex-1 bg-of-cream">{content}</SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-br-bg">
+    <SafeAreaView className="flex-1 bg-of-cream">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
