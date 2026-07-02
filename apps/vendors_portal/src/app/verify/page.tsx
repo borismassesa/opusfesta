@@ -127,6 +127,19 @@ export default async function VerifyPage() {
       `[verify] documents query failed: ${docsRes.error.code} ${docsRes.error.message}`,
     )
   }
+  // A failed agreements read must be loud: rendering it as "nothing signed"
+  // makes a signed vendor look perpetually unsigned with no error anywhere.
+  if (agreementRes.error) {
+    throw new Error(
+      `[verify] agreements query failed: ${agreementRes.error.code} ${agreementRes.error.message}`,
+    )
+  }
+  if (vendorRes.error) {
+    // Non-fatal — only used to pre-fill the sign form — but worth surfacing.
+    console.warn(
+      `[verify] vendor prefill query failed: ${vendorRes.error.code} ${vendorRes.error.message}`,
+    )
+  }
 
   const docs = docsRes.data ?? []
   const docByType = new Map<string, VendorDocRow>()

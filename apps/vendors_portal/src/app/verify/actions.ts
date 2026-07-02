@@ -4,10 +4,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@clerk/nextjs/server'
-import {
-  createClerkSupabaseServerClient,
-  createSupabaseAdminClient,
-} from '@/lib/supabase'
+import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import {
   type AgreementDocId,
@@ -127,27 +124,14 @@ export async function uploadVerificationDocument(
     }
   }
 
-  // We need the vendor_id for the storage path + the row insert. Pull it via
-  // the Clerk-authed client so RLS narrows to vendors the caller actually owns.
-  const userClient = await createClerkSupabaseServerClient()
-  const ownVendor = await userClient
-    .from('vendor_memberships')
-    .select('vendor_id')
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle<{ vendor_id: string }>()
-
-  if (ownVendor.error || !ownVendor.data) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: ownVendor.error
-        ? `[verify] membership lookup failed: ${ownVendor.error.code} ${ownVendor.error.message}`
-        : '[verify] no active membership found',
-    }
-  }
-  const vendorId = ownVendor.data.vendor_id
+  // Use the vendor id getCurrentVendor already resolved for THIS caller (it
+  // filters vendor_memberships by the authenticated user's id via the admin
+  // client). Never re-resolve through an RLS-only membership query: when the
+  // Clerk 'supabase' JWT template is absent, createClerkSupabaseServerClient
+  // falls back to the service-role client, and an unfiltered query returns the
+  // globally-oldest active vendor — writing this vendor's documents onto
+  // someone else's record.
+  const vendorId = state.vendorId
 
   const ext = EXT_BY_MIME[file.type] ?? 'bin'
   const storagePath = `${vendorId}/${docType}/${randomUUID()}.${ext}`
@@ -408,26 +392,16 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     }
   }
 
-  const userClient = await createClerkSupabaseServerClient()
-  const ownVendor = await userClient
-    .from('vendor_memberships')
-    .select('vendor_id')
-    .eq('status', 'active')
-    .eq('role', 'owner')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle<{ vendor_id: string }>()
-
-  if (ownVendor.error || !ownVendor.data) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: ownVendor.error
-        ? `[verify] membership lookup failed: ${ownVendor.error.code} ${ownVendor.error.message}`
-        : '[verify] only the vendor owner can sign the agreement',
-    }
-  }
-  const vendorId = ownVendor.data.vendor_id
+  // Sign against the vendor getCurrentVendor resolved for THIS caller — it
+  // filters vendor_memberships by the authenticated user's id via the admin
+  // client. Never re-resolve through an RLS-only membership query: when the
+  // Clerk 'supabase' JWT template is absent, createClerkSupabaseServerClient
+  // falls back to the service-role client, and an unfiltered query returns the
+  // globally-oldest active vendor. That wrote signatures onto another vendor's
+  // record, where the (vendor_id, agreement_version) unique constraint turned
+  // every re-submit into a silent no-op — the vendor could never finish
+  // signing.
+  const vendorId = state.vendorId
 
   // Resolve users.id for signed_by — admin client because RLS on users
   // would block this from a Clerk-authed read.
@@ -443,6 +417,41 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
       ok: false,
       reason: 'unknown',
       error: `[verify] user lookup failed: ${userLookup.error.code} ${userLookup.error.message}`,
+    }
+  }
+
+  // Owner gate, checked explicitly against this vendor + this user (never via
+  // RLS scoping alone): only the owner may bind the business to the agreement.
+  const membership = await admin
+    .from('vendor_memberships')
+    .select('role')
+    .eq('vendor_id', vendorId)
+    .eq('user_id', userLookup.data.id)
+    .eq('status', 'active')
+    .maybeSingle<{ role: string }>()
+
+  if (membership.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[verify] membership lookup failed: ${membership.error.code} ${membership.error.message}`,
+    }
+  }
+  if (membership.data?.role !== 'owner') {
+    // Legacy fallback mirroring is_vendor_member(): a vendor row that predates
+    // the membership backfill still identifies its owner via vendors.user_id.
+    const legacyOwner = await admin
+      .from('vendors')
+      .select('id')
+      .eq('id', vendorId)
+      .eq('user_id', userLookup.data.id)
+      .maybeSingle<{ id: string }>()
+    if (legacyOwner.error || !legacyOwner.data) {
+      return {
+        ok: false,
+        reason: 'unauth',
+        error: 'Only the vendor owner can sign the agreement.',
+      }
     }
   }
 
