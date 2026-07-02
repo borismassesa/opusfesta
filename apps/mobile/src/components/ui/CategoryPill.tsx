@@ -1,5 +1,5 @@
 import { Pressable, Text } from 'react-native';
-import { brutalist, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoftSm } from '@/constants/theme';
 
 interface CategoryPillProps {
   label: string;
@@ -21,10 +21,10 @@ export function CategoryPill({
           paddingHorizontal: 16,
           paddingVertical: 8,
           borderWidth: active ? 1.5 : 1,
-          backgroundColor: active ? brutalist.primaryContainer : brutalist.surfaceContainerLowest,
-          borderColor: active ? brutalist.primaryContainer : brutalist.outlineVariant,
+          backgroundColor: active ? editorial.primaryContainer : editorial.surfaceContainerLowest,
+          borderColor: active ? editorial.primaryContainer : editorial.outlineVariant,
         },
-        active ? brutalistShadowSm : {},
+        active ? shadowSoftSm : {},
       ]}
     >
       <Text
@@ -32,7 +32,7 @@ export function CategoryPill({
           fontFamily: 'WorkSans-Bold',
           fontSize: 13,
           letterSpacing: 0.5,
-          color: active ? brutalist.onPrimary : brutalist.onSurfaceVariant,
+          color: active ? editorial.onPrimary : editorial.onSurfaceVariant,
         }}
       >
         {label}

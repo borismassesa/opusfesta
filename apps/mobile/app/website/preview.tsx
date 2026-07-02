@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 
 const BASE_URL = 'https://opusfesta.com/w';
 
@@ -13,7 +13,7 @@ export default function PreviewScreen() {
   const url = website ? `${BASE_URL}/${website.slug}` : '';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
         <Header title="Preview" showBack />
 

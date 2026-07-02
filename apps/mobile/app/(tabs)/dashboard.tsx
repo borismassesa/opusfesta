@@ -6,7 +6,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getDashboardData } from '@/lib/api/events';
-import { brutalist, brutalistShadow, brutalistShadowSm, brutalistShadowPrimary } from '@/constants/theme';
+import { editorial, shadowSoft, shadowSoftSm, shadowSoftPrimary } from '@/constants/theme';
 
 const MOCK_TASKS = [
   {
@@ -49,8 +49,8 @@ const MOCK_VENDORS = [
 ];
 
 const PRIORITY_STYLES = {
-  urgent: { bg: brutalist.error, text: '#ffffff', label: 'URGENT' },
-  medium: { bg: brutalist.secondaryContainer, text: brutalist.tertiaryContainer, label: 'MEDIUM' },
+  urgent: { bg: editorial.error, text: '#ffffff', label: 'URGENT' },
+  medium: { bg: editorial.secondaryContainer, text: editorial.tertiaryContainer, label: 'MEDIUM' },
 };
 
 export default function DashboardScreen() {
@@ -83,20 +83,20 @@ export default function DashboardScreen() {
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Pressable style={{ padding: 4 }}>
-          <Ionicons name="menu" size={24} color={brutalist.primaryContainer} />
+          <Ionicons name="menu" size={24} color={editorial.primaryContainer} />
         </Pressable>
         <Text
           numberOfLines={1}
           style={{
             fontFamily: 'DancingScript-Bold',
             fontSize: 30,
-            color: brutalist.primaryContainer,
+            color: editorial.primaryContainer,
           }}
         >
           {displayName}
         </Text>
         <Pressable style={{ position: 'relative', padding: 4 }}>
-          <Ionicons name="notifications-outline" size={24} color={brutalist.primaryContainer} />
+          <Ionicons name="notifications-outline" size={24} color={editorial.primaryContainer} />
           <View
             style={{
               position: 'absolute',
@@ -105,7 +105,7 @@ export default function DashboardScreen() {
               width: 8,
               height: 8,
               borderRadius: 4,
-              backgroundColor: brutalist.error,
+              backgroundColor: editorial.error,
             }}
           />
         </Pressable>
@@ -118,9 +118,9 @@ export default function DashboardScreen() {
             borderRadius: 24,
             padding: 24,
             marginBottom: 28,
-            backgroundColor: brutalist.primaryContainer,
+            backgroundColor: editorial.primaryContainer,
           },
-          brutalistShadowPrimary,
+          shadowSoftPrimary,
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -174,8 +174,8 @@ export default function DashboardScreen() {
 
       {/* Overview */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <Ionicons name="analytics-outline" size={20} color={brutalist.primaryContainer} />
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: brutalist.onSurface }}>
+        <Ionicons name="analytics-outline" size={20} color={editorial.primaryContainer} />
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
           Overview
         </Text>
       </View>
@@ -185,19 +185,19 @@ export default function DashboardScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               padding: 20,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: brutalist.onSurfaceVariant }}>
+          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
             Budget Used
           </Text>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: brutalist.primaryContainer, marginTop: 4 }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer, marginTop: 4 }}>
             TZS 18M
           </Text>
           <ProgressBar progress={62} className="mt-3" />
@@ -207,7 +207,7 @@ export default function DashboardScreen() {
               fontSize: 10,
               letterSpacing: 1,
               textTransform: 'uppercase',
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginTop: 8,
             }}
           >
@@ -219,16 +219,16 @@ export default function DashboardScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               padding: 20,
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
             },
-            brutalistShadowSm,
+            shadowSoftSm,
           ]}
         >
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: brutalist.onSurfaceVariant }}>
+          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
             Tasks Done
           </Text>
           <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: '#2D8E5B', marginTop: 4 }}>
@@ -241,7 +241,7 @@ export default function DashboardScreen() {
               fontSize: 10,
               letterSpacing: 1,
               textTransform: 'uppercase',
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginTop: 8,
             }}
           >
@@ -253,13 +253,13 @@ export default function DashboardScreen() {
       {/* Upcoming Tasks */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="checkbox-outline" size={20} color={brutalist.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: brutalist.onSurface }}>
+          <Ionicons name="checkbox-outline" size={20} color={editorial.primaryContainer} />
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
             Upcoming Tasks
           </Text>
         </View>
         <Pressable>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: brutalist.primaryContainer }}>
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
             View All
           </Text>
         </Pressable>
@@ -267,14 +267,14 @@ export default function DashboardScreen() {
       <View
         style={[
           {
-            backgroundColor: brutalist.surfaceContainerLowest,
+            backgroundColor: editorial.surfaceContainerLowest,
             borderRadius: 20,
             borderWidth: 1,
-            borderColor: brutalist.outlineVariant,
+            borderColor: editorial.outlineVariant,
             overflow: 'hidden',
             marginBottom: 28,
           },
-          brutalistShadowSm,
+          shadowSoftSm,
         ]}
       >
         {MOCK_TASKS.map((task, i) => (
@@ -286,8 +286,8 @@ export default function DashboardScreen() {
               gap: 12,
               padding: 16,
               borderBottomWidth: i < MOCK_TASKS.length - 1 ? 1 : 0,
-              borderBottomColor: brutalist.surfaceContainerHigh,
-              backgroundColor: task.completed ? brutalist.surfaceContainerLow : 'transparent',
+              borderBottomColor: editorial.surfaceContainerHigh,
+              backgroundColor: task.completed ? editorial.surfaceContainerLow : 'transparent',
             }}
           >
             {/* Checkbox */}
@@ -300,8 +300,8 @@ export default function DashboardScreen() {
                 borderWidth: 2,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: task.completed ? brutalist.primaryContainer : brutalist.surfaceContainerLowest,
-                borderColor: brutalist.primaryContainer,
+                backgroundColor: task.completed ? editorial.primaryContainer : editorial.surfaceContainerLowest,
+                borderColor: editorial.primaryContainer,
               }}
             >
               {task.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
@@ -313,7 +313,7 @@ export default function DashboardScreen() {
                   style={{
                     fontFamily: 'SpaceGrotesk-Bold',
                     fontSize: 14,
-                    color: brutalist.onSurface,
+                    color: editorial.onSurface,
                     textDecorationLine: task.completed ? 'line-through' : 'none',
                   }}
                 >
@@ -342,7 +342,7 @@ export default function DashboardScreen() {
                   </View>
                 )}
               </View>
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant }}>
+              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
                 {task.due}
               </Text>
             </View>
@@ -353,13 +353,13 @@ export default function DashboardScreen() {
       {/* Booked Vendors */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="storefront-outline" size={20} color={brutalist.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: brutalist.onSurface }}>
+          <Ionicons name="storefront-outline" size={20} color={editorial.primaryContainer} />
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
             Booked Vendors
           </Text>
         </View>
         <Pressable>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: brutalist.primaryContainer }}>
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
             Manage
           </Text>
         </Pressable>
@@ -374,12 +374,12 @@ export default function DashboardScreen() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: 16,
-                backgroundColor: brutalist.surfaceContainerLowest,
+                backgroundColor: editorial.surfaceContainerLowest,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: brutalist.outlineVariant,
+                borderColor: editorial.outlineVariant,
               },
-              brutalistShadowSm,
+              shadowSoftSm,
             ]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -388,18 +388,18 @@ export default function DashboardScreen() {
                   width: 48,
                   height: 48,
                   borderRadius: 10,
-                  backgroundColor: brutalist.tertiaryFixed,
+                  backgroundColor: editorial.tertiaryFixed,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name={vendor.icon} size={22} color={brutalist.tertiaryContainer} />
+                <Ionicons name={vendor.icon} size={22} color={editorial.tertiaryContainer} />
               </View>
               <View>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: brutalist.onSurface }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
                   {vendor.name}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant }}>
+                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
                   {vendor.detail}
                 </Text>
               </View>

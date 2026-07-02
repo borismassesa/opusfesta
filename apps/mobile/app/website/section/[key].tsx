@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite, useUpdateSection } from '@/hooks/useWeddingWebsite';
 import { WEDDING_SECTIONS } from '@/constants/wedding-sections';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 import type { SectionKey, WeddingWebsiteSection } from '@/types/wedding-website';
 
 // Section editors
@@ -50,7 +50,7 @@ export default function SectionEditorScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -60,7 +60,7 @@ export default function SectionEditorScreen() {
 
   if (!section || !Editor || !config) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
           <Header title="Section" showBack />
           <Text className="text-of-muted text-sm mt-4">Section not found</Text>
@@ -77,7 +77,7 @@ export default function SectionEditorScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
         <Header title={config.label} showBack />
         <Editor

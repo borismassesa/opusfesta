@@ -68,7 +68,7 @@ export const PLANNING_STAGES = [
 
 export type PlanningStageKey = (typeof PLANNING_STAGES)[number]['key'];
 
-/** Guest count options matching the brutalist design */
+/** Guest count options matching the editorial design */
 export const GUEST_COUNT_OPTIONS = [
   { key: 'under_50', label: 'Under 50', subtitle: 'Intimate Gathering', value: 50 },
   { key: '50_100', label: '50\u2013100', subtitle: 'Small Boutique', value: 100 },
@@ -114,7 +114,7 @@ export const VENDOR_CATEGORY_OPTIONS: { key: string; label: string; icon: IonIco
   { key: 'Transportation', label: 'Transportation', icon: 'car-outline' },
 ];
 
-/** Wedding venue setting preferences for couple onboarding (brutalist grid) */
+/** Wedding venue setting preferences for couple onboarding (editorial grid) */
 export const VENUE_STYLES = [
   { key: 'beach', label: 'Beach / Waterfront', emoji: '🏖️', color: '#E0F7FA' },
   { key: 'garden', label: 'Garden / Outdoor', emoji: '🌿', color: '#E8F5E9' },
@@ -126,7 +126,7 @@ export const VENUE_STYLES = [
 
 export type VenueStyleKey = (typeof VENUE_STYLES)[number]['key'];
 
-/** Wedding design style preferences for couple onboarding (brutalist grid) */
+/** Wedding design style preferences for couple onboarding (editorial grid) */
 export const DESIGN_STYLES = [
   { key: 'bold', label: 'Bold & Colorful', emoji: '🎨', color: '#F3E5F5' },
   { key: 'classic', label: 'Classic & Elegant', emoji: '🕊️', color: '#F0E2F7' },
@@ -138,7 +138,7 @@ export const DESIGN_STYLES = [
 
 export type DesignStyleKey = (typeof DESIGN_STYLES)[number]['key'];
 
-/** Vendor need items for onboarding grid (matching brutalist design) */
+/** Vendor need items for onboarding grid (matching editorial design) */
 export const VENDOR_NEED_ITEMS: { key: string; label: string; icon: string; iconColor: string }[] = [
   { key: 'venues', label: 'Venue', icon: 'storefront-outline', iconColor: '#421468' },
   { key: 'photographers', label: 'Photographer', icon: 'camera-outline', iconColor: '#421468' },

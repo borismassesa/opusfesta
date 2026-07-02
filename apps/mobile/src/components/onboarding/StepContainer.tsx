@@ -2,7 +2,7 @@ import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView, Imag
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 
 const logoText = require('../../../assets/images/logo-text.png');
 
@@ -37,7 +37,7 @@ export function StepContainer({
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -49,7 +49,7 @@ export function StepContainer({
               onPress={onBack}
               style={{ position: 'absolute', left: 16, top: 8, padding: 4 }}
             >
-              <Ionicons name="chevron-back" size={24} color={brutalist.onSurface} />
+              <Ionicons name="chevron-back" size={24} color={editorial.onSurface} />
             </Pressable>
           )}
           {showLogo && (
@@ -63,12 +63,12 @@ export function StepContainer({
 
         {/* ─── Progress bar ─── */}
         <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20 }}>
-          <View style={{ height: 4, backgroundColor: brutalist.outlineVariant, borderRadius: 2, overflow: 'hidden' }}>
+          <View style={{ height: 4, backgroundColor: editorial.outlineVariant, borderRadius: 2, overflow: 'hidden' }}>
             <View
               style={{
                 height: '100%',
                 width: `${progress}%`,
-                backgroundColor: brutalist.primaryContainer,
+                backgroundColor: editorial.primaryContainer,
                 borderRadius: 2,
               }}
             />
@@ -77,11 +77,11 @@ export function StepContainer({
 
         {/* ─── Question ─── */}
         <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.8, textTransform: 'uppercase', color: brutalist.onSurface, lineHeight: 32, marginBottom: 6 }}>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.8, textTransform: 'uppercase', color: editorial.onSurface, lineHeight: 32, marginBottom: 6 }}>
             {title}
           </Text>
           {subtitle && (
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: brutalist.onSurfaceVariant, lineHeight: 20, marginBottom: 16 }}>
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant, lineHeight: 20, marginBottom: 16 }}>
               {subtitle}
             </Text>
           )}
@@ -102,7 +102,7 @@ export function StepContainer({
             onPress={onNext}
             disabled={nextDisabled || nextLoading}
             style={{
-              backgroundColor: nextDisabled ? brutalist.surfaceContainerHighest : brutalist.primaryContainer,
+              backgroundColor: nextDisabled ? editorial.surfaceContainerHighest : editorial.primaryContainer,
               paddingVertical: 16,
               borderRadius: 9999,
               alignItems: 'center',
@@ -113,7 +113,7 @@ export function StepContainer({
             <Text style={{
               fontFamily: 'SpaceGrotesk-Bold',
               fontSize: 16,
-              color: nextDisabled ? brutalist.outline : '#fff',
+              color: nextDisabled ? editorial.outline : '#fff',
             }}>
               {nextLoading ? 'Please wait...' : nextLabel}
             </Text>

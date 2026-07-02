@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // expo-clipboard — install if needed: npx expo install expo-clipboard
 import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
-import { colors, brutalist } from '@/constants/theme';
+import { colors, editorial } from '@/constants/theme';
 
 const BASE_URL = 'https://opusfesta.com/w';
 
@@ -32,7 +32,7 @@ export default function ShareScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
         <Header title="Share Website" showBack />
 

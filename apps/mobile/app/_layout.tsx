@@ -10,7 +10,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { tokenCache } from '@/lib/auth';
 import { hasSupabaseEnv, missingSupabaseEnvVars } from '@/lib/supabase';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 import { ErrorFallback } from '@/components/ErrorFallback';
 import '../global.css';
 
@@ -81,7 +81,7 @@ export default function RootLayout() {
 
   if (!canRenderApp) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: brutalist.bg }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
         <ActivityIndicator size="small" color="#5B2D8E" />
         <Text style={{ marginTop: 12, fontSize: 14, color: '#6B5A7A' }}>Preparing app…</Text>
       </View>

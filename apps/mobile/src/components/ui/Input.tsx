@@ -1,6 +1,6 @@
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
 import { forwardRef } from 'react';
-import { brutalist, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoftSm } from '@/constants/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -19,7 +19,7 @@ export const Input = forwardRef<TextInput, InputProps>(
               fontSize: 11,
               letterSpacing: 2,
               textTransform: 'uppercase',
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
               marginBottom: 6,
               marginLeft: 2,
             }}
@@ -30,23 +30,23 @@ export const Input = forwardRef<TextInput, InputProps>(
         <View
           style={[
             {
-              backgroundColor: brutalist.surfaceContainerLowest,
+              backgroundColor: editorial.surfaceContainerLowest,
               borderRadius: 14,
               borderWidth: 1,
-              borderColor: brutalist.outlineVariant,
+              borderColor: editorial.outlineVariant,
             },
             error
-              ? { borderWidth: 1.5, borderColor: brutalist.error }
-              : brutalistShadowSm,
+              ? { borderWidth: 1.5, borderColor: editorial.error }
+              : shadowSoftSm,
           ]}
         >
           <TextInput
             ref={ref}
-            placeholderTextColor={brutalist.outlineVariant}
+            placeholderTextColor={editorial.outlineVariant}
             style={{
               fontFamily: 'WorkSans-Regular',
               fontSize: 16,
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
               paddingHorizontal: 16,
               paddingVertical: 14,
             }}
@@ -58,7 +58,7 @@ export const Input = forwardRef<TextInput, InputProps>(
             style={{
               fontFamily: 'WorkSans-Regular',
               fontSize: 12,
-              color: brutalist.error,
+              color: editorial.error,
               marginTop: 4,
             }}
           >

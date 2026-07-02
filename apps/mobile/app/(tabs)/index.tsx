@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { getFeaturedVendors } from '@/lib/api/vendors';
 import { formatCurrency } from '@opusfesta/lib';
-import { brutalist, brutalistShadow, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoft, shadowSoftSm } from '@/constants/theme';
 
 const CATEGORIES = ['All', 'Venues', 'Photo', 'Catering', 'Decor'];
 
@@ -51,7 +51,7 @@ export default function HomeScreen() {
             style={{
               fontFamily: 'WorkSans-Regular',
               fontSize: 13,
-              color: brutalist.onSurfaceVariant,
+              color: editorial.onSurfaceVariant,
             }}
           >
             Good morning
@@ -61,7 +61,7 @@ export default function HomeScreen() {
               fontFamily: 'SpaceGrotesk-Bold',
               fontSize: 24,
               letterSpacing: -0.5,
-              color: brutalist.onSurface,
+              color: editorial.onSurface,
             }}
           >
             Discover vendors
@@ -76,7 +76,7 @@ export default function HomeScreen() {
       <Pressable
         style={[
           {
-            backgroundColor: brutalist.surfaceContainerLowest,
+            backgroundColor: editorial.surfaceContainerLowest,
             borderRadius: 12,
             paddingHorizontal: 16,
             paddingVertical: 14,
@@ -85,11 +85,11 @@ export default function HomeScreen() {
             gap: 10,
             marginBottom: 20,
           },
-          brutalistShadowSm,
+          shadowSoftSm,
         ]}
       >
-        <Ionicons name="search-outline" size={18} color={brutalist.onSurfaceVariant} />
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: brutalist.outline }}>
+        <Ionicons name="search-outline" size={18} color={editorial.onSurfaceVariant} />
+        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.outline }}>
           Search venues, caterers...
         </Text>
       </Pressable>
@@ -117,7 +117,7 @@ export default function HomeScreen() {
           fontFamily: 'SpaceGrotesk-Bold',
           fontSize: 18,
           letterSpacing: -0.3,
-          color: brutalist.onSurface,
+          color: editorial.onSurface,
           marginBottom: 14,
         }}
       >
@@ -175,7 +175,7 @@ export default function HomeScreen() {
           fontFamily: 'SpaceGrotesk-Bold',
           fontSize: 18,
           letterSpacing: -0.3,
-          color: brutalist.onSurface,
+          color: editorial.onSurface,
           marginBottom: 14,
         }}
       >
@@ -191,12 +191,12 @@ export default function HomeScreen() {
                 alignItems: 'center',
                 gap: 14,
                 padding: 16,
-                backgroundColor: brutalist.surfaceContainerLowest,
+                backgroundColor: editorial.surfaceContainerLowest,
                 borderRadius: 20,
                 borderWidth: 1,
-                borderColor: brutalist.outlineVariant,
+                borderColor: editorial.outlineVariant,
               },
-              brutalistShadowSm,
+              shadowSoftSm,
             ]}
           >
             <View
@@ -204,7 +204,7 @@ export default function HomeScreen() {
                 width: 64,
                 height: 64,
                 borderRadius: 12,
-                backgroundColor: brutalist.tertiaryFixed,
+                backgroundColor: editorial.tertiaryFixed,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -216,7 +216,7 @@ export default function HomeScreen() {
                 style={{
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 15,
-                  color: brutalist.onSurface,
+                  color: editorial.onSurface,
                 }}
               >
                 {pkg.title}
@@ -225,7 +225,7 @@ export default function HomeScreen() {
                 style={{
                   fontFamily: 'WorkSans-Regular',
                   fontSize: 12,
-                  color: brutalist.onSurfaceVariant,
+                  color: editorial.onSurfaceVariant,
                 }}
               >
                 {pkg.subtitle}
@@ -234,7 +234,7 @@ export default function HomeScreen() {
                 style={{
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 14,
-                  color: brutalist.primaryContainer,
+                  color: editorial.primaryContainer,
                   marginTop: 4,
                 }}
               >

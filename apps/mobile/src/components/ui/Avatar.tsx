@@ -1,5 +1,5 @@
 import { View, Text, Image } from 'react-native';
-import { brutalist, brutalistShadowSm } from '@/constants/theme';
+import { editorial, shadowSoftSm } from '@/constants/theme';
 
 type AvatarSize = 'sm' | 'md' | 'lg';
 
@@ -52,18 +52,18 @@ export function Avatar({
           width: s.dim,
           height: s.dim,
           borderRadius: s.dim / 2,
-          backgroundColor: brutalist.secondaryContainer,
+          backgroundColor: editorial.secondaryContainer,
           alignItems: 'center',
           justifyContent: 'center',
         },
-        brutalistShadowSm,
+        shadowSoftSm,
       ]}
     >
       <Text
         style={{
           fontFamily: 'SpaceGrotesk-Bold',
           fontSize: s.fontSize,
-          color: brutalist.tertiaryContainer,
+          color: editorial.tertiaryContainer,
         }}
       >
         {getInitials(name)}

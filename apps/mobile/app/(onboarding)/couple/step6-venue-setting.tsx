@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { BrutalistStepContainer } from '@/components/onboarding/BrutalistStepContainer';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { VENUE_STYLES } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
@@ -24,7 +24,7 @@ export default function VenueSettingStep() {
   };
 
   return (
-    <BrutalistStepContainer
+    <EditorialStepContainer
       title="What's your dream setting?"
       subtitle="Select all that appeal to you."
       currentStep={6}
@@ -48,13 +48,13 @@ export default function VenueSettingStep() {
                     aspectRatio: 1,
                     borderRadius: 12,
                     overflow: 'hidden',
-                    backgroundColor: brutalist.surfaceContainerHighest,
+                    backgroundColor: editorial.surfaceContainerHighest,
                     borderWidth: isSelected ? 2 : 0,
-                    borderColor: isSelected ? brutalist.primaryContainer : 'transparent',
+                    borderColor: isSelected ? editorial.primaryContainer : 'transparent',
                     alignItems: 'center',
                     justifyContent: 'center',
                   },
-                  brutalistShadow,
+                  shadowSoft,
                 ]}
               >
                 <Text style={{ fontSize: 48 }}>{style.emoji}</Text>
@@ -71,7 +71,7 @@ export default function VenueSettingStep() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name="checkmark-circle" size={40} color={brutalist.primaryContainer} />
+                    <Ionicons name="checkmark-circle" size={40} color={editorial.primaryContainer} />
                   </View>
                 )}
               </View>
@@ -79,7 +79,7 @@ export default function VenueSettingStep() {
                 style={{
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 15,
-                  color: isSelected ? brutalist.primaryContainer : brutalist.onSurface,
+                  color: isSelected ? editorial.primaryContainer : editorial.onSurface,
                   marginTop: 8,
                 }}
               >
@@ -90,9 +90,9 @@ export default function VenueSettingStep() {
         })}
       </View>
 
-      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
+      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
         You can change these preferences later.
       </Text>
-    </BrutalistStepContainer>
+    </EditorialStepContainer>
   );
 }

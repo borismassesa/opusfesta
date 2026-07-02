@@ -5,7 +5,7 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { VendorListItem } from '@/components/vendors/VendorListItem';
 import { getVendorsByCategory } from '@/lib/api/vendors';
-import { VENDOR_CATEGORIES, brutalist } from '@/constants/theme';
+import { VENDOR_CATEGORIES, editorial } from '@/constants/theme';
 
 export default function CategoryResultsScreen() {
   const { category } = useLocalSearchParams<{ category: string }>();
@@ -24,11 +24,11 @@ export default function CategoryResultsScreen() {
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={brutalist.primaryContainer} />
+          <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : vendors.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: brutalist.onSurfaceVariant }}>
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant }}>
             No vendors found in this category yet.
           </Text>
         </View>

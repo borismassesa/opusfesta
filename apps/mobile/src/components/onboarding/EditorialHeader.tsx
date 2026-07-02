@@ -1,13 +1,13 @@
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 
-interface BrutalistHeaderProps {
+interface EditorialHeaderProps {
   onBack?: () => void;
   showMenu?: boolean;
 }
 
-export function BrutalistHeader({ onBack, showMenu = false }: BrutalistHeaderProps) {
+export function EditorialHeader({ onBack, showMenu = false }: EditorialHeaderProps) {
   return (
     <View
       style={{
@@ -32,7 +32,7 @@ export function BrutalistHeader({ onBack, showMenu = false }: BrutalistHeaderPro
               borderRadius: 22,
             }}
           >
-            <Ionicons name="arrow-back" size={24} color={brutalist.primaryContainer} />
+            <Ionicons name="arrow-back" size={24} color={editorial.primaryContainer} />
           </Pressable>
         )}
       </View>
@@ -46,7 +46,7 @@ export function BrutalistHeader({ onBack, showMenu = false }: BrutalistHeaderPro
             justifyContent: 'center',
           }}
         >
-          <Ionicons name="ellipsis-vertical" size={20} color={brutalist.onSurface} />
+          <Ionicons name="ellipsis-vertical" size={20} color={editorial.onSurface} />
         </Pressable>
       )}
     </View>
