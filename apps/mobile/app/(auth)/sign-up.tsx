@@ -1,69 +1,24 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as Haptics from 'expo-haptics';
 import { OtpInput } from '@/components/auth/OtpInput';
-import { brutalist, brutalistShadow, brutalistShadowPrimary } from '@/constants/theme';
-import { BrutalistHeader } from '@/components/onboarding/BrutalistHeader';
+import { AuthInput } from '@/components/auth/AuthInput';
+import { AuthButton } from '@/components/auth/AuthButton';
+import { AuthHeader } from '@/components/auth/AuthHeader';
+import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
+import { authTheme } from '@/constants/theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
 type VerifyMode = 'email' | 'phone' | null;
 
-function BrutalistInput({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  keyboardType,
-  autoCapitalize,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: any;
-  autoCapitalize?: any;
-}) {
-  return (
-    <View style={{ gap: 6 }}>
-      <Text
-        style={{
-          fontFamily: 'WorkSans-Bold',
-          fontSize: 11,
-          letterSpacing: 2,
-          textTransform: 'uppercase',
-          color: brutalist.onSurfaceVariant,
-          marginLeft: 2,
-        }}
-      >
-        {label}
-      </Text>
-      <View style={[{ backgroundColor: '#fff', borderRadius: 12 }, brutalistShadow]}>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={brutalist.outlineVariant}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 16,
-            color: brutalist.onSurface,
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-          }}
-        />
-      </View>
-    </View>
-  );
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export default function SignUpScreen() {
@@ -71,6 +26,7 @@ export default function SignUpScreen() {
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const router = useRouter();
   const { role = 'couple' } = useLocalSearchParams<{ role?: string }>();
+  const roleLabel = role === 'vendor' ? 'Vendor' : 'Couple';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,6 +34,10 @@ export default function SignUpScreen() {
   const [error, setError] = useState('');
   const [verifyMode, setVerifyMode] = useState<VerifyMode>(null);
   const [tips, setTips] = useState(false);
+
+  const emailError = email.length > 0 && !isValidEmail(email) ? 'Enter a valid email' : undefined;
+  const passwordHint =
+    password.length > 0 && password.length < 8 ? `${8 - password.length} more characters needed` : undefined;
 
   const handleEmailSignUp = async () => {
     if (!isLoaded || !signUp) return;
@@ -88,7 +48,7 @@ export default function SignUpScreen() {
       await signUp.create({
         emailAddress: email,
         password,
-        unsafeMetadata: { user_type: role },
+        unsafeMetadata: { userType: role },
       });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setVerifyMode('email');
@@ -103,12 +63,12 @@ export default function SignUpScreen() {
     setLoading(true);
     setError('');
     try {
-      const { createdSessionId, setActive: setOAuthActive, signUp } = await startOAuthFlow({
-        unsafeMetadata: { user_type: role },
+      const { createdSessionId, setActive: setOAuthActive, signUp: oauthSignUp } = await startOAuthFlow({
+        unsafeMetadata: { userType: role },
       } as any);
       if (createdSessionId && setOAuthActive) {
-        if (signUp?.createdUserId) {
-          await signUp.update({ unsafeMetadata: { user_type: role } });
+        if (oauthSignUp?.createdUserId) {
+          await oauthSignUp.update({ unsafeMetadata: { userType: role } });
         }
         await setOAuthActive({ session: createdSessionId });
         router.replace('/');
@@ -129,6 +89,8 @@ export default function SignUpScreen() {
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/');
+      } else {
+        setError('Verification could not be completed. Please try again.');
       }
     } catch (err: any) {
       setError(err.errors?.[0]?.message || 'Verification failed');
@@ -137,20 +99,33 @@ export default function SignUpScreen() {
     }
   };
 
+  const handleResendCode = async () => {
+    if (!isLoaded || !signUp) return;
+    await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+  };
+
   if (verifyMode) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
-        <BrutalistHeader onBack={() => setVerifyMode(null)} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+        <AuthHeader onBack={() => setVerifyMode(null)} />
         <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24 }}>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 26, color: brutalist.onSurface, marginBottom: 8 }}>
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 24, color: authTheme.ink, marginBottom: 8 }}>
             Verify your account
           </Text>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: brutalist.onSurfaceVariant, marginBottom: 24 }}>
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: authTheme.textSecondary, marginBottom: 24 }}>
             We sent a 6-digit code to {email}
           </Text>
-          <OtpInput onComplete={handleVerify} error={error} />
+          <OtpInput onComplete={handleVerify} error={error} onResend={handleResendCode} resendCooldownSeconds={30} />
           {loading && (
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: brutalist.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
+            <Text
+              style={{
+                fontFamily: 'WorkSans-Regular',
+                fontSize: 14,
+                color: authTheme.textSecondary,
+                textAlign: 'center',
+                marginTop: 16,
+              }}
+            >
               Verifying...
             </Text>
           )}
@@ -160,193 +135,182 @@ export default function SignUpScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
-      <BrutalistHeader onBack={() => router.back()} />
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 8 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 28,
-            letterSpacing: -0.5,
-            color: brutalist.onSurface,
-            marginBottom: 8,
-          }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+      <AuthHeader onBack={() => router.back()} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 8 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          Create Account
-        </Text>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Medium',
-            fontSize: 15,
-            color: brutalist.onSurfaceVariant,
-            marginBottom: 28,
-          }}
-        >
-          Start your celebration journey with the finest curators.
-        </Text>
-
-        {/* Form */}
-        <View style={{ gap: 18 }}>
-          <BrutalistInput
-            label="Email Address"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="curator@festivals.tz"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <BrutalistInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-          />
-
-          {/* Tips checkbox */}
-          <Pressable
-            onPress={() => setTips(!tips)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 4,
-                borderWidth: 1.5,
-                borderColor: brutalist.outlineVariant,
-                backgroundColor: tips ? brutalist.primaryContainer : brutalist.surfaceContainerLow,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {tips && <Ionicons name="checkmark" size={14} color="#fff" />}
-            </View>
-            <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: brutalist.onSurface }}>
-              Send me planning tips and vendor offers
-            </Text>
-          </Pressable>
-
-          {error ? (
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: brutalist.error }}>{error}</Text>
-          ) : null}
-
-          {/* Create Account CTA */}
-          <Pressable
-            onPress={handleEmailSignUp}
-            disabled={loading || !email.includes('@') || password.length < 8}
-            style={[
-              {
-                backgroundColor: (!email.includes('@') || password.length < 8) ? brutalist.surfaceContainerHighest : brutalist.primaryContainer,
-                paddingVertical: 16,
-                borderRadius: 9999,
-                alignItems: 'center',
-                opacity: loading ? 0.7 : 1,
-              },
-              (email.includes('@') && password.length >= 8) ? brutalistShadow : {},
-            ]}
-          >
-            <Text
-              style={{
-                fontFamily: 'SpaceGrotesk-Bold',
-                fontSize: 17,
-                color: (!email.includes('@') || password.length < 8) ? brutalist.outline : '#fff',
-                letterSpacing: 0.5,
-              }}
-            >
-              {loading ? 'Creating...' : 'Create Account'}
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Divider */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 24 }}>
-          <View style={{ flex: 1, height: 1, backgroundColor: brutalist.surfaceContainerHighest }} />
-          <Text
+          {/* Header */}
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 26, color: authTheme.ink, marginBottom: 4 }}>
+            Create Account
+          </Text>
+          <View
             style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: brutalist.outline,
-              marginHorizontal: 16,
+              alignSelf: 'flex-start',
+              backgroundColor: authTheme.chipBg,
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              marginBottom: 12,
             }}
           >
-            or
-          </Text>
-          <View style={{ flex: 1, height: 1, backgroundColor: brutalist.surfaceContainerHighest }} />
-        </View>
-
-        {/* Social Buttons */}
-        <View style={{ gap: 12 }}>
-          <Pressable
-            onPress={() => {}}
-            style={[
-              {
-                backgroundColor: brutalist.onSurface,
-                paddingVertical: 14,
-                borderRadius: 9999,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-              },
-              brutalistShadowPrimary,
-            ]}
-          >
-            <Ionicons name="logo-apple" size={20} color="#fff" />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#fff' }}>
-              Continue with Apple
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleGoogleSignUp}
-            style={{
-              backgroundColor: 'transparent',
-              paddingVertical: 14,
-              borderRadius: 9999,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              borderWidth: 1.5,
-              borderColor: brutalist.onSurface,
-            }}
-          >
-            <Ionicons name="logo-google" size={18} color={brutalist.onSurface} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: brutalist.onSurface }}>
-              Continue with Google
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Footer */}
-        <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 32 }}>
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: brutalist.onSurfaceVariant }}>
-            Already have an account?{' '}
-            <Text
-              style={{ fontFamily: 'WorkSans-Bold', color: brutalist.onSecondaryContainer }}
-              onPress={() => router.push('/(auth)/sign-in')}
-            >
-              Log in
-            </Text>
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: brutalist.outline }}>
-              Terms
-            </Text>
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: brutalist.outline }}>
-              Privacy
+            <Text style={{ fontFamily: 'WorkSans-SemiBold', fontSize: 12, color: authTheme.ink }}>
+              Signing up as {roleLabel}
             </Text>
           </View>
-        </View>
-      </ScrollView>
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 15, color: authTheme.textSecondary, marginBottom: 28 }}>
+            Start your celebration journey with the finest curators.
+          </Text>
+
+          {/* Form */}
+          <View style={{ gap: 18 }}>
+            <AuthInput
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="curator@festivals.tz"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              error={emailError}
+            />
+            <AuthInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              autoComplete="password-new"
+              hint={passwordHint}
+            />
+
+            {/* Tips checkbox */}
+            <Pressable
+              onPress={() => {
+                Haptics.selectionAsync();
+                setTips(!tips);
+              }}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: tips }}
+              accessibilityLabel="Send me planning tips and vendor offers"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}
+            >
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  borderWidth: 1.5,
+                  borderColor: authTheme.border,
+                  backgroundColor: tips ? authTheme.ink : authTheme.bg,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {tips && <Ionicons name="checkmark" size={14} color={authTheme.bg} />}
+              </View>
+              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: authTheme.ink }}>
+                Send me planning tips and vendor offers
+              </Text>
+            </Pressable>
+
+            {error ? (
+              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: authTheme.danger }}>{error}</Text>
+            ) : null}
+
+            <AuthButton
+              label={loading ? 'Creating...' : 'Create Account'}
+              onPress={handleEmailSignUp}
+              loading={loading}
+              disabled={!isValidEmail(email) || password.length < 8}
+            />
+          </View>
+
+          {/* Divider */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 24 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: authTheme.border }} />
+            <Text
+              style={{
+                fontFamily: 'WorkSans-SemiBold',
+                fontSize: 11,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: authTheme.textSecondary,
+                marginHorizontal: 16,
+              }}
+            >
+              or
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: authTheme.border }} />
+          </View>
+
+          {/* Social Buttons */}
+          <View style={{ gap: 12 }}>
+            <AuthButton
+              variant="outline"
+              label="Continue with Google"
+              accessibilityLabel="Continue with Google"
+              icon={<Ionicons name="logo-google" size={18} color={authTheme.ink} />}
+              onPress={handleGoogleSignUp}
+            />
+            <AppleSignInButton role={role} onSuccess={() => router.replace('/')} onError={setError} />
+          </View>
+
+          {/* Footer */}
+          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: authTheme.textSecondary }}>
+              Already have an account?{' '}
+              <Text
+                style={{ fontFamily: 'WorkSans-SemiBold', color: authTheme.accent }}
+                onPress={() => router.push('/(auth)/sign-in')}
+              >
+                Log in
+              </Text>
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Terms of Use"
+                onPress={() => WebBrowser.openBrowserAsync('https://opusfesta.com/terms-of-use')}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'WorkSans-SemiBold',
+                    fontSize: 11,
+                    letterSpacing: 1,
+                    textTransform: 'uppercase',
+                    color: authTheme.textSecondary,
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  Terms
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Privacy Policy"
+                onPress={() => WebBrowser.openBrowserAsync('https://opusfesta.com/privacy-policy')}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'WorkSans-SemiBold',
+                    fontSize: 11,
+                    letterSpacing: 1,
+                    textTransform: 'uppercase',
+                    color: authTheme.textSecondary,
+                    textDecorationLine: 'underline',
+                  }}
+                >
+                  Privacy
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

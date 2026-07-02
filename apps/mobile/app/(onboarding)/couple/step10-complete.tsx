@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { editorial, shadowSoft } from '@/constants/theme';
 import { CoupleNames } from '@/components/ui/CoupleNames';
 import { useCoupleOnboarding } from './_layout';
 
@@ -91,7 +91,7 @@ export default function CompleteScreen() {
         unsafeMetadata: {
           ...(user?.unsafeMetadata ?? {}),
           onboardingComplete: true,
-          user_type: 'couple',
+          userType: 'couple',
         },
       });
       await user?.reload();
@@ -136,7 +136,7 @@ export default function CompleteScreen() {
 
   if (submitError) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
           <View
             style={[
@@ -149,7 +149,7 @@ export default function CompleteScreen() {
                 backgroundColor: '#FEF2F2',
                 padding: 20,
               },
-              brutalistShadow,
+              shadowSoft,
             ]}
           >
             <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: '#7F1D1D' }}>
@@ -161,14 +161,14 @@ export default function CompleteScreen() {
             <Pressable
               onPress={() => setAttempt((a) => a + 1)}
               style={[
-                { marginTop: 16, backgroundColor: brutalist.primaryContainer, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-                brutalistShadow,
+                { marginTop: 16, backgroundColor: editorial.primaryContainer, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+                shadowSoft,
               ]}
             >
               <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#fff' }}>Try again</Text>
             </Pressable>
             <Pressable onPress={() => router.back()} style={{ marginTop: 12, alignItems: 'center' }}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: brutalist.onSurfaceVariant }}>Go back</Text>
+              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Go back</Text>
             </Pressable>
           </View>
         </View>
@@ -182,10 +182,10 @@ export default function CompleteScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       {/* Decorative blurs */}
-      <View style={{ position: 'absolute', top: '-10%', left: '-10%', width: 200, height: 200, borderRadius: 100, backgroundColor: brutalist.tertiaryFixed, opacity: 0.2 }} />
-      <View style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: 240, height: 240, borderRadius: 120, backgroundColor: brutalist.primaryFixed, opacity: 0.1 }} />
+      <View style={{ position: 'absolute', top: '-10%', left: '-10%', width: 200, height: 200, borderRadius: 100, backgroundColor: editorial.tertiaryFixed, opacity: 0.2 }} />
+      <View style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: 240, height: 240, borderRadius: 120, backgroundColor: editorial.primaryFixed, opacity: 0.1 }} />
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
         {/* Spinning ring with icon */}
@@ -208,21 +208,21 @@ export default function CompleteScreen() {
                 width: 100,
                 height: 100,
                 borderRadius: 50,
-                backgroundColor: brutalist.surfaceContainerLowest,
+                backgroundColor: editorial.surfaceContainerLowest,
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              brutalistShadow,
+              shadowSoft,
             ]}
           >
-            <Ionicons name="sparkles" size={48} color={brutalist.onPrimaryContainer} />
+            <Ionicons name="sparkles" size={48} color={editorial.onPrimaryContainer} />
           </View>
           {/* Floating accents */}
-          <View style={[{ position: 'absolute', top: 0, right: 16, backgroundColor: brutalist.secondaryContainer, padding: 8, borderRadius: 14 }, brutalistShadow]}>
-            <Ionicons name="heart" size={16} color={brutalist.onSecondaryContainer} />
+          <View style={[{ position: 'absolute', top: 0, right: 16, backgroundColor: editorial.secondaryContainer, padding: 8, borderRadius: 14 }, shadowSoft]}>
+            <Ionicons name="heart" size={16} color={editorial.onSecondaryContainer} />
           </View>
-          <View style={[{ position: 'absolute', bottom: 24, left: 0, backgroundColor: brutalist.primaryFixed, padding: 8, borderRadius: 14 }, brutalistShadow]}>
-            <Ionicons name="sparkles-outline" size={16} color={brutalist.primaryContainer} />
+          <View style={[{ position: 'absolute', bottom: 24, left: 0, backgroundColor: editorial.primaryFixed, padding: 8, borderRadius: 14 }, shadowSoft]}>
+            <Ionicons name="sparkles-outline" size={16} color={editorial.primaryContainer} />
           </View>
         </View>
 
@@ -241,7 +241,7 @@ export default function CompleteScreen() {
             fontSize: 22,
             letterSpacing: -0.6,
             textTransform: 'uppercase',
-            color: brutalist.onSurface,
+            color: editorial.onSurface,
             textAlign: 'center',
             marginBottom: 8,
           }}
@@ -252,7 +252,7 @@ export default function CompleteScreen() {
           style={{
             fontFamily: 'WorkSans-Medium',
             fontSize: 15,
-            color: brutalist.onSurfaceVariant,
+            color: editorial.onSurfaceVariant,
             textAlign: 'center',
             maxWidth: 320,
             marginBottom: 32,
@@ -274,7 +274,7 @@ export default function CompleteScreen() {
                   alignItems: 'center',
                   gap: 16,
                   padding: 14,
-                  backgroundColor: isActive ? brutalist.secondaryContainer : brutalist.surfaceContainerLow,
+                  backgroundColor: isActive ? editorial.secondaryContainer : editorial.surfaceContainerLow,
                   borderRadius: 12,
                   opacity: fadeAnims[index],
                 }}
@@ -285,7 +285,7 @@ export default function CompleteScreen() {
                       width: 28,
                       height: 28,
                       borderRadius: 14,
-                      backgroundColor: isComplete ? brutalist.primaryContainer : brutalist.surfaceContainerHighest,
+                      backgroundColor: isComplete ? editorial.primaryContainer : editorial.surfaceContainerHighest,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -298,13 +298,13 @@ export default function CompleteScreen() {
                     style={{
                       fontFamily: 'SpaceGrotesk-Bold',
                       fontSize: 16,
-                      color: brutalist.onSurface,
+                      color: editorial.onSurface,
                     }}
                   >
                     {task}
                   </Text>
                   {isActive && (
-                    <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: brutalist.onSurfaceVariant, marginTop: 2 }}>
+                    <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
                       Tailoring matches to your budget and style.
                     </Text>
                   )}
@@ -319,7 +319,7 @@ export default function CompleteScreen() {
           style={{
             fontFamily: 'SpaceGrotesk-Bold',
             fontSize: 16,
-            color: brutalist.onSurface,
+            color: editorial.onSurface,
             opacity: 0.2,
             marginTop: 32,
           }}

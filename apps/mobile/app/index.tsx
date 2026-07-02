@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { View, ActivityIndicator } from 'react-native';
-import { brutalist } from '@/constants/theme';
+import { editorial } from '@/constants/theme';
 import { ErrorFallback } from '@/components/ErrorFallback';
 
 const AUTH_LOAD_TIMEOUT_MS = 8000;
@@ -32,7 +32,7 @@ export default function IndexScreen() {
     }
 
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: brutalist.bg }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
         <ActivityIndicator size="small" color="#5B2D8E" />
       </View>
     );
@@ -51,6 +51,8 @@ export default function IndexScreen() {
   if (!onboardingComplete) {
     const userType =
       (user?.publicMetadata?.userType as string) ??
+      (user?.unsafeMetadata?.userType as string) ??
+      // Legacy fallback: users who signed up before the key was standardized.
       (user?.unsafeMetadata?.user_type as string) ??
       'couple';
 

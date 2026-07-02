@@ -116,7 +116,7 @@ export default function VendorStep4() {
         unsafeMetadata: {
           ...(user?.unsafeMetadata ?? {}),
           onboardingComplete: true,
-          user_type: 'vendor',
+          userType: 'vendor',
         },
       });
 
