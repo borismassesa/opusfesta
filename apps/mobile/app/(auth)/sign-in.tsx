@@ -1,79 +1,26 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import { AuthInput } from '@/components/auth/AuthInput';
+import { AuthButton } from '@/components/auth/AuthButton';
+import { AuthHeader } from '@/components/auth/AuthHeader';
+import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
 import { OtpInput } from '@/components/auth/OtpInput';
-import { brutalist, brutalistShadow } from '@/constants/theme';
+import { authTheme } from '@/constants/theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
-function BrutalistInput({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  keyboardType,
-  autoCapitalize,
-  rightLabel,
-  onRightPress,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: any;
-  autoCapitalize?: any;
-  rightLabel?: string;
-  onRightPress?: () => void;
-}) {
-  return (
-    <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 2 }}>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Bold',
-            fontSize: 11,
-            letterSpacing: 2,
-            textTransform: 'uppercase',
-            color: brutalist.onSurfaceVariant,
-          }}
-        >
-          {label}
-        </Text>
-        {rightLabel && (
-          <Pressable onPress={onRightPress}>
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: brutalist.secondary }}>
-              {rightLabel}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={[{ backgroundColor: '#fff', borderRadius: 12 }, brutalistShadow]}>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={brutalist.outlineVariant}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 16,
-            color: brutalist.onSurface,
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-          }}
-        />
-      </View>
-    </View>
-  );
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+type SecondFactorStrategy = 'totp' | 'phone_code' | 'email_code' | 'backup_code';
+
+const SECOND_FACTOR_PRIORITY: SecondFactorStrategy[] = ['totp', 'phone_code', 'email_code', 'backup_code'];
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -84,6 +31,21 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [secondFactor, setSecondFactor] = useState<SecondFactorStrategy | null>(null);
+  const [backupCode, setBackupCode] = useState('');
+
+  const emailError = email.length > 0 && !isValidEmail(email) ? 'Enter a valid email' : undefined;
+
+  const prepareSecondFactor = async (strategy: 'phone_code' | 'email_code', factors: any[]) => {
+    if (!signIn) return;
+    if (strategy === 'phone_code') {
+      const factor = factors.find((f) => f.strategy === 'phone_code');
+      if (factor) await signIn.prepareSecondFactor({ strategy: 'phone_code', phoneNumberId: factor.phoneNumberId });
+    } else {
+      const factor = factors.find((f) => f.strategy === 'email_code');
+      if (factor) await signIn.prepareSecondFactor({ strategy: 'email_code', emailAddressId: factor.emailAddressId });
+    }
+  };
 
   const handleEmailSignIn = async () => {
     if (!isLoaded || !signIn) return;
@@ -94,12 +56,51 @@ export default function SignInScreen() {
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/');
+      } else if (result.status === 'needs_second_factor') {
+        const factors = result.supportedSecondFactors ?? [];
+        const strategy = SECOND_FACTOR_PRIORITY.find((s) => factors.some((f) => f.strategy === s));
+        if (!strategy) {
+          setError('This account requires a two-factor method that isn\'t supported here yet. Contact support.');
+          return;
+        }
+        if (strategy === 'phone_code' || strategy === 'email_code') {
+          await prepareSecondFactor(strategy, factors);
+        }
+        setSecondFactor(strategy);
+      } else if (result.status === 'needs_new_password') {
+        setError('Your password needs to be reset before you can sign in.');
+      } else {
+        setError('Sign in could not be completed. Please try again.');
       }
     } catch (err: any) {
       setError(err.errors?.[0]?.message || 'Sign in failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSecondFactorComplete = async (code: string) => {
+    if (!isLoaded || !signIn || !secondFactor) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await signIn.attemptSecondFactor({ strategy: secondFactor, code } as any);
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        router.replace('/');
+      } else {
+        setError('That code didn\'t work. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err.errors?.[0]?.message || 'Verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!isLoaded || !signIn || (secondFactor !== 'phone_code' && secondFactor !== 'email_code')) return;
+    await prepareSecondFactor(secondFactor, signIn.supportedSecondFactors ?? []);
   };
 
   const handleGoogleSignIn = useCallback(async () => {
@@ -118,159 +119,189 @@ export default function SignInScreen() {
     }
   }, [startOAuthFlow, router]);
 
+  if (secondFactor) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+        <AuthHeader onBack={() => setSecondFactor(null)} />
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24 }}>
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 24, color: authTheme.ink, marginBottom: 8 }}>
+            Two-factor verification
+          </Text>
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: authTheme.textSecondary, marginBottom: 24 }}>
+            {secondFactor === 'totp' && 'Enter the 6-digit code from your authenticator app.'}
+            {secondFactor === 'phone_code' && 'We sent a 6-digit code to your phone.'}
+            {secondFactor === 'email_code' && `We sent a 6-digit code to ${email}.`}
+            {secondFactor === 'backup_code' && 'Enter one of your backup codes.'}
+          </Text>
+
+          {secondFactor === 'backup_code' ? (
+            <View style={{ gap: 18 }}>
+              <AuthInput
+                label="Backup Code"
+                value={backupCode}
+                onChangeText={setBackupCode}
+                placeholder="Enter backup code"
+                autoCapitalize="none"
+                error={error || undefined}
+              />
+              <AuthButton
+                label={loading ? 'Verifying...' : 'Verify'}
+                onPress={() => handleSecondFactorComplete(backupCode)}
+                loading={loading}
+                disabled={backupCode.length === 0}
+              />
+            </View>
+          ) : (
+            <>
+              <OtpInput
+                onComplete={handleSecondFactorComplete}
+                error={error}
+                onResend={secondFactor === 'phone_code' || secondFactor === 'email_code' ? handleResendCode : undefined}
+                resendCooldownSeconds={30}
+              />
+              {loading && (
+                <Text
+                  style={{
+                    fontFamily: 'WorkSans-Regular',
+                    fontSize: 14,
+                    color: authTheme.textSecondary,
+                    textAlign: 'center',
+                    marginTop: 16,
+                  }}
+                >
+                  Verifying...
+                </Text>
+              )}
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: brutalist.bg }}>
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header bar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8, marginBottom: 32 }}>
-          <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-            <Ionicons name="arrow-back" size={24} color={brutalist.onSurfaceVariant} />
-          </Pressable>
-        </View>
-
-        {/* Editorial Header */}
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 36,
-            lineHeight: 40,
-            letterSpacing: -1.5,
-            color: brutalist.onSurface,
-            marginBottom: 8,
-          }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          Welcome Back.
-        </Text>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 17,
-            lineHeight: 24,
-            color: brutalist.onSurfaceVariant,
-            marginBottom: 36,
-          }}
-        >
-          Curating your next great celebration begins here.
-        </Text>
+          {/* Header bar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8, marginBottom: 32 }}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="arrow-back" size={24} color={authTheme.ink} />
+            </Pressable>
+          </View>
 
-        {/* Form */}
-        <View style={{ gap: 20 }}>
-          <BrutalistInput
-            label="Email Address"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="name@celebrate.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <BrutalistInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-            rightLabel="Forgot password?"
-          />
-
-          {error ? (
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: brutalist.error }}>{error}</Text>
-          ) : null}
-
-          {/* Login CTA */}
-          <Pressable
-            onPress={handleEmailSignIn}
-            disabled={loading || !email.includes('@') || password.length === 0}
-            style={[
-              {
-                backgroundColor: brutalist.primaryContainer,
-                paddingVertical: 16,
-                borderRadius: 9999,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                opacity: loading ? 0.7 : 1,
-              },
-              brutalistShadow,
-            ]}
-          >
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: '#fff' }}>
-              {loading ? 'Signing in...' : 'Log In'}
-            </Text>
-            {!loading && <Ionicons name="arrow-forward" size={20} color="#fff" />}
-          </Pressable>
-        </View>
-
-        {/* Divider */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 28 }}>
-          <View style={{ flex: 1, height: 1, backgroundColor: brutalist.surfaceContainerHighest }} />
+          {/* Header */}
           <Text
             style={{
               fontFamily: 'WorkSans-Bold',
-              fontSize: 9,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: brutalist.outline,
-              marginHorizontal: 16,
+              fontSize: 28,
+              color: authTheme.ink,
+              marginBottom: 8,
             }}
           >
-            Or continue with
+            Welcome Back.
           </Text>
-          <View style={{ flex: 1, height: 1, backgroundColor: brutalist.surfaceContainerHighest }} />
-        </View>
-
-        {/* Social Buttons */}
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable
+          <Text
             style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              backgroundColor: brutalist.surfaceContainerHigh,
-              paddingVertical: 12,
-              borderRadius: 10,
+              fontFamily: 'WorkSans-Regular',
+              fontSize: 15,
+              lineHeight: 22,
+              color: authTheme.textSecondary,
+              marginBottom: 32,
             }}
           >
-            <Ionicons name="logo-apple" size={18} color={brutalist.onSurface} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: brutalist.onSurface }}>Apple</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleGoogleSignIn}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              backgroundColor: brutalist.surfaceContainerHigh,
-              paddingVertical: 12,
-              borderRadius: 10,
-            }}
-          >
-            <Ionicons name="logo-google" size={16} color={brutalist.onSurface} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: brutalist.onSurface }}>Google</Text>
-          </Pressable>
-        </View>
+            Curating your next great celebration begins here.
+          </Text>
 
-        {/* Footer */}
-        <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 32 }}>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: brutalist.onSurfaceVariant }}>
-            Don't have an account?{' '}
+          {/* Form */}
+          <View style={{ gap: 18 }}>
+            <AuthInput
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="name@celebrate.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              error={emailError}
+            />
+            <AuthInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              autoComplete="password"
+              rightLabel="Forgot password?"
+              onRightPress={() => router.push('/(auth)/forgot-password')}
+            />
+
+            {error ? (
+              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: authTheme.danger }}>{error}</Text>
+            ) : null}
+
+            <AuthButton
+              label={loading ? 'Signing in...' : 'Log In'}
+              onPress={handleEmailSignIn}
+              loading={loading}
+              disabled={!isValidEmail(email) || password.length === 0}
+            />
+          </View>
+
+          {/* Divider */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 28 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: authTheme.border }} />
             <Text
-              style={{ fontFamily: 'WorkSans-Bold', color: brutalist.primaryContainer, textDecorationLine: 'underline' }}
-              onPress={() => router.push('/(auth)/sign-up')}
+              style={{
+                fontFamily: 'WorkSans-SemiBold',
+                fontSize: 11,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: authTheme.textSecondary,
+                marginHorizontal: 16,
+              }}
             >
-              Sign up
+              Or continue with
             </Text>
-          </Text>
-        </View>
-      </ScrollView>
+            <View style={{ flex: 1, height: 1, backgroundColor: authTheme.border }} />
+          </View>
+
+          {/* Social Buttons */}
+          <View style={{ gap: 12 }}>
+            <AuthButton
+              variant="outline"
+              label="Continue with Google"
+              accessibilityLabel="Continue with Google"
+              icon={<Ionicons name="logo-google" size={18} color={authTheme.ink} />}
+              onPress={handleGoogleSignIn}
+            />
+            <AppleSignInButton onSuccess={() => router.replace('/')} onError={setError} />
+          </View>
+
+          {/* Footer */}
+          <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 32 }}>
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: authTheme.textSecondary }}>
+              Don't have an account?{' '}
+              <Text
+                style={{ fontFamily: 'WorkSans-SemiBold', color: authTheme.accent }}
+                onPress={() => router.push('/(auth)/sign-up')}
+              >
+                Sign up
+              </Text>
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

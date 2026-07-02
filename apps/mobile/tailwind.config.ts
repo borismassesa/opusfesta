@@ -20,6 +20,11 @@ const config: Config = {
           green: '#2D8E5B',
           gold: '#C4920A',
           coral: '#D85A30',
+          ink: '#1A1A1A',
+          line: '#D1D5DB',
+          danger: '#DC2626',
+          accent: '#7E5896',
+          placeholder: '#9CA3AF',
         },
         br: {
           bg: '#faf7fc',
