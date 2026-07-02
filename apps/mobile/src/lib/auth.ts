@@ -18,6 +18,9 @@ const hasClerkKey = !!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
  * Returns mock guest state when Clerk is not configured (dev preview mode).
  */
 export function useOpusFestaAuth() {
+  const { isSignedIn, isLoaded, signOut } = useAuth();
+  const { user } = useUser();
+
   if (!hasClerkKey) {
     return {
       user: null,
@@ -26,9 +29,6 @@ export function useOpusFestaAuth() {
       signOut: async () => {},
     };
   }
-
-  const { isSignedIn, isLoaded, signOut } = useAuth();
-  const { user } = useUser();
 
   const opusUser: OpusFestaUser | null =
     isSignedIn && user
