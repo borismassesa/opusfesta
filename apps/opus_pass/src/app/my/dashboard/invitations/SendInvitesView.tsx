@@ -18,6 +18,7 @@ import {
   publicInviteMessage,
   inviteMessage,
   reminderMessage,
+  firstNameOf,
 } from '@/lib/dashboard/share'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
@@ -163,11 +164,14 @@ export default function SendInvitesView({
     // With WhatsApp Business live, the row button sends the real approved
     // template (same pipeline as bulk send) — not a wa.me prefill.
     if (channel === 'whatsapp' && whatsappLive) {
-      const first = g.name.split(/\s+/)[0] || g.name
+      const first = firstNameOf(g.name)
+      const remindingLive = isAwaiting(g.status)
       startTransition(async () => {
         const res = await sendWhatsAppInvites([g.id])
         if (!res.hasPaidOrder) toast.error(strings.toast_no_package)
-        else if (res.sent > 0) toast.success(fmt(strings.toast_sent_one, { name: first }))
+        else if (res.sent > 0 && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
+        else if (res.sent > 0)
+          toast.success(fmt(remindingLive ? strings.toast_reminded_one : strings.toast_sent_one, { name: first }))
         else if (res.blocked > 0) toast.error(fmt(strings.send_over_quota, { n: res.blocked }))
         else if (res.skipped > 0) toast.error(fmt(strings.send_no_phone, { n: res.skipped }))
         else toast.error(fmt(strings.toast_send_failed, { name: first }))
@@ -185,7 +189,7 @@ export default function SendInvitesView({
     window.open(url, '_blank', 'noopener,noreferrer')
     recordSend(g.id, channel).catch(() => {})
     if (reminding)
-      toast.success(fmt(strings.toast_reminder_ready, { name: g.name.split(/\s+/)[0] || g.name }))
+      toast.success(fmt(strings.toast_reminder_ready, { name: firstNameOf(g.name) }))
   }
 
   function toggleSelect(id: string) {
@@ -400,9 +404,9 @@ export default function SendInvitesView({
                   <td><span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span></td>
                   <td>
                     <div className="ra">
-                      <button className="ia wa" title={strings.row_whatsapp} onClick={() => rowShare(g, 'whatsapp')}><MessageCircle size={15} /></button>
-                      <button className="ia sms" title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Mail size={15} /></button>
-                      <button className="ia copy" title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
+                      <button className="ia wa" disabled={pending} title={strings.row_whatsapp} onClick={() => rowShare(g, 'whatsapp')}><MessageCircle size={15} /></button>
+                      <button className="ia sms" disabled={pending} title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Mail size={15} /></button>
+                      <button className="ia copy" disabled={pending} title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -533,6 +537,7 @@ const css = `
 .si .ia{ width:32px; height:32px; border-radius:9px; border:1px solid var(--line); background:#fff; cursor:pointer;
   display:grid; place-items:center; }
 .si .ia:hover{ background:var(--hover); border-color:var(--lav); }
+.si .ia:disabled{ opacity:.45; cursor:not-allowed; }
 .si .ia.wa{ color:var(--wa); } .si .ia.sms{ color:var(--sms); } .si .ia.copy{ color:var(--purple); }
 .si .ck{ width:15px; height:15px; accent-color:var(--purple); }
 @media(max-width:900px){ .si .modes{ grid-template-columns:1fr; } .si .funnel{ grid-template-columns:repeat(2,1fr); }

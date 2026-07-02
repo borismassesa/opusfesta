@@ -1001,6 +1001,7 @@ export interface DashboardSendStrings {
   toast_personal_copied: string
   toast_reminder_ready: string // {name}
   toast_sent_one: string // {name}
+  toast_reminded_one: string // {name}
   toast_send_failed: string // {name}
   toast_nothing_sent: string
   send_failed_n: string // {n}
@@ -1834,6 +1835,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_personal_copied: 'Personal link copied',
     toast_reminder_ready: 'Reminder ready for {name}',
     toast_sent_one: 'Invitation sent to {name}',
+    toast_reminded_one: 'Reminder sent to {name}',
     toast_send_failed: 'Could not send to {name}. Check the number and try again.',
     toast_nothing_sent: 'Nothing was sent. Only confirmed guests with a phone number can receive invites.',
     send_failed_n: '{n} failed',
