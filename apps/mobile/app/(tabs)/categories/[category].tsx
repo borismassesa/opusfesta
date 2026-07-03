@@ -5,9 +5,11 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { VendorListItem } from '@/components/vendors/VendorListItem';
 import { getVendorsByCategory } from '@/lib/api/vendors';
-import { VENDOR_CATEGORIES, editorial } from '@/constants/theme';
+import { VENDOR_CATEGORIES } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 export default function CategoryResultsScreen() {
+  const { editorial } = useTheme();
   const { category } = useLocalSearchParams<{ category: string }>();
   const label =
     VENDOR_CATEGORIES.find((c) => c.key === category)?.label ?? category;

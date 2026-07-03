@@ -3,7 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -30,6 +31,7 @@ export default function NotificationsScreen() {
   const { data: notifications = [], isLoading } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const { editorial } = useTheme();
 
   const hasUnread = notifications.some((n: any) => !n.read);
 

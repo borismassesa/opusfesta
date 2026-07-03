@@ -9,10 +9,12 @@ import { PhotoUploader } from '@/components/onboarding/PhotoUploader';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useUpdateVendorProfile, useUpdateVendorPackages } from '@/hooks/useVendorProfile';
 import { uploadToBucket } from '@/lib/storage';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { VendorPackage } from '@/types/vendor';
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
+  const { editorial } = useTheme();
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginBottom: 6 }}>
@@ -37,6 +39,7 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 }
 
 function SectionTitle({ children }: { children: string }) {
+  const { editorial } = useTheme();
   return (
     <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: editorial.onSurface, marginBottom: 12, marginTop: 8 }}>
       {children}
@@ -48,6 +51,7 @@ const isRemoteUrl = (uri: string) => uri.startsWith('http://') || uri.startsWith
 
 function StorefrontReadOnly({ vendorId, businessName }: { vendorId: string; businessName: string }) {
   const router = useRouter();
+  const { editorial } = useTheme();
   return (
     <ScreenWrapper>
       <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 20 }}>
@@ -91,6 +95,7 @@ export default function StorefrontScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { vendor, myRole, isLoading: vendorLoading } = useCurrentVendor();
+  const { editorial } = useTheme();
   const updateProfile = useUpdateVendorProfile();
   const updatePackages = useUpdateVendorPackages();
 

@@ -1,5 +1,6 @@
 import { View, Text, Image } from 'react-native';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 type AvatarSize = 'sm' | 'md' | 'lg';
 
@@ -32,6 +33,7 @@ export function Avatar({
   size = 'md',
   className = '',
 }: AvatarProps) {
+  const { editorial } = useTheme();
   const s = sizeMap[size];
 
   if (imageUrl) {

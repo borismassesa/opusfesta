@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { StarRating } from '../ui/StarRating';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface VendorListItemProps {
   id: string;
@@ -24,6 +25,7 @@ export function VendorListItem({
   logo,
   verified = false,
 }: VendorListItemProps) {
+  const { editorial } = useTheme();
   const router = useRouter();
 
   return (

@@ -8,11 +8,13 @@ import { useVendorLead, useUpdateLeadStatus, useSendProposal, useAcceptCounter }
 import { useInquiryMessages, useSendInquiryMessage } from '@/hooks/useInquiryMessages';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { leadStatusStyle } from '@/lib/vendorPipeline';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { InquiryMessage } from '@/lib/api/inquiryMessages';
 import type { InquiryRow } from '@/types/vendor';
 
 function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  const { editorial } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
       <Ionicons name={icon} size={16} color={editorial.onSurfaceVariant} style={{ marginTop: 2 }} />
@@ -26,19 +28,8 @@ function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMa
   );
 }
 
-const cardStyle: StyleProp<ViewStyle> = [
-  {
-    backgroundColor: editorial.surfaceContainerLowest,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: editorial.outlineVariant,
-    padding: 16,
-    marginBottom: 20,
-  },
-  shadowSoftSm,
-];
-
 function ProposalField({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
+  const { editorial } = useTheme();
   return (
     <View style={{ marginBottom: 12 }}>
       <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginBottom: 4 }}>
@@ -63,6 +54,7 @@ function ProposalField({ label, ...props }: { label: string } & React.ComponentP
 }
 
 function ProposalSummaryRow({ label, value }: { label: string; value: string }) {
+  const { editorial } = useTheme();
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
       <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant }}>{label}</Text>
@@ -72,6 +64,18 @@ function ProposalSummaryRow({ label, value }: { label: string; value: string }) 
 }
 
 function ProposalSection({ lead }: { lead: InquiryRow }) {
+  const { editorial } = useTheme();
+  const cardStyle: StyleProp<ViewStyle> = [
+    {
+      backgroundColor: editorial.surfaceContainerLowest,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: editorial.outlineVariant,
+      padding: 16,
+      marginBottom: 20,
+    },
+    shadowSoftSm,
+  ];
   const sendMutation = useSendProposal();
   const acceptMutation = useAcceptCounter();
   const { myRole } = useCurrentVendor();
@@ -269,6 +273,18 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
 }
 
 function ThreadSection({ lead }: { lead: InquiryRow }) {
+  const { editorial } = useTheme();
+  const cardStyle: StyleProp<ViewStyle> = [
+    {
+      backgroundColor: editorial.surfaceContainerLowest,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: editorial.outlineVariant,
+      padding: 16,
+      marginBottom: 20,
+    },
+    shadowSoftSm,
+  ];
   const { data: messages, isLoading } = useInquiryMessages(lead.id);
   const sendMutation = useSendInquiryMessage();
   const [draft, setDraft] = useState('');
@@ -382,6 +398,7 @@ function ThreadSection({ lead }: { lead: InquiryRow }) {
 }
 
 export default function LeadDetailScreen() {
+  const { editorial } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: lead, isLoading } = useVendorLead(id);

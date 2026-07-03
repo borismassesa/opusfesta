@@ -3,10 +3,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { useGuestbook, useApproveGuestbook } from '@/hooks/useWeddingWebsite';
-import { colors, editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { GuestbookEntry } from '@/types/wedding-website';
 
 export default function GuestbookManageScreen() {
+  const { editorial, colors } = useTheme();
   const { data: entries = [], isLoading } = useGuestbook();
   const approve = useApproveGuestbook();
 
@@ -33,7 +34,7 @@ export default function GuestbookManageScreen() {
           keyExtractor={(item: GuestbookEntry) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingTop: 12, paddingBottom: 24 }}
           renderItem={({ item }: { item: GuestbookEntry }) => (
-            <View className="bg-white rounded-xl border border-of-border p-4">
+            <View className="bg-of-surface rounded-xl border border-of-border p-4">
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center gap-2">
                   <View className="w-8 h-8 rounded-full bg-of-primary items-center justify-center">
@@ -65,7 +66,7 @@ export default function GuestbookManageScreen() {
                     onPress={() => approve.mutate({ entryId: item.id, approved: false })}
                     className="flex-row items-center gap-1 bg-red-50 px-3 py-1.5 rounded-button border border-red-100"
                   >
-                    <Ionicons name="close" size={14} color="#dc2626" />
+                    <Ionicons name="close" size={14} color={editorial.error} />
                     <Text className="text-xs font-work-sans-bold text-red-600">Hide</Text>
                   </Pressable>
                 )}

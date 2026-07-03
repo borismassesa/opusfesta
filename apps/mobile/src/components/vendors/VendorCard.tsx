@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Badge } from '../ui/Badge';
 import { StarRating } from '../ui/StarRating';
 import { formatCurrency } from '@opusfesta/lib';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface VendorCardProps {
   id: string;
@@ -30,6 +31,7 @@ export function VendorCard({
   coverImage,
   compact = false,
 }: VendorCardProps) {
+  const { editorial } = useTheme();
   const router = useRouter();
 
   return (

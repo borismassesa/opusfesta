@@ -4,11 +4,12 @@ import { useRouter } from 'expo-router';
 import { StepContainer } from '@/components/onboarding/StepContainer';
 import { useVendorOnboarding } from './_layout';
 import { PRICE_RANGE_OPTIONS } from '@/constants/onboarding';
-import { colors } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 export default function VendorStep2() {
   const router = useRouter();
   const { data, setStep2 } = useVendorOnboarding();
+  const { colors } = useTheme();
 
   const [description, setDescription] = useState(data.step2?.description ?? '');
   const [priceRange, setPriceRange] = useState<string>(data.step2?.priceRange ?? '');
@@ -46,7 +47,7 @@ export default function VendorStep2() {
             multiline
             numberOfLines={5}
             textAlignVertical="top"
-            className="bg-white border border-of-border rounded-input px-4 py-3.5 text-sm font-work-sans text-of-text min-h-[120px]"
+            className="bg-of-surface border border-of-border rounded-input px-4 py-3.5 text-sm font-work-sans text-of-text min-h-[120px]"
           />
           <Text
             className={`text-xs mt-1 ${
@@ -69,7 +70,7 @@ export default function VendorStep2() {
                   className={`py-3.5 px-4 rounded-button border flex-row justify-between items-center ${
                     isSelected
                       ? 'bg-of-pale border-of-primary'
-                      : 'bg-white border-of-border'
+                      : 'bg-of-surface border-of-border'
                   }`}
                 >
                   <View>

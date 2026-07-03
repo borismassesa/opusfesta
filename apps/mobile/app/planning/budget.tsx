@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/Button';
 import { useCoupleProfile, useUpdateCoupleProfile } from '@/hooks/useCoupleProfile';
 import { BUDGET_RANGES } from '@/constants/onboarding';
 import { formatCurrency } from '@opusfesta/lib';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 export default function BudgetScreen() {
+  const { editorial } = useTheme();
   const { data: profile, isLoading } = useCoupleProfile();
   const updateProfile = useUpdateCoupleProfile();
   const [selected, setSelected] = useState<string | null>(null);

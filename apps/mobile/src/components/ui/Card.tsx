@@ -1,5 +1,6 @@
 import { View, type ViewProps } from 'react-native';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface CardProps extends ViewProps {
   variant?: 'default' | 'elevated' | 'outlined';
@@ -13,6 +14,8 @@ export function Card({
   style,
   ...props
 }: CardProps) {
+  const { editorial } = useTheme();
+
   const variantStyles = {
     default: {
       backgroundColor: editorial.surfaceContainerLowest,

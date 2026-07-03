@@ -1,5 +1,5 @@
 import { Text, type TextStyle } from 'react-native';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface CoupleNamesProps {
   partner1?: string;
@@ -29,10 +29,11 @@ export function CoupleNames({
   partner2,
   joiner = '&',
   size = 'lg',
-  color = editorial.primaryContainer,
+  color,
   align = 'center',
   style,
 }: CoupleNamesProps) {
+  const { editorial } = useTheme();
   const p1 = partner1?.trim();
   const p2 = partner2?.trim();
   const text = p1 && p2 ? `${p1} ${joiner} ${p2}` : p1 || p2 || '';
@@ -45,7 +46,7 @@ export function CoupleNames({
         fontFamily: 'DancingScript-Bold',
         fontSize: sizeMap[size],
         lineHeight: sizeMap[size] * 1.15,
-        color,
+        color: color ?? editorial.primaryContainer,
         textAlign: align,
         ...style,
       }}

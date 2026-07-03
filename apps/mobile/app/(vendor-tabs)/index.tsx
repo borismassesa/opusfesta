@@ -8,7 +8,8 @@ import { useOpusFestaAuth } from '@/lib/auth';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { getVendorDashboardStats } from '@/lib/api/vendorProfile';
-import { editorial, shadowSoftSm, shadowSoftPrimary } from '@/constants/theme';
+import { shadowSoftSm, shadowSoftPrimary } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const STAT_TILES: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'viewCount', label: 'Profile views', icon: 'eye-outline' },
@@ -22,6 +23,7 @@ export default function VendorHomeScreen() {
   const client = useAuthenticatedSupabase();
   const router = useRouter();
   const { vendor, approvalState, isLoading: vendorLoading } = useCurrentVendor();
+  const { editorial } = useTheme();
 
   const { data, isLoading: statsLoading } = useQuery({
     queryKey: ['vendor-dashboard', vendor?.id],

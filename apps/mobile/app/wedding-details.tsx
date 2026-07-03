@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { DatePickerField } from '@/components/onboarding/DatePickerField';
 import { CITIES, type CityKey } from '@/constants/onboarding';
 import { useCoupleProfile, useUpdateCoupleProfile } from '@/hooks/useCoupleProfile';
-import { editorial, shadowSoftSm, radii } from '@/constants/theme';
+import { shadowSoftSm, radii } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -22,6 +23,7 @@ const parseStored = (value: string | null | undefined): Date | null => {
 export default function WeddingDetailsScreen() {
   const { data: profile } = useCoupleProfile();
   const updateProfile = useUpdateCoupleProfile();
+  const { editorial } = useTheme();
 
   const [partner1Name, setPartner1Name] = useState(profile?.partner1_name ?? '');
   const [partner2Name, setPartner2Name] = useState(profile?.partner2_name ?? '');

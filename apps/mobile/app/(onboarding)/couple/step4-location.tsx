@@ -3,7 +3,8 @@ import { View, Text, Pressable, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
-import { editorial, shadowSoft, shadowSoftSm } from '@/constants/theme';
+import { shadowSoft, shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { CITIES } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
@@ -12,6 +13,7 @@ const POPULAR_CITIES = CITIES.filter((c) => ['dar_es_salaam', 'zanzibar', 'arush
 export default function LocationStep() {
   const router = useRouter();
   const { data, setLocation } = useCoupleOnboarding();
+  const { editorial } = useTheme();
   const [selected, setSelected] = useState(data.location?.city ?? '');
   const [searchText, setSearchText] = useState('');
   const [deciding, setDeciding] = useState(false);

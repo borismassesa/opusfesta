@@ -4,11 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { useInspirationItems, useRemoveInspirationItem } from '@/hooks/useInspiration';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const GAP = 10;
 
 export default function InspirationScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { data: items = [], isLoading } = useInspirationItems();
   const removeItem = useRemoveInspirationItem();

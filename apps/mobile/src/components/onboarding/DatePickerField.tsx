@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable, Platform, Modal, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial, shadowSoftSm, radii } from '@/constants/theme';
+import { shadowSoftSm, radii } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface DatePickerFieldProps {
   /** Currently selected date, or null when nothing has been picked yet. */
@@ -28,6 +29,7 @@ export function DatePickerField({
   minimumDate,
   maximumDate,
 }: DatePickerFieldProps) {
+  const { editorial, effective } = useTheme();
   const [show, setShow] = useState(false);
   // Draft holds the wheel selection on iOS until the user taps "Done".
   const [draft, setDraft] = useState<Date>(value ?? new Date());
@@ -144,7 +146,7 @@ export function DatePickerField({
                 onChange={handleIosChange}
                 minimumDate={minimumDate}
                 maximumDate={maximumDate}
-                themeVariant="light"
+                themeVariant={effective}
                 style={{ height: 216, alignSelf: 'stretch' }}
               />
             </View>

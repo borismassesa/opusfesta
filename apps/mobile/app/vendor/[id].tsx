@@ -8,7 +8,7 @@ import { getVendorById, getVendorReviews, getVendorPackages } from '@/lib/api/ve
 import { useSavedVendorIds, useToggleSavedVendor } from '@/hooks/useSavedVendors';
 import { useAddInspirationItem } from '@/hooks/useInspiration';
 import { formatCurrency } from '@opusfesta/lib';
-import { colors } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const HERO_HEIGHT = 384;
 const VENDOR_BASE_URL = 'https://opusfesta.com/vendors';
@@ -79,6 +79,7 @@ export default function VendorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { editorial, colors } = useTheme();
 
   const { data: vendor, isLoading } = useQuery({
     queryKey: ['vendor', id],
@@ -180,7 +181,7 @@ export default function VendorProfileScreen() {
             />
           ) : (
             <LinearGradient
-              colors={['#5B2D8E', '#7B4FA2', '#C9A0DC']}
+              colors={['#1A1A1A', '#7E5896', '#C9A0DC']}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontSize: 72 }}>🌿</Text>
@@ -255,11 +256,11 @@ export default function VendorProfileScreen() {
         {/* ═══ 2. Title Card ═══ */}
         <View style={{ paddingHorizontal: 20, marginTop: -48 }}>
           <View
-            className="bg-white rounded-xl p-6"
+            className="bg-of-surface rounded-xl p-6"
             style={{
               shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16,
               shadowOffset: { width: 0, height: 4 }, elevation: 4,
-              borderWidth: 1, borderColor: 'rgba(91,45,142,0.05)',
+              borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)',
             }}
           >
             <Text className="font-playfair-bold text-2xl text-of-text mb-1">
@@ -349,7 +350,7 @@ export default function VendorProfileScreen() {
                   <View
                     key={tier.id}
                     className="p-5 rounded-xl relative"
-                    style={{ borderWidth: 2, borderColor: colors.primary, backgroundColor: 'rgba(91,45,142,0.02)' }}
+                    style={{ borderWidth: 2, borderColor: colors.primary, backgroundColor: 'rgba(0,0,0,0.02)' }}
                   >
                     <View
                       style={{
@@ -365,7 +366,7 @@ export default function VendorProfileScreen() {
                     <View className="flex-row justify-between items-start mt-1">
                       <View className="flex-1 mr-2">
                         <Text className="font-work-sans-bold text-sm text-of-primary">{tier.name}</Text>
-                        <Text className="text-xs" style={{ color: 'rgba(91,45,142,0.6)' }}>
+                        <Text className="text-xs" style={{ color: editorial.onSurfaceVariant }}>
                           {tier.description}
                         </Text>
                       </View>
@@ -387,7 +388,7 @@ export default function VendorProfileScreen() {
                 ) : (
                   <View
                     key={tier.id}
-                    className="p-5 rounded-xl bg-white border border-of-border"
+                    className="p-5 rounded-xl bg-of-surface border border-of-border"
                     style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
                   >
                     <View className="flex-row justify-between items-start">
@@ -440,7 +441,7 @@ export default function VendorProfileScreen() {
               {team.map((member) => (
                 <View
                   key={member.id}
-                  className="flex-row items-center gap-4 p-4 bg-white rounded-xl border border-of-border"
+                  className="flex-row items-center gap-4 p-4 bg-of-surface rounded-xl border border-of-border"
                   style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
                 >
                   <View className="w-20 h-20 rounded-full bg-of-pale items-center justify-center overflow-hidden">
@@ -487,7 +488,7 @@ export default function VendorProfileScreen() {
             reviews.map((review: any) => (
               <View
                 key={review.id}
-                className="bg-white rounded-xl p-5 border border-of-border mb-3"
+                className="bg-of-surface rounded-xl p-5 border border-of-border mb-3"
                 style={{ shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 }}
               >
                 <View className="flex-row items-start gap-3 mb-3">
@@ -573,8 +574,8 @@ export default function VendorProfileScreen() {
           position: 'absolute', bottom: 0, left: 0, right: 0,
           paddingHorizontal: 16, paddingTop: 16,
           paddingBottom: insets.bottom + 16,
-          backgroundColor: 'rgba(255,255,255,0.95)',
-          borderTopWidth: 1, borderTopColor: 'rgba(91,45,142,0.06)',
+          backgroundColor: editorial.surfaceContainerLowest,
+          borderTopWidth: 1, borderTopColor: editorial.outlineVariant,
         }}
       >
         <Pressable

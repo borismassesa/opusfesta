@@ -1,5 +1,6 @@
 import { Pressable, Text } from 'react-native';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface CategoryPillProps {
   label: string;
@@ -12,6 +13,7 @@ export function CategoryPill({
   active = false,
   onPress,
 }: CategoryPillProps) {
+  const { editorial } = useTheme();
   return (
     <Pressable
       onPress={onPress}

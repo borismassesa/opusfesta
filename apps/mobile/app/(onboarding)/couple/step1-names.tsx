@@ -4,19 +4,21 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { CoupleNames } from '@/components/ui/CoupleNames';
 import { useCoupleOnboarding } from './_layout';
 
 function EditorialField({ label, value, onChangeText, placeholder }: {
   label: string; value: string; onChangeText: (t: string) => void; placeholder: string;
 }) {
+  const { editorial } = useTheme();
   return (
     <View style={{ gap: 6 }}>
       <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginLeft: 2 }}>
         {label}
       </Text>
-      <View style={[{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: editorial.outlineVariant }, shadowSoftSm]}>
+      <View style={[{ backgroundColor: editorial.surfaceContainerLowest, borderRadius: 14, borderWidth: 1, borderColor: editorial.outlineVariant }, shadowSoftSm]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -34,6 +36,7 @@ export default function CoupleStep1() {
   const router = useRouter();
   const { signOut } = useAuth();
   const { data, setNames } = useCoupleOnboarding();
+  const { editorial } = useTheme();
 
   const [firstName, setFirstName] = useState(data.names?.partner1FirstName ?? '');
   const [lastName, setLastName] = useState(data.names?.partner1LastName ?? '');
@@ -111,7 +114,7 @@ export default function CoupleStep1() {
           </View>
         </View>
 
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, fontStyle: 'italic', color: 'rgba(75,68,79,0.7)', marginTop: 8 }}>
+        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, fontStyle: 'italic', color: editorial.onSurfaceVariant, marginTop: 8 }}>
           Don't worry, you can change these later in your profile settings.
         </Text>
       </View>

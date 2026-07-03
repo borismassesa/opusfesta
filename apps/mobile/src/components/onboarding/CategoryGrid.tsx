@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface CategoryGridProps {
   categories: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[];
@@ -10,6 +10,7 @@ interface CategoryGridProps {
 }
 
 export function CategoryGrid({ categories, selected, onToggle, singleSelect }: CategoryGridProps) {
+  const { colors } = useTheme();
   return (
     <View className="flex-row flex-wrap gap-3">
       {categories.map((cat) => {
@@ -21,7 +22,7 @@ export function CategoryGrid({ categories, selected, onToggle, singleSelect }: C
             className={`w-[30%] items-center py-4 px-2 rounded-card border ${
               isSelected
                 ? 'bg-of-pale border-of-primary'
-                : 'bg-white border-of-border'
+                : 'bg-of-surface border-of-border'
             }`}
           >
             <Ionicons

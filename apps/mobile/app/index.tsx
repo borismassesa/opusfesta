@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { View, ActivityIndicator } from 'react-native';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { ErrorFallback } from '@/components/ErrorFallback';
 import { useOnboardingState } from '@/lib/auth';
 
@@ -13,6 +13,7 @@ export default function IndexScreen() {
   const onboarding = useOnboardingState();
   const [timedOut, setTimedOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const { editorial, colors } = useTheme();
 
   useEffect(() => {
     if (isLoaded) return;
@@ -34,7 +35,7 @@ export default function IndexScreen() {
 
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
-        <ActivityIndicator size="small" color="#5B2D8E" />
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   }

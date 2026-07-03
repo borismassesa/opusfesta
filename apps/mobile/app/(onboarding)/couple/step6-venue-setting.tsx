@@ -3,13 +3,15 @@ import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { VENUE_STYLES } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
 export default function VenueSettingStep() {
   const router = useRouter();
   const { data, setVenueSetting } = useCoupleOnboarding();
+  const { editorial } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.venueSetting?.venueSettings ?? []);
 
   const toggle = (key: string) => {
@@ -66,7 +68,7 @@ export default function VenueSettingStep() {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      backgroundColor: 'rgba(91,45,142,0.2)',
+                      backgroundColor: 'rgba(26,26,26,0.2)',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}

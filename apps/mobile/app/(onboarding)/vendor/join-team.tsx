@@ -38,7 +38,7 @@ export default function JoinTeamScreen() {
   return (
     <View className="flex-1 bg-of-cream px-6 justify-center">
       <Pressable onPress={() => router.back()} className="absolute top-16 left-5 p-2">
-        <Ionicons name="chevron-back" size={26} color="#5B2D8E" />
+        <Ionicons name="chevron-back" size={26} color="#1A1A1A" />
       </Pressable>
 
       <Text className="font-space-grotesk-bold text-2xl text-of-text mb-2">Join your team</Text>

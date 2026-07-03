@@ -1,7 +1,7 @@
 import { View, Text, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { colors } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface PhotoUploaderProps {
   /** Array of local file URIs */
@@ -21,6 +21,7 @@ export function PhotoUploader({
   label = 'Add photos',
   circular = false,
 }: PhotoUploaderProps) {
+  const { colors } = useTheme();
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -80,7 +81,7 @@ export function PhotoUploader({
         {photos.length < maxPhotos && (
           <Pressable
             onPress={pickImage}
-            className="w-24 h-24 rounded-card border-2 border-dashed border-of-border items-center justify-center bg-white"
+            className="w-24 h-24 rounded-card border-2 border-dashed border-of-border items-center justify-center bg-of-surface"
           >
             <Ionicons name="add" size={28} color={colors.muted} />
             <Text className="text-[10px] text-of-muted mt-1">Add</Text>

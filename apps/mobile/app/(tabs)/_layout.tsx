@@ -3,7 +3,8 @@ import { Redirect, Tabs, type ErrorBoundaryProps } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { View, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { PlanningMenu } from '@/components/layout/PlanningMenu';
 import { ErrorFallback } from '@/components/ErrorFallback';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -59,6 +60,7 @@ export default function TabLayout() {
   const { isLoaded, isSignedIn } = useAuth();
   const onboarding = useOnboardingState();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { editorial } = useTheme();
   usePushNotifications();
 
   if (!isLoaded || !isSignedIn) {

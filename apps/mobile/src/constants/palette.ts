@@ -1,0 +1,188 @@
+/**
+ * Single source of truth for every OpusFesta color, in both light and dark.
+ *
+ * Two consumers derive from this file:
+ *   1. JS token objects (`editorial`, `colors`) read at render time through the
+ *      `useTheme()` hook — see src/theme/useTheme.ts. These flip because the hook
+ *      returns `light` or `dark` based on the active color scheme.
+ *   2. NativeWind `of-*` utility classes, backed by CSS custom properties. The
+ *      variables are hand-declared in global.css (:root = light, .dark:root = dark)
+ *      and guarded by src/theme/palette.sync.test.ts, which asserts global.css
+ *      matches `ofVars` below so the two files can never silently drift.
+ *
+ * `editorial` is JS-only (the `br-*` Tailwind namespace has no usages), so it does
+ * NOT need CSS variables — only `colors`/`of-*` do.
+ *
+ * Light strategy: neutral black/white/gray with a single lavender accent
+ * (#C9A0DC), matching apps/opus_pass's monochrome look — deliberately NOT the
+ * deep-purple-as-primary treatment dark mode still uses (see below). The
+ * decorative `purpleTints` scale in theme.ts (welcome hero, category tinting)
+ * is intentionally untouched by this and keeps the fuller purple romance look.
+ *
+ * Dark strategy (Editorial Romance → dark): the surface scale inverts direction —
+ * base surfaces become a near-black desaturated purple and elevation gets *lighter*
+ * as it rises (Material dark convention), the opposite of light mode. Foreground
+ * tokens invert toward light lavender-greys, and the primary purple is lightened so
+ * text/icons stay legible on dark. Auth-only neutrals (ink/line/accent/placeholder)
+ * do NOT flip — auth screens are light-only for v1.
+ */
+
+const lightEditorial = {
+  /* Backgrounds — neutral white/gray, matching apps/opus_pass's monochrome look */
+  bg: '#FFFFFF',
+  surface: '#FFFFFF',
+  surfaceContainerLowest: '#ffffff',
+  surfaceContainerLow: '#F9FAFB',
+  surfaceContainer: '#F3F4F6',
+  surfaceContainerHigh: '#E5E7EB',
+  surfaceContainerHighest: '#D1D5DB',
+
+  /* Text */
+  onSurface: '#1A1A1A',
+  onSurfaceVariant: '#6B7280',
+
+  /* Primary – near-black, matching apps/opus_pass's CTA/text color */
+  primaryContainer: '#1A1A1A',
+  onPrimary: '#ffffff',
+  onPrimaryContainer: '#C9A0DC',
+  primaryFixed: '#F3F4F6',
+
+  /* Accent / surface tint — apps/opus_pass's secondary purple */
+  surfaceTint: '#7E5896',
+
+  /* Secondary */
+  secondary: '#7E5896',
+  secondaryContainer: '#F3F4F6',
+  onSecondaryContainer: '#1A1A1A',
+
+  /* Tertiary */
+  tertiaryContainer: '#7E5896',
+  tertiaryFixed: '#F3F4F6',
+  onTertiaryFixed: '#1A1A1A',
+  onTertiaryContainer: '#C9A0DC',
+
+  /* Outline / borders */
+  outline: '#9CA3AF',
+  outlineVariant: '#E5E7EB',
+
+  /* Status */
+  error: '#ba1a1a',
+} as const;
+
+export type EditorialTokens = Record<keyof typeof lightEditorial, string>;
+export type ColorTokens = Record<keyof typeof lightColors, string>;
+
+const darkEditorial: EditorialTokens = {
+  /* Backgrounds — near-black desaturated purple; elevation gets lighter as it rises */
+  bg: '#120A1C',
+  surface: '#120A1C',
+  surfaceContainerLowest: '#0D0715',
+  surfaceContainerLow: '#1A1026',
+  surfaceContainer: '#1F1430',
+  surfaceContainerHigh: '#291A3D',
+  surfaceContainerHighest: '#332048',
+
+  /* Text — light lavender-greys */
+  onSurface: '#ECE0F5',
+  onSurfaceVariant: '#C9B8D6',
+
+  /* Primary – lightened purple so white text / icons stay legible on dark */
+  primaryContainer: '#7B4FA2',
+  onPrimary: '#ffffff',
+  onPrimaryContainer: '#E0C9F0',
+  primaryFixed: '#2E1A45',
+
+  /* Accent / surface tint */
+  surfaceTint: '#9B73B8',
+
+  /* Secondary */
+  secondary: '#C9A0DC',
+  secondaryContainer: '#3D2A52',
+  onSecondaryContainer: '#EAD9F5',
+
+  /* Tertiary */
+  tertiaryContainer: '#9B73B8',
+  tertiaryFixed: '#241533',
+  onTertiaryFixed: '#F3EBF9',
+  onTertiaryContainer: '#E0C9F0',
+
+  /* Outline / borders */
+  outline: '#9885A8',
+  outlineVariant: '#3A2C48',
+
+  /* Status — Material dark uses a lighter error red */
+  error: '#FFB4AB',
+};
+
+const lightColors = {
+  // Neutral black/white/gray + single lavender accent, matching apps/opus_pass.
+  primary: '#1A1A1A',
+  medium: '#7E5896',
+  light: '#C9A0DC',
+  pale: '#F3F4F6',
+  cream: '#FFFFFF',
+  surface: '#FFFFFF',
+  white: '#FFFFFF',
+  dark: '#1A1A1A',
+  text: '#1A1A1A',
+  muted: '#6B7280',
+  border: 'rgba(0,0,0,0.12)',
+  green: '#2D8E5B',
+  gold: '#C4920A',
+  coral: '#D85A30',
+} as const;
+
+const darkColors: ColorTokens = {
+  primary: '#9B73B8', // lightened: white text still passes, legible as an icon on dark
+  medium: '#B98FD6',
+  light: '#C9A0DC',
+  pale: '#241533',
+  cream: '#120A1C', // page background
+  surface: '#1F1430', // elevated card surface (was #fff in light)
+  white: '#FFFFFF', // true white — foreground on purple, must not flip
+  dark: '#2A1245',
+  text: '#ECE0F5',
+  muted: '#C9B8D6',
+  border: 'rgba(201,160,220,0.16)',
+  green: '#5FBF8A',
+  gold: '#E5B23A',
+  coral: '#F07A50',
+};
+
+export const light = { editorial: lightEditorial, colors: lightColors } as const;
+export const dark = { editorial: darkEditorial, colors: darkColors } as const;
+
+export type ThemeTokens = { editorial: EditorialTokens; colors: ColorTokens };
+
+export const themes = { light, dark } as const;
+export type ColorScheme = keyof typeof themes;
+
+/**
+ * CSS custom properties consumed by NativeWind `of-*` utility classes.
+ * Derived from `colors` above (single source) plus auth/neutral extras that are
+ * light-only for v1. global.css must mirror this map exactly — the sync test
+ * (src/theme/palette.sync.test.ts) enforces it. A `dark` value of `undefined`
+ * means the token keeps its light value in dark mode (NativeWind falls back).
+ */
+export const ofVars: Record<string, { light: string; dark?: string }> = {
+  '--of-primary': { light: lightColors.primary, dark: darkColors.primary },
+  '--of-medium': { light: lightColors.medium, dark: darkColors.medium },
+  '--of-light': { light: lightColors.light },
+  '--of-pale': { light: lightColors.pale, dark: darkColors.pale },
+  '--of-cream': { light: lightColors.cream, dark: darkColors.cream },
+  '--of-surface': { light: lightColors.surface, dark: darkColors.surface },
+  '--of-white': { light: lightColors.white },
+  '--of-dark': { light: lightColors.dark },
+  '--of-text': { light: lightColors.text, dark: darkColors.text },
+  '--of-muted': { light: lightColors.muted, dark: darkColors.muted },
+  '--of-border': { light: lightColors.border, dark: darkColors.border },
+  '--of-green': { light: lightColors.green, dark: darkColors.green },
+  '--of-gold': { light: lightColors.gold, dark: darkColors.gold },
+  '--of-coral': { light: lightColors.coral, dark: darkColors.coral },
+  // Auth / neutral extras — light-only for v1 (auth stays light).
+  '--of-ink': { light: '#1A1A1A' },
+  '--of-line': { light: '#D1D5DB' },
+  '--of-danger': { light: '#DC2626', dark: '#F87171' },
+  '--of-accent': { light: '#7E5896' },
+  '--of-placeholder': { light: '#9CA3AF' },
+};

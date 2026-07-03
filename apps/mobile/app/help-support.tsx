@@ -3,7 +3,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
@@ -44,6 +45,7 @@ const LINK_ITEMS: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress
 ];
 
 export default function HelpSupportScreen() {
+  const { editorial } = useTheme();
   return (
     <ScreenWrapper>
       <Header title="Help & support" showBack />

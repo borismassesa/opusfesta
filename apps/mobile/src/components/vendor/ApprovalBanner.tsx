@@ -1,6 +1,7 @@
 import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { VendorApprovalState } from '@/hooks/useCurrentVendor';
 
 const COPY: Record<'pending' | 'suspended', { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }> = {
@@ -23,6 +24,7 @@ const COPY: Record<'pending' | 'suspended', { icon: keyof typeof Ionicons.glyphM
  * mode plan for why those stay accessible pre-approval.
  */
 export function ApprovalBanner({ state }: { state: Extract<VendorApprovalState, { kind: 'pending' | 'suspended' }> }) {
+  const { editorial } = useTheme();
   const copy = COPY[state.kind];
 
   return (

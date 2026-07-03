@@ -5,12 +5,13 @@ import { ClerkProvider } from '@clerk/clerk-expo';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { tokenCache } from '@/lib/auth';
 import { hasSupabaseEnv, missingSupabaseEnvVars } from '@/lib/supabase';
-import { editorial } from '@/constants/theme';
+import { ColorSchemeProvider } from '@/theme/ColorSchemeProvider';
+import { ThemedStatusBar } from '@/theme/ThemedStatusBar';
+import { useTheme } from '@/theme/useTheme';
 import { ErrorFallback } from '@/components/ErrorFallback';
 import { useInboundDeepLinks } from '@/hooks/useInboundDeepLinks';
 import '../global.css';
@@ -53,6 +54,17 @@ function MissingConfigScreen({ missingVars }: { missingVars: string[] }) {
 }
 
 export default function RootLayout() {
+  // ColorSchemeProvider is the outermost app provider so every render branch
+  // below (loader, missing-config, main) can read the active theme.
+  return (
+    <ColorSchemeProvider>
+      <RootLayoutInner />
+    </ColorSchemeProvider>
+  );
+}
+
+function RootLayoutInner() {
+  const { editorial, colors } = useTheme();
   const [fontStartupTimedOut, setFontStartupTimedOut] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     'PlayfairDisplay-SemiBold': require('../assets/fonts/PlayfairDisplay-SemiBold.ttf'),
@@ -88,8 +100,9 @@ export default function RootLayout() {
   if (!canRenderApp) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
-        <ActivityIndicator size="small" color="#5B2D8E" />
-        <Text style={{ marginTop: 12, fontSize: 14, color: '#6B5A7A' }}>Preparing app…</Text>
+        <ThemedStatusBar />
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={{ marginTop: 12, fontSize: 14, color: editorial.onSurfaceVariant }}>Preparing app…</Text>
       </View>
     );
   }
@@ -102,7 +115,7 @@ export default function RootLayout() {
   if (!clerkPublishableKey || !hasSupabaseEnv) {
     return (
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="dark" />
+        <ThemedStatusBar />
         <MissingConfigScreen missingVars={missingConfig} />
       </QueryClientProvider>
     );
@@ -111,7 +124,7 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="dark" />
+        <ThemedStatusBar />
         <View style={{ flex: 1 }}>
           <DeepLinkListener />
           <Slot />

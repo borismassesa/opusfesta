@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { CoupleNames } from '@/components/ui/CoupleNames';
 import { useCoupleOnboarding } from './_layout';
 
@@ -23,6 +24,7 @@ export default function CompleteScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { data } = useCoupleOnboarding();
+  const { editorial } = useTheme();
 
   const [completedTasks, setCompletedTasks] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -152,10 +154,10 @@ export default function CompleteScreen() {
               shadowSoft,
             ]}
           >
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: '#7F1D1D' }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.error }}>
               Couldn't finish setting up your plan
             </Text>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: '#991B1B', marginTop: 8, lineHeight: 20 }}>
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.error, marginTop: 8, lineHeight: 20 }}>
               {submitError}
             </Text>
             <Pressable

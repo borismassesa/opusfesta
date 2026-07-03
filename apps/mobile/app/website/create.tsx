@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/Button';
 import { useCoupleProfile } from '@/hooks/useCoupleProfile';
 import { useCreateWebsite, useSaveWebsiteMeta, useWeddingWebsite } from '@/hooks/useWeddingWebsite';
 import { WEBSITE_THEMES } from '@/constants/wedding-sections';
-import { colors, editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { WebsiteTheme } from '@/types/wedding-website';
 
 export default function CreateWebsiteScreen() {
+  const { editorial, colors } = useTheme();
   const router = useRouter();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const { data: profile } = useCoupleProfile();
@@ -64,7 +65,7 @@ export default function CreateWebsiteScreen() {
                 key={t.key}
                 onPress={() => setTheme(t.key)}
                 className={`flex-row items-center p-4 rounded-xl border ${
-                  isSelected ? 'border-of-primary bg-of-pale' : 'border-of-border bg-white'
+                  isSelected ? 'border-of-primary bg-of-pale' : 'border-of-border bg-of-surface'
                 }`}
               >
                 <View

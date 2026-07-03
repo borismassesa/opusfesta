@@ -4,7 +4,8 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Avatar } from '@/components/ui/Avatar';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useVendorConversations } from '@/hooks/useVendorMessages';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 function formatRelativeTime(dateStr: string): string {
   if (!dateStr) return '';
@@ -19,6 +20,7 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export default function VendorMessagesScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { vendor } = useCurrentVendor();
   const { data: conversations, isLoading } = useVendorConversations(vendor?.id);

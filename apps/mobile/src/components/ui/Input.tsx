@@ -1,6 +1,7 @@
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
 import { forwardRef } from 'react';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -10,6 +11,7 @@ interface InputProps extends TextInputProps {
 
 export const Input = forwardRef<TextInput, InputProps>(
   ({ label, error, containerClassName = '', ...props }, ref) => {
+    const { editorial } = useTheme();
     return (
       <View className={containerClassName}>
         {label && (

@@ -4,11 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
-import { colors, editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const BASE_URL = 'https://opuspass.opusfesta.com/w';
 
 export default function ShareScreen() {
+  const { editorial, colors } = useTheme();
   const { data: website } = useWeddingWebsite();
   const url = website?.publicSlug ? `${BASE_URL}/${website.publicSlug}` : '';
 
@@ -37,7 +38,7 @@ export default function ShareScreen() {
         <Header title="Share Website" showBack />
 
         {/* URL display */}
-        <View className="bg-white border border-of-border rounded-xl p-4 mt-4 mb-6">
+        <View className="bg-of-surface border border-of-border rounded-xl p-4 mt-4 mb-6">
           <Text className="text-xs text-of-muted font-work-sans-bold uppercase tracking-wider mb-2">
             Your website link
           </Text>
@@ -48,7 +49,7 @@ export default function ShareScreen() {
 
         {/* Share options */}
         <View className="gap-3">
-          <Pressable onPress={handleCopy} className="flex-row items-center gap-4 bg-white border border-of-border rounded-xl p-4">
+          <Pressable onPress={handleCopy} className="flex-row items-center gap-4 bg-of-surface border border-of-border rounded-xl p-4">
             <View className="w-12 h-12 rounded-full bg-of-pale items-center justify-center">
               <Ionicons name="copy-outline" size={22} color={colors.primary} />
             </View>
@@ -59,7 +60,7 @@ export default function ShareScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
           </Pressable>
 
-          <Pressable onPress={handleWhatsApp} className="flex-row items-center gap-4 bg-white border border-of-border rounded-xl p-4">
+          <Pressable onPress={handleWhatsApp} className="flex-row items-center gap-4 bg-of-surface border border-of-border rounded-xl p-4">
             <View className="w-12 h-12 rounded-full bg-green-50 items-center justify-center">
               <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
             </View>
@@ -70,7 +71,7 @@ export default function ShareScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
           </Pressable>
 
-          <Pressable onPress={handleSMS} className="flex-row items-center gap-4 bg-white border border-of-border rounded-xl p-4">
+          <Pressable onPress={handleSMS} className="flex-row items-center gap-4 bg-of-surface border border-of-border rounded-xl p-4">
             <View className="w-12 h-12 rounded-full bg-blue-50 items-center justify-center">
               <Ionicons name="chatbubble-outline" size={22} color="#3B82F6" />
             </View>
@@ -81,7 +82,7 @@ export default function ShareScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
           </Pressable>
 
-          <Pressable onPress={handleNativeShare} className="flex-row items-center gap-4 bg-white border border-of-border rounded-xl p-4">
+          <Pressable onPress={handleNativeShare} className="flex-row items-center gap-4 bg-of-surface border border-of-border rounded-xl p-4">
             <View className="w-12 h-12 rounded-full bg-of-pale items-center justify-center">
               <Ionicons name="share-social-outline" size={22} color={colors.primary} />
             </View>

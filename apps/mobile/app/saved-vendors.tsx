@@ -3,10 +3,11 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { VendorListItem } from '@/components/vendors/VendorListItem';
 import { useSavedVendors } from '@/hooks/useSavedVendors';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 export default function SavedVendorsScreen() {
   const { data: savedVendors = [], isLoading } = useSavedVendors();
+  const { editorial } = useTheme();
 
   return (
     <ScreenWrapper scrollable={false}>

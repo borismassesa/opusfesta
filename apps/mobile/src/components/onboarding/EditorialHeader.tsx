@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface EditorialHeaderProps {
   onBack?: () => void;
@@ -8,6 +8,7 @@ interface EditorialHeaderProps {
 }
 
 export function EditorialHeader({ onBack, showMenu = false }: EditorialHeaderProps) {
+  const { editorial } = useTheme();
   return (
     <View
       style={{
@@ -16,7 +17,7 @@ export function EditorialHeader({ onBack, showMenu = false }: EditorialHeaderPro
         alignItems: 'center',
         paddingHorizontal: 12,
         height: 56,
-        backgroundColor: 'rgba(250, 247, 252, 0.9)',
+        backgroundColor: editorial.bg,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>

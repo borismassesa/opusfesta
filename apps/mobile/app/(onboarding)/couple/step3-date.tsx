@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
 import { DatePickerField } from '@/components/onboarding/DatePickerField';
-import { editorial, shadowSoft, shadowSoftSm, radii } from '@/constants/theme';
+import { shadowSoft, shadowSoftSm, radii } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { useCoupleOnboarding } from './_layout';
 
 type DateOption = 'exact' | 'month_year' | 'not_sure';
@@ -32,6 +33,7 @@ const parseStored = (value: string | null | undefined): Date | null => {
 export default function DateStep() {
   const router = useRouter();
   const { data, setDate } = useCoupleOnboarding();
+  const { editorial } = useTheme();
 
   const [option, setOption] = useState<DateOption | null>(data.date?.dateOption ?? null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(parseStored(data.date?.weddingDate));

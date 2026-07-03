@@ -1,72 +1,23 @@
-/**
- * Design tokens for use outside NativeWind (e.g. LinearGradient, StatusBar).
- * NativeWind classes should be preferred for component styling.
- */
-export const colors = {
-  primary: '#5B2D8E',
-  medium: '#7B4FA2',
-  light: '#C9A0DC',
-  pale: '#F3EBF9',
-  cream: '#faf7fc',
-  white: '#FFFFFF',
-  dark: '#2A1245',
-  text: '#1E1028',
-  muted: '#6B5A7A',
-  border: 'rgba(91,45,142,0.12)',
-  green: '#2D8E5B',
-  gold: '#C4920A',
-  coral: '#D85A30',
-} as const;
+import { light } from './palette';
 
 /**
- * Editorial Romance design tokens
- * Built from brand palette:
- *   Primary  #5B2D8E  (Deep Purple)
- *   Accent   #7B4FA2  (Accent Purple)
- *   Soft     #C9A0DC  (Lavender)
- *   Tints    950→50 purple scale
+ * Light-mode design tokens for use outside NativeWind (e.g. LinearGradient,
+ * StatusBar). These re-export the LIGHT palette so existing static importers keep
+ * their current behavior. For color that must respond to dark mode, read the
+ * active tokens from the `useTheme()` hook (src/theme/useTheme.ts) instead — it
+ * returns the light or dark variant of these same objects. Both derive from the
+ * single source in src/constants/palette.ts.
  */
-export const editorial = {
-  /* Backgrounds */
-  bg: '#faf7fc',               // very faint purple-tinted white
-  surface: '#faf7fc',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f6f1f9',
-  surfaceContainer: '#f0e8f5',
-  surfaceContainerHigh: '#e8ddf0',
-  surfaceContainerHighest: '#e0d4e8',
+export const colors = light.colors;
 
-  /* Text */
-  onSurface: '#1A0A2E',        // 950 – near-black purple
-  onSurfaceVariant: '#6B5A7A', // muted purple-grey
-
-  /* Primary – Deep Purple #5B2D8E */
-  primaryContainer: '#5B2D8E',
-  onPrimary: '#ffffff',
-  onPrimaryContainer: '#C9A0DC', // Lavender for icons on primary bg
-  primaryFixed: '#F0E2F7',       // tint 100 – lightest purple
-
-  /* Accent / Surface tint */
-  surfaceTint: '#7B4FA2',        // Accent Purple
-
-  /* Secondary */
-  secondary: '#7B4FA2',
-  secondaryContainer: '#E5CFF0', // tint 150
-  onSecondaryContainer: '#3D1B66', // 800
-
-  /* Tertiary – gold accent for contrast */
-  tertiaryContainer: '#7B4FA2',   // Accent Purple (used for highlights)
-  tertiaryFixed: '#F3EBF9',       // tint 50 – palest purple
-  onTertiaryFixed: '#2A1245',     // 900 – very dark
-  onTertiaryContainer: '#C9A0DC', // Lavender
-
-  /* Outline / borders */
-  outline: '#8E7A9E',            // medium purple-grey
-  outlineVariant: '#D8C8E4',     // soft purple border
-
-  /* Status */
-  error: '#ba1a1a',
-} as const;
+/**
+ * Editorial Romance design tokens (light). Neutral black/white/gray with a
+ * single lavender accent (#C9A0DC), matching apps/opus_pass — see
+ * src/constants/palette.ts for the light + dark definitions. `purpleTints`
+ * below is a separate, still-purple decorative scale (welcome hero, category
+ * tinting) left untouched by this.
+ */
+export const editorial = light.editorial;
 
 /**
  * Auth flow design tokens — matches the flat, monochrome OpusFesta/OpusPass
@@ -107,7 +58,7 @@ export const purpleTints = {
  * Blurred, low-opacity, minimal offset — the shared web look, not hard offset.
  */
 export const shadowSoft = {
-  shadowColor: '#2A1245',
+  shadowColor: '#1A1A1A',
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.08,
   shadowRadius: 24,
@@ -115,7 +66,7 @@ export const shadowSoft = {
 } as const;
 
 export const shadowSoftSm = {
-  shadowColor: '#2A1245',
+  shadowColor: '#1A1A1A',
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.06,
   shadowRadius: 12,
@@ -123,7 +74,7 @@ export const shadowSoftSm = {
 } as const;
 
 export const shadowSoftPrimary = {
-  shadowColor: '#5B2D8E',
+  shadowColor: '#1A1A1A',
   shadowOffset: { width: 0, height: 10 },
   shadowOpacity: 0.22,
   shadowRadius: 28,

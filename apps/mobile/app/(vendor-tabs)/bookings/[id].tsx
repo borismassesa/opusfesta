@@ -6,9 +6,11 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useVendorBooking, useAdvanceBookingStage } from '@/hooks/useVendorBookingsPipeline';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { bookingStageStyle, nextBookingStage, BOOKING_FILTERS } from '@/lib/vendorPipeline';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
+  const { editorial } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
       <Ionicons name={icon} size={16} color={editorial.onSurfaceVariant} style={{ marginTop: 2 }} />
@@ -23,6 +25,7 @@ function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMa
 }
 
 function ChecklistRow({ label, done }: { label: string; done: boolean }) {
+  const { editorial } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}>
       <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={done ? '#16a34a' : editorial.outline} />
@@ -34,6 +37,7 @@ function ChecklistRow({ label, done }: { label: string; done: boolean }) {
 }
 
 export default function BookingDetailScreen() {
+  const { editorial } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: booking, isLoading } = useVendorBooking(id);

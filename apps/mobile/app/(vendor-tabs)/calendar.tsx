@@ -7,7 +7,8 @@ import { MonthGrid, type DayStatus } from '@/components/calendar/MonthGrid';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useVendorAvailability, useSetVendorAvailability } from '@/hooks/useVendorAvailability';
 import { getMonthGridDates, formatMonthTitle } from '@/lib/calendarMonth';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 // The DB trigger that blocks a date on lead acceptance writes this exact
 // reason (sync_inquiry_to_availability in 007_vendor_availability.sql) - use
@@ -15,6 +16,7 @@ import { editorial, shadowSoftSm } from '@/constants/theme';
 const TRIGGER_REASON = 'Booked via inquiry';
 
 export default function VendorCalendarScreen() {
+  const { editorial } = useTheme();
   const { vendor, myRole, approvalState } = useCurrentVendor();
   // vendor_availability write RLS only permits owner/manager — staff get a
   // read-only calendar rather than toggles that would fail on save.

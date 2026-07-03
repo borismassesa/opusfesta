@@ -4,11 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
-import { colors, editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const BASE_URL = 'https://opuspass.opusfesta.com/w';
 
 export default function PreviewScreen() {
+  const { editorial, colors } = useTheme();
   const { data: website } = useWeddingWebsite();
   const url = website?.publicSlug ? `${BASE_URL}/${website.publicSlug}` : '';
 

@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface ProgressBarProps {
   progress: number; // 0-100
@@ -12,6 +12,7 @@ export function ProgressBar({
   color,
   className = '',
 }: ProgressBarProps) {
+  const { editorial } = useTheme();
   const clampedProgress = Math.min(100, Math.max(0, progress));
 
   return (

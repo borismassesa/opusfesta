@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -42,6 +43,7 @@ interface PlanningMenuProps {
 
 export function PlanningMenu({ visible, onClose }: PlanningMenuProps) {
   const router = useRouter();
+  const { editorial } = useTheme();
   const animValue = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(false);
 

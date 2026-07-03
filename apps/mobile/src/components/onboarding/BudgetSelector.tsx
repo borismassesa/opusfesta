@@ -18,7 +18,7 @@ export function BudgetSelector({ value, onSelect }: BudgetSelectorProps) {
             className={`py-3.5 px-4 rounded-button border ${
               isSelected
                 ? 'bg-of-pale border-of-primary'
-                : 'bg-white border-of-border'
+                : 'bg-of-surface border-of-border'
             }`}
           >
             <Text

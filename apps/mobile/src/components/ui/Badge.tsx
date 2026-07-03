@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'count';
 
@@ -9,18 +9,21 @@ interface BadgeProps {
   className?: string;
 }
 
-const variantConfig: Record<BadgeVariant, { bg: string; text: string }> = {
-  default: { bg: editorial.tertiaryFixed, text: editorial.tertiaryContainer },
-  success: { bg: '#dcfce7', text: '#16a34a' },
-  warning: { bg: '#fff7ed', text: '#C4920A' },
-  count: { bg: editorial.primaryContainer, text: '#ffffff' },
-};
-
 export function Badge({
   label,
   variant = 'default',
   className = '',
 }: BadgeProps) {
+  const { editorial } = useTheme();
+
+  // success/warning keep fixed semantic status colors; default/count follow theme.
+  const variantConfig: Record<BadgeVariant, { bg: string; text: string }> = {
+    default: { bg: editorial.tertiaryFixed, text: editorial.tertiaryContainer },
+    success: { bg: '#dcfce7', text: '#16a34a' },
+    warning: { bg: '#fff7ed', text: '#C4920A' },
+    count: { bg: editorial.primaryContainer, text: '#ffffff' },
+  };
+
   const v = variantConfig[variant];
 
   return (

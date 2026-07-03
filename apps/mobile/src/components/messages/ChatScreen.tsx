@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useOpusFestaAuth } from '@/lib/auth';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface ChatScreenProps {
   threadId: string;
@@ -19,6 +20,7 @@ interface ChatScreenProps {
  */
 export function ChatScreen({ threadId, counterpartName }: ChatScreenProps) {
   const [message, setMessage] = useState('');
+  const { editorial } = useTheme();
   const { user } = useOpusFestaAuth();
   const { data: messages, isLoading } = useMessages(threadId);
   const sendMessage = useSendMessage();

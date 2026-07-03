@@ -1,6 +1,6 @@
 import { Pressable, Text, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -14,29 +14,6 @@ interface ButtonProps {
   disabled?: boolean;
   className?: string;
 }
-
-// Editorial Romance buttons: pill-shaped, flat fill, no shadow — the shared
-// OF web system (opus_website hero CTA is a flat lavender pill, color transition only).
-const variantConfig: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
-  primary: {
-    bg: editorial.primaryContainer,
-    text: editorial.onPrimary,
-  },
-  outline: {
-    bg: 'transparent',
-    text: editorial.primaryContainer,
-    border: editorial.primaryContainer,
-  },
-  ghost: {
-    bg: 'transparent',
-    text: editorial.primaryContainer,
-  },
-  danger: {
-    bg: 'transparent',
-    text: editorial.error,
-    border: editorial.error,
-  },
-};
 
 const sizeConfig: Record<ButtonSize, { py: number; px: number; fontSize: number }> = {
   sm: { py: 8, px: 16, fontSize: 14 },
@@ -53,6 +30,31 @@ export function Button({
   disabled = false,
   className = '',
 }: ButtonProps) {
+  const { editorial } = useTheme();
+
+  // Editorial Romance buttons: pill-shaped, flat fill, no shadow — the shared
+  // OF web system (opus_website hero CTA is a flat lavender pill, color transition only).
+  const variantConfig: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
+    primary: {
+      bg: editorial.primaryContainer,
+      text: editorial.onPrimary,
+    },
+    outline: {
+      bg: 'transparent',
+      text: editorial.primaryContainer,
+      border: editorial.primaryContainer,
+    },
+    ghost: {
+      bg: 'transparent',
+      text: editorial.primaryContainer,
+    },
+    danger: {
+      bg: 'transparent',
+      text: editorial.error,
+      border: editorial.error,
+    },
+  };
+
   const v = variantConfig[variant];
   const s = sizeConfig[size];
 

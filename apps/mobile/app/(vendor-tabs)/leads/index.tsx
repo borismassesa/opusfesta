@@ -7,10 +7,12 @@ import { ApprovalBanner } from '@/components/vendor/ApprovalBanner';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useVendorLeads } from '@/hooks/useVendorLeads';
 import { LEAD_FILTERS, leadStatusStyle } from '@/lib/vendorPipeline';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { InquiryStatus } from '@/types/vendor';
 
 export default function LeadsScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { vendor, approvalState } = useCurrentVendor();
   const [filter, setFilter] = useState<InquiryStatus | 'all'>('all');

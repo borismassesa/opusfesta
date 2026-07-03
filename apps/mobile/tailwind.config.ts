@@ -3,28 +3,37 @@ import type { Config } from 'tailwindcss';
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // Class-based dark mode: the active scheme is driven by NativeWind's
+  // `colorScheme` (set from ColorSchemeProvider), which flips the `of-*` CSS
+  // variables declared in global.css (:root = light, .dark:root = dark).
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Backed by CSS custom properties so a single class works in both
+        // schemes. Values live in global.css / src/constants/palette.ts (ofVars),
+        // kept in sync by src/theme/palette.sync.test.ts. `of-surface` is the
+        // themed card background that replaces raw `bg-white`.
         of: {
-          primary: '#5B2D8E',
-          medium: '#7B4FA2',
-          light: '#C9A0DC',
-          pale: '#F3EBF9',
-          cream: '#faf7fc',
-          white: '#FFFFFF',
-          dark: '#2A1245',
-          text: '#1E1028',
-          muted: '#6B5A7A',
-          border: 'rgba(91,45,142,0.12)',
-          green: '#2D8E5B',
-          gold: '#C4920A',
-          coral: '#D85A30',
-          ink: '#1A1A1A',
-          line: '#D1D5DB',
-          danger: '#DC2626',
-          accent: '#7E5896',
-          placeholder: '#9CA3AF',
+          primary: 'var(--of-primary)',
+          medium: 'var(--of-medium)',
+          light: 'var(--of-light)',
+          pale: 'var(--of-pale)',
+          cream: 'var(--of-cream)',
+          surface: 'var(--of-surface)',
+          white: 'var(--of-white)',
+          dark: 'var(--of-dark)',
+          text: 'var(--of-text)',
+          muted: 'var(--of-muted)',
+          border: 'var(--of-border)',
+          green: 'var(--of-green)',
+          gold: 'var(--of-gold)',
+          coral: 'var(--of-coral)',
+          ink: 'var(--of-ink)',
+          line: 'var(--of-line)',
+          danger: 'var(--of-danger)',
+          accent: 'var(--of-accent)',
+          placeholder: 'var(--of-placeholder)',
         },
         br: {
           bg: '#faf7fc',

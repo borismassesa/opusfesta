@@ -18,7 +18,7 @@ export function CitySelector({ value, onSelect }: CitySelectorProps) {
             className={`px-4 py-3 rounded-card border ${
               isSelected
                 ? 'bg-of-primary border-of-primary'
-                : 'bg-white border-of-border'
+                : 'bg-of-surface border-of-border'
             }`}
           >
             <Text className="text-lg mb-1">{city.icon}</Text>

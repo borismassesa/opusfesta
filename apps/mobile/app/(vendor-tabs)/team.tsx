@@ -4,19 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useVendorTeam, useVendorInvitations, useInviteTeamMember, useRevokeInvitation } from '@/hooks/useVendorTeam';
-import { editorial, shadowSoftSm } from '@/constants/theme';
-
-const cardStyle: StyleProp<ViewStyle> = [
-  {
-    backgroundColor: editorial.surfaceContainerLowest,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: editorial.outlineVariant,
-    padding: 16,
-    marginBottom: 20,
-  },
-  shadowSoftSm,
-];
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
@@ -25,6 +14,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function SectionTitle({ children }: { children: string }) {
+  const { editorial } = useTheme();
   return (
     <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
       {children}
@@ -33,6 +23,18 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorId: string; businessName: string; ownerCanInviteManager: boolean }) {
+  const { editorial } = useTheme();
+  const cardStyle: StyleProp<ViewStyle> = [
+    {
+      backgroundColor: editorial.surfaceContainerLowest,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: editorial.outlineVariant,
+      padding: 16,
+      marginBottom: 20,
+    },
+    shadowSoftSm,
+  ];
   const inviteMutation = useInviteTeamMember();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'manager' | 'staff'>('staff');
@@ -156,6 +158,18 @@ function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorI
 }
 
 export default function TeamScreen() {
+  const { editorial } = useTheme();
+  const cardStyle: StyleProp<ViewStyle> = [
+    {
+      backgroundColor: editorial.surfaceContainerLowest,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: editorial.outlineVariant,
+      padding: 16,
+      marginBottom: 20,
+    },
+    shadowSoftSm,
+  ];
   const { vendor, myRole, isLoading: vendorLoading } = useCurrentVendor();
   const canManage = myRole === 'owner' || myRole === 'manager';
   const { data: members, isLoading: membersLoading } = useVendorTeam(vendor?.id);

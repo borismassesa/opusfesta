@@ -7,13 +7,15 @@ import { useOpusFestaAuth } from '@/lib/auth';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getDashboardData } from '@/lib/api/events';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
-import { editorial, shadowSoftSm, shadowSoftPrimary, VENDOR_CATEGORIES } from '@/constants/theme';
+import { shadowSoftSm, shadowSoftPrimary, VENDOR_CATEGORIES } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 function iconForCategory(category: string | null | undefined): keyof typeof Ionicons.glyphMap {
   return (VENDOR_CATEGORIES.find((c) => c.key === category)?.icon ?? 'storefront-outline') as keyof typeof Ionicons.glyphMap;
 }
 
 export default function DashboardScreen() {
+  const { editorial } = useTheme();
   const { user } = useOpusFestaAuth();
   const client = useAuthenticatedSupabase();
   const router = useRouter();

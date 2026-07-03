@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { getMonthGridDates } from '@/lib/calendarMonth';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -14,14 +14,15 @@ interface MonthGridProps {
   selectedDate?: string | null;
 }
 
-const STATUS_COLOR: Record<DayStatus, { bg: string; fg: string }> = {
-  open: { bg: 'transparent', fg: editorial.onSurface },
-  'manually-blocked': { bg: '#FCE8E6', fg: '#B3261E' },
-  booked: { bg: editorial.primaryContainer, fg: '#ffffff' },
-};
-
 export function MonthGrid({ year, monthIndex, statusByDate, onSelectDate, selectedDate }: MonthGridProps) {
+  const { editorial } = useTheme();
   const cells = getMonthGridDates(year, monthIndex);
+
+  const STATUS_COLOR: Record<DayStatus, { bg: string; fg: string }> = {
+    open: { bg: 'transparent', fg: editorial.onSurface },
+    'manually-blocked': { bg: '#FCE8E6', fg: editorial.error },
+    booked: { bg: editorial.primaryContainer, fg: '#ffffff' },
+  };
 
   return (
     <View>

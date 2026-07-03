@@ -3,13 +3,15 @@ import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { VENDOR_NEED_ITEMS } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
 export default function VendorNeedsStep() {
   const router = useRouter();
   const { data, setVendorNeeds } = useCoupleOnboarding();
+  const { editorial } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.vendorNeeds?.vendorNeeds ?? []);
 
   const toggle = (key: string) => {

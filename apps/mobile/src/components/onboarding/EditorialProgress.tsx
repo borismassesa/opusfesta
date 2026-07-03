@@ -1,6 +1,6 @@
 import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface EditorialProgressProps {
   currentStep: number;
@@ -9,6 +9,7 @@ interface EditorialProgressProps {
 }
 
 export function EditorialProgress({ currentStep, totalSteps, label }: EditorialProgressProps) {
+  const { editorial } = useTheme();
   const progress = (currentStep / totalSteps) * 100;
   const percentLabel = `${Math.round(progress)}% Complete`;
 

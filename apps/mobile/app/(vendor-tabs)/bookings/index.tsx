@@ -7,10 +7,12 @@ import { ApprovalBanner } from '@/components/vendor/ApprovalBanner';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useVendorBookings } from '@/hooks/useVendorBookingsPipeline';
 import { BOOKING_FILTERS, bookingStageStyle } from '@/lib/vendorPipeline';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { BookingStage } from '@/types/vendor';
 
 export default function BookingsScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { vendor, approvalState } = useCurrentVendor();
   const [filter, setFilter] = useState<BookingStage | 'all'>('all');

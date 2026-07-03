@@ -1,5 +1,5 @@
 import { View, Text } from 'react-native';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface StarRatingProps {
   rating: number;
@@ -8,6 +8,7 @@ interface StarRatingProps {
 }
 
 export function StarRating({ rating, count, size = 'sm' }: StarRatingProps) {
+  const { editorial } = useTheme();
   const fullStars = Math.floor(rating);
   const hasHalf = rating - fullStars >= 0.5;
   const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);

@@ -1,7 +1,8 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Avatar } from '../ui/Avatar';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface ConversationItemProps {
   id: string;
@@ -22,6 +23,7 @@ export function ConversationItem({
   unreadCount = 0,
   isOnline = false,
 }: ConversationItemProps) {
+  const { editorial } = useTheme();
   const router = useRouter();
 
   return (

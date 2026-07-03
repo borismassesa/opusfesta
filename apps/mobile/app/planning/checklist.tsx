@@ -7,9 +7,11 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { useCoupleProfile } from '@/hooks/useCoupleProfile';
 import { useChecklistCompletion } from '@/hooks/useChecklist';
 import { CHECKLIST_SECTIONS, CHECKLIST_TOTAL_TASKS, isWidgetTaskComplete, type ChecklistTask } from '@/constants/checklist';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 export default function ChecklistScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { data: profile, isLoading: profileLoading } = useCoupleProfile();
   const { completed, toggle, loaded } = useChecklistCompletion();

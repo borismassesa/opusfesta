@@ -15,7 +15,8 @@ import {
   useRecordInvitationSend,
 } from '@/hooks/useGuestList';
 import { buildRsvpLink } from '@/lib/api/guests';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const RSVP_CYCLE = ['pending', 'attending', 'declined'];
 const RSVP_LABEL: Record<string, string> = {
@@ -32,6 +33,7 @@ const RSVP_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
 };
 
 function StatCard({ label, value }: { label: string; value: number }) {
+  const { editorial } = useTheme();
   return (
     <View
       style={[
@@ -56,6 +58,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 export default function GuestListScreen() {
+  const { editorial } = useTheme();
   const { data: event, isLoading: eventLoading } = useWeddingEvent();
   const { data: guests = [], isLoading: guestsLoading } = useGuestList(event?.id);
   const addGuest = useAddGuest(event?.id);
