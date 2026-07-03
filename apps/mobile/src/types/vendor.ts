@@ -53,6 +53,8 @@ export interface VendorRow {
 
 export type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed';
 
+export type ProposalStatus = 'sent' | 'countered' | 'accepted' | 'declined';
+
 export interface InquiryRow {
   id: string;
   vendor_id: string;
@@ -70,6 +72,21 @@ export interface InquiryRow {
   vendor_response: string | null;
   responded_at: string | null;
   created_at: string;
+  // Proposal lifecycle (20260506000002_inquiry_proposal_state.sql). The
+  // couple counters via opus_website/opus_pass; the vendor sends and accepts
+  // counters — the same columns vendors_portal's proposal route writes.
+  proposal_status: ProposalStatus | null;
+  proposal_event_date: string | null;
+  proposal_venue: string | null;
+  proposal_guest_count: number | null;
+  proposal_package: string | null;
+  proposal_invoice_amount: number | null;
+  proposal_invoice_details: string | null;
+  proposal_sent_at: string | null;
+  proposal_counter_amount: number | null;
+  proposal_counter_message: string | null;
+  proposal_countered_at: string | null;
+  proposal_accepted_at: string | null;
 }
 
 export type BookingStage = 'quoted' | 'reserved' | 'confirmed' | 'completed' | 'cancelled';

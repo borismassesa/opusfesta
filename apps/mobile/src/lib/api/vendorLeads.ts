@@ -1,10 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { InquiryRow, InquiryStatus } from '@/types/vendor';
 
-const INQUIRY_COLUMNS = `
+export const INQUIRY_COLUMNS = `
   id, vendor_id, user_id, name, email, phone, event_type, event_date,
   guest_count, budget, location, message, status, vendor_response,
-  responded_at, created_at
+  responded_at, created_at,
+  proposal_status, proposal_event_date, proposal_venue, proposal_guest_count,
+  proposal_package, proposal_invoice_amount, proposal_invoice_details,
+  proposal_sent_at, proposal_counter_amount, proposal_counter_message,
+  proposal_countered_at, proposal_accepted_at
 `;
 
 export async function getVendorLeads(

@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert, TextInput, type StyleProp, type ViewStyle } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { formatCurrency } from '@opusfesta/lib';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { useVendorLead, useRespondToLead, useUpdateLeadStatus } from '@/hooks/useVendorLeads';
+import { useVendorLead, useRespondToLead, useUpdateLeadStatus, useSendProposal, useAcceptCounter } from '@/hooks/useVendorLeads';
+import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { leadStatusStyle } from '@/lib/vendorPipeline';
 import { editorial, shadowSoftSm } from '@/constants/theme';
+import type { InquiryRow } from '@/types/vendor';
 
 function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   return (
@@ -18,6 +21,248 @@ function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMa
         <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, marginTop: 2 }}>{value}</Text>
       </View>
     </View>
+  );
+}
+
+const cardStyle: StyleProp<ViewStyle> = [
+  {
+    backgroundColor: editorial.surfaceContainerLowest,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: editorial.outlineVariant,
+    padding: 16,
+    marginBottom: 20,
+  },
+  shadowSoftSm,
+];
+
+function ProposalField({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginBottom: 4 }}>
+        {label}
+      </Text>
+      <TextInput
+        placeholderTextColor={editorial.onSurfaceVariant}
+        style={{
+          backgroundColor: editorial.surfaceContainerLowest,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: editorial.outlineVariant,
+          padding: 12,
+          fontFamily: 'WorkSans-Regular',
+          fontSize: 14,
+          color: editorial.onSurface,
+        }}
+        {...props}
+      />
+    </View>
+  );
+}
+
+function ProposalSummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+      <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant }}>{label}</Text>
+      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurface, flexShrink: 1, textAlign: 'right' }}>{value}</Text>
+    </View>
+  );
+}
+
+function ProposalSection({ lead }: { lead: InquiryRow }) {
+  const sendMutation = useSendProposal();
+  const acceptMutation = useAcceptCounter();
+  const { myRole } = useCurrentVendor();
+  // Accepting a counter creates the vendor_bookings row, which staff can't
+  // insert (RLS owner/manager) - hide the action for them.
+  const canAccept = myRole !== 'staff';
+
+  const [composing, setComposing] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [packageName, setPackageName] = useState('');
+  const [eventDate, setEventDate] = useState(lead.event_date ?? '');
+  const [venue, setVenue] = useState(lead.location ?? '');
+  const [guestCount, setGuestCount] = useState(lead.guest_count != null ? String(lead.guest_count) : '');
+  const [details, setDetails] = useState('');
+
+  if (lead.status === 'declined' || lead.status === 'closed') return null;
+
+  const submit = () => {
+    const invoiceAmount = Number(amount);
+    if (!Number.isInteger(invoiceAmount) || invoiceAmount <= 0) {
+      Alert.alert('Invalid amount', 'Enter the proposal amount in TZS.');
+      return;
+    }
+    sendMutation.mutate(
+      {
+        inquiry: { id: lead.id, status: lead.status },
+        draft: {
+          eventDate: eventDate.trim() || null,
+          venue: venue.trim(),
+          guestCount: Number(guestCount) > 0 ? Number(guestCount) : null,
+          packageName: packageName.trim(),
+          invoiceAmount,
+          invoiceDetails: details.trim(),
+        },
+      },
+      { onSuccess: () => setComposing(false) }
+    );
+  };
+
+  const handleAcceptCounter = () => {
+    const counterAmount = lead.proposal_counter_amount ?? lead.proposal_invoice_amount ?? 0;
+    Alert.alert(
+      'Accept counter offer?',
+      `This books the event at ${formatCurrency(counterAmount)} and blocks the date on your calendar.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Accept', onPress: () => acceptMutation.mutate({ inquiry: lead }) },
+      ]
+    );
+  };
+
+  const heading = (
+    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
+      Proposal
+    </Text>
+  );
+
+  if (composing || (!lead.proposal_status && lead.status !== 'accepted')) {
+    if (!composing) {
+      return (
+        <>
+          {heading}
+          <View style={cardStyle}>
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginBottom: 12 }}>
+              Send a formal quote with a price and event details. The couple can accept it or counter.
+            </Text>
+            <Pressable
+              onPress={() => setComposing(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+            >
+              <Ionicons name="document-text-outline" size={16} color={editorial.primaryContainer} />
+              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
+                Compose proposal
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {heading}
+        <View style={cardStyle}>
+          <ProposalField label="Amount (TZS)" value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ''))} placeholder="5000000" keyboardType="number-pad" />
+          <ProposalField label="Package" value={packageName} onChangeText={setPackageName} placeholder="Full day coverage" />
+          <ProposalField label="Event date" value={eventDate} onChangeText={setEventDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+          <ProposalField label="Venue" value={venue} onChangeText={setVenue} placeholder="Venue or area" />
+          <ProposalField label="Guest count" value={guestCount} onChangeText={(v) => setGuestCount(v.replace(/[^0-9]/g, ''))} placeholder="250" keyboardType="number-pad" />
+          <ProposalField label="Details" value={details} onChangeText={setDetails} placeholder="What's included" multiline />
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+            <Pressable onPress={() => setComposing(false)} style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: editorial.outlineVariant }}>
+              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              disabled={sendMutation.isPending}
+              onPress={submit}
+              style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: editorial.primaryContainer, opacity: sendMutation.isPending ? 0.5 : 1 }}
+            >
+              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>
+                {sendMutation.isPending ? 'Sending…' : 'Send proposal'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </>
+    );
+  }
+
+  if (!lead.proposal_status) return null;
+
+  return (
+    <>
+      {heading}
+      <View style={cardStyle}>
+        <ProposalSummaryRow label="Amount" value={formatCurrency(lead.proposal_invoice_amount ?? 0)} />
+        {lead.proposal_package && <ProposalSummaryRow label="Package" value={lead.proposal_package} />}
+        {lead.proposal_event_date && <ProposalSummaryRow label="Event date" value={lead.proposal_event_date} />}
+        {lead.proposal_venue && <ProposalSummaryRow label="Venue" value={lead.proposal_venue} />}
+        {lead.proposal_guest_count != null && <ProposalSummaryRow label="Guests" value={String(lead.proposal_guest_count)} />}
+        {lead.proposal_invoice_details && (
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginTop: 4 }}>
+            {lead.proposal_invoice_details}
+          </Text>
+        )}
+
+        {lead.proposal_status === 'sent' && (
+          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 10 }}>
+            Sent — waiting for the couple's response.
+          </Text>
+        )}
+
+        {lead.proposal_status === 'accepted' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+            <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: '#16a34a' }}>
+              Accepted — see Bookings for next steps.
+            </Text>
+          </View>
+        )}
+
+        {lead.proposal_status === 'declined' && (
+          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 10 }}>
+            The couple declined this proposal.
+          </Text>
+        )}
+
+        {lead.proposal_status === 'countered' && (
+          <>
+            <View style={{ backgroundColor: editorial.tertiaryFixed, borderRadius: 12, padding: 12, marginTop: 12 }}>
+              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant }}>
+                Counter offer
+              </Text>
+              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface, marginTop: 4 }}>
+                {formatCurrency(lead.proposal_counter_amount ?? 0)}
+              </Text>
+              {lead.proposal_counter_message && (
+                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurface, marginTop: 6, lineHeight: 18 }}>
+                  {lead.proposal_counter_message}
+                </Text>
+              )}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+              <Pressable
+                onPress={() => {
+                  setAmount(lead.proposal_counter_amount != null ? String(lead.proposal_counter_amount) : '');
+                  setPackageName(lead.proposal_package ?? '');
+                  setEventDate(lead.proposal_event_date ?? lead.event_date ?? '');
+                  setVenue(lead.proposal_venue ?? lead.location ?? '');
+                  setGuestCount(lead.proposal_guest_count != null ? String(lead.proposal_guest_count) : '');
+                  setDetails(lead.proposal_invoice_details ?? '');
+                  setComposing(true);
+                }}
+                style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: editorial.outlineVariant }}
+              >
+                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Revise</Text>
+              </Pressable>
+              {canAccept && (
+                <Pressable
+                  disabled={acceptMutation.isPending}
+                  onPress={handleAcceptCounter}
+                  style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: editorial.onSurface, opacity: acceptMutation.isPending ? 0.5 : 1 }}
+                >
+                  <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>
+                    {acceptMutation.isPending ? 'Accepting…' : 'Accept counter'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </>
+        )}
+      </View>
+    </>
   );
 }
 
@@ -140,6 +385,8 @@ export default function LeadDetailScreen() {
           </View>
         </>
       )}
+
+      <ProposalSection lead={lead} />
 
       {lead.status !== 'accepted' && lead.status !== 'declined' && lead.status !== 'closed' && (
         <>
