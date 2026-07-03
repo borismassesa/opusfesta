@@ -155,27 +155,22 @@ Deno.serve(async (req: Request) => {
     const isServiceRole = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
     const body = (await req.json()) as SendPushBody;
 
-    if (body.event === "inquiry_response" && !isServiceRole) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     if (!isServiceRole) {
-      // Verify the caller can actually see this message (RLS-gated) before
-      // dispatching anything on their behalf.
+      // Verify the caller can actually see the referenced row (RLS-gated)
+      // before dispatching anything on their behalf. For inquiry_response
+      // this lets vendor members (is_vendor_member RLS on inquiries) notify
+      // the couple after responding/accepting from mobile, not just the
+      // service-role admin path.
       const caller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: authHeader } },
       });
-      const { data: visible } = await caller
-        .from("messages")
-        .select("id")
-        .eq("id", (body as MessageEvent).messageId)
-        .maybeSingle();
-      if (!visible) {
+      const probe =
+        body.event === "message"
+          ? await caller.from("messages").select("id").eq("id", body.messageId).maybeSingle()
+          : await caller.from("inquiries").select("id").eq("id", body.inquiryId).maybeSingle();
+      if (!probe.data) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
           status: 403,
           headers: { "Content-Type": "application/json" },
