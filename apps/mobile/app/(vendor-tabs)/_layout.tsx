@@ -72,6 +72,9 @@ export default function VendorTabLayout() {
           },
         }}
       >
+        {/* Radial-menu destinations — routable but hidden from the tab bar. */}
+        <Tabs.Screen name="storefront" options={{ href: null }} />
+        <Tabs.Screen name="team" options={{ href: null }} />
         {tabs.map((tab) => (
           <Tabs.Screen
             key={tab.name}

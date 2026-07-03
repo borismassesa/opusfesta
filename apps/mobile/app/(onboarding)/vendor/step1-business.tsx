@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StepContainer } from '@/components/onboarding/StepContainer';
 import { Input } from '@/components/ui/Input';
@@ -61,6 +61,12 @@ export default function VendorStep1() {
           placeholder="e.g. 5"
           keyboardType="number-pad"
         />
+
+        <Pressable onPress={() => router.push('/(onboarding)/vendor/join-team')} className="items-center py-2">
+          <Text className="font-work-sans-medium text-sm text-of-primary underline">
+            Joining an existing business? Enter your invite code
+          </Text>
+        </Pressable>
       </View>
     </StepContainer>
   );

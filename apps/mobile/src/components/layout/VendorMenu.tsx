@@ -13,11 +13,12 @@ const MENU_ITEMS: {
   route: string;
 }[] = [
   { key: 'bookings', label: 'Bookings', icon: 'briefcase-outline', route: '/(vendor-tabs)/bookings' },
+  { key: 'team', label: 'Team', icon: 'people-outline', route: '/(vendor-tabs)/team' },
   { key: 'storefront', label: 'Storefront', icon: 'storefront-outline', route: '/(vendor-tabs)/storefront' },
 ];
 
 const RADIUS = 110;
-const ITEM_COUNT = 2;
+const ITEM_COUNT = MENU_ITEMS.length;
 const START_ANGLE = 130;
 const END_ANGLE = 50;
 const ANGLE_STEP = (START_ANGLE - END_ANGLE) / (ITEM_COUNT - 1);
