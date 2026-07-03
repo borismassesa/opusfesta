@@ -10,10 +10,6 @@ const BOOKING_COLUMNS = `
   timeline, cancellation_reason, cancelled_at, created_at
 `;
 
-// vendor_bookings RLS is owner-only (vendors.user_id = requesting_user_id()),
-// unlike inquiries' broader is_vendor_member() policy - a manager/staff
-// vendor account would silently see zero bookings here. Pre-existing
-// asymmetry; not fixed here since staff roles are out of scope for this pass.
 export async function getVendorBookings(
   client: SupabaseClient,
   vendorId: string,

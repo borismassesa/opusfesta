@@ -15,7 +15,10 @@ import { editorial, shadowSoftSm } from '@/constants/theme';
 const TRIGGER_REASON = 'Booked via inquiry';
 
 export default function VendorCalendarScreen() {
-  const { vendor, approvalState } = useCurrentVendor();
+  const { vendor, myRole, approvalState } = useCurrentVendor();
+  // vendor_availability write RLS only permits owner/manager — staff get a
+  // read-only calendar rather than toggles that would fail on save.
+  const readOnly = myRole === 'staff';
   const now = useMemo(() => new Date(), []);
   const [year, setYear] = useState(now.getFullYear());
   const [monthIndex, setMonthIndex] = useState(now.getMonth());
@@ -43,6 +46,15 @@ export default function VendorCalendarScreen() {
 
   const handleSelectDate = (date: string) => {
     const status = statusByDate[date] ?? 'open';
+    if (readOnly) {
+      if (status !== 'open') {
+        Alert.alert(
+          status === 'booked' ? 'Booked' : 'Blocked',
+          status === 'booked' ? 'This date is blocked by an accepted lead.' : 'This date was blocked by the owner or a manager.'
+        );
+      }
+      return;
+    }
     if (status === 'booked') {
       Alert.alert('Booked', 'This date is blocked by an accepted lead. Manage it from Leads or Bookings.');
       return;
@@ -117,7 +129,7 @@ export default function VendorCalendarScreen() {
               <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant }}>Blocked by you</Text>
             </View>
             <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
-              Tap a date to toggle
+              {readOnly ? 'View only' : 'Tap a date to toggle'}
             </Text>
           </View>
         </>

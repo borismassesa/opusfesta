@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '@opusfesta/lib';
@@ -45,10 +46,51 @@ function SectionTitle({ children }: { children: string }) {
 
 const isRemoteUrl = (uri: string) => uri.startsWith('http://') || uri.startsWith('https://');
 
+function StorefrontReadOnly({ vendorId, businessName }: { vendorId: string; businessName: string }) {
+  const router = useRouter();
+  return (
+    <ScreenWrapper>
+      <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 20 }}>
+        Storefront
+      </Text>
+      <View
+        style={[
+          {
+            backgroundColor: editorial.surfaceContainerLowest,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: editorial.outlineVariant,
+            padding: 20,
+            alignItems: 'center',
+          },
+          shadowSoftSm,
+        ]}
+      >
+        <Ionicons name="lock-closed-outline" size={28} color={editorial.onSurfaceVariant} style={{ marginBottom: 10 }} />
+        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, textAlign: 'center' }}>
+          View-only access
+        </Text>
+        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 6 }}>
+          Only the account owner or a manager can edit the {businessName} storefront.
+        </Text>
+        <Pressable
+          onPress={() => router.push(`/vendor/${vendorId}`)}
+          style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+        >
+          <Ionicons name="storefront-outline" size={16} color={editorial.primaryContainer} />
+          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
+            View public profile
+          </Text>
+        </Pressable>
+      </View>
+    </ScreenWrapper>
+  );
+}
+
 export default function StorefrontScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
-  const { vendor, isLoading: vendorLoading } = useCurrentVendor();
+  const { vendor, myRole, isLoading: vendorLoading } = useCurrentVendor();
   const updateProfile = useUpdateVendorProfile();
   const updatePackages = useUpdateVendorPackages();
 
@@ -84,6 +126,12 @@ export default function StorefrontScreen() {
         <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ marginTop: 60 }} />
       </ScreenWrapper>
     );
+  }
+
+  // vendors UPDATE RLS only permits owner/manager — show staff an honest
+  // read-only surface instead of an editor whose saves would fail.
+  if (myRole === 'staff') {
+    return <StorefrontReadOnly vendorId={vendor.id} businessName={vendor.business_name} />;
   }
 
   const uploadNewPhotos = async (uris: string[], bucket: string): Promise<string[]> => {

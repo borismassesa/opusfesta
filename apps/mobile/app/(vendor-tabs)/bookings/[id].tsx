@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '@opusfesta/lib';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useVendorBooking, useAdvanceBookingStage } from '@/hooks/useVendorBookingsPipeline';
+import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { bookingStageStyle, nextBookingStage, BOOKING_FILTERS } from '@/lib/vendorPipeline';
 import { editorial, shadowSoftSm } from '@/constants/theme';
 
@@ -37,6 +38,10 @@ export default function BookingDetailScreen() {
   const router = useRouter();
   const { data: booking, isLoading } = useVendorBooking(id);
   const advanceMutation = useAdvanceBookingStage();
+  // Staff are read-only on bookings — vendor_bookings UPDATE RLS only
+  // permits owner/manager, so hide the write action rather than let it fail.
+  const { myRole } = useCurrentVendor();
+  const canAdvance = myRole !== 'staff';
 
   if (isLoading || !booking) {
     return (
@@ -150,7 +155,7 @@ export default function BookingDetailScreen() {
         <ChecklistRow label="Event brief submitted" done={booking.brief_submitted} />
       </View>
 
-      {upcoming && booking.stage !== 'cancelled' && (
+      {canAdvance && upcoming && booking.stage !== 'cancelled' && (
         <Pressable
           disabled={advanceMutation.isPending}
           onPress={handleAdvance}
