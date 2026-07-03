@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useAuth } from '@clerk/clerk-expo';
 import { View, ActivityIndicator } from 'react-native';
 import { editorial } from '@/constants/theme';
 import { ErrorFallback } from '@/components/ErrorFallback';
+import { useOnboardingState } from '@/lib/auth';
 
 const AUTH_LOAD_TIMEOUT_MS = 8000;
 
 export default function IndexScreen() {
-  const { isSignedIn, isLoaded } = useAuth();
-  const { user } = useUser();
+  const { isLoaded } = useAuth();
+  const onboarding = useOnboardingState();
   const [timedOut, setTimedOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
@@ -20,7 +21,7 @@ export default function IndexScreen() {
     return () => clearTimeout(timeout);
   }, [isLoaded, attempt]);
 
-  if (!isLoaded) {
+  if (!isLoaded || onboarding.status === 'loading') {
     if (timedOut) {
       return (
         <ErrorFallback
@@ -38,29 +39,18 @@ export default function IndexScreen() {
     );
   }
 
-  if (!isSignedIn) {
+  if (onboarding.status === 'signed-out') {
     return <Redirect href="/(auth)/welcome" />;
   }
 
-  // Check both publicMetadata (set by backend/webhook) and unsafeMetadata (set by client)
-  const onboardingComplete =
-    (user?.publicMetadata?.onboardingComplete as boolean) ||
-    (user?.unsafeMetadata?.onboardingComplete as boolean) ||
-    false;
-
-  if (!onboardingComplete) {
-    const userType =
-      (user?.publicMetadata?.userType as string) ??
-      (user?.unsafeMetadata?.userType as string) ??
-      // Legacy fallback: users who signed up before the key was standardized.
-      (user?.unsafeMetadata?.user_type as string) ??
-      'couple';
-
-    if (userType === 'vendor') {
+  if (onboarding.status === 'incomplete') {
+    // 'unknown' (no userType metadata yet) defaults to the couple wizard —
+    // the historical behavior for accounts that predate the metadata key.
+    if (onboarding.userType === 'vendor') {
       return <Redirect href="/(onboarding)/vendor/step1-business" />;
     }
     return <Redirect href="/(onboarding)/couple/step1-names" />;
   }
 
-  return <Redirect href="/(tabs)" />;
+  return <Redirect href={onboarding.status === 'vendor' ? '/(vendor-tabs)' : '/(tabs)'} />;
 }

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Redirect, Tabs, type ErrorBoundaryProps } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { View, Platform, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { editorial, shadowSoft } from '@/constants/theme';
-import { PlanningMenu } from '@/components/layout/PlanningMenu';
+import { VendorMenu } from '@/components/layout/VendorMenu';
 import { ErrorFallback } from '@/components/ErrorFallback';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useOnboardingState } from '@/lib/auth';
@@ -22,40 +22,14 @@ const tabs: {
   iconInactive: TabIcon;
   center?: boolean;
 }[] = [
-  {
-    name: 'index',
-    title: 'Home',
-    iconActive: 'home',
-    iconInactive: 'home-outline',
-  },
-  {
-    name: 'categories',
-    title: 'Vendors',
-    iconActive: 'storefront',
-    iconInactive: 'storefront-outline',
-  },
-  {
-    name: 'dashboard',
-    title: 'Planning',
-    iconActive: 'calendar',
-    iconInactive: 'calendar-outline',
-    center: true,
-  },
-  {
-    name: 'messages',
-    title: 'Messages',
-    iconActive: 'chatbubble',
-    iconInactive: 'chatbubble-outline',
-  },
-  {
-    name: 'profile',
-    title: 'Website',
-    iconActive: 'laptop',
-    iconInactive: 'laptop-outline',
-  },
+  { name: 'index', title: 'Home', iconActive: 'home', iconInactive: 'home-outline' },
+  { name: 'leads', title: 'Leads', iconActive: 'mail', iconInactive: 'mail-outline' },
+  { name: 'bookings', title: 'Business', iconActive: 'briefcase', iconInactive: 'briefcase-outline', center: true },
+  { name: 'calendar', title: 'Calendar', iconActive: 'calendar', iconInactive: 'calendar-outline' },
+  { name: 'messages', title: 'Messages', iconActive: 'chatbubble', iconInactive: 'chatbubble-outline' },
 ];
 
-export default function TabLayout() {
+export default function VendorTabLayout() {
   const { isLoaded, isSignedIn } = useAuth();
   const onboarding = useOnboardingState();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,14 +39,11 @@ export default function TabLayout() {
     return <Redirect href="/(auth)/welcome" />;
   }
 
-  if (onboarding.status === 'loading' || onboarding.status === 'signed-out') return null;
-  if (onboarding.status === 'incomplete') {
-    return <Redirect href="/" />;
-  }
-  // A vendor who lands here (e.g. a stale deep link) belongs in their own tabs.
-  if (onboarding.status === 'vendor') {
-    return <Redirect href="/(vendor-tabs)" />;
-  }
+  if (onboarding.status === 'loading') return null;
+  if (onboarding.status === 'signed-out') return <Redirect href="/(auth)/welcome" />;
+  if (onboarding.status === 'incomplete') return <Redirect href="/" />;
+  // A couple who somehow lands on this route group gets sent to their own tabs.
+  if (onboarding.status === 'couple') return <Redirect href="/(tabs)" />;
 
   return (
     <View style={{ flex: 1 }}>
@@ -135,22 +106,14 @@ export default function TabLayout() {
                             shadowSoft,
                           ]}
                         >
-                          <Ionicons
-                            name={menuOpen ? 'close' : 'calendar-outline'}
-                            size={24}
-                            color="#fff"
-                          />
+                          <Ionicons name={menuOpen ? 'close' : 'briefcase-outline'} size={24} color="#fff" />
                         </View>
                       </Pressable>
                     ),
                   }
                 : {
                     tabBarIcon: ({ focused, color }) => (
-                      <Ionicons
-                        name={focused ? tab.iconActive : tab.iconInactive}
-                        size={22}
-                        color={color}
-                      />
+                      <Ionicons name={focused ? tab.iconActive : tab.iconInactive} size={22} color={color} />
                     ),
                   }),
             }}
@@ -158,8 +121,7 @@ export default function TabLayout() {
         ))}
       </Tabs>
 
-      {/* Radial planning menu overlay */}
-      <PlanningMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
+      <VendorMenu visible={menuOpen} onClose={() => setMenuOpen(false)} />
     </View>
   );
 }
