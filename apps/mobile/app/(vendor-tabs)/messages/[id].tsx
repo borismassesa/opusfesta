@@ -1,5 +1,7 @@
-import { ComingSoon } from '@/components/vendor/ComingSoon';
+import { useLocalSearchParams } from 'expo-router';
+import { ChatScreen } from '@/components/messages/ChatScreen';
 
-export default function VendorMessageThreadScreen() {
-  return <ComingSoon icon="chatbubble-outline" title="Conversation" body="Chat with this couple." />;
+export default function VendorChatRoute() {
+  const { id, coupleName } = useLocalSearchParams<{ id: string; coupleName?: string }>();
+  return <ChatScreen threadId={id} counterpartName={coupleName} />;
 }
