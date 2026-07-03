@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/Button';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
 import { colors, editorial } from '@/constants/theme';
 
-const BASE_URL = 'https://opusfesta.com/w';
+const BASE_URL = 'https://opuspass.opusfesta.com/w';
 
 export default function PreviewScreen() {
   const { data: website } = useWeddingWebsite();
-  const url = website ? `${BASE_URL}/${website.slug}` : '';
+  const url = website?.publicSlug ? `${BASE_URL}/${website.publicSlug}` : '';
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
@@ -26,7 +26,7 @@ export default function PreviewScreen() {
           </Text>
           <Text className="text-sm text-of-muted text-center mb-2 px-4">
             Your wedding website is{' '}
-            {website?.is_published ? (
+            {website?.publishedAt ? (
               <Text className="text-of-green font-work-sans-bold">live</Text>
             ) : (
               <Text className="text-amber-600 font-work-sans-bold">unpublished</Text>

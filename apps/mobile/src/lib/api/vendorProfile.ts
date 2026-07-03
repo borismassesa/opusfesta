@@ -18,15 +18,20 @@ export async function getMyVendor(client: SupabaseClient): Promise<MyVendor | nu
   // Unlike couple_profiles/wedding_websites, `vendors` SELECT RLS is public
   // (anyone can browse any vendor), so it won't narrow an unfiltered query
   // down to "mine" — we must filter by user_id explicitly. Clerk's id isn't
-  // a valid users.id UUID, so look up the caller's own row first (same
-  // pattern as createWeddingWebsite in wedding-website.ts).
-  const { data: me, error: meError } = await client.from('users').select('id').single();
+  // a valid users.id UUID, so resolve the caller's own id via the same
+  // function RLS uses (same pattern used for couple_profiles writes in
+  // wedding-website.ts) rather than an unfiltered `users` select — the
+  // `users` table also has policies exposing other users' rows
+  // (message-thread visibility for vendors), so an unfiltered
+  // `.select('id').single()` can see more than one row and throw
+  // "Cannot coerce the result to a single JSON object".
+  const { data: myId, error: meError } = await client.rpc('requesting_user_id');
   if (meError) throw meError;
 
   const { data, error } = await client
     .from('vendors')
     .select(MY_VENDOR_COLUMNS)
-    .eq('user_id', me.id)
+    .eq('user_id', myId)
     .maybeSingle();
 
   if (error) throw error;
@@ -39,7 +44,7 @@ export async function getMyVendor(client: SupabaseClient): Promise<MyVendor | nu
   const { data: membership, error: membershipError } = await client
     .from('vendor_memberships')
     .select('vendor_id, role')
-    .eq('user_id', me.id)
+    .eq('user_id', myId)
     .eq('status', 'active')
     .order('created_at', { ascending: true })
     .limit(1)

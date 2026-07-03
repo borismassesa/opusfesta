@@ -1,83 +1,96 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
+import { useCoupleProfile } from '@/hooks/useCoupleProfile';
 import {
-  getMyWeddingWebsite,
-  createWeddingWebsite,
-  updateWeddingWebsite,
-  updateSection,
-  getRsvps,
-  getGuestbook,
   approveGuestbookEntry,
+  buildDefaultSiteDoc,
+  getGuestbook,
+  publishWebsite,
+  saveWebsiteMeta,
+  unpublishWebsite,
 } from '@/lib/api/wedding-website';
-import type { WebsiteTheme } from '@/types/wedding-website';
+import type { BuilderMeta, SiteDoc, WebsitePresetId } from '@/types/site-doc';
 
+/** Reuses useCoupleProfile()'s ['couple-profile'] cache entry — the site
+ *  doc lives on the same row, so there's no separate query key to keep in
+ *  sync. */
 export function useWeddingWebsite() {
-  const client = useAuthenticatedSupabase();
-  return useQuery({
-    queryKey: ['wedding-website'],
-    queryFn: () => getMyWeddingWebsite(client),
-  });
+  const query = useCoupleProfile();
+  const profile = query.data as Record<string, any> | null | undefined;
+
+  return {
+    ...query,
+    data: profile
+      ? {
+          doc: (profile.website_doc ?? null) as SiteDoc | null,
+          publicSlug: (profile.public_slug ?? null) as string | null,
+          publishedAt: (profile.website_published_at ?? null) as string | null,
+          sharingEnabled: !!profile.public_sharing_enabled,
+          partner1Name: (profile.partner1_name ?? null) as string | null,
+          partner2Name: (profile.partner2_name ?? null) as string | null,
+        }
+      : undefined,
+  };
 }
 
 export function useCreateWebsite() {
   const client = useAuthenticatedSupabase();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (opts: { slug: string; theme: WebsiteTheme; coupleProfileId?: string }) =>
-      createWeddingWebsite(client, opts),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wedding-website'] }),
-  });
-}
-
-export function useUpdateWebsite() {
-  const client = useAuthenticatedSupabase();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ websiteId, updates }: { websiteId: string; updates: Record<string, any> }) =>
-      updateWeddingWebsite(client, websiteId, updates),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wedding-website'] }),
-  });
-}
-
-export function useUpdateSection() {
-  const client = useAuthenticatedSupabase();
-  const qc = useQueryClient();
-  return useMutation({
     mutationFn: ({
-      sectionId,
-      updates,
+      partnerA,
+      partnerB,
+      presetId,
+      welcome,
     }: {
-      sectionId: string;
-      updates: { content?: Record<string, any>; is_published?: boolean };
-    }) => updateSection(client, sectionId, updates),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wedding-website'] }),
+      partnerA: string;
+      partnerB: string;
+      presetId: WebsitePresetId;
+      welcome?: string;
+    }) => saveWebsiteMeta(client, buildDefaultSiteDoc(partnerA, partnerB, presetId, welcome), {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['couple-profile'] }),
   });
 }
 
-export function useRsvpList(websiteId?: string) {
+export function useSaveWebsiteMeta() {
   const client = useAuthenticatedSupabase();
-  return useQuery({
-    queryKey: ['wedding-rsvps', websiteId],
-    queryFn: () => getRsvps(client, websiteId!),
-    enabled: !!websiteId,
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ doc, metaPatch }: { doc: SiteDoc; metaPatch: Partial<BuilderMeta> }) =>
+      saveWebsiteMeta(client, doc, metaPatch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['couple-profile'] }),
   });
 }
 
-export function useGuestbook(websiteId?: string) {
+export function usePublishWebsite() {
   const client = useAuthenticatedSupabase();
-  return useQuery({
-    queryKey: ['wedding-guestbook', websiteId],
-    queryFn: () => getGuestbook(client, websiteId!),
-    enabled: !!websiteId,
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (doc: SiteDoc) => publishWebsite(client, doc),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['couple-profile'] }),
   });
+}
+
+export function useUnpublishWebsite() {
+  const client = useAuthenticatedSupabase();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unpublishWebsite(client),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['couple-profile'] }),
+  });
+}
+
+// ── Guestbook (mock/hardcoded — see src/lib/api/wedding-website.ts) ──
+
+export function useGuestbook() {
+  return useQuery({ queryKey: ['wedding-guestbook'], queryFn: getGuestbook });
 }
 
 export function useApproveGuestbook() {
-  const client = useAuthenticatedSupabase();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ entryId, approved }: { entryId: string; approved: boolean }) =>
-      approveGuestbookEntry(client, entryId, approved),
+      approveGuestbookEntry(entryId, approved),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['wedding-guestbook'] }),
   });
 }

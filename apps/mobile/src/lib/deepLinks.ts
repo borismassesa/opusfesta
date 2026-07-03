@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { getMyWeddingWebsite } from './api/wedding-website';
 import { toSegments } from './deepLinkSegments';
 
 export type DeepLinkTarget = { pathname: string; params?: Record<string, string> };
@@ -34,8 +33,8 @@ export async function resolveDeepLink(
 
   if (first === 'w' && second) {
     if (!authedClient) return null;
-    const site = await getMyWeddingWebsite(authedClient);
-    return site?.slug === second ? { pathname: '/website/preview' } : null;
+    const { data } = await authedClient.from('couple_profiles').select('public_slug').maybeSingle();
+    return data?.public_slug === second ? { pathname: '/website/preview' } : null;
   }
 
   return null;

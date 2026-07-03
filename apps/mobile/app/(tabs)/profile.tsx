@@ -2,17 +2,22 @@ import { View, Text, Pressable, Switch, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { useWeddingWebsite, useUpdateWebsite } from '@/hooks/useWeddingWebsite';
-import { useOpusFestaAuth } from '@/lib/auth';
-import { WEDDING_SECTIONS } from '@/constants/wedding-sections';
+import {
+  useWeddingWebsite,
+  usePublishWebsite,
+  useUnpublishWebsite,
+  useSaveWebsiteMeta,
+} from '@/hooks/useWeddingWebsite';
+import { WEBSITE_PAGES } from '@/constants/wedding-sections';
 import { editorial, shadowSoft, shadowSoftSm } from '@/constants/theme';
-import type { WeddingWebsiteSection } from '@/types/wedding-website';
+import type { BuilderPage } from '@/types/site-doc';
 
 export default function WebsiteTabScreen() {
   const router = useRouter();
-  const { user } = useOpusFestaAuth();
   const { data: website, isLoading } = useWeddingWebsite();
-  const updateWebsite = useUpdateWebsite();
+  const publishWebsite = usePublishWebsite();
+  const unpublishWebsite = useUnpublishWebsite();
+  const saveMeta = useSaveWebsiteMeta();
 
   if (isLoading) {
     return (
@@ -25,7 +30,7 @@ export default function WebsiteTabScreen() {
   }
 
   // No website yet → Empty state CTA
-  if (!website) {
+  if (!website?.doc) {
     return (
       <ScreenWrapper>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
@@ -96,20 +101,22 @@ export default function WebsiteTabScreen() {
   }
 
   // Website exists → Dashboard
-  const sections: WeddingWebsiteSection[] = website.wedding_website_sections ?? [];
-  const publishedCount = sections.filter((s: WeddingWebsiteSection) => s.is_published).length;
-  const sortedSections = [...sections].sort(
-    (a: WeddingWebsiteSection, b: WeddingWebsiteSection) => a.sort_order - b.sort_order,
-  );
+  const doc = website.doc;
+  const pages = doc.meta.pages;
+  const visibleCount = pages.filter((p) => p.visible).length;
+  const isPublished = !!website.publishedAt;
 
   const handleTogglePublish = () => {
-    updateWebsite.mutate({
-      websiteId: website.id,
-      updates: {
-        is_published: !website.is_published,
-        ...(website.is_published ? {} : { published_at: new Date().toISOString() }),
-      },
-    });
+    if (isPublished) {
+      unpublishWebsite.mutate();
+    } else {
+      publishWebsite.mutate(doc);
+    }
+  };
+
+  const handleTogglePage = (key: BuilderPage['key']) => {
+    const nextPages = pages.map((p) => (p.key === key ? { ...p, visible: !p.visible } : p));
+    saveMeta.mutate({ doc, metaPatch: { pages: nextPages } });
   };
 
   return (
@@ -165,7 +172,7 @@ export default function WebsiteTabScreen() {
           ]}
         >
           <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer }}>
-            {publishedCount}
+            {visibleCount}
           </Text>
           <Text
             style={{
@@ -177,41 +184,11 @@ export default function WebsiteTabScreen() {
               marginTop: 4,
             }}
           >
-            Sections
-          </Text>
-        </View>
-        <View
-          style={[
-            {
-              flex: 1,
-              backgroundColor: editorial.surfaceContainerLowest,
-              padding: 16,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-              alignItems: 'center',
-            },
-            shadowSoftSm,
-          ]}
-        >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer }}>
-            {website.view_count}
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: editorial.onSurfaceVariant,
-              marginTop: 4,
-            }}
-          >
-            Views
+            Pages
           </Text>
         </View>
         <Pressable
-          onPress={() => router.push('/website/rsvp-list')}
+          onPress={() => router.push('/planning/guests')}
           style={[
             {
               flex: 1,
@@ -265,18 +242,18 @@ export default function WebsiteTabScreen() {
               width: 8,
               height: 8,
               borderRadius: 4,
-              backgroundColor: website.is_published ? '#16a34a' : editorial.outline,
+              backgroundColor: isPublished ? '#16a34a' : editorial.outline,
             }}
           />
           <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: editorial.onSurface }}>
-            {website.is_published ? 'Published' : 'Unpublished'}
+            {isPublished ? 'Published' : 'Unpublished'}
           </Text>
         </View>
         <Switch
-          value={website.is_published}
+          value={isPublished}
           onValueChange={handleTogglePublish}
           trackColor={{ false: editorial.surfaceContainerHighest, true: editorial.primaryFixed }}
-          thumbColor={website.is_published ? editorial.primaryContainer : editorial.surfaceContainerLowest}
+          thumbColor={isPublished ? editorial.primaryContainer : editorial.surfaceContainerLowest}
         />
       </View>
 
@@ -349,25 +326,34 @@ export default function WebsiteTabScreen() {
         </Pressable>
       </View>
 
-      {/* Section list */}
+      {/* Pages list */}
       <Text
         style={{
           fontFamily: 'SpaceGrotesk-Bold',
           fontSize: 16,
           color: editorial.onSurface,
+          marginBottom: 4,
+        }}
+      >
+        Pages
+      </Text>
+      <Text
+        style={{
+          fontFamily: 'WorkSans-Regular',
+          fontSize: 12,
+          color: editorial.onSurfaceVariant,
           marginBottom: 12,
         }}
       >
-        Sections
+        Choose which pages show on your public website
       </Text>
       <View style={{ gap: 8 }}>
-        {sortedSections.map((section: WeddingWebsiteSection) => {
-          const config = WEDDING_SECTIONS.find((s) => s.key === section.section_key);
-          if (!config) return null;
+        {WEBSITE_PAGES.map((config) => {
+          const page = pages.find((p) => p.key === config.key);
+          const visible = page?.visible ?? true;
           return (
-            <Pressable
-              key={section.id}
-              onPress={() => router.push(`/website/section/${section.section_key}`)}
+            <View
+              key={config.key}
               style={[
                 {
                   flexDirection: 'row',
@@ -408,11 +394,16 @@ export default function WebsiteTabScreen() {
                     marginTop: 2,
                   }}
                 >
-                  {section.is_published ? 'Visible' : 'Hidden'}
+                  {visible ? 'Visible' : 'Hidden'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={editorial.outline} />
-            </Pressable>
+              <Switch
+                value={visible}
+                onValueChange={() => handleTogglePage(config.key)}
+                trackColor={{ false: editorial.surfaceContainerHighest, true: editorial.primaryFixed }}
+                thumbColor={visible ? editorial.primaryContainer : editorial.surfaceContainerLowest}
+              />
+            </View>
           );
         })}
       </View>

@@ -1,19 +1,37 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { generateSlug } from './wedding-website';
+import { buildDefaultSiteDoc } from './wedding-website';
 
-test('joins both partner names into a lowercase, hyphenated slug', () => {
-  assert.equal(generateSlug('Amara', 'Tumaini'), 'amara-and-tumaini');
+test('buildDefaultSiteDoc seeds meta from the given names and preset', () => {
+  const doc = buildDefaultSiteDoc('Amara', 'Tumaini', 'serengeti');
+  assert.equal(doc.title, 'Amara & Tumaini');
+  assert.equal(doc.meta.partnerA, 'Amara');
+  assert.equal(doc.meta.partnerB, 'Tumaini');
+  assert.equal(doc.meta.presetId, 'serengeti');
+  assert.equal(doc.meta.layoutId, 'banner');
 });
 
-test('falls back to a single name when the second partner is omitted', () => {
-  assert.equal(generateSlug('Amara'), 'amara');
+test('buildDefaultSiteDoc defaults the welcome message when none is given', () => {
+  const doc = buildDefaultSiteDoc('Amara', 'Tumaini', 'tanzanite');
+  assert.equal(doc.meta.welcome, "We're getting married!");
 });
 
-test('strips punctuation and collapses whitespace', () => {
-  assert.equal(generateSlug("O'Brien & Sons", 'Zawadi   Mwangi'), 'o-brien-sons-and-zawadi-mwangi');
+test('buildDefaultSiteDoc accepts a custom welcome message', () => {
+  const doc = buildDefaultSiteDoc('Amara', 'Tumaini', 'kanga', 'Karibu!');
+  assert.equal(doc.meta.welcome, 'Karibu!');
 });
 
-test('trims leading and trailing separators', () => {
-  assert.equal(generateSlug('  Amara  ', '  Tumaini  '), 'amara-and-tumaini');
+test('buildDefaultSiteDoc seeds all 8 content pages visible except rsvp', () => {
+  const doc = buildDefaultSiteDoc('Amara', 'Tumaini', 'tanzanite');
+  assert.equal(doc.meta.pages.length, 8);
+  const rsvp = doc.meta.pages.find((p) => p.key === 'rsvp');
+  assert.equal(rsvp?.visible, false);
+  const others = doc.meta.pages.filter((p) => p.key !== 'rsvp');
+  assert.ok(others.every((p) => p.visible));
+});
+
+test('buildDefaultSiteDoc seeds a non-empty sections array (satisfies the live publish guard)', () => {
+  const doc = buildDefaultSiteDoc('Amara', 'Tumaini', 'serengeti');
+  assert.ok(Array.isArray(doc.sections));
+  assert.ok(doc.sections.length > 0);
 });

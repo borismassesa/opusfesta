@@ -2,13 +2,12 @@ import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '@/components/layout/Header';
-import { useWeddingWebsite, useGuestbook, useApproveGuestbook } from '@/hooks/useWeddingWebsite';
+import { useGuestbook, useApproveGuestbook } from '@/hooks/useWeddingWebsite';
 import { colors, editorial } from '@/constants/theme';
 import type { GuestbookEntry } from '@/types/wedding-website';
 
 export default function GuestbookManageScreen() {
-  const { data: website } = useWeddingWebsite();
-  const { data: entries = [], isLoading } = useGuestbook(website?.id);
+  const { data: entries = [], isLoading } = useGuestbook();
   const approve = useApproveGuestbook();
 
   return (

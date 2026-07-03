@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
+import { getMyUserId } from '@/lib/api/currentUser';
 
 export function useCoupleProfile() {
   const client = useAuthenticatedSupabase();
@@ -19,9 +20,11 @@ export function useUpdateCoupleProfile() {
 
   return useMutation({
     mutationFn: async (updates: Record<string, unknown>) => {
+      const userId = await getMyUserId(client);
       const { data, error } = await client
         .from('couple_profiles')
         .update(updates)
+        .eq('user_id', userId)
         .select()
         .single();
       if (error) throw error;

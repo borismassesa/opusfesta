@@ -6,11 +6,11 @@ import { Header } from '@/components/layout/Header';
 import { useWeddingWebsite } from '@/hooks/useWeddingWebsite';
 import { colors, editorial } from '@/constants/theme';
 
-const BASE_URL = 'https://opusfesta.com/w';
+const BASE_URL = 'https://opuspass.opusfesta.com/w';
 
 export default function ShareScreen() {
   const { data: website } = useWeddingWebsite();
-  const url = website ? `${BASE_URL}/${website.slug}` : '';
+  const url = website?.publicSlug ? `${BASE_URL}/${website.publicSlug}` : '';
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(url);
