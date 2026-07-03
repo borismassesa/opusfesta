@@ -7,7 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getVendorsByCategory, searchVendors } from '@/lib/api/vendors';
 import { formatCompactCurrencyRange } from '@opusfesta/lib';
-import { editorial, shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
+import { shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -34,6 +35,7 @@ const BROWSE_CATEGORIES: {
 const EMOJI_MAP: Record<string, string> = {};
 
 export default function CategoriesScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { category: initialCategory } = useLocalSearchParams<{ category?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,9 +102,8 @@ export default function CategoriesScreen() {
               </Text>
               <Text
                 style={{
-                  fontFamily: 'SpaceGrotesk-Bold',
+                  fontFamily: 'PlayfairDisplay-Bold',
                   fontSize: 26,
-                  letterSpacing: -0.5,
                   color: editorial.onSurface,
                 }}
               >
@@ -203,7 +204,9 @@ export default function CategoriesScreen() {
                           fontFamily: 'WorkSans-Bold',
                           fontSize: 10,
                           letterSpacing: 0.5,
-                          color: isActive ? '#fff' : editorial.onSurface,
+                          // cat.bg is a fixed purpleTints tint that never flips in dark
+                          // mode, so its label must stay fixed too (matches cat.iconColor).
+                          color: isActive ? '#fff' : purpleTints[900],
                           marginTop: 6,
                           textAlign: 'center',
                         }}
@@ -547,7 +550,7 @@ export default function CategoriesScreen() {
             <Ionicons name="search-outline" size={48} color={editorial.outlineVariant} />
             <Text
               style={{
-                fontFamily: 'SpaceGrotesk-Bold',
+                fontFamily: 'PlayfairDisplay-Bold',
                 fontSize: 18,
                 color: editorial.onSurface,
                 marginTop: 16,

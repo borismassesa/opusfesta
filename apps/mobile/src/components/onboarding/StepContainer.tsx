@@ -2,7 +2,7 @@ import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView, Imag
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 const logoText = require('../../../assets/images/logo-text.png');
 
@@ -34,6 +34,7 @@ export function StepContainer({
   showLogo = true,
 }: StepContainerProps) {
   const router = useRouter();
+  const { editorial } = useTheme();
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
@@ -77,7 +78,7 @@ export function StepContainer({
 
         {/* ─── Question ─── */}
         <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, letterSpacing: -0.8, textTransform: 'uppercase', color: editorial.onSurface, lineHeight: 32, marginBottom: 6 }}>
+          <Text style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 28, textTransform: 'uppercase', color: editorial.onSurface, lineHeight: 32, marginBottom: 6 }}>
             {title}
           </Text>
           {subtitle && (

@@ -8,7 +8,8 @@ import { CategoryPill } from '@/components/ui/CategoryPill';
 import { VendorCard } from '@/components/vendors/VendorCard';
 import { useOpusFestaAuth } from '@/lib/auth';
 import { getFeaturedVendors } from '@/lib/api/vendors';
-import { editorial, shadowSoftSm } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 // Keys are the actual `vendors.category` DB values — see VENDOR_CATEGORIES in constants/theme.ts.
 const CATEGORIES: { label: string; key: string | null }[] = [
@@ -20,6 +21,7 @@ const CATEGORIES: { label: string; key: string | null }[] = [
 ];
 
 export default function HomeScreen() {
+  const { editorial } = useTheme();
   const { user } = useOpusFestaAuth();
   const router = useRouter();
 
@@ -44,9 +46,8 @@ export default function HomeScreen() {
           </Text>
           <Text
             style={{
-              fontFamily: 'SpaceGrotesk-Bold',
+              fontFamily: 'PlayfairDisplay-Bold',
               fontSize: 24,
-              letterSpacing: -0.5,
               color: editorial.onSurface,
             }}
           >

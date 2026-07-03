@@ -3,12 +3,14 @@ import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial, shadowSoft } from '@/constants/theme';
+import { shadowSoft } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { useCoupleOnboarding } from './_layout';
 
 export default function CongratsScreen() {
   const router = useRouter();
   const { data } = useCoupleOnboarding();
+  const { editorial } = useTheme();
 
   const partner1 = data.names?.partner1FirstName || 'You';
   const partner2 = data.names?.partner2FirstName || '';
@@ -60,10 +62,9 @@ export default function CongratsScreen() {
         {/* Headline */}
         <Text
           style={{
-            fontFamily: 'SpaceGrotesk-Bold',
+            fontFamily: 'PlayfairDisplay-Bold',
             fontSize: 32,
             lineHeight: 36,
-            letterSpacing: -1,
             color: editorial.onSurface,
             textAlign: 'center',
           }}

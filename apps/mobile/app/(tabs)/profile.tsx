@@ -9,10 +9,12 @@ import {
   useSaveWebsiteMeta,
 } from '@/hooks/useWeddingWebsite';
 import { WEBSITE_PAGES } from '@/constants/wedding-sections';
-import { editorial, shadowSoft, shadowSoftSm } from '@/constants/theme';
+import { shadowSoft, shadowSoftSm } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import type { BuilderPage } from '@/types/site-doc';
 
 export default function WebsiteTabScreen() {
+  const { editorial } = useTheme();
   const router = useRouter();
   const { data: website, isLoading } = useWeddingWebsite();
   const publishWebsite = usePublishWebsite();
@@ -52,9 +54,8 @@ export default function WebsiteTabScreen() {
           </View>
           <Text
             style={{
-              fontFamily: 'SpaceGrotesk-Bold',
+              fontFamily: 'PlayfairDisplay-Bold',
               fontSize: 22,
-              letterSpacing: -0.5,
               color: editorial.onSurface,
               textAlign: 'center',
               marginBottom: 8,
@@ -125,9 +126,8 @@ export default function WebsiteTabScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <Text
           style={{
-            fontFamily: 'SpaceGrotesk-Bold',
+            fontFamily: 'PlayfairDisplay-Bold',
             fontSize: 22,
-            letterSpacing: -0.5,
             color: editorial.onSurface,
           }}
         >

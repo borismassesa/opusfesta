@@ -1,7 +1,8 @@
 import { View, Text, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial, shadowSoftPrimary } from '@/constants/theme';
+import { shadowSoftPrimary } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 import { EditorialHeader } from './EditorialHeader';
 import { EditorialProgress } from './EditorialProgress';
 
@@ -38,6 +39,7 @@ export function EditorialStepContainer({
   showSkip = false,
   onSkip,
 }: EditorialStepContainerProps) {
+  const { editorial } = useTheme();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
       <KeyboardAvoidingView
@@ -56,10 +58,9 @@ export function EditorialStepContainer({
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
           <Text
             style={{
-              fontFamily: 'SpaceGrotesk-Bold',
+              fontFamily: 'PlayfairDisplay-Bold',
               fontSize: 30,
               lineHeight: 34,
-              letterSpacing: -0.8,
               textTransform: 'uppercase',
               color: editorial.onSurface,
             }}

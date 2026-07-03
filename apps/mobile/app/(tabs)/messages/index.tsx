@@ -4,9 +4,10 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { ConversationItem } from '@/components/messages/ConversationItem';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getConversations } from '@/lib/api/messages';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 export default function MessagesScreen() {
+  const { editorial } = useTheme();
   const client = useAuthenticatedSupabase();
 
   const { data: conversations, isLoading } = useQuery({
@@ -28,9 +29,8 @@ export default function MessagesScreen() {
     <ScreenWrapper scrollable={false}>
       <Text
         style={{
-          fontFamily: 'SpaceGrotesk-Bold',
+          fontFamily: 'PlayfairDisplay-Bold',
           fontSize: 22,
-          letterSpacing: -0.5,
           color: editorial.onSurface,
           marginBottom: 20,
         }}

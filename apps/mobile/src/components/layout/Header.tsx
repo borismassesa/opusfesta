@@ -1,7 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { editorial } from '@/constants/theme';
+import { useTheme } from '@/theme/useTheme';
 
 interface HeaderProps {
   title: string;
@@ -17,6 +17,7 @@ export function Header({
   rightAction,
 }: HeaderProps) {
   const router = useRouter();
+  const { editorial } = useTheme();
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -40,9 +41,8 @@ export function Header({
           )}
           <Text
             style={{
-              fontFamily: 'SpaceGrotesk-Bold',
+              fontFamily: 'PlayfairDisplay-Bold',
               fontSize: 24,
-              letterSpacing: -0.5,
               color: editorial.onSurface,
             }}
             numberOfLines={1}

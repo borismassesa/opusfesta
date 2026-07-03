@@ -50,10 +50,9 @@ export default function WelcomeScreen() {
         <View style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
           <Text
             style={{
-              fontFamily: 'SpaceGrotesk-Bold',
+              fontFamily: 'PlayfairDisplay-Bold',
               fontSize: 32,
               lineHeight: 38,
-              letterSpacing: -1,
               color: '#fff',
             }}
           >
