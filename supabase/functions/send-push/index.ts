@@ -15,7 +15,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 type MessageEvent = { event: "message"; messageId: string };
 type InquiryResponseEvent = { event: "inquiry_response"; inquiryId: string };
-type SendPushBody = MessageEvent | InquiryResponseEvent;
+type InquiryMessageEvent = { event: "inquiry_message"; messageId: string };
+type SendPushBody = MessageEvent | InquiryResponseEvent | InquiryMessageEvent;
 
 interface PushTarget {
   title: string;
@@ -83,6 +84,57 @@ async function resolveMessagePush(
     body,
     data,
     recipientUserIds: [thread.user_id as string],
+  };
+}
+
+// inquiry_messages RLS is USING (false) for every client role, so this event
+// is only accepted from service-role callers (the inquiry-messages function
+// and any server-side route holding the key).
+async function resolveInquiryMessagePush(
+  service: ReturnType<typeof createClient>,
+  messageId: string,
+): Promise<PushTarget | null> {
+  const { data: message } = await service
+    .from("inquiry_messages")
+    .select("inquiry_id, sender_type, sender_name, content")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (!message) return null;
+
+  const { data: inquiry } = await service
+    .from("inquiries")
+    .select("user_id, vendor_id")
+    .eq("id", message.inquiry_id)
+    .maybeSingle();
+  if (!inquiry) return null;
+
+  const body = String(message.content).slice(0, 140);
+  const data = { type: "inquiry", inquiryId: message.inquiry_id as string };
+
+  if (message.sender_type === "vendor") {
+    // Vendor replied — notify the couple, if the inquiry has an account.
+    if (!inquiry.user_id) return null;
+    return {
+      title: (message.sender_name as string) ?? "New message",
+      body,
+      data,
+      recipientUserIds: [inquiry.user_id as string],
+    };
+  }
+
+  // Couple replied — notify active vendor members.
+  const { data: members } = await service
+    .from("vendor_memberships")
+    .select("user_id")
+    .eq("vendor_id", inquiry.vendor_id)
+    .eq("status", "active");
+  const recipientUserIds = (members ?? []).map((m) => m.user_id as string);
+  if (!recipientUserIds.length) return null;
+  return {
+    title: (message.sender_name as string) ?? "New message",
+    body,
+    data,
+    recipientUserIds,
   };
 }
 
@@ -158,6 +210,15 @@ Deno.serve(async (req: Request) => {
     const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     if (!isServiceRole) {
+      // inquiry_messages is RLS-blocked for every client role, so no caller
+      // probe can validate this event — service-role only.
+      if (body.event === "inquiry_message") {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       // Verify the caller can actually see the referenced row (RLS-gated)
       // before dispatching anything on their behalf. For inquiry_response
       // this lets vendor members (is_vendor_member RLS on inquiries) notify
@@ -181,7 +242,9 @@ Deno.serve(async (req: Request) => {
     const target =
       body.event === "message"
         ? await resolveMessagePush(service, body.messageId)
-        : await resolveInquiryResponsePush(service, body.inquiryId);
+        : body.event === "inquiry_message"
+          ? await resolveInquiryMessagePush(service, body.messageId)
+          : await resolveInquiryResponsePush(service, body.inquiryId);
 
     if (!target) {
       return new Response(JSON.stringify({ sent: 0 }), {
