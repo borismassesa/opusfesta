@@ -7,7 +7,14 @@ const MY_VENDOR_COLUMNS = `
   social_links, packages, onboarding_status, created_at, updated_at
 `;
 
-export async function getMyVendor(client: SupabaseClient): Promise<VendorRow | null> {
+export type VendorMemberRole = 'owner' | 'manager' | 'staff';
+
+export interface MyVendor {
+  vendor: VendorRow;
+  myRole: VendorMemberRole;
+}
+
+export async function getMyVendor(client: SupabaseClient): Promise<MyVendor | null> {
   // Unlike couple_profiles/wedding_websites, `vendors` SELECT RLS is public
   // (anyone can browse any vendor), so it won't narrow an unfiltered query
   // down to "mine" — we must filter by user_id explicitly. Clerk's id isn't
@@ -23,7 +30,33 @@ export async function getMyVendor(client: SupabaseClient): Promise<VendorRow | n
     .maybeSingle();
 
   if (error) throw error;
-  return data as VendorRow | null;
+  if (data) return { vendor: data as VendorRow, myRole: 'owner' };
+
+  // Staff/manager accounts have no vendors row of their own — only a
+  // vendor_memberships row (RLS lets a user read their own memberships).
+  // Take the first active membership; multi-vendor membership isn't a
+  // supported product state yet.
+  const { data: membership, error: membershipError } = await client
+    .from('vendor_memberships')
+    .select('vendor_id, role')
+    .eq('user_id', me.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (membershipError) throw membershipError;
+  if (!membership) return null;
+
+  const { data: memberVendor, error: memberVendorError } = await client
+    .from('vendors')
+    .select(MY_VENDOR_COLUMNS)
+    .eq('id', membership.vendor_id)
+    .maybeSingle();
+
+  if (memberVendorError) throw memberVendorError;
+  if (!memberVendor) return null;
+  return { vendor: memberVendor as VendorRow, myRole: membership.role as VendorMemberRole };
 }
 
 export async function getVendorDashboardStats(client: SupabaseClient, vendorId: string) {

@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { getMyVendor } from '@/lib/api/vendorProfile';
+import type { VendorMemberRole } from '@/lib/api/vendorProfile';
 import type { VendorRow } from '@/types/vendor';
+
+export type { VendorMemberRole };
 
 export type VendorApprovalState =
   | { kind: 'loading' }
@@ -17,12 +20,13 @@ function toApprovalState(vendor: VendorRow | null | undefined, isLoading: boolea
 }
 
 /**
- * The signed-in vendor's own storefront row + their approval state. A vendor
- * row is created during vendor onboarding (one per user, unique on user_id),
- * so `vendor` should only stay null past initial load for an account that
- * completed onboarding as 'vendor' in Clerk but somehow has no row —
- * treated as still-loading rather than a hard error, since retrying the
- * query is more useful than showing a dead end.
+ * The signed-in vendor's own storefront row + their approval state + their
+ * role on the account. Owners resolve via vendors.user_id; staff/manager
+ * accounts resolve via their active vendor_memberships row. `vendor` should
+ * only stay null past initial load for an account that completed onboarding
+ * as 'vendor' in Clerk but has neither a vendors row nor an active
+ * membership — treated as still-loading rather than a hard error, since
+ * retrying the query is more useful than showing a dead end.
  */
 export function useCurrentVendor() {
   const client = useAuthenticatedSupabase();
@@ -32,8 +36,9 @@ export function useCurrentVendor() {
   });
 
   return {
-    vendor: query.data ?? null,
-    approvalState: toApprovalState(query.data, query.isLoading),
+    vendor: query.data?.vendor ?? null,
+    myRole: query.data?.myRole ?? null,
+    approvalState: toApprovalState(query.data?.vendor, query.isLoading),
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
