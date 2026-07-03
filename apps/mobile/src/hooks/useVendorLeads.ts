@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
-import { getVendorLeads, getVendorLead, respondToLead, updateLeadStatus } from '@/lib/api/vendorLeads';
+import { getVendorLeads, getVendorLead, updateLeadStatus } from '@/lib/api/vendorLeads';
 import { sendProposal, acceptCounter, type ProposalDraft } from '@/lib/api/vendorProposal';
 import type { InquiryRow, InquiryStatus } from '@/types/vendor';
 
@@ -29,16 +29,6 @@ function useInvalidateLeads() {
     queryClient.invalidateQueries({ queryKey: ['vendor-lead', id] });
     queryClient.invalidateQueries({ queryKey: ['vendor-dashboard'] });
   };
-}
-
-export function useRespondToLead() {
-  const client = useAuthenticatedSupabase();
-  const invalidate = useInvalidateLeads();
-
-  return useMutation({
-    mutationFn: ({ id, response }: { id: string; response: string }) => respondToLead(client, id, response),
-    onSuccess: (data) => invalidate(data.id),
-  });
 }
 
 export function useUpdateLeadStatus() {

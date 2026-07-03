@@ -37,18 +37,6 @@ export async function getVendorLead(client: SupabaseClient, id: string): Promise
   return data as InquiryRow;
 }
 
-export async function respondToLead(client: SupabaseClient, id: string, response: string): Promise<InquiryRow> {
-  const { data, error } = await client
-    .from('inquiries')
-    .update({ vendor_response: response, status: 'responded', responded_at: new Date().toISOString() })
-    .eq('id', id)
-    .select(INQUIRY_COLUMNS)
-    .single();
-
-  if (error) throw error;
-  return data as InquiryRow;
-}
-
 export async function updateLeadStatus(
   client: SupabaseClient,
   id: string,

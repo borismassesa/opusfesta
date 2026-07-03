@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Alert, TextInput, type StyleProp, type ViewStyle } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '@opusfesta/lib';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { useVendorLead, useRespondToLead, useUpdateLeadStatus, useSendProposal, useAcceptCounter } from '@/hooks/useVendorLeads';
+import { useVendorLead, useUpdateLeadStatus, useSendProposal, useAcceptCounter } from '@/hooks/useVendorLeads';
+import { useInquiryMessages, useSendInquiryMessage } from '@/hooks/useInquiryMessages';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { leadStatusStyle } from '@/lib/vendorPipeline';
 import { editorial, shadowSoftSm } from '@/constants/theme';
+import type { InquiryMessage } from '@/lib/api/inquiryMessages';
 import type { InquiryRow } from '@/types/vendor';
 
 function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
@@ -266,13 +268,124 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
   );
 }
 
+function ThreadSection({ lead }: { lead: InquiryRow }) {
+  const { data: messages, isLoading } = useInquiryMessages(lead.id);
+  const sendMutation = useSendInquiryMessage();
+  const [draft, setDraft] = useState('');
+
+  // Show the single-shot vendor_response as a legacy bubble until a real
+  // vendor message exists, same as the couple-facing apps do.
+  const thread = useMemo<InquiryMessage[]>(() => {
+    const list = messages ?? [];
+    if (lead.vendor_response && list.every((m) => m.sender_type !== 'vendor')) {
+      return [
+        ...list,
+        {
+          id: 'legacy-reply',
+          sender_type: 'vendor' as const,
+          sender_name: 'You',
+          content: lead.vendor_response,
+          attachments: null,
+          created_at: lead.responded_at ?? lead.created_at,
+          read_at: null,
+        },
+      ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }
+    return list;
+  }, [messages, lead.vendor_response, lead.responded_at, lead.created_at]);
+
+  const canCompose = lead.status !== 'declined' && lead.status !== 'closed';
+
+  const submit = () => {
+    const content = draft.trim();
+    if (!content) return;
+    sendMutation.mutate({ inquiryId: lead.id, content }, { onSuccess: () => setDraft('') });
+  };
+
+  return (
+    <>
+      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
+        Conversation
+      </Text>
+      <View style={cardStyle}>
+        {isLoading ? (
+          <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ paddingVertical: 20 }} />
+        ) : thread.length === 0 ? (
+          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+            No messages yet.
+          </Text>
+        ) : (
+          thread.map((message) => {
+            const mine = message.sender_type === 'vendor';
+            return (
+              <View
+                key={message.id}
+                style={{
+                  alignSelf: mine ? 'flex-end' : 'flex-start',
+                  maxWidth: '85%',
+                  backgroundColor: mine ? editorial.tertiaryFixed : editorial.surfaceContainerLow,
+                  borderRadius: 14,
+                  padding: 12,
+                  marginBottom: 8,
+                }}
+              >
+                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 0.5, color: editorial.onSurfaceVariant, marginBottom: 2 }}>
+                  {mine ? 'You' : message.sender_name}
+                </Text>
+                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, lineHeight: 19 }}>
+                  {message.content}
+                </Text>
+              </View>
+            );
+          })
+        )}
+
+        {canCompose && (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Write a message…"
+              placeholderTextColor={editorial.onSurfaceVariant}
+              multiline
+              style={{
+                flex: 1,
+                backgroundColor: editorial.surfaceContainerLow,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: editorial.outlineVariant,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                fontFamily: 'WorkSans-Regular',
+                fontSize: 14,
+                color: editorial.onSurface,
+                maxHeight: 100,
+              }}
+            />
+            <Pressable
+              disabled={!draft.trim() || sendMutation.isPending}
+              onPress={submit}
+              style={{
+                backgroundColor: editorial.primaryContainer,
+                borderRadius: 12,
+                padding: 10,
+                opacity: !draft.trim() || sendMutation.isPending ? 0.5 : 1,
+              }}
+            >
+              <Ionicons name="send" size={16} color="#fff" />
+            </Pressable>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: lead, isLoading } = useVendorLead(id);
-  const respondMutation = useRespondToLead();
   const statusMutation = useUpdateLeadStatus();
-  const [response, setResponse] = useState('');
 
   if (isLoading || !lead) {
     return (
@@ -343,120 +456,40 @@ export default function LeadDetailScreen() {
         {lead.location && <DetailRow icon="location-outline" label="Location" value={lead.location} />}
       </View>
 
-      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
-        Message
-      </Text>
-      <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            padding: 16,
-            marginBottom: 20,
-          },
-          shadowSoftSm,
-        ]}
-      >
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, lineHeight: 20 }}>
-          {lead.message}
-        </Text>
-      </View>
-
-      {lead.vendor_response && (
-        <>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
-            Your response
-          </Text>
-          <View
-            style={[
-              {
-                backgroundColor: editorial.tertiaryFixed,
-                borderRadius: 20,
-                padding: 16,
-                marginBottom: 20,
-              },
-            ]}
-          >
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, lineHeight: 20 }}>
-              {lead.vendor_response}
-            </Text>
-          </View>
-        </>
-      )}
-
       <ProposalSection lead={lead} />
 
+      <ThreadSection lead={lead} />
+
       {lead.status !== 'accepted' && lead.status !== 'declined' && lead.status !== 'closed' && (
-        <>
-          <TextInput
-            value={response}
-            onChangeText={setResponse}
-            placeholder="Write a response to this couple…"
-            placeholderTextColor={editorial.onSurfaceVariant}
-            multiline
-            style={{
-              backgroundColor: editorial.surfaceContainerLowest,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-              padding: 16,
-              minHeight: 90,
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 14,
-              color: editorial.onSurface,
-              marginBottom: 12,
-              textAlignVertical: 'top',
-            }}
-          />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
           <Pressable
-            disabled={!response.trim() || respondMutation.isPending}
-            onPress={() => respondMutation.mutate({ id: lead.id, response: response.trim() })}
+            disabled={statusMutation.isPending}
+            onPress={() => handleDecide('declined')}
             style={{
-              backgroundColor: editorial.primaryContainer,
+              flex: 1,
               borderRadius: 14,
               paddingVertical: 14,
               alignItems: 'center',
-              marginBottom: 12,
-              opacity: !response.trim() || respondMutation.isPending ? 0.5 : 1,
+              borderWidth: 1,
+              borderColor: editorial.outlineVariant,
             }}
           >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: '#fff' }}>
-              {respondMutation.isPending ? 'Sending…' : 'Send response'}
-            </Text>
+            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: editorial.onSurfaceVariant }}>Decline</Text>
           </Pressable>
-
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Pressable
-              disabled={statusMutation.isPending}
-              onPress={() => handleDecide('declined')}
-              style={{
-                flex: 1,
-                borderRadius: 14,
-                paddingVertical: 14,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-              }}
-            >
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: editorial.onSurfaceVariant }}>Decline</Text>
-            </Pressable>
-            <Pressable
-              disabled={statusMutation.isPending}
-              onPress={() => handleDecide('accepted')}
-              style={{
-                flex: 1,
-                borderRadius: 14,
-                paddingVertical: 14,
-                alignItems: 'center',
-                backgroundColor: editorial.onSurface,
-              }}
-            >
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: '#fff' }}>Accept</Text>
-            </Pressable>
-          </View>
-        </>
+          <Pressable
+            disabled={statusMutation.isPending}
+            onPress={() => handleDecide('accepted')}
+            style={{
+              flex: 1,
+              borderRadius: 14,
+              paddingVertical: 14,
+              alignItems: 'center',
+              backgroundColor: editorial.onSurface,
+            }}
+          >
+            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: '#fff' }}>Accept</Text>
+          </Pressable>
+        </View>
       )}
     </ScreenWrapper>
   );
