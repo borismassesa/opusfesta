@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { StepContainer } from '@/components/onboarding/StepContainer';
 import { PhotoUploader } from '@/components/onboarding/PhotoUploader';
+import { uploadToBucket } from '@/lib/storage';
 import { useVendorOnboarding } from './_layout';
 
 const MAX_RETRIES = 3;
@@ -28,30 +29,10 @@ export default function VendorStep4() {
     const uploaded: string[] = [];
 
     for (const uri of uris) {
-      try {
-        const filename = `${user?.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-        const blob = await fetch(uri).then((r) => r.blob());
-
-        const res = await fetch(
-          `${supabaseUrl}/storage/v1/object/vendor-portfolios/${filename}`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'image/jpeg',
-            },
-            body: blob,
-          },
-        );
-
-        if (res.ok) {
-          uploaded.push(
-            `${supabaseUrl}/storage/v1/object/public/vendor-portfolios/${filename}`,
-          );
-        }
-      } catch {
-        // Skip failed uploads — don't block onboarding
-      }
+      const filename = `${user?.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const url = await uploadToBucket('vendor-portfolios', filename, uri, token, supabaseUrl);
+      // Skip failed uploads — don't block onboarding
+      if (url) uploaded.push(url);
     }
 
     return uploaded;
