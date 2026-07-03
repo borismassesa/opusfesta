@@ -77,9 +77,26 @@ src/
 
 ## Testing
 
-Test files live next to the code they cover (`foo.ts` → `foo.test.ts`) and run via Node's
-built-in test runner through `tsx`, matching the convention in `apps/opus_admin`. Keep test
-targets free of `react-native`/`@clerk/clerk-expo` imports (even transitively) — those only
-load under the Metro/RN toolchain and will fail to parse under plain Node. If a module you want
-to test pulls one in (e.g. anything importing `src/lib/supabase.ts`), split the pure logic into
-its own file the way `src/lib/deepLinkSegments.ts` was split out of `src/lib/deepLinks.ts`.
+Two runners, split by file extension — `npm test` runs both:
+
+- **`*.test.ts` → Node** (`npm run test:node`): pure-logic tests via Node's built-in runner
+  through `tsx`, matching the convention in `apps/opus_admin`. Keep these targets free of
+  `react-native`/`@clerk/clerk-expo` imports (even transitively) — those only load under the
+  Metro/RN toolchain and will fail to parse under plain Node. If a module you want to test
+  pulls one in (e.g. anything importing `src/lib/supabase.ts`), split the pure logic into its
+  own file the way `src/lib/deepLinkSegments.ts` was split out of `src/lib/deepLinks.ts`.
+- **`*.test.tsx` → jest-expo** (`npm run test:jest`): anything needing the RN/Clerk/Supabase/
+  TanStack-Query machinery — hooks, components, screens. Use the `.tsx` extension even when a
+  test contains no JSX; the extension is what routes it to the right runner. Config lives in
+  `jest.config.js` (note the React-version forcing in `moduleNameMapper`, mirroring
+  `metro.config.js` — the monorepo hoists a different React for the web apps). `jest-expo` is
+  pinned exactly (no `~`/`^`): newer 54.x patches add a `react-server-dom-webpack` peer this
+  app doesn't want.
+
+Conventions for jest tests: mock the `@/lib/api/*` layer (not the whole Supabase SDK), mock
+`@/lib/supabase`'s `useAuthenticatedSupabase` with a stub, and render query/mutation hooks via
+`src/test/renderHookWithQueryClient.tsx` (fresh QueryClient, retries off, gc timers off; returns
+the client so you can spy on `invalidateQueries`). RTL v14's `render`/`renderHook` are async —
+always `await` them. For AsyncStorage, use the official mock
+(`@react-native-async-storage/async-storage/jest/async-storage-mock`); see
+`src/hooks/useChecklist.test.tsx`.

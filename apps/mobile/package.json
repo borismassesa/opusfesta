@@ -11,7 +11,9 @@
     "build": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "type-check": "tsc --noEmit",
-    "test": "tsx --test $(find src -name '*.test.ts')"
+    "test": "npm run test:node && npm run test:jest",
+    "test:node": "tsx --test $(find src -name '*.test.ts')",
+    "test:jest": "jest"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.3.0",
@@ -61,9 +63,14 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^29.5.14",
     "@types/node": "^25.5.0",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",
+    "jest": "^29.7.0",
+    "jest-expo": "54.0.13",
+    "react-test-renderer": "19.1.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.21.0",
     "typescript": "~5.9.2"
