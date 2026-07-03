@@ -144,6 +144,7 @@ export function DatePickerField({
                 onChange={handleIosChange}
                 minimumDate={minimumDate}
                 maximumDate={maximumDate}
+                themeVariant="light"
                 style={{ height: 216, alignSelf: 'stretch' }}
               />
             </View>
