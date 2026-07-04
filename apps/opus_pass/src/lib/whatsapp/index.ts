@@ -44,6 +44,50 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
   return crypto.timingSafeEqual(a, b)
 }
 
+/** A parsed outbound-message status update from the webhook. */
+export interface InboundStatus {
+  /** wamid of the OUTBOUND message this status refers to. */
+  wamid: string
+  status: 'sent' | 'delivered' | 'read' | 'failed'
+  /** Meta error detail, present on failed statuses (e.g. undeliverable number). */
+  error: string | null
+}
+
+const STATUS_VALUES = ['sent', 'delivered', 'read', 'failed'] as const
+
+/**
+ * Parse Meta webhook `statuses` events — the delivery lifecycle of messages WE
+ * sent (sent → delivered → read, or failed). Without these a message that Meta
+ * accepted but could not deliver (bad number, policy drop) looks "sent"
+ * forever; with them the log carries the real outcome and read receipts.
+ */
+export function parseStatusUpdates(body: unknown): InboundStatus[] {
+  const out: InboundStatus[] = []
+  const entries = (body as { entry?: unknown[] })?.entry
+  if (!Array.isArray(entries)) return out
+
+  for (const entry of entries) {
+    const changes = (entry as { changes?: unknown[] })?.changes
+    if (!Array.isArray(changes)) continue
+    for (const change of changes) {
+      const statuses = (change as { value?: { statuses?: unknown[] } })?.value?.statuses
+      if (!Array.isArray(statuses)) continue
+      for (const s of statuses as Record<string, unknown>[]) {
+        const wamid = typeof s.id === 'string' ? s.id : null
+        const status = typeof s.status === 'string' ? s.status : null
+        if (!wamid || !status || !STATUS_VALUES.includes(status as InboundStatus['status'])) continue
+        const errors = s.errors as { code?: number; title?: string; message?: string }[] | undefined
+        const first = errors?.[0]
+        const error = first
+          ? [first.code, first.title || first.message].filter(Boolean).join(': ') || null
+          : null
+        out.push({ wamid, status: status as InboundStatus['status'], error })
+      }
+    }
+  }
+  return out
+}
+
 /** Split a button payload "kind:token" into its parts. */
 function parsePayload(payload: string | undefined | null): { kind: ButtonKind | null; token: string | null } {
   if (!payload) return { kind: null, token: null }

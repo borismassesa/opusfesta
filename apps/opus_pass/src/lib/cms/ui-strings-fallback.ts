@@ -960,7 +960,6 @@ export interface DashboardSendStrings {
   targeted_title: string
   targeted_desc: string
   targeted_best_for: string
-  send_via_whatsapp: string
   remind_awaiting: string // {n}
   dryrun_pill: string
   dryrun_note: string
@@ -1005,6 +1004,59 @@ export interface DashboardSendStrings {
   toast_send_failed: string // {name}
   toast_nothing_sent: string
   send_failed_n: string // {n}
+  // Invite preview + test send
+  preview_button: string
+  preview_title: string
+  preview_note: string
+  preview_close: string
+  test_label: string
+  test_placeholder: string
+  test_send: string
+  test_sent: string
+  test_failed: string
+  // Bulk-send confirm dialog
+  confirm_title: string
+  confirm_recipients: string // {n}
+  confirm_credits: string // {n} {m}
+  confirm_cancel: string
+  confirm_confirm: string
+  // Send report drawer
+  results_title: string
+  results_sent: string
+  results_failed: string
+  results_skipped: string
+  results_blocked: string
+  results_retry: string
+  results_close: string
+  results_resend_tag: string
+  // Confirmed template variables ({{1}}/{{2}}/{{3}})
+  settings_legend: string
+  field_guest_label: string
+  field_host_label: string
+  field_category_label: string
+  field_category_other: string
+  settings_required_note: string
+  settings_edit: string
+  toast_settings_saved: string
+  // Table extras
+  add_number: string
+  save_number: string
+  row_send: string
+  row_resend: string
+  row_edit: string
+  add_guest: string
+  row_delete: string
+  row_delete_confirm: string
+  toast_guest_saved: string
+  toast_guest_removed: string
+  bulk_delete: string
+  bulk_delete_title: string
+  bulk_delete_body: string // {n}
+  bulk_delete_confirm: string
+  toast_guests_removed: string // {n}
+  selected_count: string // {n}
+  live_hint: string
+  send_all_notsent: string // {n}
 }
 
 export type UiStringsByArea = {
@@ -1795,7 +1847,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     targeted_desc:
       'Send each named guest their own card with Attend / Decline / View location buttons they tap right in WhatsApp, or as an SMS link, no app needed. Every send is tracked below.',
     targeted_best_for: 'Your real guest list. Accurate counts and per-guest status.',
-    send_via_whatsapp: 'Send via WhatsApp',
     remind_awaiting: 'Remind {n} awaiting',
     dryrun_pill: 'Dry run',
     dryrun_note:
@@ -1839,5 +1890,53 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_send_failed: 'Could not send to {name}. Check the number and try again.',
     toast_nothing_sent: 'Nothing was sent. Only confirmed guests with a phone number can receive invites.',
     send_failed_n: '{n} failed',
+    preview_button: 'Preview invite',
+    preview_title: 'What your guests receive',
+    preview_note: 'The exact WhatsApp message, built from your card and event details. Buttons work right inside WhatsApp.',
+    preview_close: 'Close',
+    test_label: 'Send a test to your own WhatsApp',
+    test_placeholder: 'e.g. 0712 345 678',
+    test_send: 'Send test',
+    test_sent: 'Test sent. Check your WhatsApp.',
+    test_failed: 'Test could not be sent',
+    confirm_title: 'Ready to send?',
+    confirm_recipients: '{n} guests will receive your invitation card on WhatsApp.',
+    confirm_credits: 'This uses {n} of your {m} remaining invites. Re-sends to already-invited guests are free.',
+    confirm_cancel: 'Not yet',
+    confirm_confirm: 'Send now',
+    results_title: 'Send report',
+    results_sent: 'Sent to WhatsApp',
+    results_failed: 'Failed',
+    results_skipped: 'No phone number',
+    results_blocked: 'Over quota',
+    results_retry: 'Retry failed',
+    results_close: 'Done',
+    results_resend_tag: 're-send',
+    settings_legend: 'Invitation details',
+    field_guest_label: 'Guest name (sample)',
+    field_host_label: 'From (host names)',
+    field_category_label: 'Event type (Swahili)',
+    field_category_other: 'Other: type it in',
+    settings_required_note: 'These appear in every invite. Confirm them before sending; you can change them any time.',
+    settings_edit: 'Edit',
+    toast_settings_saved: 'Invitation details saved',
+    add_number: 'Add number',
+    save_number: 'Save',
+    row_send: 'Send',
+    row_resend: 'Resend',
+    row_edit: 'Edit guest',
+    add_guest: 'Add guest',
+    row_delete: 'Remove guest',
+    row_delete_confirm: 'Sure?',
+    toast_guest_saved: 'Guest saved',
+    toast_guest_removed: 'Guest removed',
+    bulk_delete: 'Remove selected',
+    bulk_delete_title: 'Remove guests?',
+    bulk_delete_body: '{n} guests will be removed from your list, along with their invitation history. This cannot be undone.',
+    bulk_delete_confirm: 'Remove',
+    toast_guests_removed: '{n} removed',
+    selected_count: '{n} selected',
+    live_hint: 'Statuses update automatically',
+    send_all_notsent: 'Send to all not sent ({n})',
   },
 }

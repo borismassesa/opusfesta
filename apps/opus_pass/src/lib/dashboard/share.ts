@@ -141,6 +141,9 @@ export function normalizePhone(raw: string | null | undefined): string | null {
   if (digits.startsWith('+')) digits = digits.slice(1)
   // Tanzania local format 0XXXXXXXXX -> 255XXXXXXXXX
   if (digits.startsWith('0')) digits = `255${digits.slice(1)}`
+  // Tanzania mobile typed without the leading 0 (7XXXXXXXX / 6XXXXXXXX).
+  // Anything else must already carry its country code — we cannot guess it.
+  if (/^[67]\d{8}$/.test(digits)) digits = `255${digits}`
   return digits || null
 }
 
