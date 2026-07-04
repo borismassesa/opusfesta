@@ -425,11 +425,13 @@ export async function createGuest(input: GuestInput): Promise<string> {
     .single<{ id: string }>()
   if (error || !data) throw new Error(error?.message ?? 'Failed to create guest')
 
-  // Unified roster: default a new guest to EVERY event; an explicit eventIds
-  // list (the Guests form) still narrows it deliberately.
+  // Unified roster: a non-empty eventIds list (Guests form selection) narrows
+  // deliberately; ANYTHING else — undefined (quick-add) or [] (form saved with
+  // nothing ticked) — links the guest to every event. Zero-link guests are the
+  // drift that made the dashboard surfaces disagree.
   if (input.eventIds?.length) {
     await syncInvitations(user.id, data.id, input.eventIds)
-  } else if (input.eventIds === undefined) {
+  } else {
     await ensureInvitationsForAllEvents(user.id, data.id)
   }
   revalidateDashboard()
@@ -493,9 +495,30 @@ export async function bulkImportGuests(text: string, eventIds: string[] = []): P
 
   if (rows.length === 0) return 0
 
+  // One person, one row — mirror createGuest's duplicate guard: skip lines
+  // whose phone digits already exist on the roster or earlier in this batch.
+  const { data: existing } = await supabase
+    .from('guest_contacts')
+    .select('phone, whatsapp_phone')
+    .eq('user_id', user.id)
+  const seen = new Set(
+    (existing ?? [])
+      .flatMap((c) => [c.phone, c.whatsapp_phone])
+      .map((p) => (p ?? '').replace(/\D/g, ''))
+      .filter(Boolean),
+  )
+  const fresh = rows.filter((r) => {
+    const digits = (r.phone ?? '').replace(/\D/g, '')
+    if (!digits) return true
+    if (seen.has(digits)) return false
+    seen.add(digits)
+    return true
+  })
+  if (fresh.length === 0) return 0
+
   const { data, error } = await supabase
     .from('guest_contacts')
-    .insert(rows.map((r) => ({ user_id: user.id, ...r })))
+    .insert(fresh.map((r) => ({ user_id: user.id, ...r })))
     .select('id')
   if (error) throw new Error(error.message)
 
@@ -511,7 +534,7 @@ export async function bulkImportGuests(text: string, eventIds: string[] = []): P
     if (invErr) throw new Error(invErr.message)
   }
   revalidateDashboard()
-  return rows.length
+  return fresh.length
 }
 
 // ---------------------------------------------------------------- RSVPs (owner edit)
