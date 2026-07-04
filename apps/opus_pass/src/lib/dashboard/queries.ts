@@ -919,6 +919,9 @@ export interface WhatsAppEntitlement {
   coupleName: string
   /** Swahili event category noun for the template body ({{3}}), e.g. "harusi". */
   eventCategory: string
+  /** True once the couple has explicitly confirmed {{2}}/{{3}} — sends are
+   *  blocked in the UI until then. */
+  sendSettingsConfirmed: boolean
   /** guest_contact_ids already sent a WhatsApp invite (re-sends don't re-charge). */
   alreadySentIds: string[]
 }
@@ -937,10 +940,19 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
 
   const { data: profile } = await supabase
     .from('couple_profiles')
-    .select('whatsapp_phone, partner1_name, partner2_name')
+    .select('whatsapp_phone, partner1_name, partner2_name, invite_host_name, invite_event_category')
     .eq('user_id', user.id)
-    .maybeSingle<{ whatsapp_phone: string | null; partner1_name: string | null; partner2_name: string | null }>()
+    .maybeSingle<{
+      whatsapp_phone: string | null
+      partner1_name: string | null
+      partner2_name: string | null
+      invite_host_name: string | null
+      invite_event_category: string | null
+    }>()
   const coupleNames = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  // The couple's explicitly confirmed template values win over derived guesses.
+  const hostOverride = profile?.invite_host_name?.trim() || null
+  const categoryOverride = profile?.invite_event_category?.trim() || null
 
   // The couple's earliest-scheduled event, used both for the event-category
   // template variable ({{3}}) and as a coupleName fallback below.
@@ -952,13 +964,13 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     .order('starts_at', { ascending: true, nullsFirst: false })
     .limit(1)
     .maybeSingle<{ name: string | null; event_type: string }>()
-  const eventCategory = eventTypeLabelSw(primaryEvent?.event_type ?? 'other')
+  const eventCategory = categoryOverride ?? eventTypeLabelSw(primaryEvent?.event_type ?? 'other')
 
   // No partner names on the profile yet? Fall back to the event's own title
   // (e.g. "Asha & Juma's Wedding") before the generic "The Couple" placeholder.
-  const coupleName = coupleNames.length
-    ? coupleNames.join(' & ')
-    : primaryEvent?.name?.trim() || 'The Couple'
+  const coupleName =
+    hostOverride ??
+    (coupleNames.length ? coupleNames.join(' & ') : primaryEvent?.name?.trim() || 'The Couple')
 
   // Match paid orders to this couple: explicit user_id, or buyer email/phone.
   const ors = [`user_id.eq.${user.id}`]
@@ -992,7 +1004,8 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
   }
   const addOns = [...addOnSet]
 
-  // Used = distinct guests already sent a WhatsApp invite.
+  // Used = distinct guests already sent a REAL WhatsApp invite. Dry-run stub
+  // sends log fake wamid.STUB-* ids — they must never consume paid credits.
   const { data: sent } = await supabase
     .from('whatsapp_messages')
     .select('guest_contact_id')
@@ -1000,6 +1013,7 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     .eq('direction', 'out')
     .eq('kind', 'invite')
     .eq('status', 'sent')
+    .not('wamid', 'like', 'wamid.STUB-%')
   const alreadySentIds = [
     ...new Set((sent ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x))),
   ]
@@ -1015,6 +1029,7 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     addOns,
     coupleName,
     eventCategory,
+    sendSettingsConfirmed: Boolean(hostOverride && categoryOverride),
     alreadySentIds,
   }
 }
@@ -1044,6 +1059,9 @@ export interface SendInvitesData {
     eventName: string | null
     /** The primary event's type label (e.g. "Wedding") — the heading suffix. */
     eventTypeLabel: string | null
+    /** Swahili event-category noun (e.g. "harusi") — template {{3}}, used by the
+     *  in-page WhatsApp preview so it mirrors the real send exactly. */
+    eventCategorySw: string
     dateLabel: string | null
     venue: string | null
     cardTier: string | null
@@ -1059,6 +1077,11 @@ export interface SendInvitesData {
   quota: { used: number; purchased: number; remaining: number; hasPaidOrder: boolean }
   publicLink: { enabled: boolean; slug: string | null; url: string | null }
   whatsappLive: boolean
+  /** The couple's own WhatsApp number — prefills the "send a test" input. */
+  testPhone: string | null
+  /** Template {{2}}/{{3}} values. `confirmed` is false until the couple has
+   *  explicitly saved them — every send path requires that first. */
+  sendSettings: { hostName: string; eventCategory: string; confirmed: boolean }
   guests: SendGuestRow[]
 }
 
@@ -1151,6 +1174,7 @@ export async function getSendInvitesData(): Promise<SendInvitesData> {
       coupleName: entitlement.coupleName,
       eventName,
       eventTypeLabel: eventTypeLbl,
+      eventCategorySw: entitlement.eventCategory,
       dateLabel: formatLongDate(profile?.wedding_date ?? null) || null,
       venue: soonestVenue,
       cardTier: entitlement.cardTier,
@@ -1172,6 +1196,12 @@ export async function getSendInvitesData(): Promise<SendInvitesData> {
       url: publicInvite.slug ? `${origin}/i/${publicInvite.slug}` : null,
     },
     whatsappLive: getWhatsAppProvider().live,
+    testPhone: profile?.whatsapp_phone ?? null,
+    sendSettings: {
+      hostName: entitlement.coupleName,
+      eventCategory: entitlement.eventCategory,
+      confirmed: entitlement.sendSettingsConfirmed,
+    },
     guests: rows,
   }
 }

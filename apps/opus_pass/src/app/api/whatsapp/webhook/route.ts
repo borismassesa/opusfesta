@@ -1,7 +1,7 @@
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { createNotification } from '@/lib/dashboard/notifications'
 import { formatLongDate } from '@/lib/dashboard/share'
-import { BTN, getWhatsAppProvider, parseInboundButtons, verifyWebhookSignature, webhookVerifyToken } from '@/lib/whatsapp'
+import { BTN, getWhatsAppProvider, parseInboundButtons, parseStatusUpdates, verifyWebhookSignature, webhookVerifyToken } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,10 +37,32 @@ export async function POST(req: Request) {
   }
 
   const taps = parseInboundButtons(body)
-  if (taps.length === 0) return new Response('ok', { status: 200 })
+  const statusUpdates = parseStatusUpdates(body)
+  if (taps.length === 0 && statusUpdates.length === 0) return new Response('ok', { status: 200 })
 
   const supabase = createDashboardClient()
   const provider = getWhatsAppProvider()
+
+  // Delivery lifecycle of OUR messages: sent → delivered → read, or failed.
+  // Never downgrade (events can arrive out of order); failed is terminal in
+  // both directions — it always applies over sent/delivered/read, and a late
+  // sent/delivered event must never mask a recorded failure.
+  const STATUS_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3 }
+  for (const su of statusUpdates) {
+    const { data: row } = await supabase
+      .from('whatsapp_messages')
+      .select('id, status')
+      .eq('wamid', su.wamid)
+      .eq('direction', 'out')
+      .maybeSingle<{ id: string; status: string | null }>()
+    if (!row) continue
+    if (row.status === 'failed' && su.status !== 'failed') continue
+    if (su.status !== 'failed' && (STATUS_RANK[row.status ?? ''] ?? 0) >= STATUS_RANK[su.status]) continue
+    await supabase
+      .from('whatsapp_messages')
+      .update(su.error ? { status: su.status, error: su.error } : { status: su.status })
+      .eq('id', row.id)
+  }
 
   for (const tap of taps) {
     // Idempotency: first writer wins; a duplicate wamid is silently skipped.

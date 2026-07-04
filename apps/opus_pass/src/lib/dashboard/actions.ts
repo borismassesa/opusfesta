@@ -413,6 +413,22 @@ export async function deleteGuest(id: string): Promise<void> {
   revalidateDashboard()
 }
 
+/** Bulk remove guests from the roster in one statement (Send Invites table). */
+export async function deleteGuests(guestIds: string[]): Promise<number> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  if (!guestIds.length) return 0
+  const { data, error } = await supabase
+    .from('guest_contacts')
+    .delete()
+    .in('id', guestIds)
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+  return data?.length ?? 0
+}
+
 /** Paste names (one per line, optional "Name, email, phone") to bulk-add. */
 export async function bulkImportGuests(text: string, eventIds: string[] = []): Promise<number> {
   const user = await requireDashboardUser()
@@ -1273,6 +1289,17 @@ export async function dismissReviewGuest(guestId: string): Promise<void> {
 
 // ---------------------------------------------------------------- WhatsApp invitations
 
+/** Per-guest outcome of one send run — powers the results drawer. */
+export interface WhatsAppSendResult {
+  id: string
+  name: string
+  outcome: 'sent' | 'failed' | 'skipped' | 'blocked'
+  /** Provider error message, for failed sends. */
+  error?: string
+  /** True when this was a credit-free re-send to an already-invited guest. */
+  resend?: boolean
+}
+
 export interface WhatsAppSendSummary {
   sent: number
   failed: number
@@ -1287,6 +1314,8 @@ export interface WhatsAppSendSummary {
   purchased: number
   /** Credits left after this run. */
   remaining: number
+  /** One entry per guest attempted, in send order. */
+  results: WhatsAppSendResult[]
 }
 
 /**
@@ -1315,6 +1344,7 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
     hasPaidOrder: ent.hasPaidOrder,
     purchased: ent.purchased,
     remaining: ent.remaining,
+    results: [],
   }
 
   // Nothing to send until the couple has paid for a card (gives both the header
@@ -1344,11 +1374,13 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
     const to = normalizePhone(g.whatsapp_phone ?? g.phone)
     if (!to) {
       summary.skipped += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'skipped' })
       continue
     }
     const isResend = sentSet.has(g.id)
     if (!isResend && remaining <= 0) {
       summary.blocked += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'blocked' })
       continue
     }
 
@@ -1373,6 +1405,7 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
 
     if (result.ok) {
       summary.sent += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'sent', resend: isResend })
       if (!isResend) {
         remaining -= 1 // consume one paid credit per newly-invited guest
         sentSet.add(g.id)
@@ -1389,12 +1422,185 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
         .eq('user_id', user.id)
     } else {
       summary.failed += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
     }
   }
 
   summary.remaining = remaining
   revalidateDashboard()
   return summary
+}
+
+/** Outcome of a couple-facing test send of the invite template. */
+export interface WhatsAppTestSendResult {
+  ok: boolean
+  dryRun: boolean
+  error?: string
+}
+
+/** Editable preview values for a test send — the template's {{1}}/{{2}}/{{3}}. */
+export interface TestInviteOverrides {
+  guestName?: string
+  coupleName?: string
+  eventCategory?: string
+}
+
+/** Collapse whitespace (Meta rejects newlines/tabs in params) and cap length. */
+function templateParam(value: string | undefined, fallback: string, max = 60): string {
+  const clean = (value ?? '').replace(/\s+/g, ' ').trim()
+  return (clean || fallback).slice(0, max)
+}
+
+/**
+ * Send the invitation template to a number the COUPLE controls so they can see
+ * exactly what guests receive (their real card, names and buttons) before a
+ * bulk send. The couple can override the three template variables from the
+ * preview. Free: not tied to a guest, never consumes invitation credits
+ * (quota counts distinct guest_contact_ids with kind='invite'; this row has
+ * neither). The button payloads carry a 'test' token that maps to no guest, so
+ * taps are logged and ignored.
+ */
+export async function sendWhatsAppTestInvite(
+  rawPhone: string,
+  overrides?: TestInviteOverrides,
+): Promise<WhatsAppTestSendResult> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getWhatsAppProvider()
+  const ent = await getWhatsAppEntitlement()
+
+  const to = normalizePhone(rawPhone)
+  if (!to || to.length < 9) return { ok: false, dryRun: !provider.live, error: 'invalid phone number' }
+  if (!ent.cardImageUrl) return { ok: false, dryRun: !provider.live, error: 'no paid card to preview' }
+
+  const result = await provider.sendInvite({
+    to,
+    guestFirstName: templateParam(overrides?.guestName, 'Rafiki'),
+    coupleName: templateParam(overrides?.coupleName, ent.coupleName),
+    eventCategory: templateParam(overrides?.eventCategory, ent.eventCategory),
+    headerImageUrl: ent.cardImageUrl,
+    token: 'test',
+  })
+
+  await supabase.from('whatsapp_messages').insert({
+    user_id: user.id,
+    guest_contact_id: null,
+    direction: 'out',
+    wamid: result.wamid ?? null,
+    kind: 'invite_test',
+    status: result.ok ? 'sent' : 'failed',
+    error: result.error ?? null,
+  })
+
+  return { ok: result.ok, dryRun: Boolean(result.dryRun), error: result.error }
+}
+
+/**
+ * Persist the couple-confirmed WhatsApp template values: {{2}} host name and
+ * {{3}} event category. Sending is blocked until these are saved once; the
+ * confirm step saves them on every bulk send so edits stick.
+ */
+export async function saveInviteSendSettings(hostName: string, eventCategory: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const host = hostName.replace(/\s+/g, ' ').trim().slice(0, 60)
+  const category = eventCategory.replace(/\s+/g, ' ').trim().slice(0, 40)
+  if (!host || !category) throw new Error('Fill in who the invite is from and the event type')
+
+  const { data: updated, error } = await supabase
+    .from('couple_profiles')
+    .update({ invite_host_name: host, invite_event_category: category })
+    .eq('user_id', user.id)
+    .select('user_id')
+  if (error) throw new Error(error.message)
+
+  if (!updated || updated.length === 0) {
+    // First save with no profile row yet. partner1_name is NOT NULL, so seed
+    // the partner names from the host string ("Asha & Juma" / "Asha na Juma").
+    const [p1, p2] = host.split(/\s*(?:&|\bna\b)\s*/i)
+    const { error: insErr } = await supabase.from('couple_profiles').insert({
+      user_id: user.id,
+      partner1_name: (p1?.trim() || host).slice(0, 60),
+      partner2_name: p2?.trim() ? p2.trim().slice(0, 60) : null,
+      invite_host_name: host,
+      invite_event_category: category,
+    })
+    if (insErr) {
+      // Concurrent first saves can race past the empty update; the loser hits
+      // the user_id unique constraint — retry as a plain update instead.
+      if (insErr.code === '23505') {
+        const { error: retryErr } = await supabase
+          .from('couple_profiles')
+          .update({ invite_host_name: host, invite_event_category: category })
+          .eq('user_id', user.id)
+        if (retryErr) throw new Error(retryErr.message)
+      } else {
+        throw new Error(insErr.message)
+      }
+    }
+  }
+  revalidateDashboard()
+}
+
+/**
+ * Lightweight inline edit from the Send Invites table: guest display name and
+ * phone. Deliberately narrower than updateGuest (which rewrites every column
+ * from a full GuestInput) so an inline edit can never clobber unrelated
+ * fields. The single phone field drives BOTH phone and whatsapp_phone —
+ * fixing a wrong number must fix where invites actually go.
+ */
+export async function updateGuestBasics(guestId: string, name: string, rawPhone: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const fullName = name.replace(/\s+/g, ' ').trim().slice(0, 120)
+  if (!fullName) throw new Error('Enter the guest name')
+  // A blank phone means "leave the number as it is" — an inline name fix must
+  // never silently strip a guest's sendable number.
+  const updatePayload: { full_name: string; phone?: string; whatsapp_phone?: string } = {
+    full_name: fullName,
+  }
+  if (rawPhone.trim()) {
+    const phone = normalizePhone(rawPhone)
+    if (!phone || phone.length < 9) throw new Error('Enter a valid phone number')
+    updatePayload.phone = phone
+    updatePayload.whatsapp_phone = phone
+  }
+  const { error } = await supabase
+    .from('guest_contacts')
+    .update(updatePayload)
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/**
+ * Quick inline fix from the Send Invites table: attach a phone number to a
+ * guest who was skipped for having none. Also fills whatsapp_phone when empty
+ * so the guest immediately becomes WhatsApp-sendable.
+ */
+export async function updateGuestPhone(guestId: string, rawPhone: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const phone = normalizePhone(rawPhone)
+  if (!phone || phone.length < 9) throw new Error('Enter a valid phone number')
+
+  const { data: existing, error: readErr } = await supabase
+    .from('guest_contacts')
+    .select('id, whatsapp_phone')
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ id: string; whatsapp_phone: string | null }>()
+  if (readErr) throw new Error(readErr.message)
+  if (!existing) throw new Error('Guest not found')
+
+  const { error } = await supabase
+    .from('guest_contacts')
+    .update({ phone, whatsapp_phone: existing.whatsapp_phone ?? phone })
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
 }
 
 /** Result of a Contact Collector / Pledge WhatsApp link-request broadcast. */
@@ -1522,6 +1728,7 @@ export async function sendWhatsAppRsvpReminders(guestIds?: string[]): Promise<Wh
     hasPaidOrder: false,
     purchased: 0,
     remaining: 0,
+    results: [],
   }
   if (!candidateIds.length) return zeroSummary
 

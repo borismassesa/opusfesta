@@ -21,8 +21,12 @@ export const INVITE_TEMPLATE = {
   /** Header is an IMAGE: the card the couple paid for. */
   header: 'IMAGE' as const,
   /** Body placeholders, in order: {{1}} guest first name, {{2}} couple name,
-   *  {{3}} event category (Swahili noun, e.g. "harusi"). */
-  body: 'Habari *{{1}}* 💚\nUmealikwa kwa furaha kuhudhuria *{{3}}* ya *{{2}}*. Tunatarajia uwepo wako katika siku hii maalum.\nTafadhali thibitisha ujio wako hapa chini 👇',
+   *  {{3}} event category (Swahili noun, e.g. "harusi"). This is the EXACT
+   *  approved body of `opuspass_send_invites` (fetched from Meta 2026-07-04) —
+   *  the in-app preview renders it verbatim, so keep it in sync with Meta. */
+  body: 'Habari *{{1}}*,\nUmealikwa kwa furaha kuhudhuria *{{3}}* ya *{{2}}*. Tunatarajia uwepo wako katika siku hii maalum.\nTafadhali thibitisha ujio wako hapa chini 👇',
+  /** Footer text fixed in the approved template. */
+  footer: 'Sent by OpusPass',
   /** Quick-reply buttons, in index order, with the exact approved labels. */
   buttons: [
     { index: 0, payload: BTN.RSVP_YES, label: 'Asante, Nitafika' },

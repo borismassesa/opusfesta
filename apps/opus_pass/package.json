@@ -1,7 +1,7 @@
 {
   "name": "@opusfesta/opus-pass",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "scripts": {
     "dev": "NODE_OPTIONS=--max-old-space-size=8192 next dev --port 3008",
     "build": "next build",
