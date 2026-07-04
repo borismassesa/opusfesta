@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
-import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { AGREEMENT_DOCS } from '@/lib/onboarding/vendor-agreement'
 import VerifyClient, {
@@ -81,7 +81,13 @@ export default async function VerifyPage() {
   // All three render the verification journey below — `admin_review` shows every
   // step done with "Under review" active (a completed, waiting-on-us timeline).
 
-  const supabase = await createClerkSupabaseServerClient()
+  // Read via the admin client pinned to state.vendorId, matching the write
+  // side (the verify actions insert with the service role). An RLS-bound read
+  // that gets filtered returns EMPTY DATA with no error, so a broken
+  // JWT→users mapping or policy drift would render a signed vendor as
+  // perpetually unsigned with nothing to catch. state.vendorId is already
+  // scoped to the authenticated caller by getCurrentVendor().
+  const supabase = createSupabaseAdminClient()
   const clerkUser = await currentUser()
 
   // The "Already on file" panel was removed — the timeline's Application step
