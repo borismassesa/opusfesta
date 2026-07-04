@@ -921,55 +921,66 @@ export default function SendInvitesView({
               <button className="xbtn" onClick={() => setPreviewOpen(false)} aria-label={strings.preview_close}><X size={16} /></button>
             </div>
             <p className="mutedp">{strings.preview_note}</p>
-            <div className="vars">
-              <div className="vlegend">{strings.settings_legend}</div>
-              <div className="vgrid">
-                <label className="vfield">
-                  <span>{strings.field_guest_label}</span>
-                  <input value={sampleGuest} onChange={(e) => setSampleGuest(e.target.value)} maxLength={40} />
-                </label>
-                <label className="vfield">
-                  <span>{strings.field_host_label}</span>
-                  <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
-                </label>
-                <CategoryField
-                  value={eventCat}
-                  onChange={setEventCat}
-                  label={strings.field_category_label}
-                  otherLabel={strings.field_category_other}
-                />
-              </div>
-              <p className="mutedp">{strings.settings_required_note}</p>
-            </div>
-            <div className="wawrap">
-              <div className="wabubble">
-                <div className="waimg">
-                  {event.cardImageUrl ? (
-                    <Image src={event.cardImageUrl} alt="" fill sizes="320px" className="object-cover" unoptimized />
-                  ) : (
-                    <div className="waimg-ph"><b>{event.coupleName}</b></div>
-                  )}
+            <div className="pgrid">
+              <div>
+                <div className="vars">
+                  <div className="vlegend">{strings.settings_legend}</div>
+                  <div className="vgrid">
+                    <label className="vfield">
+                      <span>{strings.field_guest_label}</span>
+                      <input value={sampleGuest} onChange={(e) => setSampleGuest(e.target.value)} maxLength={40} />
+                    </label>
+                    <label className="vfield">
+                      <span>{strings.field_host_label}</span>
+                      <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
+                    </label>
+                    <CategoryField
+                      value={eventCat}
+                      onChange={setEventCat}
+                      label={strings.field_category_label}
+                      otherLabel={strings.field_category_other}
+                    />
+                  </div>
+                  <p className="mutedp">{strings.settings_required_note}</p>
                 </div>
-                <div className="wabody">{waText(previewBody)}</div>
-                <div className="wafoot">{INVITE_TEMPLATE.footer}</div>
-                {INVITE_TEMPLATE.buttons.map((b) => (
-                  <div key={b.index} className="wabtn">↩ {b.label}</div>
-                ))}
+                <div className="testrow">
+                  <label htmlFor="si-test-phone">{strings.test_label}</label>
+                  <div className="trow">
+                    <input
+                      id="si-test-phone"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      placeholder={strings.test_placeholder}
+                      inputMode="tel"
+                    />
+                    <button className="btn solid" disabled={testSending || !testPhone.trim() || !event.hasPaidOrder} onClick={sendTest}>
+                      {testSending ? <Loader2 size={14} className="spin" /> : <MessageCircle size={14} />} {strings.test_send}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="testrow">
-              <label htmlFor="si-test-phone">{strings.test_label}</label>
-              <div className="trow">
-                <input
-                  id="si-test-phone"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  placeholder={strings.test_placeholder}
-                  inputMode="tel"
-                />
-                <button className="btn pri" disabled={testSending || !testPhone.trim() || !event.hasPaidOrder} onClick={sendTest}>
-                  {testSending ? <Loader2 size={14} className="spin" /> : <MessageCircle size={14} />} {strings.test_send}
-                </button>
+              <div className="wawrap">
+                <div className="wabubble">
+                  {event.cardImageUrl ? (
+                    <Image
+                      src={event.cardImageUrl}
+                      alt=""
+                      width={760}
+                      height={1064}
+                      className="waimgfull"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="waimg">
+                      <div className="waimg-ph"><b>{event.coupleName}</b></div>
+                    </div>
+                  )}
+                  <div className="wabody">{waText(previewBody)}</div>
+                  <div className="wafoot">{INVITE_TEMPLATE.footer}</div>
+                  {INVITE_TEMPLATE.buttons.map((b) => (
+                    <div key={b.index} className="wabtn">↩ {b.label}</div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1174,7 +1185,12 @@ const css = `
 .si .ovl{ position:fixed; inset:0; background:rgba(28,27,31,.42); z-index:60; display:flex; align-items:center; justify-content:center; padding:18px; }
 .si .ovl.right{ justify-content:flex-end; padding:0; }
 .si .modal{ background:#fff; border-radius:18px; padding:24px; width:min(440px,100%); box-shadow:0 18px 50px rgba(20,18,30,.25); }
-.si .modal.wide{ width:min(480px,100%); max-height:92vh; overflow-y:auto; }
+.si .modal.wide{ width:min(960px,96vw); max-height:92vh; overflow-y:auto; }
+.si .pgrid{ display:grid; grid-template-columns:1fr 1.1fr; gap:20px; margin-top:16px; align-items:start; }
+.si .pgrid .vars{ margin-top:0; }
+.si .pgrid .vgrid{ grid-template-columns:1fr; }
+.si .pgrid .wawrap{ margin-top:0; display:flex; align-items:center; justify-content:center; min-height:100%; }
+@media(max-width:760px){ .si .pgrid{ grid-template-columns:1fr; } }
 .si .modal h3{ font-size:21px; font-weight:600; }
 .si .modal .big{ font-size:14.5px; margin-top:12px; line-height:1.5; }
 .si .mutedp{ color:var(--muted); font-size:12.5px; margin-top:8px; line-height:1.5; }
@@ -1183,9 +1199,10 @@ const css = `
 .si .xbtn{ border:none; background:#f3f2f5; color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer;
   display:grid; place-items:center; }
 .si .wawrap{ margin-top:16px; background:#EFE7DD; border-radius:14px; padding:18px; }
-.si .wabubble{ background:#fff; border-radius:10px; padding:6px; width:min(320px,100%); margin:0 auto;
-  box-shadow:0 1px 1px rgba(0,0,0,.08); font-size:13px; line-height:1.45; }
+.si .wabubble{ background:#fff; border-radius:10px; padding:6px; width:min(380px,100%); margin:0 auto;
+  box-shadow:0 1px 1px rgba(0,0,0,.08); font-size:13.5px; line-height:1.45; }
 .si .waimg{ position:relative; width:100%; aspect-ratio:4/3; border-radius:7px; overflow:hidden; background:linear-gradient(155deg,var(--purple),var(--lav)); }
+.si .waimgfull{ display:block; width:100%; height:auto; border-radius:7px; }
 .si .waimg-ph{ position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-family:var(--font-cormorant),Georgia,serif; font-size:18px; }
 .si .wabody{ padding:9px 6px 4px; color:#111; white-space:normal; }
 .si .wafoot{ padding:0 6px 8px; color:#8a8a8a; font-size:11px; }
