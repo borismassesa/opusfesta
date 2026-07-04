@@ -31,6 +31,7 @@ import {
   updateGuestBasics,
   createGuest,
   deleteGuest,
+  deleteGuests,
   recordSend,
   type WhatsAppSendSummary,
   type WhatsAppSendResult,
@@ -161,6 +162,7 @@ export default function SendInvitesView({
   // Inline guest-list editing: one row at a time, plus an add-guest row.
   const [rowEdit, setRowEdit] = useState<{ id: string; name: string; phone: string; askDelete: boolean } | null>(null)
   const [newGuest, setNewGuest] = useState<{ name: string; phone: string } | null>(null)
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   // The template's {{2}}/{{3}}, editable everywhere they're shown and REQUIRED
   // before any send. {{1}} (guest name) is per-guest from the roster; the
   // sample here only drives the preview bubble and the test message.
@@ -422,6 +424,22 @@ export default function SendInvitesView({
         await deleteGuest(id)
         toast.success(strings.toast_guest_removed)
         setRowEdit(null)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
+      }
+    })
+  }
+
+  function runBulkDelete() {
+    const ids = [...selected]
+    if (ids.length === 0) return
+    startTransition(async () => {
+      try {
+        const n = await deleteGuests(ids)
+        toast.success(fmt(strings.toast_guests_removed, { n }))
+        setSelected(new Set())
+        setConfirmBulkDelete(false)
         router.refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
@@ -712,6 +730,11 @@ export default function SendInvitesView({
               </button>
             </div>
             {selected.size > 0 ? <span className="selcnt">{fmt(strings.selected_count, { n: selected.size })}</span> : null}
+            {selected.size > 0 ? (
+              <button className="btn ghost danger" disabled={pending} onClick={() => setConfirmBulkDelete(true)}>
+                <Trash2 size={14} /> {strings.bulk_delete}
+              </button>
+            ) : null}
             <button className="btn ghost" disabled={pending} onClick={() => setNewGuest({ name: '', phone: '' })}>
               <Plus size={14} /> {strings.add_guest}
             </button>
@@ -912,6 +935,22 @@ export default function SendInvitesView({
         </div>
       ) : null}
 
+      {/* Bulk-delete confirm */}
+      {confirmBulkDelete ? (
+        <div className="ovl" onClick={() => setConfirmBulkDelete(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{strings.bulk_delete_title}</h3>
+            <p className="big">{fmt(strings.bulk_delete_body, { n: selected.size })}</p>
+            <div className="mrow">
+              <button className="btn ghost" onClick={() => setConfirmBulkDelete(false)}>{strings.confirm_cancel}</button>
+              <button className="btn dangerfill" disabled={pending} onClick={runBulkDelete}>
+                <Trash2 size={14} /> {strings.bulk_delete_confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Invite preview + test send */}
       {previewOpen ? (
         <div className="ovl" onClick={() => setPreviewOpen(false)}>
@@ -1053,6 +1092,9 @@ const css = `
 .si .btn.lg{ padding:11px 20px; font-size:14px; background:var(--purple); color:#fff; }
 .si .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); }
 .si .btn.solid{ background:var(--purple); color:#fff; box-shadow:var(--soft); }
+.si .btn.ghost.danger{ color:var(--bad-tx); border-color:#f2c9c9; }
+.si .btn.ghost.danger:hover{ background:var(--bad-bg); }
+.si .btn.dangerfill{ background:var(--bad-tx); color:#fff; }
 .si .spin{ animation:si-spin .8s linear infinite; }
 @keyframes si-spin{ to{ transform:rotate(360deg); } }
 .si .ctx{ display:flex; gap:20px; align-items:center; background:#fff; border:1px solid var(--line);

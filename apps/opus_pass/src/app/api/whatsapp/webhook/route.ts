@@ -44,9 +44,10 @@ export async function POST(req: Request) {
   const provider = getWhatsAppProvider()
 
   // Delivery lifecycle of OUR messages: sent → delivered → read, or failed.
-  // Never downgrade (events can arrive out of order); failed always applies
-  // because it carries the reason a guest never received the card.
-  const STATUS_RANK: Record<string, number> = { failed: 0, sent: 1, delivered: 2, read: 3 }
+  // Never downgrade (events can arrive out of order); failed is terminal in
+  // both directions — it always applies over sent/delivered/read, and a late
+  // sent/delivered event must never mask a recorded failure.
+  const STATUS_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3 }
   for (const su of statusUpdates) {
     const { data: row } = await supabase
       .from('whatsapp_messages')
@@ -55,7 +56,8 @@ export async function POST(req: Request) {
       .eq('direction', 'out')
       .maybeSingle<{ id: string; status: string | null }>()
     if (!row) continue
-    if (su.status !== 'failed' && (STATUS_RANK[row.status ?? ''] ?? -1) >= STATUS_RANK[su.status]) continue
+    if (row.status === 'failed' && su.status !== 'failed') continue
+    if (su.status !== 'failed' && (STATUS_RANK[row.status ?? ''] ?? 0) >= STATUS_RANK[su.status]) continue
     await supabase
       .from('whatsapp_messages')
       .update(su.error ? { status: su.status, error: su.error } : { status: su.status })

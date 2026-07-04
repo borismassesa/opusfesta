@@ -960,7 +960,6 @@ export interface DashboardSendStrings {
   targeted_title: string
   targeted_desc: string
   targeted_best_for: string
-  send_via_whatsapp: string
   remind_awaiting: string // {n}
   dryrun_pill: string
   dryrun_note: string
@@ -1050,6 +1049,11 @@ export interface DashboardSendStrings {
   row_delete_confirm: string
   toast_guest_saved: string
   toast_guest_removed: string
+  bulk_delete: string
+  bulk_delete_title: string
+  bulk_delete_body: string // {n}
+  bulk_delete_confirm: string
+  toast_guests_removed: string // {n}
   selected_count: string // {n}
   live_hint: string
   send_all_notsent: string // {n}
@@ -1843,7 +1847,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     targeted_desc:
       'Send each named guest their own card with Attend / Decline / View location buttons they tap right in WhatsApp, or as an SMS link, no app needed. Every send is tracked below.',
     targeted_best_for: 'Your real guest list. Accurate counts and per-guest status.',
-    send_via_whatsapp: 'Send via WhatsApp',
     remind_awaiting: 'Remind {n} awaiting',
     dryrun_pill: 'Dry run',
     dryrun_note:
@@ -1927,6 +1930,11 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     row_delete_confirm: 'Sure?',
     toast_guest_saved: 'Guest saved',
     toast_guest_removed: 'Guest removed',
+    bulk_delete: 'Remove selected',
+    bulk_delete_title: 'Remove guests?',
+    bulk_delete_body: '{n} guests will be removed from your list, along with their invitation history. This cannot be undone.',
+    bulk_delete_confirm: 'Remove',
+    toast_guests_removed: '{n} removed',
     selected_count: '{n} selected',
     live_hint: 'Statuses update automatically',
     send_all_notsent: 'Send to all not sent ({n})',

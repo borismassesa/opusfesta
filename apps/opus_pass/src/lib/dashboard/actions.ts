@@ -413,6 +413,22 @@ export async function deleteGuest(id: string): Promise<void> {
   revalidateDashboard()
 }
 
+/** Bulk remove guests from the roster in one statement (Send Invites table). */
+export async function deleteGuests(guestIds: string[]): Promise<number> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  if (!guestIds.length) return 0
+  const { data, error } = await supabase
+    .from('guest_contacts')
+    .delete()
+    .in('id', guestIds)
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+  return data?.length ?? 0
+}
+
 /** Paste names (one per line, optional "Name, email, phone") to bulk-add. */
 export async function bulkImportGuests(text: string, eventIds: string[] = []): Promise<number> {
   const user = await requireDashboardUser()
@@ -1509,7 +1525,19 @@ export async function saveInviteSendSettings(hostName: string, eventCategory: st
       invite_host_name: host,
       invite_event_category: category,
     })
-    if (insErr) throw new Error(insErr.message)
+    if (insErr) {
+      // Concurrent first saves can race past the empty update; the loser hits
+      // the user_id unique constraint — retry as a plain update instead.
+      if (insErr.code === '23505') {
+        const { error: retryErr } = await supabase
+          .from('couple_profiles')
+          .update({ invite_host_name: host, invite_event_category: category })
+          .eq('user_id', user.id)
+        if (retryErr) throw new Error(retryErr.message)
+      } else {
+        throw new Error(insErr.message)
+      }
+    }
   }
   revalidateDashboard()
 }
@@ -1526,14 +1554,20 @@ export async function updateGuestBasics(guestId: string, name: string, rawPhone:
   const supabase = createDashboardClient()
   const fullName = name.replace(/\s+/g, ' ').trim().slice(0, 120)
   if (!fullName) throw new Error('Enter the guest name')
-  let phone: string | null = null
+  // A blank phone means "leave the number as it is" — an inline name fix must
+  // never silently strip a guest's sendable number.
+  const updatePayload: { full_name: string; phone?: string; whatsapp_phone?: string } = {
+    full_name: fullName,
+  }
   if (rawPhone.trim()) {
-    phone = normalizePhone(rawPhone)
+    const phone = normalizePhone(rawPhone)
     if (!phone || phone.length < 9) throw new Error('Enter a valid phone number')
+    updatePayload.phone = phone
+    updatePayload.whatsapp_phone = phone
   }
   const { error } = await supabase
     .from('guest_contacts')
-    .update({ full_name: fullName, phone, whatsapp_phone: phone })
+    .update(updatePayload)
     .eq('id', guestId)
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
