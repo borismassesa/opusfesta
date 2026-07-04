@@ -1030,6 +1030,12 @@ export interface DashboardSendStrings {
   results_retry: string
   results_close: string
   results_resend_tag: string
+  // Confirmed template variables ({{1}}/{{2}}/{{3}})
+  settings_legend: string
+  field_guest_label: string
+  field_host_label: string
+  field_category_label: string
+  settings_required_note: string
   // Table extras
   add_number: string
   save_number: string
@@ -1894,6 +1900,11 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     results_retry: 'Retry failed',
     results_close: 'Done',
     results_resend_tag: 're-send',
+    settings_legend: 'Invitation details',
+    field_guest_label: 'Guest name (sample)',
+    field_host_label: 'From (host names)',
+    field_category_label: 'Event type (Swahili)',
+    settings_required_note: 'These appear in every invite. Confirm them before sending; you can change them any time.',
     add_number: 'Add number',
     save_number: 'Save',
     row_send: 'Send',

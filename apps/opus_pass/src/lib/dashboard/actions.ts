@@ -1422,15 +1422,32 @@ export interface WhatsAppTestSendResult {
   error?: string
 }
 
+/** Editable preview values for a test send — the template's {{1}}/{{2}}/{{3}}. */
+export interface TestInviteOverrides {
+  guestName?: string
+  coupleName?: string
+  eventCategory?: string
+}
+
+/** Collapse whitespace (Meta rejects newlines/tabs in params) and cap length. */
+function templateParam(value: string | undefined, fallback: string, max = 60): string {
+  const clean = (value ?? '').replace(/\s+/g, ' ').trim()
+  return (clean || fallback).slice(0, max)
+}
+
 /**
  * Send the invitation template to a number the COUPLE controls so they can see
  * exactly what guests receive (their real card, names and buttons) before a
- * bulk send. Free: not tied to a guest, never consumes invitation credits
+ * bulk send. The couple can override the three template variables from the
+ * preview. Free: not tied to a guest, never consumes invitation credits
  * (quota counts distinct guest_contact_ids with kind='invite'; this row has
  * neither). The button payloads carry a 'test' token that maps to no guest, so
  * taps are logged and ignored.
  */
-export async function sendWhatsAppTestInvite(rawPhone: string): Promise<WhatsAppTestSendResult> {
+export async function sendWhatsAppTestInvite(
+  rawPhone: string,
+  overrides?: TestInviteOverrides,
+): Promise<WhatsAppTestSendResult> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const provider = getWhatsAppProvider()
@@ -1442,9 +1459,9 @@ export async function sendWhatsAppTestInvite(rawPhone: string): Promise<WhatsApp
 
   const result = await provider.sendInvite({
     to,
-    guestFirstName: 'Rafiki',
-    coupleName: ent.coupleName,
-    eventCategory: ent.eventCategory,
+    guestFirstName: templateParam(overrides?.guestName, 'Rafiki'),
+    coupleName: templateParam(overrides?.coupleName, ent.coupleName),
+    eventCategory: templateParam(overrides?.eventCategory, ent.eventCategory),
     headerImageUrl: ent.cardImageUrl,
     token: 'test',
   })
@@ -1460,6 +1477,27 @@ export async function sendWhatsAppTestInvite(rawPhone: string): Promise<WhatsApp
   })
 
   return { ok: result.ok, dryRun: Boolean(result.dryRun), error: result.error }
+}
+
+/**
+ * Persist the couple-confirmed WhatsApp template values: {{2}} host name and
+ * {{3}} event category. Sending is blocked until these are saved once; the
+ * confirm step saves them on every bulk send so edits stick.
+ */
+export async function saveInviteSendSettings(hostName: string, eventCategory: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const host = hostName.replace(/\s+/g, ' ').trim().slice(0, 60)
+  const category = eventCategory.replace(/\s+/g, ' ').trim().slice(0, 40)
+  if (!host || !category) throw new Error('Fill in who the invite is from and the event type')
+  const { error } = await supabase
+    .from('couple_profiles')
+    .upsert(
+      { user_id: user.id, invite_host_name: host, invite_event_category: category },
+      { onConflict: 'user_id' },
+    )
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
 }
 
 /**

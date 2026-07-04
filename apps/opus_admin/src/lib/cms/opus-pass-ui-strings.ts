@@ -932,6 +932,11 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     results_retry: 'Retry failed',
     results_close: 'Done',
     results_resend_tag: 're-send',
+    settings_legend: 'Invitation details',
+    field_guest_label: 'Guest name (sample)',
+    field_host_label: 'From (host names)',
+    field_category_label: 'Event type (Swahili)',
+    settings_required_note: 'These appear in every invite. Confirm them before sending; you can change them any time.',
     add_number: 'Add number',
     save_number: 'Save',
     row_send: 'Send',
@@ -2300,6 +2305,16 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'results_retry', label: 'Report retry button', kind: 'text', max: 24 },
         { key: 'results_close', label: 'Report close button', kind: 'text', max: 20 },
         { key: 'results_resend_tag', label: 'Report re-send tag', kind: 'text', max: 20 },
+      ],
+    },
+    {
+      legend: 'Invitation details (template variables)',
+      fields: [
+        { key: 'settings_legend', label: 'Section legend', kind: 'text', max: 30 },
+        { key: 'field_guest_label', label: 'Guest sample field', kind: 'text', max: 30 },
+        { key: 'field_host_label', label: 'Host names field', kind: 'text', max: 30 },
+        { key: 'field_category_label', label: 'Event type field', kind: 'text', max: 30 },
+        { key: 'settings_required_note', label: 'Required note', kind: 'text', max: 140 },
       ],
     },
     {

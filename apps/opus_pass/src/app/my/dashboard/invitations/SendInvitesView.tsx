@@ -23,6 +23,7 @@ import {
   setPublicSharing,
   sendWhatsAppInvites,
   sendWhatsAppTestInvite,
+  saveInviteSendSettings,
   updateGuestPhone,
   recordSend,
   type WhatsAppSendSummary,
@@ -99,6 +100,13 @@ export default function SendInvitesView({
   const [testPhone, setTestPhone] = useState(data.testPhone ?? '')
   const [testSending, setTestSending] = useState(false)
   const [phoneEdit, setPhoneEdit] = useState<{ id: string; value: string } | null>(null)
+  // The template's {{2}}/{{3}}, editable everywhere they're shown and REQUIRED
+  // before any send. {{1}} (guest name) is per-guest from the roster; the
+  // sample here only drives the preview bubble and the test message.
+  const [hostName, setHostName] = useState(data.sendSettings.hostName)
+  const [eventCat, setEventCat] = useState(data.sendSettings.eventCategory)
+  const [sampleGuest, setSampleGuest] = useState(firstNameOf(guests[0]?.name ?? 'Amina'))
+  const settingsValid = hostName.trim().length > 0 && eventCat.trim().length > 0
 
   // "Awaiting" = invited but not yet replied (delivered or seen, no RSVP).
   const isAwaiting = (s: SendGuestRow['status']) => s === 'sent' || s === 'viewed'
@@ -137,11 +145,10 @@ export default function SendInvitesView({
       ? `${headingName}, ${event.eventTypeLabel}`
       : headingName
 
-  const previewSampleName = firstNameOf(guests[0]?.name ?? 'Amina')
   const previewBody = INVITE_TEMPLATE.body
-    .replace('{{1}}', previewSampleName)
-    .replace('{{2}}', event.coupleName)
-    .replace('{{3}}', event.eventCategorySw)
+    .replace('{{1}}', sampleGuest.trim() || 'Amina')
+    .replace('{{2}}', hostName.trim() || event.coupleName)
+    .replace('{{3}}', eventCat.trim() || event.eventCategorySw)
 
   function toggleSharing() {
     startTransition(async () => {
@@ -193,6 +200,14 @@ export default function SendInvitesView({
   function runBulkSend(ids?: string[], reminder = false) {
     setConfirmSend(null)
     startTransition(async () => {
+      // The confirmed {{2}}/{{3}} values are part of every send — persist them
+      // first so the server action reads what the couple just approved.
+      try {
+        await saveInviteSendSettings(hostName, eventCat)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_nothing_sent)
+        return
+      }
       const res = await sendWhatsAppInvites(ids)
       if (!res.hasPaidOrder) {
         toast.error(strings.toast_no_package)
@@ -248,6 +263,12 @@ export default function SendInvitesView({
     // With WhatsApp Business live, the row button sends the real approved
     // template (same pipeline as bulk send) — not a wa.me prefill.
     if (channel === 'whatsapp' && whatsappLive) {
+      // First send ever? The couple must confirm the invitation details
+      // ({{2}}/{{3}}) — route through the confirm dialog which saves them.
+      if (!data.sendSettings.confirmed) {
+        stageBulkSend([g.id], { reminder: isAwaiting(g.status) })
+        return
+      }
       const first = firstNameOf(g.name)
       const remindingLive = isAwaiting(g.status)
       setSendingRow(g.id)
@@ -286,7 +307,11 @@ export default function SendInvitesView({
     setTestSending(true)
     startTransition(async () => {
       try {
-        const res = await sendWhatsAppTestInvite(testPhone)
+        const res = await sendWhatsAppTestInvite(testPhone, {
+          guestName: sampleGuest,
+          coupleName: hostName,
+          eventCategory: eventCat,
+        })
         if (res.ok && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
         else if (res.ok) toast.success(strings.test_sent)
         else toast.error(res.error ? `${strings.test_failed}: ${res.error}` : strings.test_failed)
@@ -589,7 +614,7 @@ export default function SendInvitesView({
         )}
       </div>
 
-      {/* Bulk-send confirm */}
+      {/* Bulk-send confirm — the couple must approve {{2}}/{{3}} to send */}
       {confirmSend ? (
         <div className="ovl" onClick={() => setConfirmSend(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -598,9 +623,25 @@ export default function SendInvitesView({
             {confirmSend.credits > 0 ? (
               <p className="mutedp">{fmt(strings.confirm_credits, { n: confirmSend.credits, m: quota.remaining })}</p>
             ) : null}
+            <div className="vars">
+              <div className="vlegend">{strings.settings_legend}</div>
+              <label className="vfield">
+                <span>{strings.field_host_label}</span>
+                <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
+              </label>
+              <label className="vfield">
+                <span>{strings.field_category_label}</span>
+                <input value={eventCat} onChange={(e) => setEventCat(e.target.value)} maxLength={40} />
+              </label>
+              <p className="mutedp">{strings.settings_required_note}</p>
+            </div>
             <div className="mrow">
               <button className="btn ghost" onClick={() => setConfirmSend(null)}>{strings.confirm_cancel}</button>
-              <button className="btn pri" disabled={pending} onClick={() => runBulkSend(confirmSend.ids, confirmSend.reminder)}>
+              <button
+                className="btn pri"
+                disabled={pending || !settingsValid}
+                onClick={() => runBulkSend(confirmSend.ids, confirmSend.reminder)}
+              >
                 <MessageCircle size={15} /> {strings.confirm_confirm}
               </button>
             </div>
@@ -617,6 +658,24 @@ export default function SendInvitesView({
               <button className="xbtn" onClick={() => setPreviewOpen(false)} aria-label={strings.preview_close}><X size={16} /></button>
             </div>
             <p className="mutedp">{strings.preview_note}</p>
+            <div className="vars">
+              <div className="vlegend">{strings.settings_legend}</div>
+              <div className="vgrid">
+                <label className="vfield">
+                  <span>{strings.field_guest_label}</span>
+                  <input value={sampleGuest} onChange={(e) => setSampleGuest(e.target.value)} maxLength={40} />
+                </label>
+                <label className="vfield">
+                  <span>{strings.field_host_label}</span>
+                  <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
+                </label>
+                <label className="vfield">
+                  <span>{strings.field_category_label}</span>
+                  <input value={eventCat} onChange={(e) => setEventCat(e.target.value)} maxLength={40} />
+                </label>
+              </div>
+              <p className="mutedp">{strings.settings_required_note}</p>
+            </div>
             <div className="wawrap">
               <div className="wabubble">
                 <div className="waimg">
@@ -627,7 +686,7 @@ export default function SendInvitesView({
                   )}
                 </div>
                 <div className="wabody">{waText(previewBody)}</div>
-                <div className="wafoot">Sent by OpusPass</div>
+                <div className="wafoot">{INVITE_TEMPLATE.footer}</div>
                 {INVITE_TEMPLATE.buttons.map((b) => (
                   <div key={b.index} className="wabtn">↩ {b.label}</div>
                 ))}
@@ -861,6 +920,16 @@ const css = `
 .si .wabody{ padding:9px 6px 4px; color:#111; white-space:normal; }
 .si .wafoot{ padding:0 6px 8px; color:#8a8a8a; font-size:11px; }
 .si .wabtn{ border-top:1px solid #f0f0f0; text-align:center; color:#34B7F1; font-weight:600; font-size:13px; padding:9px 4px; }
+.si .vars{ margin-top:16px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--hover); }
+.si .vlegend{ font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--purple); margin-bottom:10px; }
+.si .vgrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.si .vfield{ display:flex; flex-direction:column; gap:5px; }
+.si .vfield + .vfield{ margin-top:10px; }
+.si .vgrid .vfield + .vfield{ margin-top:0; }
+.si .vfield span{ font-size:11px; font-weight:600; color:var(--muted); }
+.si .vfield input{ border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; background:#fff; }
+.si .vfield input:focus{ outline:none; border-color:var(--lav); }
+@media(max-width:640px){ .si .vgrid{ grid-template-columns:1fr; } }
 .si .testrow{ margin-top:18px; }
 .si .testrow label{ font-size:12px; font-weight:600; color:var(--muted); }
 .si .trow{ display:flex; gap:9px; margin-top:8px; }
