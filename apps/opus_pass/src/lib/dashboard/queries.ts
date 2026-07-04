@@ -1044,6 +1044,9 @@ export interface SendInvitesData {
     eventName: string | null
     /** The primary event's type label (e.g. "Wedding") — the heading suffix. */
     eventTypeLabel: string | null
+    /** Swahili event-category noun (e.g. "harusi") — template {{3}}, used by the
+     *  in-page WhatsApp preview so it mirrors the real send exactly. */
+    eventCategorySw: string
     dateLabel: string | null
     venue: string | null
     cardTier: string | null
@@ -1059,6 +1062,8 @@ export interface SendInvitesData {
   quota: { used: number; purchased: number; remaining: number; hasPaidOrder: boolean }
   publicLink: { enabled: boolean; slug: string | null; url: string | null }
   whatsappLive: boolean
+  /** The couple's own WhatsApp number — prefills the "send a test" input. */
+  testPhone: string | null
   guests: SendGuestRow[]
 }
 
@@ -1151,6 +1156,7 @@ export async function getSendInvitesData(): Promise<SendInvitesData> {
       coupleName: entitlement.coupleName,
       eventName,
       eventTypeLabel: eventTypeLbl,
+      eventCategorySw: entitlement.eventCategory,
       dateLabel: formatLongDate(profile?.wedding_date ?? null) || null,
       venue: soonestVenue,
       cardTier: entitlement.cardTier,
@@ -1172,6 +1178,7 @@ export async function getSendInvitesData(): Promise<SendInvitesData> {
       url: publicInvite.slug ? `${origin}/i/${publicInvite.slug}` : null,
     },
     whatsappLive: getWhatsAppProvider().live,
+    testPhone: profile?.whatsapp_phone ?? null,
     guests: rows,
   }
 }

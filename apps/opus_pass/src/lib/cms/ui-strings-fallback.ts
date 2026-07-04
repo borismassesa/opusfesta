@@ -1005,6 +1005,39 @@ export interface DashboardSendStrings {
   toast_send_failed: string // {name}
   toast_nothing_sent: string
   send_failed_n: string // {n}
+  // Invite preview + test send
+  preview_button: string
+  preview_title: string
+  preview_note: string
+  preview_close: string
+  test_label: string
+  test_placeholder: string
+  test_send: string
+  test_sent: string
+  test_failed: string
+  // Bulk-send confirm dialog
+  confirm_title: string
+  confirm_recipients: string // {n}
+  confirm_credits: string // {n} {m}
+  confirm_cancel: string
+  confirm_confirm: string
+  // Send report drawer
+  results_title: string
+  results_sent: string
+  results_failed: string
+  results_skipped: string
+  results_blocked: string
+  results_retry: string
+  results_close: string
+  results_resend_tag: string
+  // Table extras
+  add_number: string
+  save_number: string
+  row_send: string
+  row_resend: string
+  selected_count: string // {n}
+  live_hint: string
+  send_all_notsent: string // {n}
 }
 
 export type UiStringsByArea = {
@@ -1839,5 +1872,34 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_send_failed: 'Could not send to {name}. Check the number and try again.',
     toast_nothing_sent: 'Nothing was sent. Only confirmed guests with a phone number can receive invites.',
     send_failed_n: '{n} failed',
+    preview_button: 'Preview invite',
+    preview_title: 'What your guests receive',
+    preview_note: 'The exact WhatsApp message, built from your card and event details. Buttons work right inside WhatsApp.',
+    preview_close: 'Close',
+    test_label: 'Send a test to your own WhatsApp',
+    test_placeholder: 'e.g. 0712 345 678',
+    test_send: 'Send test',
+    test_sent: 'Test sent. Check your WhatsApp.',
+    test_failed: 'Test could not be sent',
+    confirm_title: 'Ready to send?',
+    confirm_recipients: '{n} guests will receive your invitation card on WhatsApp.',
+    confirm_credits: 'This uses {n} of your {m} remaining invites. Re-sends to already-invited guests are free.',
+    confirm_cancel: 'Not yet',
+    confirm_confirm: 'Send now',
+    results_title: 'Send report',
+    results_sent: 'Sent to WhatsApp',
+    results_failed: 'Failed',
+    results_skipped: 'No phone number',
+    results_blocked: 'Over quota',
+    results_retry: 'Retry failed',
+    results_close: 'Done',
+    results_resend_tag: 're-send',
+    add_number: 'Add number',
+    save_number: 'Save',
+    row_send: 'Send',
+    row_resend: 'Resend',
+    selected_count: '{n} selected',
+    live_hint: 'Statuses update automatically',
+    send_all_notsent: 'Send to all not sent ({n})',
   },
 }
