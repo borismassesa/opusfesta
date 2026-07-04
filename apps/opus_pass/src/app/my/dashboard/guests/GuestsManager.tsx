@@ -36,10 +36,11 @@ import {
   bulkImportGuests,
   recordSend,
   sendWhatsAppCollectorRequests,
+  sendWhatsAppInvites,
   sendWhatsAppRsvpReminders,
   type GuestInput,
 } from '@/lib/dashboard/actions'
-import { emailShareUrl, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
+import { emailShareUrl, firstNameOf, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
 import { fileToImportLines, SpreadsheetError } from '@/lib/dashboard/import-spreadsheet'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { GuestsDashboardCopy } from '@/lib/cms/dashboard-copy'
@@ -119,6 +120,7 @@ export default function GuestsManager({
   hero,
   collectorToken,
   copy,
+  whatsappLive,
 }: {
   initialGuests: GuestWithInvitations[]
   events: WeddingEvent[]
@@ -126,6 +128,7 @@ export default function GuestsManager({
   hero: DashboardHeroContent
   collectorToken: string | null
   copy: GuestsDashboardCopy
+  whatsappLive: boolean
 }) {
   const [query, setQuery] = useState('')
   const [groupFilter, setGroupFilter] = useState('all')
@@ -477,12 +480,39 @@ export default function GuestsManager({
     recordSend(g.id, 'link').catch(() => {})
   }
 
-  function sendWhatsApp(g: GuestWithInvitations) {
+  function openManualWhatsApp(g: GuestWithInvitations) {
     const link = rsvpUrl(window.location.origin, g.public_token)
     const msg = inviteMessage(coupleName, g.full_name, link)
     const url = whatsappShareUrl(g, msg)
     window.open(url, '_blank', 'noopener,noreferrer')
     recordSend(g.id, 'whatsapp').catch(() => {})
+  }
+
+  function sendWhatsApp(g: GuestWithInvitations) {
+    // WhatsApp Business live → send the approved invite template (card image +
+    // RSVP buttons), same pipeline as Send Invites. The wa.me prefill remains
+    // for pre-go-live and for couples without a paid card (the template needs one).
+    if (!whatsappLive) {
+      openManualWhatsApp(g)
+      return
+    }
+    startTransition(async () => {
+      try {
+        const r = await sendWhatsAppInvites([g.id])
+        const nothingHappened = r.sent === 0 && r.failed === 0 && r.blocked === 0 && r.skipped === 0
+        if (!r.hasPaidOrder || nothingHappened) {
+          openManualWhatsApp(g)
+          return
+        }
+        if (r.sent > 0 && r.dryRun) toast.success('1 queued (dry run)')
+        else if (r.sent > 0) toast.success(`Invitation sent to ${firstNameOf(g.full_name)}`)
+        else if (r.blocked > 0) toast.error('Over your invitation quota — top up to keep sending')
+        else if (r.skipped > 0) toast.error('No usable phone number for this guest')
+        else toast.error(`Could not send to ${firstNameOf(g.full_name)}`)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Send failed')
+      }
+    })
   }
 
   function sendEmail(g: GuestWithInvitations) {

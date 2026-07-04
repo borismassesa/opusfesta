@@ -8,6 +8,11 @@ export function publicOrigin(): string {
   return (process.env.NEXT_PUBLIC_OPUS_PASS_URL || 'https://opuspass.opusfesta.com').replace(/\/$/, '')
 }
 
+/** First word of a full name, for greetings — falls back to the full name. */
+export function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] || name
+}
+
 /** Slugify free text for a URL handle: lowercase, ASCII, dash-separated. */
 export function slugify(input: string): string {
   return input
@@ -115,7 +120,7 @@ export function pledgeReminderMessage(
   dueLabel: string | null,
   paymentInstructions?: string | null,
 ): string {
-  const firstName = contributorName.split(/\s+/)[0] || contributorName
+  const firstName = firstNameOf(contributorName)
   const dueSw = dueLabel ? ` kabla ya ${dueLabel}` : ''
   const dueEn = dueLabel ? ` by ${dueLabel}` : ''
   const pay = paymentInstructions?.trim() ? `\n\nMalipo / How to pay:\n${paymentInstructions.trim()}` : ''
@@ -144,7 +149,7 @@ export function inviteMessage(
   guestName: string,
   rsvpLink: string
 ): string {
-  const firstName = guestName.split(/\s+/)[0] || guestName
+  const firstName = firstNameOf(guestName)
   return (
     `Karibu ${firstName}! 💚\n` +
     `${coupleNames} wanafurahi kukukaribisha kwenye harusi yao.\n` +
@@ -161,7 +166,7 @@ export function reminderMessage(
   guestName: string,
   rsvpLink: string
 ): string {
-  const firstName = guestName.split(/\s+/)[0] || guestName
+  const firstName = firstNameOf(guestName)
   return (
     `Habari ${firstName}! 💚\n` +
     `Ni ukumbusho mpole — ${coupleNames} bado wanasubiri jibu lako.\n` +
