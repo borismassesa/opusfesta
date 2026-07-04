@@ -937,6 +937,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     field_host_label: 'From (host names)',
     field_category_label: 'Event type (Swahili)',
     settings_required_note: 'These appear in every invite. Confirm them before sending; you can change them any time.',
+    toast_settings_saved: 'Invitation details saved',
     add_number: 'Add number',
     save_number: 'Save',
     row_send: 'Send',
@@ -2315,6 +2316,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'field_host_label', label: 'Host names field', kind: 'text', max: 30 },
         { key: 'field_category_label', label: 'Event type field', kind: 'text', max: 30 },
         { key: 'settings_required_note', label: 'Required note', kind: 'text', max: 140 },
+        { key: 'toast_settings_saved', label: 'Saved toast', kind: 'text', max: 40 },
       ],
     },
     {

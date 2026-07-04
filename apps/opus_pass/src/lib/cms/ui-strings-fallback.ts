@@ -1036,6 +1036,7 @@ export interface DashboardSendStrings {
   field_host_label: string
   field_category_label: string
   settings_required_note: string
+  toast_settings_saved: string
   // Table extras
   add_number: string
   save_number: string
@@ -1905,6 +1906,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     field_host_label: 'From (host names)',
     field_category_label: 'Event type (Swahili)',
     settings_required_note: 'These appear in every invite. Confirm them before sending; you can change them any time.',
+    toast_settings_saved: 'Invitation details saved',
     add_number: 'Add number',
     save_number: 'Save',
     row_send: 'Send',

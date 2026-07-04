@@ -1004,7 +1004,8 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
   }
   const addOns = [...addOnSet]
 
-  // Used = distinct guests already sent a WhatsApp invite.
+  // Used = distinct guests already sent a REAL WhatsApp invite. Dry-run stub
+  // sends log fake wamid.STUB-* ids — they must never consume paid credits.
   const { data: sent } = await supabase
     .from('whatsapp_messages')
     .select('guest_contact_id')
@@ -1012,6 +1013,7 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     .eq('direction', 'out')
     .eq('kind', 'invite')
     .eq('status', 'sent')
+    .not('wamid', 'like', 'wamid.STUB-%')
   const alreadySentIds = [
     ...new Set((sent ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x))),
   ]

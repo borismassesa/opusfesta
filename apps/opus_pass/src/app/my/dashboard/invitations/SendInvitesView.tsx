@@ -321,6 +321,19 @@ export default function SendInvitesView({
     })
   }
 
+  function saveSettings() {
+    if (!settingsValid) return
+    startTransition(async () => {
+      try {
+        await saveInviteSendSettings(hostName, eventCat)
+        toast.success(strings.toast_settings_saved)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_settings_saved)
+      }
+    })
+  }
+
   function savePhone() {
     if (!phoneEdit) return
     const { id, value } = phoneEdit
@@ -446,6 +459,25 @@ export default function SendInvitesView({
         <section className="mode primary">
           <div className="hrow"><div><div className="tag">{strings.targeted_tag}</div><h2>{strings.targeted_title}</h2></div></div>
           <p>{strings.targeted_desc}</p>
+          <div className="vars">
+            <div className="vlegend">{strings.settings_legend}</div>
+            <div className="vgrid two">
+              <label className="vfield">
+                <span>{strings.field_host_label}</span>
+                <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
+              </label>
+              <label className="vfield">
+                <span>{strings.field_category_label}</span>
+                <input value={eventCat} onChange={(e) => setEventCat(e.target.value)} maxLength={40} />
+              </label>
+            </div>
+            <div className="vsave">
+              <p className="mutedp">{strings.settings_required_note}</p>
+              <button className="btn pri" disabled={pending || !settingsValid} onClick={saveSettings}>
+                {strings.save_number}
+              </button>
+            </div>
+          </div>
           <div className="chips">
             <button
               className="btn pri lg"
@@ -923,6 +955,9 @@ const css = `
 .si .vars{ margin-top:16px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--hover); }
 .si .vlegend{ font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--purple); margin-bottom:10px; }
 .si .vgrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.si .vgrid.two{ grid-template-columns:1fr 1fr; }
+.si .vsave{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+.si .vsave .mutedp{ margin-top:0; }
 .si .vfield{ display:flex; flex-direction:column; gap:5px; }
 .si .vfield + .vfield{ margin-top:10px; }
 .si .vgrid .vfield + .vfield{ margin-top:0; }
