@@ -1501,6 +1501,32 @@ export async function saveInviteSendSettings(hostName: string, eventCategory: st
 }
 
 /**
+ * Lightweight inline edit from the Send Invites table: guest display name and
+ * phone. Deliberately narrower than updateGuest (which rewrites every column
+ * from a full GuestInput) so an inline edit can never clobber unrelated
+ * fields. The single phone field drives BOTH phone and whatsapp_phone —
+ * fixing a wrong number must fix where invites actually go.
+ */
+export async function updateGuestBasics(guestId: string, name: string, rawPhone: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const fullName = name.replace(/\s+/g, ' ').trim().slice(0, 120)
+  if (!fullName) throw new Error('Enter the guest name')
+  let phone: string | null = null
+  if (rawPhone.trim()) {
+    phone = normalizePhone(rawPhone)
+    if (!phone || phone.length < 9) throw new Error('Enter a valid phone number')
+  }
+  const { error } = await supabase
+    .from('guest_contacts')
+    .update({ full_name: fullName, phone, whatsapp_phone: phone })
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/**
  * Quick inline fix from the Send Invites table: attach a phone number to a
  * guest who was skipped for having none. Also fills whatsapp_phone when empty
  * so the guest immediately becomes WhatsApp-sendable.

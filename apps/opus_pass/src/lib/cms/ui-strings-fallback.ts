@@ -1042,6 +1042,12 @@ export interface DashboardSendStrings {
   save_number: string
   row_send: string
   row_resend: string
+  row_edit: string
+  add_guest: string
+  row_delete: string
+  row_delete_confirm: string
+  toast_guest_saved: string
+  toast_guest_removed: string
   selected_count: string // {n}
   live_hint: string
   send_all_notsent: string // {n}
@@ -1911,6 +1917,12 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     save_number: 'Save',
     row_send: 'Send',
     row_resend: 'Resend',
+    row_edit: 'Edit guest',
+    add_guest: 'Add guest',
+    row_delete: 'Remove guest',
+    row_delete_confirm: 'Sure?',
+    toast_guest_saved: 'Guest saved',
+    toast_guest_removed: 'Guest removed',
     selected_count: '{n} selected',
     live_hint: 'Statuses update automatically',
     send_all_notsent: 'Send to all not sent ({n})',

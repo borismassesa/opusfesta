@@ -17,6 +17,9 @@ import {
   RotateCcw,
   Loader2,
   Plus,
+  Pencil,
+  Trash2,
+  Check,
 } from 'lucide-react'
 import {
   enablePublicSharing,
@@ -25,6 +28,9 @@ import {
   sendWhatsAppTestInvite,
   saveInviteSendSettings,
   updateGuestPhone,
+  updateGuestBasics,
+  createGuest,
+  deleteGuest,
   recordSend,
   type WhatsAppSendSummary,
   type WhatsAppSendResult,
@@ -100,6 +106,9 @@ export default function SendInvitesView({
   const [testPhone, setTestPhone] = useState(data.testPhone ?? '')
   const [testSending, setTestSending] = useState(false)
   const [phoneEdit, setPhoneEdit] = useState<{ id: string; value: string } | null>(null)
+  // Inline guest-list editing: one row at a time, plus an add-guest row.
+  const [rowEdit, setRowEdit] = useState<{ id: string; name: string; phone: string; askDelete: boolean } | null>(null)
+  const [newGuest, setNewGuest] = useState<{ name: string; phone: string } | null>(null)
   // The template's {{2}}/{{3}}, editable everywhere they're shown and REQUIRED
   // before any send. {{1}} (guest name) is per-guest from the roster; the
   // sample here only drives the preview bubble and the test message.
@@ -330,6 +339,55 @@ export default function SendInvitesView({
         router.refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : strings.toast_settings_saved)
+      }
+    })
+  }
+
+  function saveRowEdit() {
+    if (!rowEdit) return
+    const { id, name, phone } = rowEdit
+    startTransition(async () => {
+      try {
+        await updateGuestBasics(id, name, phone)
+        toast.success(strings.toast_guest_saved)
+        setRowEdit(null)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
+      }
+    })
+  }
+
+  function removeGuest() {
+    if (!rowEdit) return
+    const { id } = rowEdit
+    startTransition(async () => {
+      try {
+        await deleteGuest(id)
+        toast.success(strings.toast_guest_removed)
+        setRowEdit(null)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
+      }
+    })
+  }
+
+  function addGuest() {
+    if (!newGuest || !newGuest.name.trim()) return
+    const { name, phone } = newGuest
+    startTransition(async () => {
+      try {
+        await createGuest({
+          full_name: name.replace(/\s+/g, ' ').trim(),
+          phone: phone.trim() || null,
+          whatsapp_phone: phone.trim() || null,
+        })
+        toast.success(strings.toast_guest_saved)
+        setNewGuest(null)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
       }
     })
   }
@@ -569,12 +627,15 @@ export default function SendInvitesView({
               </button>
             </div>
             {selected.size > 0 ? <span className="selcnt">{fmt(strings.selected_count, { n: selected.size })}</span> : null}
+            <button className="btn ghost" disabled={pending} onClick={() => setNewGuest({ name: '', phone: '' })}>
+              <Plus size={14} /> {strings.add_guest}
+            </button>
             <button className="btn pri" disabled={pending || selected.size === 0} onClick={() => stageBulkSend([...selected])}>
               {strings.send_to_selected} <ArrowRight size={15} />
             </button>
           </div>
         </div>
-        {visible.length === 0 ? (
+        {visible.length === 0 && !newGuest ? (
           <div className="empty">
             {search.trim()
               ? strings.empty_search
@@ -594,7 +655,83 @@ export default function SendInvitesView({
                 </tr>
               </thead>
               <tbody>
-                {visible.map((g) => (
+                {newGuest ? (
+                  <tr>
+                    <td></td>
+                    <td className="who">
+                      <input
+                        className="einp"
+                        autoFocus
+                        placeholder={strings.th_guest}
+                        value={newGuest.name}
+                        onChange={(e) => setNewGuest({ ...newGuest, name: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === 'Enter') addGuest(); if (e.key === 'Escape') setNewGuest(null) }}
+                      />
+                    </td>
+                    <td className="contact">
+                      <input
+                        className="einp"
+                        placeholder={strings.test_placeholder}
+                        value={newGuest.phone}
+                        onChange={(e) => setNewGuest({ ...newGuest, phone: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === 'Enter') addGuest(); if (e.key === 'Escape') setNewGuest(null) }}
+                        inputMode="tel"
+                      />
+                    </td>
+                    <td colSpan={2}></td>
+                    <td>
+                      <div className="ra">
+                        <button className="ia send" disabled={pending || !newGuest.name.trim()} onClick={addGuest}>
+                          <Check size={14} /> {strings.save_number}
+                        </button>
+                        <button className="ia" disabled={pending} onClick={() => setNewGuest(null)} title={strings.preview_close}><X size={15} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                {visible.map((g) =>
+                  rowEdit?.id === g.id ? (
+                    <tr key={g.id}>
+                      <td></td>
+                      <td className="who">
+                        <input
+                          className="einp"
+                          autoFocus
+                          value={rowEdit.name}
+                          onChange={(e) => setRowEdit({ ...rowEdit, name: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveRowEdit(); if (e.key === 'Escape') setRowEdit(null) }}
+                        />
+                      </td>
+                      <td className="contact">
+                        <input
+                          className="einp"
+                          placeholder={strings.test_placeholder}
+                          value={rowEdit.phone}
+                          onChange={(e) => setRowEdit({ ...rowEdit, phone: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') saveRowEdit(); if (e.key === 'Escape') setRowEdit(null) }}
+                          inputMode="tel"
+                        />
+                      </td>
+                      <td colSpan={2}></td>
+                      <td>
+                        <div className="ra">
+                          <button className="ia send" disabled={pending} onClick={saveRowEdit}>
+                            <Check size={14} /> {strings.save_number}
+                          </button>
+                          <button
+                            className="ia danger"
+                            disabled={pending}
+                            title={strings.row_delete}
+                            onClick={() => (rowEdit.askDelete ? removeGuest() : setRowEdit({ ...rowEdit, askDelete: true }))}
+                          >
+                            <Trash2 size={14} />
+                            {rowEdit.askDelete ? strings.row_delete_confirm : null}
+                          </button>
+                          <button className="ia" disabled={pending} onClick={() => setRowEdit(null)} title={strings.preview_close}><X size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
                   <tr key={g.id}>
                     <td><input type="checkbox" className="ck" checked={selected.has(g.id)} onChange={() => toggleSelect(g.id)} /></td>
                     <td className="who">{g.name}</td>
@@ -636,10 +773,17 @@ export default function SendInvitesView({
                         </button>
                         <button className="ia" disabled={pending || !hasPhone(g)} title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Smartphone size={15} /></button>
                         <button className="ia" disabled={pending} title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
+                        <button
+                          className="ia"
+                          disabled={pending}
+                          title={strings.row_edit}
+                          onClick={() => setRowEdit({ id: g.id, name: g.name, phone: g.phone ?? g.whatsappPhone ?? '', askDelete: false })}
+                        ><Pencil size={14} /></button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ),
+                )}
               </tbody>
             </table>
           </div>
@@ -930,6 +1074,10 @@ const css = `
 .si .ia:disabled{ opacity:.45; cursor:not-allowed; }
 .si .ia.send{ background:var(--purple); border-color:var(--purple); color:#fff; padding:0 12px; }
 .si .ia.send:hover{ filter:brightness(1.06); background:var(--purple); }
+.si .ia.danger{ color:var(--bad-tx); }
+.si .ia.danger:hover{ border-color:var(--bad-tx); background:var(--bad-bg); }
+.si .einp{ width:100%; max-width:220px; border:1px solid var(--lav); border-radius:8px; padding:6px 9px; font-size:13px; background:#fff; }
+.si .einp:focus{ outline:none; border-color:var(--purple); }
 .si .ck{ width:15px; height:15px; accent-color:var(--purple); }
 
 /* Overlays: confirm modal, preview modal, report drawer */
