@@ -168,6 +168,9 @@ export default function SendInvitesView({
   const [eventCat, setEventCat] = useState(data.sendSettings.eventCategory)
   const [sampleGuest, setSampleGuest] = useState(firstNameOf(guests[0]?.name ?? 'Amina'))
   const settingsValid = hostName.trim().length > 0 && eventCat.trim().length > 0
+  // The details card is a form only while unconfirmed or explicitly editing;
+  // once saved it collapses into a confirmed summary.
+  const [editingSettings, setEditingSettings] = useState(!data.sendSettings.confirmed)
 
   // "Awaiting" = invited but not yet replied (delivered or seen, no RSVP).
   const isAwaiting = (s: SendGuestRow['status']) => s === 'sent' || s === 'viewed'
@@ -388,6 +391,7 @@ export default function SendInvitesView({
       try {
         await saveInviteSendSettings(hostName, eventCat)
         toast.success(strings.toast_settings_saved)
+        setEditingSettings(false)
         router.refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : strings.toast_settings_saved)
@@ -569,27 +573,54 @@ export default function SendInvitesView({
         <section className="mode primary">
           <div className="hrow"><div><div className="tag">{strings.targeted_tag}</div><h2>{strings.targeted_title}</h2></div></div>
           <p>{strings.targeted_desc}</p>
-          <div className="vars">
-            <div className="vlegend">{strings.settings_legend}</div>
-            <div className="vgrid two">
-              <label className="vfield">
-                <span>{strings.field_host_label}</span>
-                <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
-              </label>
-              <CategoryField
-                value={eventCat}
-                onChange={setEventCat}
-                label={strings.field_category_label}
-                otherLabel={strings.field_category_other}
-              />
+          {editingSettings ? (
+            <div className="vars">
+              <div className="vlegend">{strings.settings_legend}</div>
+              <div className="vgrid two">
+                <label className="vfield">
+                  <span>{strings.field_host_label}</span>
+                  <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
+                </label>
+                <CategoryField
+                  value={eventCat}
+                  onChange={setEventCat}
+                  label={strings.field_category_label}
+                  otherLabel={strings.field_category_other}
+                />
+              </div>
+              <div className="vsave">
+                <p className="mutedp">{strings.settings_required_note}</p>
+                <div className="vbtns">
+                  {data.sendSettings.confirmed ? (
+                    <button
+                      className="btn ghost"
+                      disabled={pending}
+                      title={strings.preview_close}
+                      onClick={() => {
+                        setHostName(data.sendSettings.hostName)
+                        setEventCat(data.sendSettings.eventCategory)
+                        setEditingSettings(false)
+                      }}
+                    ><X size={14} /></button>
+                  ) : null}
+                  <button className="btn solid" disabled={pending || !settingsValid} onClick={saveSettings}>
+                    <Check size={14} /> {strings.save_number}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="vsave">
-              <p className="mutedp">{strings.settings_required_note}</p>
-              <button className="btn pri" disabled={pending || !settingsValid} onClick={saveSettings}>
-                {strings.save_number}
-              </button>
+          ) : (
+            <div className="vars saved">
+              <div className="vlegend ok"><Check size={13} /> {strings.settings_legend}</div>
+              <div className="vsummary">
+                <span className="vchip"><i>{strings.field_host_label}</i>{hostName}</span>
+                <span className="vchip"><i>{strings.field_category_label}</i>{capitalize(eventCat)}</span>
+                <button className="btn ghost vedit" disabled={pending} onClick={() => setEditingSettings(true)}>
+                  <Pencil size={13} /> {strings.settings_edit}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
           <div className="chips">
             <button
               className="btn pri lg"
@@ -1010,6 +1041,7 @@ const css = `
 .si .btn.pri{ background:var(--lav-btn); color:var(--purple-d); box-shadow:var(--soft); }
 .si .btn.lg{ padding:11px 20px; font-size:14px; background:var(--purple); color:#fff; }
 .si .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); }
+.si .btn.solid{ background:var(--purple); color:#fff; box-shadow:var(--soft); }
 .si .spin{ animation:si-spin .8s linear infinite; }
 @keyframes si-spin{ to{ transform:rotate(360deg); } }
 .si .ctx{ display:flex; gap:20px; align-items:center; background:#fff; border:1px solid var(--line);
@@ -1164,6 +1196,14 @@ const css = `
 .si .vgrid.two{ grid-template-columns:1fr 1fr; }
 .si .vsave{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
 .si .vsave .mutedp{ margin-top:0; }
+.si .vbtns{ display:flex; gap:8px; flex:none; }
+.si .vars.saved{ background:var(--ok-bg); border-color:#cfe8da; }
+.si .vlegend.ok{ color:var(--ok-tx); display:inline-flex; align-items:center; gap:5px; }
+.si .vsummary{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.si .vchip{ display:inline-flex; flex-direction:column; gap:2px; background:#fff; border:1px solid #dcebe2;
+  border-radius:10px; padding:8px 14px; font-size:13.5px; font-weight:600; color:var(--ink); }
+.si .vchip i{ font-style:normal; font-size:9.5px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
+.si .vedit{ margin-left:auto; }
 .si .vfield{ display:flex; flex-direction:column; gap:5px; }
 .si .vfield + .vfield{ margin-top:10px; }
 .si .vgrid .vfield + .vfield{ margin-top:0; }
