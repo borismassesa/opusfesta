@@ -1490,13 +1490,27 @@ export async function saveInviteSendSettings(hostName: string, eventCategory: st
   const host = hostName.replace(/\s+/g, ' ').trim().slice(0, 60)
   const category = eventCategory.replace(/\s+/g, ' ').trim().slice(0, 40)
   if (!host || !category) throw new Error('Fill in who the invite is from and the event type')
-  const { error } = await supabase
+
+  const { data: updated, error } = await supabase
     .from('couple_profiles')
-    .upsert(
-      { user_id: user.id, invite_host_name: host, invite_event_category: category },
-      { onConflict: 'user_id' },
-    )
+    .update({ invite_host_name: host, invite_event_category: category })
+    .eq('user_id', user.id)
+    .select('user_id')
   if (error) throw new Error(error.message)
+
+  if (!updated || updated.length === 0) {
+    // First save with no profile row yet. partner1_name is NOT NULL, so seed
+    // the partner names from the host string ("Asha & Juma" / "Asha na Juma").
+    const [p1, p2] = host.split(/\s*(?:&|\bna\b)\s*/i)
+    const { error: insErr } = await supabase.from('couple_profiles').insert({
+      user_id: user.id,
+      partner1_name: (p1?.trim() || host).slice(0, 60),
+      partner2_name: p2?.trim() ? p2.trim().slice(0, 60) : null,
+      invite_host_name: host,
+      invite_event_category: category,
+    })
+    if (insErr) throw new Error(insErr.message)
+  }
   revalidateDashboard()
 }
 

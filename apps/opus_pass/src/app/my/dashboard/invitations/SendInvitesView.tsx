@@ -80,7 +80,13 @@ function waText(text: string) {
 /** The known Swahili event categories, in template-friendly form. */
 const CATEGORY_OPTIONS = [...new Set(Object.values(EVENT_TYPE_LABELS_SW))]
 
-/** Event-category picker: preset Swahili nouns plus an "other, type it" mode. */
+/** Display form of a category: menu shows "Harusi", the message keeps the
+ *  grammatically-correct lowercase noun mid-sentence ("kuhudhuria harusi ya"). */
+const capitalize = (v: string) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : v)
+
+/** Event-category picker: preset Swahili nouns plus an "other, type it" mode.
+ *  The select can never render blank: an empty value shows a placeholder row
+ *  and a saved custom value opens directly in other-mode. */
 function CategoryField({
   value,
   onChange,
@@ -92,7 +98,9 @@ function CategoryField({
   label: string
   otherLabel: string
 }) {
-  const [otherMode, setOtherMode] = useState(() => !CATEGORY_OPTIONS.includes(value))
+  const isPreset = CATEGORY_OPTIONS.includes(value)
+  const [otherPicked, setOtherPicked] = useState(() => Boolean(value) && !isPreset)
+  const otherMode = otherPicked || (Boolean(value) && !isPreset)
   return (
     <label className="vfield">
       <span>{label}</span>
@@ -100,16 +108,16 @@ function CategoryField({
         value={otherMode ? '__other' : value}
         onChange={(e) => {
           if (e.target.value === '__other') {
-            setOtherMode(true)
-            onChange('')
+            setOtherPicked(true)
           } else {
-            setOtherMode(false)
+            setOtherPicked(false)
             onChange(e.target.value)
           }
         }}
       >
+        {!value && !otherMode ? <option value="" disabled>{label}</option> : null}
         {CATEGORY_OPTIONS.map((o) => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o} value={o}>{capitalize(o)}</option>
         ))}
         <option value="__other">{otherLabel}</option>
       </select>
@@ -1160,7 +1168,7 @@ const css = `
 .si .vfield + .vfield{ margin-top:10px; }
 .si .vgrid .vfield + .vfield{ margin-top:0; }
 .si .vfield span{ font-size:11px; font-weight:600; color:var(--muted); }
-.si .vfield input, .si .vfield select{ border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; background:#fff; color:var(--ink); }
+.si .vfield input, .si .vfield select{ width:100%; border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; background:#fff; color:var(--ink); }
 .si .vfield input:focus, .si .vfield select:focus{ outline:none; border-color:var(--lav); }
 @media(max-width:640px){ .si .vgrid{ grid-template-columns:1fr; } }
 .si .testrow{ margin-top:18px; }
