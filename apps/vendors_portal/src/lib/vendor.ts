@@ -42,6 +42,12 @@ export type CurrentVendorState =
       // (which doc is uploaded, whether the agreement is signed) and reflect
       // it as per-step pills on the timeline.
       vendorId: string
+      // The caller's membership role + users.id, surfaced so server actions
+      // can gate on ownership and stamp signed_by without re-querying — a
+      // re-lookup by clerk_id can fail for vendors resolved via the
+      // verified-email fallback (whose clerk_id repair is best-effort).
+      role: CurrentVendor['role']
+      supabaseUserId: string
     }
   | { kind: 'suspended'; vendorName: string; vendorId: string }
   | { kind: 'no-env' }
@@ -78,7 +84,10 @@ const DEFAULT_STATS: CurrentVendor['stats'] = {
   reviewCount: 0,
 }
 
-function stateFromMembership(row: MembershipRow): CurrentVendorState | null {
+function stateFromMembership(
+  row: MembershipRow,
+  supabaseUserId: string,
+): CurrentVendorState | null {
   const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors
   if (!v) {
     console.warn(
@@ -98,6 +107,8 @@ function stateFromMembership(row: MembershipRow): CurrentVendorState | null {
       status,
       vendorName: v.business_name,
       vendorId: v.id,
+      role: row.role,
+      supabaseUserId,
     }
   }
 
@@ -154,11 +165,15 @@ async function loadActiveMembership(
 
   if (data && data.length > 1) {
     console.warn(
-      `[vendor] user has ${data.length} active vendor memberships — silently using the oldest. Vendor switcher ships when staff support lands.`,
+      `[vendor] user has ${data.length} active vendor memberships — using the oldest OWNED vendor (oldest of any role if none owned). Vendor switcher ships when staff support lands.`,
     )
   }
 
-  return data?.[0] ?? null
+  // Prefer a vendor this user OWNS over an older membership where they're
+  // only a manager/staff member: the portal's verification flow (agreement
+  // signing, doc uploads) acts on the resolved vendor, and pointing it at a
+  // vendor the caller can't sign for would dead-end them.
+  return data?.find((r) => r.role === 'owner') ?? data?.[0] ?? null
 }
 
 async function verifiedClerkEmail(): Promise<{
@@ -271,7 +286,9 @@ async function resolveVendorByVerifiedEmail(
   console.warn(
     `[vendor] resolved vendor by verified email fallback for clerk_id=${clerkUserId} users.id=${user.id} vendor.id=${vendorId}`,
   )
-  return stateFromMembership(membership)
+  // The caller's users.id: the freshly-provisioned row when one exists,
+  // otherwise the email-matched legacy row we just repaired clerk_id on.
+  return stateFromMembership(membership, currentSupabaseUserId ?? user.id)
 }
 
 // Map legacy onboarding_status values to their B-lite equivalents. The
@@ -409,5 +426,5 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
     return { kind: 'no-application' }
   }
 
-  return stateFromMembership(row) ?? { kind: 'no-application' }
+  return stateFromMembership(row, supabaseUserId) ?? { kind: 'no-application' }
 }

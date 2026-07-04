@@ -90,48 +90,14 @@ export async function uploadVerificationDocument(
     }
   }
 
-  let state
-  try {
-    state = await getCurrentVendor()
-  } catch (err) {
-    console.error('[verify] uploadVerificationDocument: getCurrentVendor threw', err)
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Something went wrong loading your vendor record. Please refresh and try again.',
-    }
-  }
-  if (state.kind !== 'pending-approval') {
-    return {
-      ok: false,
-      reason: 'wrong-state',
-      error:
-        state.kind === 'live'
-          ? 'Your account is already approved.'
-          : state.kind === 'suspended'
-            ? 'Your account is suspended.'
-            : "You haven't started a vendor application yet.",
-    }
-  }
-  if (
-    state.status !== 'verification_pending' &&
-    state.status !== 'needs_corrections'
-  ) {
-    return {
-      ok: false,
-      reason: 'wrong-state',
-      error: 'Verification uploads are only accepted while your application is in verification or correction.',
-    }
-  }
-
-  // Use the vendor id getCurrentVendor already resolved for THIS caller (it
-  // filters vendor_memberships by the authenticated user's id via the admin
-  // client). Never re-resolve through an RLS-only membership query: when the
-  // Clerk 'supabase' JWT template is absent, createClerkSupabaseServerClient
-  // falls back to the service-role client, and an unfiltered query returns the
-  // globally-oldest active vendor — writing this vendor's documents onto
-  // someone else's record.
-  const vendorId = state.vendorId
+  // Vendor id comes from the state getCurrentVendor resolved for THIS caller
+  // — see requirePendingVendor for why it is never re-resolved via an
+  // RLS-only query.
+  const guard = await requirePendingVendor(
+    'Verification uploads are only accepted while your application is in verification or correction.',
+  )
+  if (!guard.ok) return guard
+  const vendorId = guard.vendorId
 
   const ext = EXT_BY_MIME[file.type] ?? 'bin'
   const storagePath = `${vendorId}/${docType}/${randomUUID()}.${ext}`
@@ -358,95 +324,39 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     return { ok: false, reason: 'unauth', error: 'Sign in to continue.' }
   }
 
-  let state
-  try {
-    state = await getCurrentVendor()
-  } catch (err) {
-    console.error('[verify] signVendorAgreement: getCurrentVendor threw', err)
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Something went wrong loading your vendor record. Please refresh and try again.',
-    }
-  }
-  if (state.kind !== 'pending-approval') {
-    return {
-      ok: false,
-      reason: 'wrong-state',
-      error:
-        state.kind === 'live'
-          ? 'Your account is already approved.'
-          : state.kind === 'suspended'
-            ? 'Your account is suspended.'
-            : "You haven't started a vendor application yet.",
-    }
-  }
-  if (
-    state.status !== 'verification_pending' &&
-    state.status !== 'needs_corrections'
-  ) {
-    return {
-      ok: false,
-      reason: 'wrong-state',
-      error: 'The agreement can only be signed during verification.',
-    }
-  }
+  // Vendor id, membership role, and users.id all come from the state
+  // getCurrentVendor resolved for THIS caller — see requirePendingVendor for
+  // why none of them are ever re-resolved via an RLS-only query (doing so is
+  // how signatures landed on another vendor's record and silently no-op'd on
+  // the unique constraint).
+  const guard = await requirePendingVendor(
+    'The agreement can only be signed during verification.',
+  )
+  if (!guard.ok) return guard
+  const vendorId = guard.vendorId
 
-  // Sign against the vendor getCurrentVendor resolved for THIS caller — it
-  // filters vendor_memberships by the authenticated user's id via the admin
-  // client. Never re-resolve through an RLS-only membership query: when the
-  // Clerk 'supabase' JWT template is absent, createClerkSupabaseServerClient
-  // falls back to the service-role client, and an unfiltered query returns the
-  // globally-oldest active vendor. That wrote signatures onto another vendor's
-  // record, where the (vendor_id, agreement_version) unique constraint turned
-  // every re-submit into a silent no-op — the vendor could never finish
-  // signing.
-  const vendorId = state.vendorId
-
-  // Resolve users.id for signed_by — admin client because RLS on users
-  // would block this from a Clerk-authed read.
   const admin = createSupabaseAdminClient()
-  const userLookup = await admin
-    .from('users')
-    .select('id')
-    .eq('clerk_id', userId)
-    .single<{ id: string }>()
 
-  if (userLookup.error) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: `[verify] user lookup failed: ${userLookup.error.code} ${userLookup.error.message}`,
-    }
-  }
-
-  // Owner gate, checked explicitly against this vendor + this user (never via
-  // RLS scoping alone): only the owner may bind the business to the agreement.
-  const membership = await admin
-    .from('vendor_memberships')
-    .select('role')
-    .eq('vendor_id', vendorId)
-    .eq('user_id', userLookup.data.id)
-    .eq('status', 'active')
-    .maybeSingle<{ role: string }>()
-
-  if (membership.error) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: `[verify] membership lookup failed: ${membership.error.code} ${membership.error.message}`,
-    }
-  }
-  if (membership.data?.role !== 'owner') {
+  // Owner gate: only the owner may bind the business to the agreement.
+  if (guard.role !== 'owner') {
     // Legacy fallback mirroring is_vendor_member(): a vendor row that predates
     // the membership backfill still identifies its owner via vendors.user_id.
     const legacyOwner = await admin
       .from('vendors')
       .select('id')
       .eq('id', vendorId)
-      .eq('user_id', userLookup.data.id)
+      .eq('user_id', guard.supabaseUserId)
       .maybeSingle<{ id: string }>()
-    if (legacyOwner.error || !legacyOwner.data) {
+    if (legacyOwner.error) {
+      // A failed check is an infrastructure problem, not an authorization
+      // verdict — don't tell a possibly-legitimate owner they can't sign.
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[verify] owner check failed: ${legacyOwner.error.code} ${legacyOwner.error.message}`,
+      }
+    }
+    if (!legacyOwner.data) {
       return {
         ok: false,
         reason: 'unauth',
@@ -470,7 +380,7 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     vendor_id: vendorId,
     agreement_version: doc.version,
     agreement_text_hash: agreementHash,
-    signed_by: userLookup.data.id,
+    signed_by: guard.supabaseUserId,
     signed_full_name: typedName,
     signed_ip: ip,
     signed_user_agent: userAgent,
@@ -495,10 +405,26 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     // 23505 = unique constraint violation. The vendor already signed this
     // version — treat as success, the signature already exists.
     if (insert.error.code === '23505') {
-      // Still upload the drawn signature if the row already existed but no
-      // signature image was on file (e.g. retry after a network hiccup).
+      // Refresh the drawn signature only when the existing row was signed by
+      // THIS caller (e.g. their own retry after a network hiccup). The PNG
+      // path is deterministic per (vendor, version), so an unchecked upsert
+      // would let a different signer overwrite the stored image while the
+      // row keeps the original signer's name/IP/hash — corrupting the audit
+      // artifact.
       if (signaturePngBuffer) {
-        await uploadSignatureImage(admin, vendorId, doc.version, signaturePngBuffer)
+        const existing = await admin
+          .from('vendor_agreements')
+          .select('signed_by')
+          .eq('vendor_id', vendorId)
+          .eq('agreement_version', doc.version)
+          .maybeSingle<{ signed_by: string }>()
+        if (existing.data?.signed_by === guard.supabaseUserId) {
+          await uploadSignatureImage(admin, vendorId, doc.version, signaturePngBuffer)
+        } else {
+          console.warn(
+            `[verify] skipped signature PNG overwrite for vendor ${vendorId} ${doc.version}: existing row signed by a different user`,
+          )
+        }
       }
       revalidatePath('/verify')
       return { ok: true }
@@ -568,9 +494,25 @@ export type NationalIdResult =
       reason: 'wrong-state' | 'invalid' | 'unknown'
     }
 
-/** Gate National ID actions to the right state + resolve the vendor id. */
-async function requirePendingVendor(): Promise<
-  | { ok: true; vendorId: string }
+/**
+ * Gate every verification action to the right vendor state and resolve the
+ * caller's vendor id, membership role, and users.id in one place.
+ *
+ * All three values come from getCurrentVendor(), which resolves them via the
+ * admin client explicitly filtered by the authenticated user. Never
+ * re-resolve any of them via an RLS-only query: createClerkSupabaseServerClient
+ * falls back to the service-role client when the Clerk 'supabase' JWT template
+ * is absent, which bypasses RLS — an unfiltered membership query then returns
+ * the globally-oldest active vendor, silently writing one applicant's
+ * documents or agreement signature onto a different vendor's record.
+ */
+async function requirePendingVendor(wrongStateError?: string): Promise<
+  | {
+      ok: true
+      vendorId: string
+      role: 'owner' | 'manager' | 'staff'
+      supabaseUserId: string
+    }
   | { ok: false; error: string; reason: 'wrong-state' | 'unknown' }
 > {
   let state
@@ -603,17 +545,17 @@ async function requirePendingVendor(): Promise<
     return {
       ok: false,
       reason: 'wrong-state',
-      error: 'Verification is only open while your application is in review.',
+      error:
+        wrongStateError ??
+        'Verification is only open while your application is in review.',
     }
   }
-  // Use the vendor id that getCurrentVendor already resolved for THIS caller
-  // (it filters vendor_memberships by the authenticated user's id). Never
-  // re-resolve via an RLS-only query: createClerkSupabaseServerClient falls
-  // back to the service-role client when the Clerk 'supabase' JWT template is
-  // absent, which bypasses RLS and would return the globally-oldest active
-  // vendor — silently writing one applicant's National ID + selfie onto a
-  // different vendor's record.
-  return { ok: true, vendorId: state.vendorId }
+  return {
+    ok: true,
+    vendorId: state.vendorId,
+    role: state.role,
+    supabaseUserId: state.supabaseUserId,
+  }
 }
 
 /**
