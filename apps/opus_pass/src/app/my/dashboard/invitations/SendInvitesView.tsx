@@ -44,6 +44,7 @@ import {
   firstNameOf,
 } from '@/lib/dashboard/share'
 import { INVITE_TEMPLATE } from '@/lib/whatsapp/types'
+import { EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
 
@@ -74,6 +75,49 @@ function waText(text: string) {
       )}
     </Fragment>
   ))
+}
+
+/** The known Swahili event categories, in template-friendly form. */
+const CATEGORY_OPTIONS = [...new Set(Object.values(EVENT_TYPE_LABELS_SW))]
+
+/** Event-category picker: preset Swahili nouns plus an "other, type it" mode. */
+function CategoryField({
+  value,
+  onChange,
+  label,
+  otherLabel,
+}: {
+  value: string
+  onChange: (v: string) => void
+  label: string
+  otherLabel: string
+}) {
+  const [otherMode, setOtherMode] = useState(() => !CATEGORY_OPTIONS.includes(value))
+  return (
+    <label className="vfield">
+      <span>{label}</span>
+      <select
+        value={otherMode ? '__other' : value}
+        onChange={(e) => {
+          if (e.target.value === '__other') {
+            setOtherMode(true)
+            onChange('')
+          } else {
+            setOtherMode(false)
+            onChange(e.target.value)
+          }
+        }}
+      >
+        {CATEGORY_OPTIONS.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+        <option value="__other">{otherLabel}</option>
+      </select>
+      {otherMode ? (
+        <input value={value} onChange={(e) => onChange(e.target.value)} maxLength={40} placeholder={otherLabel} autoFocus />
+      ) : null}
+    </label>
+  )
 }
 
 /** A queued bulk send awaiting the couple's confirmation. */
@@ -524,10 +568,12 @@ export default function SendInvitesView({
                 <span>{strings.field_host_label}</span>
                 <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
               </label>
-              <label className="vfield">
-                <span>{strings.field_category_label}</span>
-                <input value={eventCat} onChange={(e) => setEventCat(e.target.value)} maxLength={40} />
-              </label>
+              <CategoryField
+                value={eventCat}
+                onChange={setEventCat}
+                label={strings.field_category_label}
+                otherLabel={strings.field_category_other}
+              />
             </div>
             <div className="vsave">
               <p className="mutedp">{strings.settings_required_note}</p>
@@ -805,10 +851,12 @@ export default function SendInvitesView({
                 <span>{strings.field_host_label}</span>
                 <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
               </label>
-              <label className="vfield">
-                <span>{strings.field_category_label}</span>
-                <input value={eventCat} onChange={(e) => setEventCat(e.target.value)} maxLength={40} />
-              </label>
+              <CategoryField
+                value={eventCat}
+                onChange={setEventCat}
+                label={strings.field_category_label}
+                otherLabel={strings.field_category_other}
+              />
               <p className="mutedp">{strings.settings_required_note}</p>
             </div>
             <div className="mrow">
@@ -845,10 +893,12 @@ export default function SendInvitesView({
                   <span>{strings.field_host_label}</span>
                   <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
                 </label>
-                <label className="vfield">
-                  <span>{strings.field_category_label}</span>
-                  <input value={eventCat} onChange={(e) => setEventCat(e.target.value)} maxLength={40} />
-                </label>
+                <CategoryField
+                  value={eventCat}
+                  onChange={setEventCat}
+                  label={strings.field_category_label}
+                  otherLabel={strings.field_category_other}
+                />
               </div>
               <p className="mutedp">{strings.settings_required_note}</p>
             </div>
@@ -1110,8 +1160,8 @@ const css = `
 .si .vfield + .vfield{ margin-top:10px; }
 .si .vgrid .vfield + .vfield{ margin-top:0; }
 .si .vfield span{ font-size:11px; font-weight:600; color:var(--muted); }
-.si .vfield input{ border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; background:#fff; }
-.si .vfield input:focus{ outline:none; border-color:var(--lav); }
+.si .vfield input, .si .vfield select{ border:1px solid var(--line); border-radius:9px; padding:8px 10px; font-size:13px; background:#fff; color:var(--ink); }
+.si .vfield input:focus, .si .vfield select:focus{ outline:none; border-color:var(--lav); }
 @media(max-width:640px){ .si .vgrid{ grid-template-columns:1fr; } }
 .si .testrow{ margin-top:18px; }
 .si .testrow label{ font-size:12px; font-weight:600; color:var(--muted); }
