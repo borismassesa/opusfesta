@@ -85,6 +85,26 @@ export async function POST(req: Request) {
 
     if (tap.kind === BTN.RSVP_YES || tap.kind === BTN.RSVP_NO) {
       const status = tap.kind === BTN.RSVP_YES ? 'attending' : 'declined'
+      // Unified roster: a tap must never be lost because the guest predates
+      // event linking — create any missing invitation rows before recording.
+      const { data: evs } = await supabase
+        .from('wedding_events')
+        .select('id')
+        .eq('user_id', guest.user_id)
+      const eventIds = (evs ?? []).map((e) => e.id as string)
+      if (eventIds.length) {
+        const { data: have } = await supabase
+          .from('guest_invitations')
+          .select('event_id')
+          .eq('guest_contact_id', guest.id)
+        const haveSet = new Set((have ?? []).map((r) => r.event_id as string))
+        const missing = eventIds.filter((id) => !haveSet.has(id))
+        if (missing.length) {
+          await supabase
+            .from('guest_invitations')
+            .insert(missing.map((event_id) => ({ user_id: guest.user_id, guest_contact_id: guest.id, event_id })))
+        }
+      }
       await supabase
         .from('guest_invitations')
         .update({ rsvp_status: status, responded_at: new Date().toISOString() })
