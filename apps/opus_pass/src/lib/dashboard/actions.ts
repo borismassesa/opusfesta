@@ -6,7 +6,7 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, normalizePhone, publicOrigin } from './share'
+import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
 import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
@@ -1354,7 +1354,7 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
 
     const result = await provider.sendInvite({
       to,
-      guestFirstName: g.full_name.trim().split(/\s+/)[0] || g.full_name,
+      guestFirstName: firstNameOf(g.full_name),
       coupleName: ent.coupleName,
       eventCategory: ent.eventCategory,
       headerImageUrl: ent.cardImageUrl,
@@ -1450,7 +1450,7 @@ async function sendWhatsAppLinkRequests(
 
     const result = await provider.sendLinkRequest(kind, {
       to,
-      contactFirstName: g.full_name.trim().split(/\s+/)[0] || g.full_name,
+      contactFirstName: firstNameOf(g.full_name),
       coupleName: ent.coupleName,
       headerImageUrl,
       token,

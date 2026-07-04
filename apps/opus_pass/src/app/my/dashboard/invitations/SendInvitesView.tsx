@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { MessageCircle, Mail, Copy, ArrowRight } from 'lucide-react'
+import { MessageCircle, Mail, Copy, ArrowRight, ExternalLink, BellRing } from 'lucide-react'
 import {
   enablePublicSharing,
   setPublicSharing,
@@ -18,6 +18,7 @@ import {
   publicInviteMessage,
   inviteMessage,
   reminderMessage,
+  firstNameOf,
 } from '@/lib/dashboard/share'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
@@ -120,15 +121,25 @@ export default function SendInvitesView({
         toast.error(strings.toast_no_package)
         return
       }
+      // Every guest fell through (unconfirmed, or the account has no card
+      // image) — a "0 sent" success toast would hide the real problem.
+      if (res.sent === 0 && res.failed === 0 && res.blocked === 0 && res.skipped === 0) {
+        toast.error(strings.toast_nothing_sent)
+        setSelected(new Set())
+        return
+      }
       const verb = res.dryRun
         ? strings.send_verb_dryrun
         : reminder
           ? strings.send_verb_reminded
           : strings.send_verb_sent
       const parts = [`${res.sent} ${verb}`]
+      if (res.failed > 0) parts.push(fmt(strings.send_failed_n, { n: res.failed }))
       if (res.blocked > 0) parts.push(fmt(strings.send_over_quota, { n: res.blocked }))
       if (res.skipped > 0) parts.push(fmt(strings.send_no_phone, { n: res.skipped }))
-      toast.success(parts.join(' · '))
+      const report = parts.join(' · ')
+      if (res.sent > 0) toast.success(report)
+      else toast.error(report)
       setSelected(new Set())
       router.refresh()
     })
@@ -145,22 +156,40 @@ export default function SendInvitesView({
   }
 
   function rowShare(g: SendGuestRow, channel: 'whatsapp' | 'sms' | 'copy') {
-    // Already invited but no reply yet → send a gentle reminder, not a fresh invite.
-    const reminding = isAwaiting(g.status)
-    const msg = reminding
-      ? reminderMessage(event.coupleName, g.name, g.rsvpUrl)
-      : inviteMessage(event.coupleName, g.name, g.rsvpUrl)
     if (channel === 'copy') {
       navigator.clipboard.writeText(g.rsvpUrl)
       toast.success(strings.toast_personal_copied)
       return
     }
+    // With WhatsApp Business live, the row button sends the real approved
+    // template (same pipeline as bulk send) — not a wa.me prefill.
+    if (channel === 'whatsapp' && whatsappLive) {
+      const first = firstNameOf(g.name)
+      const remindingLive = isAwaiting(g.status)
+      startTransition(async () => {
+        const res = await sendWhatsAppInvites([g.id])
+        if (!res.hasPaidOrder) toast.error(strings.toast_no_package)
+        else if (res.sent > 0 && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
+        else if (res.sent > 0)
+          toast.success(fmt(remindingLive ? strings.toast_reminded_one : strings.toast_sent_one, { name: first }))
+        else if (res.blocked > 0) toast.error(fmt(strings.send_over_quota, { n: res.blocked }))
+        else if (res.skipped > 0) toast.error(fmt(strings.send_no_phone, { n: res.skipped }))
+        else toast.error(fmt(strings.toast_send_failed, { name: first }))
+        router.refresh()
+      })
+      return
+    }
+    // Already invited but no reply yet → send a gentle reminder, not a fresh invite.
+    const reminding = isAwaiting(g.status)
+    const msg = reminding
+      ? reminderMessage(event.coupleName, g.name, g.rsvpUrl)
+      : inviteMessage(event.coupleName, g.name, g.rsvpUrl)
     const guestLike = { full_name: g.name, phone: g.phone, whatsapp_phone: g.whatsappPhone }
     const url = channel === 'whatsapp' ? whatsappShareUrl(guestLike, msg) : smsShareUrl(guestLike, msg)
     window.open(url, '_blank', 'noopener,noreferrer')
     recordSend(g.id, channel).catch(() => {})
     if (reminding)
-      toast.success(fmt(strings.toast_reminder_ready, { name: g.name.split(/\s+/)[0] || g.name }))
+      toast.success(fmt(strings.toast_reminder_ready, { name: firstNameOf(g.name) }))
   }
 
   function toggleSelect(id: string) {
@@ -276,10 +305,10 @@ export default function SendInvitesView({
                 <button className="copybtn" onClick={copyLink}>{copied ? strings.copy_done : strings.copy}</button>
               </div>
               <div className="chips">
-                <button className="chip wa" onClick={() => shareLink('whatsapp')}><span className="dot" />{strings.chip_whatsapp}</button>
-                <button className="chip sms" onClick={() => shareLink('sms')}><span className="dot" />{strings.chip_sms}</button>
-                <button className="chip copy" onClick={copyLink}><span className="dot" />{strings.chip_copy_link}</button>
-                <button className="chip qr" onClick={() => shareLink('qr')}><span className="dot" />{strings.chip_open}</button>
+                <button className="chip wa" onClick={() => shareLink('whatsapp')}><MessageCircle size={15} />{strings.chip_whatsapp}</button>
+                <button className="chip sms" onClick={() => shareLink('sms')}><Mail size={15} />{strings.chip_sms}</button>
+                <button className="chip copy" onClick={copyLink}><Copy size={15} />{strings.chip_copy_link}</button>
+                <button className="chip qr" onClick={() => shareLink('qr')}><ExternalLink size={15} />{strings.chip_open}</button>
               </div>
             </>
           ) : (
@@ -293,10 +322,10 @@ export default function SendInvitesView({
           <div className="hrow"><div><div className="tag">{strings.targeted_tag}</div><h2>{strings.targeted_title}</h2></div></div>
           <p>{strings.targeted_desc}</p>
           <div className="chips">
-            <button className="chip wa" disabled={pending} onClick={() => bulkSend()}><span className="dot" />{strings.send_via_whatsapp}</button>
+            <button className="chip wa" disabled={pending} onClick={() => bulkSend()}><MessageCircle size={15} />{strings.send_via_whatsapp}</button>
             {awaitingCount > 0 ? (
               <button className="chip remind" disabled={pending} onClick={remindAwaiting}>
-                <span className="dot" />{fmt(strings.remind_awaiting, { n: awaitingCount })}
+                <BellRing size={15} />{fmt(strings.remind_awaiting, { n: awaitingCount })}
               </button>
             ) : null}
           </div>
@@ -370,14 +399,14 @@ export default function SendInvitesView({
                   <td className="who">{g.name}</td>
                   <td className="contact">{g.phone ?? g.whatsappPhone ?? '—'}</td>
                   <td>
-                    <span className={`mini ${g.channel}`}><span className="dot" />{g.channel === 'whatsapp' ? strings.channel_whatsapp : strings.channel_sms}</span>
+                    <span className={`mini ${g.channel}`}>{g.channel === 'whatsapp' ? <MessageCircle size={13} /> : <Mail size={13} />}{g.channel === 'whatsapp' ? strings.channel_whatsapp : strings.channel_sms}</span>
                   </td>
                   <td><span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span></td>
                   <td>
                     <div className="ra">
-                      <button className="ia wa" title={strings.row_whatsapp} onClick={() => rowShare(g, 'whatsapp')}><MessageCircle size={15} /></button>
-                      <button className="ia sms" title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Mail size={15} /></button>
-                      <button className="ia copy" title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
+                      <button className="ia wa" disabled={pending} title={strings.row_whatsapp} onClick={() => rowShare(g, 'whatsapp')}><MessageCircle size={15} /></button>
+                      <button className="ia sms" disabled={pending} title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Mail size={15} /></button>
+                      <button className="ia copy" disabled={pending} title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -460,10 +489,9 @@ const css = `
   transition:border-color .12s, background .12s; }
 .si .chip:hover{ background:var(--hover); border-color:var(--lav); }
 .si .chip:disabled{ opacity:.5; cursor:not-allowed; }
-.si .chip .dot{ width:9px; height:9px; border-radius:50%; }
-.si .chip.wa .dot{ background:var(--wa); } .si .chip.sms .dot{ background:var(--sms); }
-.si .chip.copy .dot{ background:var(--lav); } .si .chip.qr .dot{ background:var(--ink); }
-.si .chip.remind .dot{ background:#E0A458; }
+.si .chip.wa svg{ color:var(--wa); } .si .chip.sms svg{ color:var(--sms); }
+.si .chip.copy svg{ color:var(--purple); } .si .chip.qr svg{ color:var(--ink); }
+.si .chip.remind svg{ color:#E0A458; }
 .si .note{ display:flex; gap:8px; align-items:flex-start; margin-top:auto; padding-top:16px; font-size:12px; color:var(--muted); }
 .si .note .k{ color:var(--purple); font-weight:600; }
 .si .tg{ position:relative; width:42px; height:24px; border-radius:999px; cursor:pointer; flex:none; border:none; padding:0; }
@@ -497,20 +525,19 @@ const css = `
 .si .who{ font-weight:600; } .si .contact{ color:var(--muted); font-size:12px; }
 .si .mini{ display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:9px;
   padding:5px 10px; font-size:12px; font-weight:600; }
-.si .mini .dot{ width:8px; height:8px; border-radius:50%; }
-.si .mini.whatsapp .dot{ background:var(--wa); } .si .mini.sms .dot{ background:var(--sms); }
-.si .status{ display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
-.si .status::before{ content:""; width:6px; height:6px; border-radius:50%; }
-.si .s-none{ background:#f3f2f5; color:var(--muted); } .si .s-none::before{ background:var(--muted); }
-.si .s-sent{ background:var(--lav-soft); color:var(--purple); } .si .s-sent::before{ background:var(--purple); }
-.si .s-view{ background:#eef3ff; color:var(--sms); } .si .s-view::before{ background:var(--sms); }
-.si .s-yes{ background:var(--ok-bg); color:var(--ok-tx); } .si .s-yes::before{ background:var(--ok-tx); }
-.si .s-no{ background:#fcecec; color:#c0392b; } .si .s-no::before{ background:#c0392b; }
-.si .s-maybe{ background:#fff5e6; color:#b9791a; } .si .s-maybe::before{ background:#b9791a; }
+.si .mini.whatsapp svg{ color:var(--wa); } .si .mini.sms svg{ color:var(--sms); }
+.si .status{ display:inline-flex; align-items:center; font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
+.si .s-none{ background:#f3f2f5; color:var(--muted); }
+.si .s-sent{ background:var(--lav-soft); color:var(--purple); }
+.si .s-view{ background:#eef3ff; color:var(--sms); }
+.si .s-yes{ background:var(--ok-bg); color:var(--ok-tx); }
+.si .s-no{ background:#fcecec; color:#c0392b; }
+.si .s-maybe{ background:#fff5e6; color:#b9791a; }
 .si .ra{ display:flex; gap:7px; justify-content:flex-end; }
 .si .ia{ width:32px; height:32px; border-radius:9px; border:1px solid var(--line); background:#fff; cursor:pointer;
   display:grid; place-items:center; }
 .si .ia:hover{ background:var(--hover); border-color:var(--lav); }
+.si .ia:disabled{ opacity:.45; cursor:not-allowed; }
 .si .ia.wa{ color:var(--wa); } .si .ia.sms{ color:var(--sms); } .si .ia.copy{ color:var(--purple); }
 .si .ck{ width:15px; height:15px; accent-color:var(--purple); }
 @media(max-width:900px){ .si .modes{ grid-template-columns:1fr; } .si .funnel{ grid-template-columns:repeat(2,1fr); }

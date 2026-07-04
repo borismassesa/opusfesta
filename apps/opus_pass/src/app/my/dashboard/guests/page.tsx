@@ -8,6 +8,7 @@ import {
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import { getLocale } from '@/lib/cms/locale'
+import { getWhatsAppProvider } from '@/lib/whatsapp'
 import GuestsManager from './GuestsManager'
 import ReviewQueue from './ReviewQueue'
 
@@ -40,6 +41,7 @@ export default async function GuestsPage() {
         hero={hero}
         collectorToken={collectorToken}
         copy={copy}
+        whatsappLive={getWhatsAppProvider().live}
       />
     </>
   )

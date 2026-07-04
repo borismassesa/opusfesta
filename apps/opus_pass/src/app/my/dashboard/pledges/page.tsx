@@ -9,6 +9,7 @@ import {
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import { getLocale } from '@/lib/cms/locale'
+import { getWhatsAppProvider } from '@/lib/whatsapp'
 import PledgesManager from './PledgesManager'
 
 export const dynamic = 'force-dynamic'
@@ -43,6 +44,7 @@ export default async function PledgesPage() {
       hero={hero}
       pledgeToken={pledgeToken}
       copy={copy}
+      whatsappLive={getWhatsAppProvider().live}
     />
   )
 }
