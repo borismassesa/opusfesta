@@ -372,9 +372,52 @@ async function syncInvitations(userId: string, guestId: string, requestedEventId
   }
 }
 
+/** All of the couple's event ids — the default linkage for a new guest. */
+async function allOwnedEventIds(userId: string): Promise<string[]> {
+  const supabase = createDashboardClient()
+  const { data } = await supabase.from('wedding_events').select('id').eq('user_id', userId)
+  return (data ?? []).map((r) => r.id as string)
+}
+
+/** Guarantee a guest is linked to every one of the couple's events — the
+ *  unified-roster invariant every surface (RSVPs, funnel, taps) relies on. */
+async function ensureInvitationsForAllEvents(userId: string, guestId: string): Promise<void> {
+  const supabase = createDashboardClient()
+  const eventIds = await allOwnedEventIds(userId)
+  if (!eventIds.length) return
+  const { data: existing } = await supabase
+    .from('guest_invitations')
+    .select('event_id')
+    .eq('user_id', userId)
+    .eq('guest_contact_id', guestId)
+  const have = new Set((existing ?? []).map((r) => r.event_id as string))
+  const missing = eventIds.filter((id) => !have.has(id))
+  if (missing.length) {
+    await supabase
+      .from('guest_invitations')
+      .insert(missing.map((event_id) => ({ user_id: userId, guest_contact_id: guestId, event_id })))
+  }
+}
+
 export async function createGuest(input: GuestInput): Promise<string> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
+
+  // One person, one row: block a second contact with the same phone digits.
+  const digits = (input.whatsapp_phone || input.phone || '').replace(/\D/g, '')
+  if (digits) {
+    const { data: contacts } = await supabase
+      .from('guest_contacts')
+      .select('full_name, phone, whatsapp_phone')
+      .eq('user_id', user.id)
+    const clash = (contacts ?? []).find(
+      (c) =>
+        (c.whatsapp_phone ?? '').replace(/\D/g, '') === digits ||
+        (c.phone ?? '').replace(/\D/g, '') === digits,
+    )
+    if (clash) throw new Error(`This number is already on your list (${clash.full_name})`)
+  }
+
   const { data, error } = await supabase
     .from('guest_contacts')
     .insert({ user_id: user.id, ...guestColumnsFromInput(input) })
@@ -382,8 +425,12 @@ export async function createGuest(input: GuestInput): Promise<string> {
     .single<{ id: string }>()
   if (error || !data) throw new Error(error?.message ?? 'Failed to create guest')
 
+  // Unified roster: default a new guest to EVERY event; an explicit eventIds
+  // list (the Guests form) still narrows it deliberately.
   if (input.eventIds?.length) {
     await syncInvitations(user.id, data.id, input.eventIds)
+  } else if (input.eventIds === undefined) {
+    await ensureInvitationsForAllEvents(user.id, data.id)
   }
   revalidateDashboard()
   return data.id
@@ -452,7 +499,10 @@ export async function bulkImportGuests(text: string, eventIds: string[] = []): P
     .select('id')
   if (error) throw new Error(error.message)
 
-  const ownedIds = await ownedEventIds(user.id, eventIds)
+  // Unified roster: no explicit event selection means link to every event.
+  const ownedIds = eventIds.length
+    ? await ownedEventIds(user.id, eventIds)
+    : await allOwnedEventIds(user.id)
   if (ownedIds.length && data?.length) {
     const invites = data.flatMap((g) =>
       ownedIds.map((event_id) => ({ user_id: user.id, guest_contact_id: g.id, event_id }))
@@ -1270,6 +1320,8 @@ export async function approveReviewGuest(guestId: string): Promise<void> {
     .eq('id', guestId)
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
+  // Approved guests join the unified roster like any other guest.
+  await ensureInvitationsForAllEvents(user.id, guestId)
   revalidateDashboard()
 }
 
