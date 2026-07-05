@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -17,19 +17,17 @@ import type { CatalogProduct } from '@/data/invitations-products'
 import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
-import type { FaqItem, ProductAddonsFaqContent } from '@/lib/cms/product-addons-faq'
+import type { AddOn, FaqItem, ProductAddonsFaqContent } from '@/lib/cms/product-addons-faq'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
 //   • Digital suite — `tier.price_per_guest × digitalQty` (per-guest package: Essential/Classic/Elegant/Signature)
-//   • Paper prints  — `PAPER_PRINT_UNIT_PRICE × paperQty` (optional physical add-on, flat per-print)
-//   • Door-scan     — flat base fee per event (on-site scanning attendant)
-const DOOR_SCAN_SERVICE_PRICE = 50000 // TZS — flat per event (on-site scanning attendant at venue entrance)
-// Flat per-print price for the optional paper add-on. Package-independent (the
-// package tiers price the digital suite per guest; paper is a separate physical
-// extra), so it no longer derives from a per-card price. Adjust here if needed.
-const PAPER_PRINT_UNIT_PRICE = 2000 // TZS per printed card
-const PAPER_MIN_QTY = 10
+//   • Add-ons       — an open-ended, admin-editable list (see AddOn in
+//                     lib/cms/product-addons-faq.ts). Each one is 'flat' (one
+//                     fee per event), 'per_unit' (priced with a quantity
+//                     stepper), or 'quote' (priced on a call, never added to
+//                     the order total). An add-on can also be bundled free
+//                     into specific package tiers (`includedInTierIds`).
 
 // Admin-chosen badge icon → lucide component. 'none' renders a text-only pill.
 const TIER_BADGE_ICON: Record<TierBadgeIcon, LucideIcon | null> = {
@@ -152,10 +150,6 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
   )
   const tier = packages.tiers.find((t) => t.id === selectedTier) ?? packages.tiers[0]
   const pricePerGuest = tier?.price_per_guest ?? 0
-  // The on-site scanning attendant is bundled into the higher tiers (Elegant,
-  // Signature). Essential and Classic don't include it, so they instead see it
-  // as an optional paid add-on. Keyed by stable tier id.
-  const attendantIncluded = tier?.id === 'elegant' || tier?.id === 'signature'
   // Lowest per-guest package price — the "From TZS X per guest" anchor on the
   // similar-designs footer (replaces the retired per-card price).
   const fromGuestPrice = packageFromPrice(packages)
@@ -183,16 +177,33 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
     }
   }, [])
 
-  // Add-ons
-  const [paperPrints, setPaperPrints] = useState(false)
-  const [paperQty, setPaperQty] = useState<number>(25)
-  const [doorScan, setDoorScan] = useState(false)
+  // Add-ons — one selection slot per admin-configured add-on (flat/per_unit
+  // only; 'quote' add-ons have no checkbox/state, they just link out).
+  const [addOnSelections, setAddOnSelections] = useState<Record<string, { selected: boolean; qty: number }>>(
+    () => Object.fromEntries(addonsFaq.addons.map((a) => [a.id, { selected: false, qty: a.defaultQty }])),
+  )
+  const isAddOnIncluded = (a: AddOn) => a.includedInTierIds.includes(tier?.id ?? '')
+  const toggleAddOn = (id: string) =>
+    setAddOnSelections((prev) => ({ ...prev, [id]: { ...prev[id], selected: !prev[id]?.selected } }))
+  const setAddOnQty = (id: string, qty: number) =>
+    setAddOnSelections((prev) => ({ ...prev, [id]: { ...prev[id], qty } }))
 
-  // Switching to a tier that already bundles the attendant clears any paid
-  // selection so the included coverage is never offered or double-charged.
+  // Switching to a tier that now bundles an add-on for free clears any paid
+  // selection for it, so the included coverage is never offered or double-charged.
   useEffect(() => {
-    if (attendantIncluded) setDoorScan(false)
-  }, [attendantIncluded])
+    setAddOnSelections((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const a of addonsFaq.addons) {
+        if (isAddOnIncluded(a) && next[a.id]?.selected) {
+          next[a.id] = { ...next[a.id], selected: false }
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tier?.id])
 
   const [favourited, setFavourited] = useState(false)
 
@@ -232,19 +243,32 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
   }, [detailsExpanded, product.name, product.designer, product.description, mounted, sanitizedDescription])
 
   const digitalSubtotal = pricePerGuest * digitalQty
-  const paperUnitPrice = PAPER_PRINT_UNIT_PRICE
-  const paperSubtotal = paperPrints ? paperUnitPrice * paperQty : 0
-  const doorScanSubtotal = doorScan && !attendantIncluded ? DOOR_SCAN_SERVICE_PRICE : 0
-  const total = digitalSubtotal + paperSubtotal + doorScanSubtotal
+
+  // One line per selected, priced (non-included, non-quote) add-on — the
+  // basis for both the order summary rows and the cart line labels.
+  const addOnLines = addonsFaq.addons
+    .map((a) => {
+      if (isAddOnIncluded(a) || a.pricingMode === 'quote') return null
+      const sel = addOnSelections[a.id]
+      if (!sel?.selected) return null
+      const amount = a.pricingMode === 'flat' ? a.flatFee : a.unitPrice * sel.qty
+      return {
+        id: a.id,
+        summaryLabel: a.pricingMode === 'per_unit' ? `${a.title} (${sel.qty})` : a.title,
+        cartLabel: a.pricingMode === 'per_unit' ? `${sel.qty.toLocaleString('en-US')} ${a.title.toLowerCase()}` : a.title,
+        amount,
+      }
+    })
+    .filter((l): l is { id: string; summaryLabel: string; cartLabel: string; amount: number } => l !== null)
+
+  const addOnsSubtotal = addOnLines.reduce((sum, l) => sum + l.amount, 0)
+  const total = digitalSubtotal + addOnsSubtotal
 
   const sameCategory = allProducts.filter((p) => p.id !== product.id && p.category === product.category)
   const others = allProducts.filter((p) => p.id !== product.id && p.category !== product.category)
   const recommendations = [...sameCategory, ...others].slice(0, 4)
 
-  const cartAddOns = [
-    paperPrints && `${paperQty.toLocaleString('en-US')} paper prints`,
-    doorScan && 'On-site attendant',
-  ].filter(Boolean) as string[]
+  const cartAddOns = addOnLines.map((l) => l.cartLabel)
 
   const cartSummary = buildItemSummary({ tier: tier?.name, guests: digitalQty, addOns: cartAddOns })
 
@@ -514,11 +538,6 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                     </li>
                   ))}
                 </ul>
-                {packages.addons.length > 0 && (
-                  <p className="mt-3 text-[11px] text-gray-400">
-                    Available as add-ons: {packages.addons.map((a) => a.label.toLowerCase()).join(', ')}.
-                  </p>
-                )}
               </div>
             </div>
 
@@ -526,89 +545,65 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
             <div className="border-t border-gray-200 pt-6">
               <p className="text-[13px] font-bold text-gray-900 mb-3">{addonsFaq.addonsHeading}</p>
 
-              {/* Paper prints toggle */}
-              <AddOnCard
-                checked={paperPrints}
-                onToggle={() => setPaperPrints((v) => !v)}
-                title={addonsFaq.paperPrints.title}
-                description={addonsFaq.paperPrints.description}
-                priceLabel={`${addonsFaq.priceFromLabel} TZS ${paperUnitPrice.toLocaleString('en-US')} ${addonsFaq.perPrintUnitLabel}`}
-              >
-                {paperPrints && (
-                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-bold text-gray-900 sm:text-[13px]">How many prints?</p>
-                      <p className="text-[11px] text-gray-500">TZS {paperUnitPrice.toLocaleString('en-US')} each</p>
-                    </div>
-                    <div className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
-                      <button
-                        type="button"
-                        aria-label="Fewer prints"
-                        onClick={() => setPaperQty((q) => Math.max(PAPER_MIN_QTY, (Number.isNaN(q) ? PAPER_MIN_QTY : q) - 5))}
-                        disabled={paperQty <= PAPER_MIN_QTY}
-                        className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 disabled:opacity-40 sm:px-4"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        min={PAPER_MIN_QTY}
-                        step={5}
-                        inputMode="numeric"
-                        aria-label="Number of paper prints"
-                        value={paperQty}
-                        onChange={(e) => {
-                          const n = Number(e.target.value)
-                          if (!Number.isNaN(n)) setPaperQty(n)
-                        }}
-                        onBlur={() => {
-                          if (Number.isNaN(paperQty) || paperQty < PAPER_MIN_QTY) setPaperQty(PAPER_MIN_QTY)
-                        }}
-                        className="w-14 border-x border-gray-200 bg-white py-2 text-center text-[14px] font-bold text-gray-900 tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none sm:w-16 sm:py-2.5 sm:text-[15px]"
-                      />
-                      <button
-                        type="button"
-                        aria-label="More prints"
-                        onClick={() => setPaperQty((q) => (Number.isNaN(q) ? PAPER_MIN_QTY : q) + 5)}
-                        className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 sm:px-4"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </AddOnCard>
-
-              {/* On-site scanning attendant. Elegant & Signature bundle it in, so
-                  they see an "included" card; Essential & Classic get the paid toggle. */}
-              {attendantIncluded ? (
-                <IncludedAddOnCard
-                  title={addonsFaq.doorScanIncluded.title}
-                  description={addonsFaq.doorScanIncluded.description}
-                  includedLabel={addonsFaq.includedPillLabel}
-                />
-              ) : (
-                <>
-                  <AddOnCard
-                    checked={doorScan}
-                    onToggle={() => setDoorScan((v) => !v)}
-                    title={addonsFaq.doorScan.title}
-                    description={addonsFaq.doorScan.description}
-                    priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} ${addonsFaq.flatFeePerEventLabel}`}
-                  />
-                  {doorScan && (
-                    // Boarding-pass ticket — both ends (OpusPass stub + QR) are taken
-                    // verbatim from src/assets/lite_ticket_pass.svg; only the middle copy differs.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/assets/guest-ticket-card-${tier?.id ?? 'classic'}.svg`}
-                      alt="Every guest gets a personalised OpusPass ticket with their name, event details, and a unique QR code that your attendant scans at the door for seamless entry."
-                      className="-mt-1 mb-3 h-auto w-full [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.10))_drop-shadow(0_12px_26px_rgba(30,20,40,0.12))]"
+              {addonsFaq.addons.map((a) => {
+                // Bundled into the current tier for free — show the
+                // non-interactive "Included" variant instead of a priced card.
+                if (isAddOnIncluded(a)) {
+                  return (
+                    <IncludedAddOnCard
+                      key={a.id}
+                      title={a.includedTitle || a.title}
+                      description={a.includedDescription || a.description}
+                      includedLabel={addonsFaq.includedPillLabel}
                     />
-                  )}
-                </>
-              )}
-              
+                  )
+                }
+
+                const sel = addOnSelections[a.id] ?? { selected: false, qty: a.defaultQty }
+                const priceLabel =
+                  a.pricingMode === 'flat'
+                    ? `TZS ${a.flatFee.toLocaleString('en-US')} ${a.flatFeeLabel}`
+                    : a.pricingMode === 'per_unit'
+                    ? `${addonsFaq.priceFromLabel} TZS ${a.unitPrice.toLocaleString('en-US')} ${a.unitLabel}`
+                    : '' // 'quote' add-ons show no price line — quoteLabel appears only in the reveal once checked
+
+                return (
+                  <Fragment key={a.id}>
+                    <AddOnCard
+                      checked={sel.selected}
+                      onToggle={() => toggleAddOn(a.id)}
+                      title={a.title}
+                      description={a.description}
+                      priceLabel={priceLabel}
+                    >
+                      {a.pricingMode === 'per_unit' && sel.selected && (
+                        <AddOnQuantityStepper
+                          label={addonsFaq.howManyLabel}
+                          unitPrice={a.unitPrice}
+                          unitLabel={a.unitLabel}
+                          value={sel.qty}
+                          min={a.minQty}
+                          step={a.qtyStep}
+                          onChange={(qty) => setAddOnQty(a.id, qty)}
+                        />
+                      )}
+                      {a.pricingMode === 'quote' && sel.selected && (
+                        <QuoteCallCta addOn={a} phoneNumber={addonsFaq.quotePhoneNumber} />
+                      )}
+                    </AddOnCard>
+                    {a.pricingMode === 'flat' && a.showGuestTicketPreview && sel.selected && (
+                      // Boarding-pass ticket — both ends (OpusPass stub + QR) are taken
+                      // verbatim from src/assets/lite_ticket_pass.svg; only the middle copy differs.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/assets/guest-ticket-card-${tier?.id ?? 'classic'}.svg`}
+                        alt="Every guest gets a personalised OpusPass ticket with their name, event details, and a unique QR code that your attendant scans at the door for seamless entry."
+                        className="-mt-1 mb-3 h-auto w-full [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.10))_drop-shadow(0_12px_26px_rgba(30,20,40,0.12))]"
+                      />
+                    )}
+                  </Fragment>
+                )
+              })}
             </div>
 
             {/* Order summary */}
@@ -616,12 +611,9 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
               <p className="text-[13px] font-bold text-gray-900 mb-3">Order summary</p>
               <dl className="space-y-2 text-[14px]">
                 <SummaryRow label={`${tier?.name ?? 'Package'} (${digitalQty} guests)`} value={digitalSubtotal} />
-                {paperPrints && (
-                  <SummaryRow label={`Paper prints (${paperQty})`} value={paperSubtotal} />
-                )}
-                {doorScan && (
-                  <SummaryRow label="Door-scan check-in service" value={DOOR_SCAN_SERVICE_PRICE} />
-                )}
+                {addOnLines.map((l) => (
+                  <SummaryRow key={l.id} label={l.summaryLabel} value={l.amount} />
+                ))}
                 <div className="border-t border-gray-200 pt-3 flex items-baseline justify-between">
                   <dt className="text-[15px] font-bold text-gray-900">Total</dt>
                   <dd className="text-[26px] font-bold text-gray-900 leading-none">
@@ -736,10 +728,96 @@ function AddOnCard({
         <div className="grow">
           <p className="text-[14px] font-bold text-gray-900">{title}</p>
           <p className="mt-1 text-[12px] text-gray-600 leading-relaxed">{description}</p>
-          <p className="mt-1.5 text-[12px] font-bold text-[#1A1A1A]">{priceLabel}</p>
+          {priceLabel && <p className="mt-1.5 text-[12px] font-bold text-[#1A1A1A]">{priceLabel}</p>}
         </div>
       </label>
       {children && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  )
+}
+
+// Quantity stepper for a 'per_unit' add-on — shown inside its AddOnCard once
+// checked. Generic over any add-on's unit price/label/min/step.
+function AddOnQuantityStepper({
+  label,
+  unitPrice,
+  unitLabel,
+  value,
+  min,
+  step,
+  onChange,
+}: {
+  label: string
+  unitPrice: number
+  unitLabel: string
+  value: number
+  min: number
+  step: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-bold text-gray-900 sm:text-[13px]">{label}</p>
+        <p className="text-[11px] text-gray-500">TZS {unitPrice.toLocaleString('en-US')} {unitLabel}</p>
+      </div>
+      <div className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
+        <button
+          type="button"
+          aria-label="Fewer"
+          onClick={() => onChange(Math.max(min, (Number.isNaN(value) ? min : value) - step))}
+          disabled={value <= min}
+          className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 disabled:opacity-40 sm:px-4"
+        >
+          −
+        </button>
+        <input
+          type="number"
+          min={min}
+          step={step}
+          inputMode="numeric"
+          aria-label={label}
+          value={value}
+          onChange={(e) => {
+            const n = Number(e.target.value)
+            if (!Number.isNaN(n)) onChange(n)
+          }}
+          onBlur={() => {
+            if (Number.isNaN(value) || value < min) onChange(min)
+          }}
+          className="w-14 border-x border-gray-200 bg-white py-2 text-center text-[14px] font-bold text-gray-900 tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none sm:w-16 sm:py-2.5 sm:text-[15px]"
+        />
+        <button
+          type="button"
+          aria-label="More"
+          onClick={() => onChange((Number.isNaN(value) ? min : value) + step)}
+          className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 sm:px-4"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// 'quote' add-on — priced on a call. AddOnCard shows no price line while
+// unchecked; once the buyer checks the box to select it, this reveals both
+// `quoteLabel` ("Price upon consultation call") and the "Call us" button
+// that dials the admin-configured phone number directly. Never affects the
+// order total (see addOnLines, which excludes 'quote' add-ons).
+function QuoteCallCta({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: string }) {
+  // tel: accepts spaces/formatting fine, but strip everything except a
+  // leading + and digits so dialers on every platform parse it consistently.
+  const dialablePhone = phoneNumber.replace(/(?!^\+)[^\d]/g, '')
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+      <p className="text-[12px] font-bold text-[#1A1A1A]">{addOn.quoteLabel}</p>
+      <a
+        href={`tel:${dialablePhone}`}
+        className="inline-flex shrink-0 items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
+      >
+        {addOn.quoteCtaLabel}
+      </a>
     </div>
   )
 }
