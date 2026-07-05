@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
-import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { AGREEMENT_DOCS } from '@/lib/onboarding/vendor-agreement'
 import VerifyClient, {
@@ -81,7 +81,13 @@ export default async function VerifyPage() {
   // All three render the verification journey below — `admin_review` shows every
   // step done with "Under review" active (a completed, waiting-on-us timeline).
 
-  const supabase = await createClerkSupabaseServerClient()
+  // Read via the admin client pinned to state.vendorId, matching the write
+  // side (the verify actions insert with the service role). An RLS-bound read
+  // that gets filtered returns EMPTY DATA with no error, so a broken
+  // JWT→users mapping or policy drift would render a signed vendor as
+  // perpetually unsigned with nothing to catch. state.vendorId is already
+  // scoped to the authenticated caller by getCurrentVendor().
+  const supabase = createSupabaseAdminClient()
   const clerkUser = await currentUser()
 
   // The "Already on file" panel was removed — the timeline's Application step
@@ -125,6 +131,19 @@ export default async function VerifyPage() {
   if (docsRes.error) {
     throw new Error(
       `[verify] documents query failed: ${docsRes.error.code} ${docsRes.error.message}`,
+    )
+  }
+  // A failed agreements read must be loud: rendering it as "nothing signed"
+  // makes a signed vendor look perpetually unsigned with no error anywhere.
+  if (agreementRes.error) {
+    throw new Error(
+      `[verify] agreements query failed: ${agreementRes.error.code} ${agreementRes.error.message}`,
+    )
+  }
+  if (vendorRes.error) {
+    // Non-fatal — only used to pre-fill the sign form — but worth surfacing.
+    console.warn(
+      `[verify] vendor prefill query failed: ${vendorRes.error.code} ${vendorRes.error.message}`,
     )
   }
 
