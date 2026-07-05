@@ -145,7 +145,7 @@ const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
 const PAYREF_RE = /^[A-Za-z0-9.\-]{6,25}$/
 
 type Errors = Partial<
-  Record<'mobilePhone' | 'payerName' | 'payRef' | 'cart' | 'contact', string>
+  Record<'mobilePhone' | 'payerName' | 'payRef' | 'cart' | 'contact' | 'event', string>
 >
 
 function FieldError({ children }: { children: React.ReactNode }) {
@@ -176,12 +176,18 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   )
 }
 
-export default function CheckoutClient() {
+type CheckoutEvent = { id: string; name: string; eventTypeLabel: string }
+
+export default function CheckoutClient({ events }: { events: CheckoutEvent[] }) {
   const router = useRouter()
   const { items, subtotal, clear } = useCart()
   const tf = useT('checkout-form')
   const tp = useT('checkout-payment')
   const ts = useT('checkout-summary')
+
+  // Single-event couples (the common case) never see a picker — their one
+  // event is assigned automatically. Multi-event couples must choose.
+  const [eventId, setEventId] = useState<string>(events.length === 1 ? events[0].id : '')
 
   const [selected, setSelected] = useState<string>('mpesa')
   // M-Pesa offers two paths: an automated STK push (PIN prompt on the phone)
@@ -258,6 +264,7 @@ export default function CheckoutClient() {
     const e: Errors = {}
     if (items.length === 0) e.cart = tf('error_cart_empty')
     if (!contact) e.contact = tf('error_contact_missing')
+    if (events.length > 1 && !eventId) e.event = tf('error_event_required')
     if (isCard) {
       // Card details are collected on Selcom's secure hosted page — nothing to
       // validate here (we never touch the raw card number).
@@ -392,6 +399,7 @@ export default function CheckoutClient() {
           contact: { name: contact.fullName, email: contact.email, phone: contact.phone },
           items: itemsPayload(),
           paymentLabel: paymentLabel(),
+          eventId: eventId || undefined,
         }
         const res = await fetch('/api/payments/initiate', {
           method: 'POST',
@@ -423,6 +431,7 @@ export default function CheckoutClient() {
         contact: { name: contact.fullName, email: contact.email, phone: contact.phone },
         items: itemsPayload(),
         paymentLabel: paymentLabel(),
+        eventId: eventId || undefined,
       }
       const res = await fetch('/api/payments/initiate', {
         method: 'POST',
@@ -521,6 +530,37 @@ export default function CheckoutClient() {
                     <Pencil size={12} />
                     {tf('recap_edit')}
                   </Link>
+                </div>
+              )}
+
+              {/* Which event this design/quota is for — only shown when the
+                  couple has 2+ events; single-event couples are auto-assigned. */}
+              {events.length > 1 && (
+                <div>
+                  <Label htmlFor="checkout-event" className="mb-1.5 text-gray-900">
+                    {tf('event_label')} <span className="text-red-600">*</span>
+                  </Label>
+                  <select
+                    id="checkout-event"
+                    value={eventId}
+                    onChange={(e) => { setEventId(e.target.value); clearError('event') }}
+                    aria-invalid={Boolean(errors.event)}
+                    className={cn(
+                      'border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs outline-none md:text-sm',
+                      'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
+                      errors.event && 'border-destructive',
+                    )}
+                  >
+                    <option value="" disabled>
+                      {tf('event_placeholder')}
+                    </option>
+                    {events.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name} · {e.eventTypeLabel}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.event && <FieldError>{errors.event}</FieldError>}
                 </div>
               )}
 

@@ -483,6 +483,9 @@ export interface CheckoutFormStrings {
   // Contact recap
   recap_delivering_to: string
   recap_edit: string
+  // Event picker (only shown for couples with 2+ events)
+  event_label: string
+  event_placeholder: string
   // Manual Lipa Namba form — payer name
   payer_name_label: string
   payer_name_placeholder: string
@@ -503,6 +506,7 @@ export interface CheckoutFormStrings {
   error_phone: string
   error_payer_name: string
   error_payref: string
+  error_event_required: string
 }
 
 // ── Checkout — payment (method picker, M-Pesa flows, USSD steps, pay button) ────
@@ -1451,6 +1455,8 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     block_add_contact_cta: 'Add one →',
     recap_delivering_to: 'Delivering to',
     recap_edit: 'Edit',
+    event_label: 'Which event is this for?',
+    event_placeholder: 'Choose an event',
     payer_name_label: 'Name on the account that paid',
     payer_name_placeholder: 'e.g. Mary Mwakasege',
     payer_name_hint:
@@ -1469,6 +1475,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     error_payer_name: 'Enter the name on the account the payment came from.',
     error_payref:
       'Enter the confirmation code from your payment SMS (6–25 letters or numbers).',
+    error_event_required: 'Please choose which event this is for.',
   },
   'checkout-payment': {
     choose_title: 'Choose how to pay',

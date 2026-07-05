@@ -1,6 +1,6 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
-import { requireDashboardUser } from './auth'
+import { getDashboardUser, requireDashboardUser } from './auth'
 import { formatLongDate, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
@@ -59,6 +59,36 @@ export async function getEvents(): Promise<WeddingEvent[]> {
     .order('starts_at', { ascending: true, nullsFirst: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as WeddingEvent[]
+}
+
+/**
+ * Events for the checkout event picker. Unlike `getEvents()`, this never
+ * redirects — guest/anonymous checkout has no couple account and simply gets
+ * no picker (single implicit "unassigned" order, same as today).
+ */
+export async function getEventsForCheckout(): Promise<
+  { id: string; name: string; eventTypeLabel: string }[]
+> {
+  const user = await getDashboardUser()
+  if (!user) return []
+  const events = await getEvents()
+  return events.map((e) => ({ id: e.id, name: e.name, eventTypeLabel: eventTypeLabel(e.event_type) }))
+}
+
+/** Verifies `eventId` belongs to `userId` before it's trusted on a paid order. */
+export async function resolveOwnedEventId(
+  userId: string,
+  eventId?: string | null,
+): Promise<string | null> {
+  if (!eventId) return null
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle<{ id: string }>()
+  return data?.id ?? null
 }
 
 /** All RSVP questions the couple has configured (per-event + general). */

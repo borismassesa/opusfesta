@@ -20,6 +20,7 @@ export type OrderRow = {
   contact_email: string
   contact_phone: string
   event_date: string | null
+  event_id: string | null
   items: InitiateItem[]
   provider: string
   payment_method: string | null
@@ -33,7 +34,7 @@ export type OrderRow = {
 }
 
 const SELECT_COLS =
-  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at'
+  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at'
 
 export async function createPendingOrder(input: {
   ref: string
@@ -44,6 +45,7 @@ export async function createPendingOrder(input: {
   amountTotal: number
   contact: { name?: string; email: string; phone: string }
   eventDate?: string | null
+  eventId?: string | null
   items: InitiateItem[]
   status?: OrderStatus
   provider?: string
@@ -69,6 +71,7 @@ export async function createPendingOrder(input: {
       contact_email: input.contact.email,
       contact_phone: input.contact.phone,
       event_date: input.eventDate ?? null,
+      event_id: input.eventId ?? null,
       items: input.items,
       provider: input.provider ?? 'selcom',
       payment_method: input.paymentMethod,
