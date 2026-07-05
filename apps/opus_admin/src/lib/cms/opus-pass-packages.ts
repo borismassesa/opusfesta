@@ -66,6 +66,8 @@ export type OpusPassPackagesContent = {
   subheading_sw: string
   note: string
   note_sw: string
+  perGuestLabel: string
+  perGuestLabel_sw: string
   tiers: PackageTier[]
   addons: PackageAddon[]
 }
@@ -115,6 +117,8 @@ export const OPUS_PASS_PACKAGES_FALLBACK: OpusPassPackagesContent = {
   subheading_sw: 'Lipa kwa kila mgeni — kila kitu kinakua kulingana na idadi ya wageni.',
   note: 'Events above 600 guests get a capped, discounted per-guest rate.',
   note_sw: 'Matukio ya wageni zaidi ya 600 yanapata bei ya punguzo (kikomo).',
+  perGuestLabel: 'per guest',
+  perGuestLabel_sw: 'kwa mgeni',
   tiers: [
     {
       id: 'lite', name: 'Essential', name_sw: 'Essential', featured: false, price_per_guest: 1200,

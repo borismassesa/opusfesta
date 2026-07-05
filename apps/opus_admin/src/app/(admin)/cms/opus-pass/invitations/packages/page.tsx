@@ -30,6 +30,8 @@ export default async function OpusPassPackagesEditorPage() {
         subheading_sw: stored.subheading_sw ?? fb.subheading_sw,
         note: stored.note ?? fb.note,
         note_sw: stored.note_sw ?? fb.note_sw,
+        perGuestLabel: stored.perGuestLabel ?? fb.perGuestLabel,
+        perGuestLabel_sw: stored.perGuestLabel_sw ?? fb.perGuestLabel_sw,
         tiers: Array.isArray(stored.tiers) && stored.tiers.length > 0 ? stored.tiers : fb.tiers,
         addons: Array.isArray(stored.addons) ? stored.addons : fb.addons,
       }

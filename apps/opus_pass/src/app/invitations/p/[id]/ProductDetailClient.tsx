@@ -467,7 +467,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                           enough for it to fit at every breakpoint. */}
                       <p className="mt-0.5 whitespace-nowrap tabular-nums">
                         <span className="text-[12px] font-extrabold text-gray-900 sm:text-[14px]">TZS {t.price_per_guest.toLocaleString('en-US')}</span>
-                        <span className="ml-1 text-[9px] font-medium text-gray-500 sm:text-[10px]">per guest</span>
+                        <span className="ml-1 text-[9px] font-medium text-gray-500 sm:text-[10px]">{packages.perGuestLabel}</span>
                       </p>
                       <p className="mt-1.5 text-[9px] leading-tight text-gray-500 sm:text-[10px]">{t.best_for}</p>
                     </button>
@@ -680,7 +680,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                   </div>
                   <p className="mt-2.5 text-[14px] font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
                   <p className="mt-1 text-[13px] text-gray-700">
-                    From TZS {fromGuestPrice.toLocaleString('en-US')} per guest
+                    From TZS {fromGuestPrice.toLocaleString('en-US')} {packages.perGuestLabel}
                   </p>
                 </Link>
                 )
