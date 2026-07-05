@@ -1,0 +1,249 @@
+import { draftMode } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, type Locale } from './localized'
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Product detail page — "Optional add-ons" cards + the FAQ accordion below the
+//  order summary. Bilingual (English + Kiswahili), same `_sw` sibling-field
+//  convention as ./packages.ts (its neighbour on the same page). Stored as one
+//  CMS config — page_key 'opus-pass-product-detail', section_key 'addons-faq'.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AddOnCardCopy = {
+  title: string
+  title_sw: string
+  description: string
+  description_sw: string
+}
+
+// One accordion entry. The final "Cancellation policy" entry embeds a link
+// inline in its body — `link_label`/`link_href` render it, `body` splits
+// around the placeholder `{link}` so admins can reposition it per language.
+export type FaqItem = {
+  id: string
+  title: string
+  title_sw: string
+  body: string
+  body_sw: string
+  link_label: string
+  link_label_sw: string
+  link_href: string
+}
+
+export type ProductAddonsFaqContent = {
+  addonsHeading: string
+  addonsHeading_sw: string
+  includedPillLabel: string
+  includedPillLabel_sw: string
+  priceFromLabel: string
+  priceFromLabel_sw: string
+  perPrintUnitLabel: string
+  perPrintUnitLabel_sw: string
+  flatFeePerEventLabel: string
+  flatFeePerEventLabel_sw: string
+  descriptionLabel: string
+  descriptionLabel_sw: string
+  readMoreLabel: string
+  readMoreLabel_sw: string
+  readLessLabel: string
+  readLessLabel_sw: string
+  paperPrints: AddOnCardCopy
+  doorScan: AddOnCardCopy
+  doorScanIncluded: AddOnCardCopy
+  faq: FaqItem[]
+}
+
+export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
+  addonsHeading: 'Optional add-ons',
+  addonsHeading_sw: 'Nyongeza za hiari',
+  includedPillLabel: 'Included',
+  includedPillLabel_sw: 'Imejumuishwa',
+  priceFromLabel: 'From',
+  priceFromLabel_sw: 'Kuanzia',
+  perPrintUnitLabel: 'per print',
+  perPrintUnitLabel_sw: 'kwa kila chapa',
+  flatFeePerEventLabel: 'flat fee per event',
+  flatFeePerEventLabel_sw: 'ada moja kwa moja kwa tukio',
+  descriptionLabel: 'Description',
+  descriptionLabel_sw: 'Maelezo',
+  readMoreLabel: 'Read More',
+  readMoreLabel_sw: 'Soma Zaidi',
+  readLessLabel: 'Read Less',
+  readLessLabel_sw: 'Soma Kidogo',
+  paperPrints: {
+    title: 'Premium printed cards',
+    title_sw: 'Kadi za kuchapishwa za hali ya juu',
+    description:
+      "Premium printed cards for elders, the head table, and anyone who'd love a physical keepsake — designed in Bagamoyo, delivered across Tanzania.",
+    description_sw:
+      'Kadi za kuchapishwa za hali ya juu kwa wazee, meza kuu, na yeyote anayependa kumbukumbu halisi — zimebuniwa Bagamoyo, zinapelekwa kote Tanzania.',
+  },
+  doorScan: {
+    title: 'On-site scanning attendant',
+    title_sw: 'Mhudumu wa kukagua mlangoni',
+    description:
+      "Every package includes barcode check-in — this add-on sends a trained OpusFesta attendant to your venue to do it for you. They scan each guest's ticket QR at the entrance and tick them off your live guest list in real time, so you don't need to assign your own staff.",
+    description_sw:
+      'Kila kifurushi kinajumuisha ukaguzi wa barcode — nyongeza hii inatuma mhudumu aliyefunzwa wa OpusFesta kwenye eneo lako ili kufanya hivyo kwa niaba yako. Anachanganua QR ya tiketi ya kila mgeni mlangoni na kumwondoa kwenye orodha yako ya wageni ya moja kwa moja, ili usihitaji kuweka wafanyakazi wako mwenyewe.',
+  },
+  doorScanIncluded: {
+    title: 'On-site scanning attendant',
+    title_sw: 'Mhudumu wa kukagua mlangoni',
+    description:
+      "A trained OpusFesta attendant comes to your venue and scans each guest's ticket QR at the door, ticking them off your live guest list in real time — no extra cost, no need to assign your own staff.",
+    description_sw:
+      'Mhudumu aliyefunzwa wa OpusFesta anakuja eneo lako na kuchanganua QR ya tiketi ya kila mgeni mlangoni, akimwondoa kwenye orodha yako ya wageni ya moja kwa moja — bila gharama ya ziada, bila kuhitaji kuweka wafanyakazi wako mwenyewe.',
+  },
+  faq: [
+    {
+      id: 'guest-rsvp-dashboard',
+      title: 'Guest list & RSVP dashboard',
+      title_sw: 'Orodha ya wageni na dashibodi ya RSVP',
+      body:
+        'Every package includes a dashboard to run your event end to end — create the event, build and organise your guest list, and send invites from one place. Watch RSVPs land in real time with live headcounts and meal choices. Classic and up add live check-ins, pledge collection and a thank-you blast; Elegant and Signature add save-the-dates, schedule or menu design and richer reporting.',
+      body_sw:
+        'Kila kifurushi kinajumuisha dashibodi ya kuendesha tukio lako mwanzo hadi mwisho — tengeneza tukio, jenga na panga orodha yako ya wageni, na tuma mialiko kutoka sehemu moja. Angalia RSVP zikiingia moja kwa moja pamoja na idadi ya wageni na chaguo za chakula. Classic na zaidi zinaongeza ukaguzi wa moja kwa moja, ukusanyaji wa michango na ujumbe wa shukrani; Elegant na Signature zinaongeza save-the-date, ratiba au muundo wa menyu na ripoti za kina zaidi.',
+      link_label: '',
+      link_label_sw: '',
+      link_href: '',
+    },
+    {
+      id: 'free-wedding-website',
+      title: 'Free wedding website',
+      title_sw: 'Tovuti ya harusi bila malipo',
+      body:
+        'Pair your invitation with a personal wedding website — your story, schedule, venue map, photos, and a built-in bilingual RSVP your guests can visit anytime. Included with the Signature package; available as an add-on on Lite and Classic.',
+      body_sw:
+        'Ambatanisha mwaliko wako na tovuti yako binafsi ya harusi — hadithi yako, ratiba, ramani ya eneo, picha, na RSVP ya lugha mbili iliyojengwa ndani ambayo wageni wako wanaweza kutembelea wakati wowote. Imejumuishwa na kifurushi cha Signature; inapatikana kama nyongeza kwenye Lite na Classic.',
+      link_label: '',
+      link_label_sw: '',
+      link_href: '',
+    },
+    {
+      id: 'door-scan-how-it-works',
+      title: 'How the door-scan attendant works',
+      title_sw: 'Jinsi mhudumu wa ukaguzi mlangoni anavyofanya kazi',
+      body:
+        'When you add the attendant to your order, a trained OpusFesta attendant arrives at your venue 30 minutes before the event with a scanner. Every digital invite includes a unique QR code — the attendant scans each guest at the door and ticks them off your live guest list, so you know exactly who arrived in real time. Travel costs included within Dar es Salaam, Arusha, Mwanza, Bagamoyo, and Zanzibar.',
+      body_sw:
+        'Unapoongeza mhudumu kwenye oda yako, mhudumu aliyefunzwa wa OpusFesta atafika eneo lako dakika 30 kabla ya tukio akiwa na kifaa cha kuchanganua. Kila mwaliko wa kidijitali una msimbo wa kipekee wa QR — mhudumu anachanganua kila mgeni mlangoni na kumwondoa kwenye orodha yako ya wageni ya moja kwa moja, ili ujue hasa nani amefika kwa wakati halisi. Gharama za usafiri zimejumuishwa ndani ya Dar es Salaam, Arusha, Mwanza, Bagamoyo, na Zanzibar.',
+      link_label: '',
+      link_label_sw: '',
+      link_href: '',
+    },
+    {
+      id: 'payment',
+      title: 'Payment',
+      title_sw: 'Malipo',
+      body:
+        "Pay securely with M-Pesa, Airtel Money, Mixx by Yas, Selcom Pesa, Visa, or Mastercard — all in Tanzanian shillings. Checkout is encrypted end to end, and you'll get an instant confirmation by SMS and email the moment your payment clears, so your order starts right away.",
+      body_sw:
+        'Lipa kwa usalama kwa M-Pesa, Airtel Money, Mixx by Yas, Selcom Pesa, Visa, au Mastercard — zote kwa shilingi za Tanzania. Malipo yamesimbwa kwa usalama mwanzo hadi mwisho, na utapata uthibitisho wa papo hapo kwa SMS na barua pepe mara malipo yako yatakapokamilika, ili oda yako ianze mara moja.',
+      link_label: '',
+      link_label_sw: '',
+      link_href: '',
+    },
+    {
+      id: 'cancellation-policy',
+      title: 'Cancellation policy',
+      title_sw: 'Sera ya kughairi',
+      body:
+        'Cancel for a full refund any time before your invitations are sent. Once invites have gone out, the package is non-refundable — the cards and tickets are already live to your guests. The on-site attendant add-on can be cancelled up to 7 days before your event for a full refund. Read the full {link}.',
+      body_sw:
+        'Ghairi kwa marejesho kamili wakati wowote kabla ya mialiko yako kutumwa. Mialiko ikishatumwa, kifurushi hakirejeshwi — kadi na tiketi tayari ziko hai kwa wageni wako. Nyongeza ya mhudumu wa eneo la tukio inaweza kughairiwa hadi siku 7 kabla ya tukio lako kwa marejesho kamili. Soma {link} kamili.',
+      link_label: 'Cancellation & Refund Policy',
+      link_label_sw: 'Sera ya Kughairi na Marejesho',
+      link_href: '/cancellation',
+    },
+  ],
+}
+
+const pick = (en: string, sw: string | undefined, locale: Locale): string =>
+  locale === 'sw' ? sw || en : en
+
+export async function loadProductAddonsFaqContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<ProductAddonsFaqContent> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return resolveProductAddonsFaqLocale(PRODUCT_ADDONS_FAQ_FALLBACK, locale)
+  }
+  try {
+    const { isEnabled: isDraft } = await draftMode()
+    const supabase = createSupabaseServerClient()
+    const { data } = await supabase
+      .from('website_page_sections')
+      .select('content, draft_content')
+      .eq('page_key', 'opus-pass-product-detail')
+      .eq('section_key', 'addons-faq')
+      .maybeSingle()
+    const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
+      | Partial<ProductAddonsFaqContent>
+      | undefined
+    const fb = PRODUCT_ADDONS_FAQ_FALLBACK
+    const merged: ProductAddonsFaqContent = stored
+      ? {
+          addonsHeading: stored.addonsHeading ?? fb.addonsHeading,
+          addonsHeading_sw: stored.addonsHeading_sw ?? fb.addonsHeading_sw,
+          includedPillLabel: stored.includedPillLabel ?? fb.includedPillLabel,
+          includedPillLabel_sw: stored.includedPillLabel_sw ?? fb.includedPillLabel_sw,
+          priceFromLabel: stored.priceFromLabel ?? fb.priceFromLabel,
+          priceFromLabel_sw: stored.priceFromLabel_sw ?? fb.priceFromLabel_sw,
+          perPrintUnitLabel: stored.perPrintUnitLabel ?? fb.perPrintUnitLabel,
+          perPrintUnitLabel_sw: stored.perPrintUnitLabel_sw ?? fb.perPrintUnitLabel_sw,
+          flatFeePerEventLabel: stored.flatFeePerEventLabel ?? fb.flatFeePerEventLabel,
+          flatFeePerEventLabel_sw: stored.flatFeePerEventLabel_sw ?? fb.flatFeePerEventLabel_sw,
+          descriptionLabel: stored.descriptionLabel ?? fb.descriptionLabel,
+          descriptionLabel_sw: stored.descriptionLabel_sw ?? fb.descriptionLabel_sw,
+          readMoreLabel: stored.readMoreLabel ?? fb.readMoreLabel,
+          readMoreLabel_sw: stored.readMoreLabel_sw ?? fb.readMoreLabel_sw,
+          readLessLabel: stored.readLessLabel ?? fb.readLessLabel,
+          readLessLabel_sw: stored.readLessLabel_sw ?? fb.readLessLabel_sw,
+          paperPrints: stored.paperPrints ?? fb.paperPrints,
+          doorScan: stored.doorScan ?? fb.doorScan,
+          doorScanIncluded: stored.doorScanIncluded ?? fb.doorScanIncluded,
+          // An empty array is a deliberate "no FAQ items" choice, not a missing
+          // field — only fall back when the key is absent entirely (legacy rows
+          // saved before this field existed).
+          faq: Array.isArray(stored.faq) ? stored.faq : fb.faq,
+        }
+      : fb
+    return resolveProductAddonsFaqLocale(merged, locale)
+  } catch (err) {
+    console.error('[opus-pass cms] product-addons-faq load failed', err)
+    return resolveProductAddonsFaqLocale(PRODUCT_ADDONS_FAQ_FALLBACK, locale)
+  }
+}
+
+function resolveAddOnCardCopy(c: AddOnCardCopy, locale: Locale): AddOnCardCopy {
+  return {
+    ...c,
+    title: pick(c.title, c.title_sw, locale),
+    description: pick(c.description, c.description_sw, locale),
+  }
+}
+
+function resolveProductAddonsFaqLocale(
+  c: ProductAddonsFaqContent,
+  locale: Locale
+): ProductAddonsFaqContent {
+  return {
+    ...c,
+    addonsHeading: pick(c.addonsHeading, c.addonsHeading_sw, locale),
+    includedPillLabel: pick(c.includedPillLabel, c.includedPillLabel_sw, locale),
+    priceFromLabel: pick(c.priceFromLabel, c.priceFromLabel_sw, locale),
+    perPrintUnitLabel: pick(c.perPrintUnitLabel, c.perPrintUnitLabel_sw, locale),
+    flatFeePerEventLabel: pick(c.flatFeePerEventLabel, c.flatFeePerEventLabel_sw, locale),
+    descriptionLabel: pick(c.descriptionLabel, c.descriptionLabel_sw, locale),
+    readMoreLabel: pick(c.readMoreLabel, c.readMoreLabel_sw, locale),
+    readLessLabel: pick(c.readLessLabel, c.readLessLabel_sw, locale),
+    paperPrints: resolveAddOnCardCopy(c.paperPrints, locale),
+    doorScan: resolveAddOnCardCopy(c.doorScan, locale),
+    doorScanIncluded: resolveAddOnCardCopy(c.doorScanIncluded, locale),
+    faq: c.faq.map((f) => ({
+      ...f,
+      title: pick(f.title, f.title_sw, locale),
+      body: pick(f.body, f.body_sw, locale),
+      link_label: pick(f.link_label, f.link_label_sw, locale),
+    })),
+  }
+}

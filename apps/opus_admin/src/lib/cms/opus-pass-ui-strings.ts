@@ -957,6 +957,12 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     selected_count: '{n} selected',
     live_hint: 'Statuses update automatically',
     send_all_notsent: 'Send to all not sent ({n})',
+    event_switcher_label: 'Sending for',
+    unassigned_pill: 'Action needed',
+    unassigned_note: '{n} paid designs are not linked to an event yet. Assign them so they can be sent.',
+    unassigned_guests: '{n} invites',
+    unassigned_assign: 'Use for {event}',
+    toast_order_assigned: 'Design assigned to this event',
   },
 }
 
@@ -2353,6 +2359,17 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'selected_count', label: 'Selected count', kind: 'text', max: 24, hint: 'Use {n}' },
         { key: 'live_hint', label: 'Live update hint', kind: 'text', max: 40 },
         { key: 'send_all_notsent', label: 'Send all not sent', kind: 'text', max: 40, hint: 'Use {n}' },
+      ],
+    },
+    {
+      legend: 'Event switcher and unassigned orders',
+      fields: [
+        { key: 'event_switcher_label', label: 'Event switcher label', kind: 'text', max: 20 },
+        { key: 'unassigned_pill', label: 'Unassigned banner pill', kind: 'text', max: 20 },
+        { key: 'unassigned_note', label: 'Unassigned banner note', kind: 'text', max: 140, hint: 'Use {n}' },
+        { key: 'unassigned_guests', label: 'Unassigned order guest count', kind: 'text', max: 24, hint: 'Use {n}' },
+        { key: 'unassigned_assign', label: 'Assign order button', kind: 'text', max: 30, hint: 'Use {event}' },
+        { key: 'toast_order_assigned', label: 'Order assigned toast', kind: 'text', max: 40 },
       ],
     },
   ],

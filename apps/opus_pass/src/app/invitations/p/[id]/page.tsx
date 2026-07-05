@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { loadInvitationProduct, loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent } from '@/lib/cms/packages'
+import { loadProductAddonsFaqContent } from '@/lib/cms/product-addons-faq'
 import { getLocale } from '@/lib/cms/locale'
 import ProductDetailClient from './ProductDetailClient'
 
@@ -22,10 +23,11 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
   const locale = await getLocale()
-  const [product, allProducts, packages] = await Promise.all([
+  const [product, allProducts, packages, addonsFaq] = await Promise.all([
     loadInvitationProduct(id, locale),
     loadInvitationProducts(locale),
     loadPackagesContent(locale),
+    loadProductAddonsFaqContent(locale),
   ])
   if (!product) return notFound()
   return (
@@ -33,6 +35,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
       product={product}
       allProducts={allProducts}
       packages={packages}
+      addonsFaq={addonsFaq}
     />
   )
 }

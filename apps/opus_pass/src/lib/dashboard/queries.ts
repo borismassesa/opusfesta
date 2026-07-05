@@ -897,10 +897,17 @@ export async function getMyPublicInvite(): Promise<MyPublicInvite> {
 
 /**
  * WhatsApp send entitlement = how many invitation "credits" the couple paid for
- * vs how many they've used. Credits are the sum of `guests` across their PAID
- * invitation_orders; usage is the number of DISTINCT guests already sent a
- * WhatsApp invite (re-sends don't consume a credit). Orders link by user_id or
- * by matching the couple's email/phone (guest checkout allows a null user_id).
+ * vs how many they've used, SCOPED TO ONE EVENT. Credits are the sum of
+ * `guests` across paid invitation_orders assigned to this event; usage is the
+ * number of DISTINCT guests already sent a WhatsApp invite FOR THIS EVENT
+ * (re-sends don't consume a credit; an invite to a different event is not a
+ * re-send). Orders link by user_id or by matching the couple's email/phone
+ * (guest checkout allows a null user_id).
+ *
+ * A couple can have paid orders not yet linked to any event (bought before
+ * event-scoping shipped, or a 2+-event couple who hasn't assigned them yet —
+ * see `unassignedOrders`). Those never silently count toward any event's
+ * quota; the couple must explicitly assign them.
  */
 export interface WhatsAppEntitlement {
   purchased: number
@@ -922,8 +929,12 @@ export interface WhatsAppEntitlement {
   /** True once the couple has explicitly confirmed {{2}}/{{3}} — sends are
    *  blocked in the UI until then. */
   sendSettingsConfirmed: boolean
-  /** guest_contact_ids already sent a WhatsApp invite (re-sends don't re-charge). */
+  /** guest_contact_ids already sent a WhatsApp invite for THIS event (re-sends
+   *  don't re-charge). */
   alreadySentIds: string[]
+  /** Paid orders not yet assigned to any event — the couple needs to pick
+   *  which event each one is for before it counts toward that event's quota. */
+  unassignedOrders: { id: string; cardName: string | null; cardImageUrl: string | null; purchasedGuests: number }[]
 }
 
 interface PaidOrderItem {
@@ -934,7 +945,7 @@ interface PaidOrderItem {
   addOns?: string[]
 }
 
-export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
+export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppEntitlement> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
@@ -954,15 +965,14 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
   const hostOverride = profile?.invite_host_name?.trim() || null
   const categoryOverride = profile?.invite_event_category?.trim() || null
 
-  // The couple's earliest-scheduled event, used both for the event-category
-  // template variable ({{3}}) and as a coupleName fallback below.
+  // The SELECTED event, used both for the event-category template variable
+  // ({{3}}) and as a coupleName fallback below — not just "the couple's
+  // earliest event," now that a couple can be sending for any of several.
   const { data: primaryEvent } = await supabase
     .from('wedding_events')
     .select('name, event_type')
     .eq('user_id', user.id)
-    .order('sort_order', { ascending: true })
-    .order('starts_at', { ascending: true, nullsFirst: false })
-    .limit(1)
+    .eq('id', eventId)
     .maybeSingle<{ name: string | null; event_type: string }>()
   const eventCategory = categoryOverride ?? eventTypeLabelSw(primaryEvent?.event_type ?? 'other')
 
@@ -977,19 +987,23 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
   if (user.email) ors.push(`contact_email.eq.${user.email}`)
   if (profile?.whatsapp_phone) ors.push(`contact_phone.eq.${profile.whatsapp_phone}`)
 
-  const { data: orders } = await supabase
+  const { data: allPaidOrders } = await supabase
     .from('invitation_orders')
-    .select('items, paid_at')
+    .select('id, items, paid_at, event_id')
     .eq('status', 'paid')
     .or(ors.join(','))
     .order('paid_at', { ascending: false })
+
+  const orders = (allPaidOrders ?? []).filter((o) => o.event_id === eventId) as {
+    items: PaidOrderItem[] | null
+  }[]
 
   let purchased = 0
   let cardImageUrl: string | null = null
   let cardTier: string | null = null
   let cardName: string | null = null
   const addOnSet = new Set<string>()
-  for (const o of (orders ?? []) as { items: PaidOrderItem[] | null }[]) {
+  for (const o of orders) {
     for (const item of o.items ?? []) {
       if (typeof item.guests === 'number' && item.guests > 0) purchased += Math.floor(item.guests)
       // The card they paid for: first hero image/tier/name found (orders are newest-first).
@@ -1004,12 +1018,33 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
   }
   const addOns = [...addOnSet]
 
-  // Used = distinct guests already sent a REAL WhatsApp invite. Dry-run stub
-  // sends log fake wamid.STUB-* ids — they must never consume paid credits.
+  // Paid orders that exist but aren't attached to ANY event yet — surfaced so
+  // the couple can assign them instead of them silently counting for nothing.
+  const unassignedOrders = (allPaidOrders ?? [])
+    .filter((o) => !o.event_id)
+    .map((o) => {
+      const items = (o.items ?? []) as PaidOrderItem[]
+      const withImage = items.find((it) => it.image)
+      const purchasedGuests = items.reduce(
+        (sum, it) => sum + (typeof it.guests === 'number' && it.guests > 0 ? Math.floor(it.guests) : 0),
+        0,
+      )
+      return {
+        id: o.id as string,
+        cardName: withImage?.name ?? items[0]?.name ?? null,
+        cardImageUrl: withImage?.image ?? null,
+        purchasedGuests,
+      }
+    })
+
+  // Used = distinct guests already sent a REAL WhatsApp invite FOR THIS EVENT.
+  // Dry-run stub sends log fake wamid.STUB-* ids — they must never consume
+  // paid credits.
   const { data: sent } = await supabase
     .from('whatsapp_messages')
     .select('guest_contact_id')
     .eq('user_id', user.id)
+    .eq('event_id', eventId)
     .eq('direction', 'out')
     .eq('kind', 'invite')
     .eq('status', 'sent')
@@ -1022,7 +1057,7 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     purchased,
     used: alreadySentIds.length,
     remaining: Math.max(0, purchased - alreadySentIds.length),
-    hasPaidOrder: (orders ?? []).length > 0,
+    hasPaidOrder: orders.length > 0,
     cardImageUrl,
     cardTier,
     cardName,
@@ -1031,6 +1066,7 @@ export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
     eventCategory,
     sendSettingsConfirmed: Boolean(hostOverride && categoryOverride),
     alreadySentIds,
+    unassignedOrders,
   }
 }
 
@@ -1054,10 +1090,10 @@ export interface SendGuestRow {
 export interface SendInvitesData {
   event: {
     coupleName: string
-    /** The primary event's own name (e.g. "Boris & Lu") — the heading's display
+    /** The selected event's own name (e.g. "Boris & Lu") — the heading's display
      *  name. Comes from wedding_events, NOT the profile. Null with no events. */
     eventName: string | null
-    /** The primary event's type label (e.g. "Wedding") — the heading suffix. */
+    /** The selected event's type label (e.g. "Wedding") — the heading suffix. */
     eventTypeLabel: string | null
     /** Swahili event-category noun (e.g. "harusi") — template {{3}}, used by the
      *  in-page WhatsApp preview so it mirrors the real send exactly. */
@@ -1073,6 +1109,15 @@ export interface SendInvitesData {
     addOns: string[]
     hasPaidOrder: boolean
   }
+  /** Every one of the couple's events, for the event switcher. Only worth
+   *  rendering a switcher when this has 2+ entries — a single-event couple
+   *  never needs to think about "which event." */
+  events: { id: string; name: string; eventTypeLabel: string }[]
+  /** Which event this data is scoped to. */
+  selectedEventId: string | null
+  /** Paid orders not yet assigned to any event — show a prompt to assign them
+   *  so their design/quota isn't invisible to every event. */
+  unassignedOrders: { id: string; cardName: string | null; cardImageUrl: string | null; purchasedGuests: number }[]
   funnel: { invited: number; delivered: number; viewed: number; rsvpd: number }
   quota: { used: number; purchased: number; remaining: number; hasPaidOrder: boolean }
   publicLink: { enabled: boolean; slug: string | null; url: string | null }
@@ -1085,38 +1130,89 @@ export interface SendInvitesData {
   guests: SendGuestRow[]
 }
 
-export async function getSendInvitesData(): Promise<SendInvitesData> {
+/**
+ * `eventId` scopes everything on this page — the design/quota that's live,
+ * which guests count as invited/sent for THIS event, and the event-category
+ * template variable. Defaults to the couple's first event (by their own
+ * sort order) when not given, so single-event couples never see a switcher
+ * and nothing changes for them.
+ */
+export async function getSendInvitesData(eventId?: string): Promise<SendInvitesData> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const origin = publicOrigin()
 
-  const [entitlement, publicInvite, events, profile, guests] = await Promise.all([
-    getWhatsAppEntitlement(),
+  const [publicInvite, events, profile, guests] = await Promise.all([
     getMyPublicInvite(),
     getEvents(),
     getCoupleProfile(),
     getGuestsWithInvitations(),
   ])
 
-  // WhatsApp read receipts → "viewed" (real once delivery webhooks land).
+  const selectedEvent = (eventId && events.find((e) => e.id === eventId)) || events[0] || null
+  const selectedEventId = selectedEvent?.id ?? null
+
+  // No events at all yet: nothing to scope to. Return an empty, paid-order-free
+  // shell rather than throwing — the couple hasn't set up an event yet.
+  if (!selectedEventId) {
+    return {
+      event: {
+        coupleName: profile ? coupleDisplayName(profile) : 'The Couple',
+        eventName: null,
+        eventTypeLabel: null,
+        eventCategorySw: 'sherehe',
+        dateLabel: null,
+        venue: null,
+        cardTier: null,
+        cardName: null,
+        cardImageUrl: null,
+        addOns: [],
+        hasPaidOrder: false,
+      },
+      events: [],
+      selectedEventId: null,
+      unassignedOrders: [],
+      funnel: { invited: 0, delivered: 0, viewed: 0, rsvpd: 0 },
+      quota: { used: 0, purchased: 0, remaining: 0, hasPaidOrder: false },
+      publicLink: {
+        enabled: publicInvite.enabled,
+        slug: publicInvite.slug,
+        url: publicInvite.slug ? `${origin}/i/${publicInvite.slug}` : null,
+      },
+      whatsappLive: getWhatsAppProvider().live,
+      testPhone: profile?.whatsapp_phone ?? null,
+      sendSettings: { hostName: '', eventCategory: '', confirmed: false },
+      guests: [],
+    }
+  }
+
+  const entitlement = await getWhatsAppEntitlement(selectedEventId)
+
+  // WhatsApp read receipts → "viewed" (real once delivery webhooks land),
+  // scoped to this event only.
   const { data: readRows } = await supabase
     .from('whatsapp_messages')
     .select('guest_contact_id')
     .eq('user_id', user.id)
+    .eq('event_id', selectedEventId)
     .eq('direction', 'out')
     .eq('status', 'read')
   const readSet = new Set(
     (readRows ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x)),
   )
+  const sentSet = new Set(entitlement.alreadySentIds)
 
   const roster = guests.filter((g) => g.review_status !== 'unconfirmed')
 
   const rows: SendGuestRow[] = roster.map((g) => {
-    const invs = g.invitations
+    // Scope this guest's invitations to the SELECTED event only — a guest
+    // attending the Sendoff must not show as "Attending" on the Wedding's
+    // Send Invites page.
+    const invs = g.invitations.filter((i) => i.event_id === selectedEventId)
     const attending = invs.find((i) => i.rsvp_status === 'attending')
     const anyDeclined = invs.length > 0 && invs.every((i) => i.rsvp_status === 'declined')
     const anyMaybe = invs.some((i) => i.rsvp_status === 'maybe')
-    const wasSent = Boolean(g.last_invited_at)
+    const wasSent = sentSet.has(g.id)
     const wasRead = readSet.has(g.id)
 
     let status: SendRowStatus = 'none'
@@ -1152,22 +1248,14 @@ export async function getSendInvitesData(): Promise<SendInvitesData> {
 
   const funnel = {
     invited: roster.length,
-    delivered: roster.filter((g) => g.last_invited_at).length,
+    delivered: rows.filter((r) => r.status !== 'none').length,
     viewed: rows.filter((r) => r.status === 'viewed' || r.status === 'attending' || r.status === 'declined' || r.status === 'maybe').length,
-    rsvpd: roster.filter((g) => g.invitations.some((i) => i.responded_at)).length,
+    rsvpd: roster.filter((g) => g.invitations.some((i) => i.event_id === selectedEventId && i.responded_at)).length,
   }
 
-  const soonestVenue = [...events]
-    .sort((a, b) => (a.starts_at ?? '').localeCompare(b.starts_at ?? ''))
-    .map((e) => [e.venue_name, e.city].filter(Boolean).join(', '))
-    .find(Boolean) ?? null
-
-  // Heading is sourced from the couple's primary event (first by their own sort
-  // order, already applied in getEvents) — the event NAME they typed, suffixed
-  // with the event TYPE. Not the profile partner names, never a hardcoded guess.
-  const primaryEvent = events[0] ?? null
-  const eventName = primaryEvent?.name?.trim() || null
-  const eventTypeLbl = primaryEvent ? eventTypeLabel(primaryEvent.event_type) : null
+  const eventName = selectedEvent.name?.trim() || null
+  const eventTypeLbl = eventTypeLabel(selectedEvent.event_type)
+  const venue = [selectedEvent.venue_name, selectedEvent.city].filter(Boolean).join(', ') || null
 
   return {
     event: {
@@ -1175,14 +1263,17 @@ export async function getSendInvitesData(): Promise<SendInvitesData> {
       eventName,
       eventTypeLabel: eventTypeLbl,
       eventCategorySw: entitlement.eventCategory,
-      dateLabel: formatLongDate(profile?.wedding_date ?? null) || null,
-      venue: soonestVenue,
+      dateLabel: formatLongDate(selectedEvent.starts_at) || null,
+      venue,
       cardTier: entitlement.cardTier,
       cardName: entitlement.cardName,
       cardImageUrl: entitlement.cardImageUrl,
       addOns: entitlement.addOns,
       hasPaidOrder: entitlement.hasPaidOrder,
     },
+    events: events.map((e) => ({ id: e.id, name: e.name, eventTypeLabel: eventTypeLabel(e.event_type) })),
+    selectedEventId,
+    unassignedOrders: entitlement.unassignedOrders,
     funnel,
     quota: {
       used: entitlement.used,
