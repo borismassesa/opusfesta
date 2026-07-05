@@ -538,11 +538,6 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                     </li>
                   ))}
                 </ul>
-                {packages.addons.length > 0 && (
-                  <p className="mt-3 text-[11px] text-gray-400">
-                    Available as add-ons: {packages.addons.map((a) => a.label.toLowerCase()).join(', ')}.
-                  </p>
-                )}
               </div>
             </div>
 
