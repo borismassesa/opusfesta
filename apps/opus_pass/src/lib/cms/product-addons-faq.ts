@@ -208,17 +208,6 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
     },
     {
       ...addOnDefaults(),
-      id: 'michango-cards',
-      title: 'Michango (contribution) cards',
-      title_sw: 'Kadi za Michango',
-      description:
-        'Dedicated contribution cards for guests who prefer to give in person, alongside your digital pledge collection.',
-      description_sw:
-        'Kadi maalum za michango kwa wageni wanaopendelea kuchangia ana kwa ana, sambamba na ukusanyaji wako wa kidijitali wa michango.',
-      pricingMode: 'quote',
-    },
-    {
-      ...addOnDefaults(),
       id: 'gifts-registry',
       title: 'Gifts registry',
       title_sw: 'Orodha ya zawadi',
