@@ -17,6 +17,7 @@ import type { CatalogProduct } from '@/data/invitations-products'
 import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
+import type { ProductAddonsFaqContent } from '@/lib/cms/product-addons-faq'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
@@ -97,7 +98,7 @@ const DESCRIPTION_SANITIZE = {
   ALLOWED_ATTR: ['href', 'target', 'rel'],
 }
 
-export default function ProductDetailClient({ product, allProducts, packages }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent }) {
+export default function ProductDetailClient({ product, allProducts, packages, addonsFaq }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent; addonsFaq: ProductAddonsFaqContent }) {
   const router = useRouter()
   const { addItem, items } = useCart()
 
@@ -304,7 +305,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
 
             {/* Description — below the card */}
             <div className="border-t border-gray-200 pt-5">
-              <p className="text-[15px] font-medium text-gray-900 mb-2">Description</p>
+              <p className="text-[15px] font-medium text-gray-900 mb-2">{addonsFaq.descriptionLabel}</p>
               <div className="max-w-[720px] text-[14px] leading-[1.8] text-[#4B5563]">
                 {!description ? (
                   // Auto-generated fallback when no description is set.
@@ -337,7 +338,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                       aria-expanded={detailsExpanded}
                       className="group inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#7A4F8E] transition-colors hover:text-[#5E3D6E]"
                     >
-                      {detailsExpanded ? 'Read Less' : 'Read More'}
+                      {detailsExpanded ? addonsFaq.readLessLabel : addonsFaq.readMoreLabel}
                       <ArrowRight
                         size={15}
                         className={cn(
@@ -362,7 +363,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
             {/* Package selector — price is per guest, design-independent */}
             <div className="space-y-4">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-700">Choose your package</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-700">{packages.heading}</p>
                 <p className="mt-1 text-[12px] text-gray-500">{packages.subheading}</p>
               </div>
 
@@ -490,15 +491,15 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
 
             {/* ─── Optional add-ons ─── */}
             <div className="border-t border-gray-200 pt-6">
-              <p className="text-[13px] font-bold text-gray-900 mb-3">Optional add-ons</p>
+              <p className="text-[13px] font-bold text-gray-900 mb-3">{addonsFaq.addonsHeading}</p>
 
               {/* Paper prints toggle */}
               <AddOnCard
                 checked={paperPrints}
                 onToggle={() => setPaperPrints((v) => !v)}
-                title="Premium printed cards"
-                description="Premium printed cards for elders, the head table, and anyone who'd love a physical keepsake — designed in Bagamoyo, delivered across Tanzania."
-                priceLabel={`From TZS ${paperUnitPrice.toLocaleString('en-US')} per print`}
+                title={addonsFaq.paperPrints.title}
+                description={addonsFaq.paperPrints.description}
+                priceLabel={`${addonsFaq.priceFromLabel} TZS ${paperUnitPrice.toLocaleString('en-US')} ${addonsFaq.perPrintUnitLabel}`}
               >
                 {paperPrints && (
                   <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
@@ -549,17 +550,18 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                   they see an "included" card; Essential & Classic get the paid toggle. */}
               {attendantIncluded ? (
                 <IncludedAddOnCard
-                  title="On-site scanning attendant"
-                  description="A trained OpusFesta attendant comes to your venue and scans each guest's ticket QR at the door, ticking them off your live guest list in real time — no extra cost, no need to assign your own staff."
+                  title={addonsFaq.doorScanIncluded.title}
+                  description={addonsFaq.doorScanIncluded.description}
+                  includedLabel={addonsFaq.includedPillLabel}
                 />
               ) : (
                 <>
                   <AddOnCard
                     checked={doorScan}
                     onToggle={() => setDoorScan((v) => !v)}
-                    title="On-site scanning attendant"
-                    description="Every package includes barcode check-in — this add-on sends a trained OpusFesta attendant to your venue to do it for you. They scan each guest's ticket QR at the entrance and tick them off your live guest list in real time, so you don't need to assign your own staff."
-                    priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
+                    title={addonsFaq.doorScan.title}
+                    description={addonsFaq.doorScan.description}
+                    priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} ${addonsFaq.flatFeePerEventLabel}`}
                   />
                   {doorScan && (
                     // Boarding-pass ticket — both ends (OpusPass stub + QR) are taken
@@ -617,56 +619,31 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
 
             {/* Collapsible sections */}
             <div className="border-t border-gray-200">
-              <Accordion title="Guest list & RSVP dashboard">
-                <p>
-                  Every package includes a dashboard to run your event end to end — create the event, build
-                  and organise your guest list, and send invites from one place. Watch RSVPs land in real time
-                  with live headcounts and meal choices. Classic and up add live check-ins, pledge
-                  collection and a thank-you blast; Elegant and Signature add save-the-dates, schedule
-                  or menu design and richer reporting.
-                </p>
-              </Accordion>
-
-              <Accordion title="Free wedding website">
-                <p>
-                  Pair your invitation with a personal wedding website — your story, schedule, venue map,
-                  photos, and a built-in bilingual RSVP your guests can visit anytime. Included with the
-                  Signature package; available as an add-on on Lite and Classic.
-                </p>
-              </Accordion>
-
-              <Accordion title="How the door-scan attendant works">
-                <p>
-                  When you add the attendant to your order, a trained OpusFesta attendant arrives at your
-                  venue 30 minutes before the event with a scanner. Every digital invite includes a unique
-                  QR code — the attendant scans each guest at the door and ticks them off your live guest
-                  list, so you know exactly who arrived in real time. Travel costs included within Dar es
-                  Salaam, Arusha, Mwanza, Bagamoyo, and Zanzibar.
-                </p>
-              </Accordion>
-
-              <Accordion title="Payment">
-                <p>
-                  Pay securely with M-Pesa, Airtel Money, Mixx by Yas, Selcom Pesa, Visa, or Mastercard —
-                  all in Tanzanian shillings. Checkout is encrypted end to end, and you&apos;ll get an instant
-                  confirmation by SMS and email the moment your payment clears, so your order starts right
-                  away.
-                </p>
-              </Accordion>
-
-              <Accordion title="Cancellation policy">
-                <p>
-                  Cancel for a full refund any time before your invitations are sent. Once invites have gone
-                  out, the package is non-refundable — the cards and tickets are already live to your guests.
-                  The on-site attendant add-on can be cancelled up to 7 days before your event for a full
-                  refund. Read the full{' '}
-                  <Link href="/cancellation" className="font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-600">
-                    Cancellation &amp; Refund Policy
-                  </Link>
-                  .
-                </p>
-              </Accordion>
-
+              {addonsFaq.faq.map((item) => (
+                <Accordion key={item.id} title={item.title}>
+                  <p>
+                    {item.link_href ? (
+                      // Split the body around the {link} placeholder so the
+                      // inline link renders as a real <Link>, not plain text.
+                      item.body.split('{link}').map((chunk, i, arr) => (
+                        <span key={i}>
+                          {chunk}
+                          {i < arr.length - 1 && (
+                            <Link
+                              href={item.link_href}
+                              className="font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-600"
+                            >
+                              {item.link_label}
+                            </Link>
+                          )}
+                        </span>
+                      ))
+                    ) : (
+                      item.body
+                    )}
+                  </p>
+                </Accordion>
+              ))}
             </div>
           </div>
         </div>
@@ -756,7 +733,7 @@ function AddOnCard({
 
 // Non-interactive variant of AddOnCard for coverage that's bundled into the
 // chosen tier — shows an "Included" pill instead of a checkbox + price.
-function IncludedAddOnCard({ title, description }: { title: string; description: string }) {
+function IncludedAddOnCard({ title, description, includedLabel }: { title: string; description: string; includedLabel: string }) {
   return (
     <div className="mb-3 rounded-md border border-[#CDEBA6] bg-[#F4FBE9]">
       <div className="flex items-start gap-3 p-4">
@@ -770,7 +747,7 @@ function IncludedAddOnCard({ title, description }: { title: string; description:
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[14px] font-bold text-gray-900">{title}</p>
             <span className="rounded-full bg-[#9FE870] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#1A1A1A]">
-              Included
+              {includedLabel}
             </span>
           </div>
           <p className="mt-1 text-[12px] text-gray-600 leading-relaxed">{description}</p>
