@@ -1,6 +1,7 @@
 import { getLocale } from '@/lib/cms/locale'
 import { loadUiStrings } from '@/lib/cms/ui-strings'
 import { UIStringsProvider } from '@/components/providers/UIStringsProvider'
+import { getEventsForCheckout } from '@/lib/dashboard/queries'
 import CheckoutClient from './CheckoutClient'
 
 // Reads the per-visitor locale cookie to resolve bilingual microcopy, so the
@@ -9,10 +10,11 @@ export const dynamic = 'force-dynamic'
 
 export default async function CheckoutPage() {
   const locale = await getLocale()
-  const [checkoutForm, checkoutPayment, checkoutSummary] = await Promise.all([
+  const [checkoutForm, checkoutPayment, checkoutSummary, events] = await Promise.all([
     loadUiStrings('checkout-form', locale),
     loadUiStrings('checkout-payment', locale),
     loadUiStrings('checkout-summary', locale),
+    getEventsForCheckout(locale),
   ])
   return (
     <UIStringsProvider
@@ -22,7 +24,7 @@ export default async function CheckoutPage() {
         'checkout-summary': checkoutSummary,
       }}
     >
-      <CheckoutClient />
+      <CheckoutClient events={events} />
     </UIStringsProvider>
   )
 }
