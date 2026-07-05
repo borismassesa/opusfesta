@@ -7,7 +7,7 @@ import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
 import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
@@ -1618,17 +1618,12 @@ export async function assignOrderToEvent(orderId: string, eventId: string): Prom
     .maybeSingle<{ id: string }>()
   if (!event) throw new Error('Event not found')
 
-  const ors = [`user_id.eq.${user.id}`]
-  if (user.email) ors.push(`contact_email.eq.${user.email}`)
-  if (profile?.whatsapp_phone) ors.push(`contact_phone.eq.${profile.whatsapp_phone}`)
-
-  const { data: order } = await supabase
-    .from('invitation_orders')
-    .select('id')
-    .eq('id', orderId)
-    .eq('status', 'paid')
-    .or(ors.join(','))
-    .maybeSingle<{ id: string }>()
+  // Ownership match: a guest-checkout order (user_id NULL) may match by
+  // email/phone, but an order that already carries a DIFFERENT explicit
+  // user_id can never be pulled in this way — this is a write, unlike the
+  // read-only entitlement lookups that historically used a looser OR-match.
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.id === orderId)
   if (!order) throw new Error('Order not found')
 
   const { error } = await supabase.from('invitation_orders').update({ event_id: eventId }).eq('id', orderId)

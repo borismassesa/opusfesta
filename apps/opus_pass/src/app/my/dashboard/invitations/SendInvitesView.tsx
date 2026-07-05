@@ -564,9 +564,13 @@ export default function SendInvitesView({
                 ) : null}
                 <span className="uname">{o.cardName ?? strings.card_fallback_label}</span>
                 <span className="uguests">{fmt(strings.unassigned_guests, { n: o.purchasedGuests })}</span>
-                <button className="btn ghost" disabled={pending} onClick={() => assignUnassignedOrder(o.id)}>
-                  {fmt(strings.unassigned_assign, { event: event.eventName ?? event.coupleName })}
-                </button>
+                {selectedEventId ? (
+                  <button className="btn ghost" disabled={pending} onClick={() => assignUnassignedOrder(o.id)}>
+                    {fmt(strings.unassigned_assign, { event: event.eventName ?? event.coupleName })}
+                  </button>
+                ) : (
+                  <Link href="/my/dashboard/events" className="btn ghost">{strings.manage_events}</Link>
+                )}
               </div>
             ))}
           </div>
