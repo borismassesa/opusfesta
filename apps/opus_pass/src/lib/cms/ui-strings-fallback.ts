@@ -1057,6 +1057,13 @@ export interface DashboardSendStrings {
   selected_count: string // {n}
   live_hint: string
   send_all_notsent: string // {n}
+  // Event switcher + unassigned-order assignment
+  event_switcher_label: string
+  unassigned_pill: string
+  unassigned_note: string // {n}
+  unassigned_guests: string // {n}
+  unassigned_assign: string // {event}
+  toast_order_assigned: string
 }
 
 export type UiStringsByArea = {
@@ -1938,5 +1945,11 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     selected_count: '{n} selected',
     live_hint: 'Statuses update automatically',
     send_all_notsent: 'Send to all not sent ({n})',
+    event_switcher_label: 'Sending for',
+    unassigned_pill: 'Action needed',
+    unassigned_note: '{n} paid designs are not linked to an event yet. Assign them so they can be sent.',
+    unassigned_guests: '{n} invites',
+    unassigned_assign: 'Use for {event}',
+    toast_order_assigned: 'Design assigned to this event',
   },
 }

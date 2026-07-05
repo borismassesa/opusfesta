@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { toast } from 'sonner'
@@ -27,6 +27,7 @@ import {
   sendWhatsAppInvites,
   sendWhatsAppTestInvite,
   saveInviteSendSettings,
+  assignOrderToEvent,
   updateGuestPhone,
   updateGuestBasics,
   createGuest,
@@ -145,7 +146,9 @@ export default function SendInvitesView({
   strings: DashboardSendStrings
 }) {
   const router = useRouter()
-  const { event, funnel, quota, publicLink, whatsappLive, guests } = data
+  const pathname = usePathname()
+  const { event, funnel, quota, publicLink, whatsappLive, guests, events, selectedEventId, unassignedOrders } = data
+  const eventId = selectedEventId ?? undefined
 
   const [pending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
@@ -216,6 +219,26 @@ export default function SendInvitesView({
     .replace('{{2}}', hostName.trim() || event.coupleName)
     .replace('{{3}}', eventCat.trim() || event.eventCategorySw)
 
+  /** Switch which event this page is scoped to — a fresh server fetch of the
+   *  design/quota/guest-statuses for that event (not client-side filtering,
+   *  since entitlement itself is scoped server-side). */
+  function switchEvent(id: string) {
+    router.push(`${pathname}?event=${id}`)
+  }
+
+  function assignUnassignedOrder(orderId: string) {
+    if (!selectedEventId) return
+    startTransition(async () => {
+      try {
+        await assignOrderToEvent(orderId, selectedEventId)
+        toast.success(strings.toast_order_assigned)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
+      }
+    })
+  }
+
   function toggleSharing() {
     startTransition(async () => {
       try {
@@ -274,7 +297,7 @@ export default function SendInvitesView({
         toast.error(err instanceof Error ? err.message : strings.toast_nothing_sent)
         return
       }
-      const res = await sendWhatsAppInvites(ids)
+      const res = await sendWhatsAppInvites(ids, eventId)
       if (!res.hasPaidOrder) {
         toast.error(strings.toast_no_package)
         return
@@ -340,7 +363,7 @@ export default function SendInvitesView({
       setSendingRow(g.id)
       startTransition(async () => {
         try {
-          const res = await sendWhatsAppInvites([g.id])
+          const res = await sendWhatsAppInvites([g.id], eventId)
           if (!res.hasPaidOrder) toast.error(strings.toast_no_package)
           else if (res.sent > 0 && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
           else if (res.sent > 0)
@@ -373,11 +396,11 @@ export default function SendInvitesView({
     setTestSending(true)
     startTransition(async () => {
       try {
-        const res = await sendWhatsAppTestInvite(testPhone, {
-          guestName: sampleGuest,
-          coupleName: hostName,
-          eventCategory: eventCat,
-        })
+        const res = await sendWhatsAppTestInvite(
+          testPhone,
+          { guestName: sampleGuest, coupleName: hostName, eventCategory: eventCat },
+          eventId,
+        )
         if (res.ok && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
         else if (res.ok) toast.success(strings.test_sent)
         else toast.error(res.error ? `${strings.test_failed}: ${res.error}` : strings.test_failed)
@@ -508,10 +531,47 @@ export default function SendInvitesView({
           <h1>{strings.heading}</h1>
           <p className="sub">{strings.subheading}</p>
         </div>
-        <button className="btn ghost" onClick={() => setPreviewOpen(true)}>
-          <Eye size={15} /> {strings.preview_button}
-        </button>
+        <div className="headacts">
+          {events.length > 1 ? (
+            <label className="evswitch">
+              <span>{strings.event_switcher_label}</span>
+              <select value={selectedEventId ?? ''} onChange={(e) => switchEvent(e.target.value)} disabled={pending}>
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>{e.name} · {e.eventTypeLabel}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button className="btn ghost" onClick={() => setPreviewOpen(true)}>
+            <Eye size={15} /> {strings.preview_button}
+          </button>
+        </div>
       </div>
+
+      {/* Paid designs bought before this event existed, or before the couple
+          had picked which event they're for — nudge them to assign one. */}
+      {unassignedOrders.length > 0 ? (
+        <div className="unassigned">
+          <div className="uhead">
+            <span className="dp">{strings.unassigned_pill}</span>
+            <span>{fmt(strings.unassigned_note, { n: unassignedOrders.length })}</span>
+          </div>
+          <div className="ulist">
+            {unassignedOrders.map((o) => (
+              <div key={o.id} className="urow">
+                {o.cardImageUrl ? (
+                  <span className="uimg"><Image src={o.cardImageUrl} alt="" fill sizes="36px" className="object-cover" unoptimized /></span>
+                ) : null}
+                <span className="uname">{o.cardName ?? strings.card_fallback_label}</span>
+                <span className="uguests">{fmt(strings.unassigned_guests, { n: o.purchasedGuests })}</span>
+                <button className="btn ghost" disabled={pending} onClick={() => assignUnassignedOrder(o.id)}>
+                  {fmt(strings.unassigned_assign, { event: event.eventName ?? event.coupleName })}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Event context */}
       <div className="ctx">
@@ -1083,6 +1143,22 @@ const css = `
 .si .serif, .si h1, .si h2, .si h3, .si .n, .si .ci b{ font-family:var(--font-cormorant),Georgia,serif; }
 .si h1{ font-weight:600; font-size:30px; letter-spacing:-.3px; }
 .si .head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.si .headacts{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.si .evswitch{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--muted); }
+.si .evswitch select{ border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:13px;
+  font-weight:600; color:var(--ink); background:#fff; max-width:240px; }
+.si .evswitch select:focus{ outline:none; border-color:var(--lav); }
+.si .unassigned{ margin-top:18px; padding:14px 16px; border:1px solid var(--amber-bd); background:var(--amber-bg);
+  border-radius:var(--radius); }
+.si .uhead{ display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--amber-tx); flex-wrap:wrap; }
+.si .uhead .dp{ background:var(--amber-bd); color:var(--amber-tx); font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; flex:none; }
+.si .ulist{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.si .urow{ display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--amber-bd);
+  border-radius:12px; padding:8px 10px; flex-wrap:wrap; }
+.si .uimg{ position:relative; width:36px; height:48px; flex:none; border-radius:6px; overflow:hidden; }
+.si .uname{ font-weight:600; font-size:13px; color:var(--ink); }
+.si .uguests{ font-size:12px; color:var(--muted); }
+.si .urow .btn{ margin-left:auto; }
 .si .sub{ color:var(--muted); font-size:14px; margin-top:6px; max-width:640px; line-height:1.5; }
 .si .btn{ border:none; border-radius:999px; font-weight:600; font-size:13.5px; padding:9px 16px; cursor:pointer;
   display:inline-flex; align-items:center; gap:7px; transition:filter .12s, transform .08s; }
