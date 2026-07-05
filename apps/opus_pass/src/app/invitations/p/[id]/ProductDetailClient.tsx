@@ -570,7 +570,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                     ? `TZS ${a.flatFee.toLocaleString('en-US')} ${a.flatFeeLabel}`
                     : a.pricingMode === 'per_unit'
                     ? `${addonsFaq.priceFromLabel} TZS ${a.unitPrice.toLocaleString('en-US')} ${a.unitLabel}`
-                    : a.quoteLabel
+                    : '' // 'quote' add-ons show no price line — quoteLabel appears only in the reveal once checked
 
                 return (
                   <Fragment key={a.id}>
@@ -733,7 +733,7 @@ function AddOnCard({
         <div className="grow">
           <p className="text-[14px] font-bold text-gray-900">{title}</p>
           <p className="mt-1 text-[12px] text-gray-600 leading-relaxed">{description}</p>
-          <p className="mt-1.5 text-[12px] font-bold text-[#1A1A1A]">{priceLabel}</p>
+          {priceLabel && <p className="mt-1.5 text-[12px] font-bold text-[#1A1A1A]">{priceLabel}</p>}
         </div>
       </label>
       {children && <div className="px-4 pb-4">{children}</div>}
@@ -805,9 +805,9 @@ function AddOnQuantityStepper({
   )
 }
 
-// 'quote' add-on — priced on a call. The AddOnCard's priceLabel already shows
-// `quoteLabel` ("Price upon consultation call") whether checked or not; once
-// the buyer checks the box to select it, this reveals the "Call us" button
+// 'quote' add-on — priced on a call. AddOnCard shows no price line while
+// unchecked; once the buyer checks the box to select it, this reveals both
+// `quoteLabel` ("Price upon consultation call") and the "Call us" button
 // that dials the admin-configured phone number directly. Never affects the
 // order total (see addOnLines, which excludes 'quote' add-ons).
 function QuoteCallCta({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: string }) {
@@ -815,10 +815,11 @@ function QuoteCallCta({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: strin
   // leading + and digits so dialers on every platform parse it consistently.
   const dialablePhone = phoneNumber.replace(/(?!^\+)[^\d]/g, '')
   return (
-    <div className="mt-4 border-t border-gray-100 pt-4">
+    <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+      <p className="text-[12px] font-bold text-[#1A1A1A]">{addOn.quoteLabel}</p>
       <a
         href={`tel:${dialablePhone}`}
-        className="inline-flex items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
+        className="inline-flex shrink-0 items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
       >
         {addOn.quoteCtaLabel}
       </a>
