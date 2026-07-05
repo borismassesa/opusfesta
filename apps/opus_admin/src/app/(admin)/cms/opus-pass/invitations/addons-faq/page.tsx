@@ -30,21 +30,18 @@ export default async function OpusPassAddonsFaqEditorPage() {
         includedPillLabel_sw: stored.includedPillLabel_sw ?? fb.includedPillLabel_sw,
         priceFromLabel: stored.priceFromLabel ?? fb.priceFromLabel,
         priceFromLabel_sw: stored.priceFromLabel_sw ?? fb.priceFromLabel_sw,
-        perPrintUnitLabel: stored.perPrintUnitLabel ?? fb.perPrintUnitLabel,
-        perPrintUnitLabel_sw: stored.perPrintUnitLabel_sw ?? fb.perPrintUnitLabel_sw,
-        flatFeePerEventLabel: stored.flatFeePerEventLabel ?? fb.flatFeePerEventLabel,
-        flatFeePerEventLabel_sw: stored.flatFeePerEventLabel_sw ?? fb.flatFeePerEventLabel_sw,
+        howManyLabel: stored.howManyLabel ?? fb.howManyLabel,
+        howManyLabel_sw: stored.howManyLabel_sw ?? fb.howManyLabel_sw,
         descriptionLabel: stored.descriptionLabel ?? fb.descriptionLabel,
         descriptionLabel_sw: stored.descriptionLabel_sw ?? fb.descriptionLabel_sw,
         readMoreLabel: stored.readMoreLabel ?? fb.readMoreLabel,
         readMoreLabel_sw: stored.readMoreLabel_sw ?? fb.readMoreLabel_sw,
         readLessLabel: stored.readLessLabel ?? fb.readLessLabel,
         readLessLabel_sw: stored.readLessLabel_sw ?? fb.readLessLabel_sw,
-        paperPrints: stored.paperPrints ?? fb.paperPrints,
-        doorScan: stored.doorScan ?? fb.doorScan,
-        doorScanIncluded: stored.doorScanIncluded ?? fb.doorScanIncluded,
-        // An empty array is a deliberate "no FAQ items" choice, not a missing
-        // field — only fall back when the key is absent entirely.
+        // An empty array is a deliberate choice, not a missing field — only
+        // fall back when the key is absent entirely (legacy rows saved
+        // before this field existed).
+        addons: Array.isArray(stored.addons) ? stored.addons : fb.addons,
         faq: Array.isArray(stored.faq) ? stored.faq : fb.faq,
       }
     : fb
