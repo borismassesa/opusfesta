@@ -850,6 +850,9 @@ export interface DashboardEventsStrings {
   linked_order_none_available: string
   toast_order_linked: string
   toast_order_link_error: string
+  unlink_aria: string // uses {name}
+  toast_order_unlinked: string
+  toast_order_unlink_error: string
   // Delete confirmation dialog
   delete_dialog_title: string
   delete_dialog_description: string
@@ -1771,6 +1774,9 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     linked_order_none_available: "You haven't purchased an invitation design yet. Designs you buy show up here to link.",
     toast_order_linked: 'Design linked to this event.',
     toast_order_link_error: 'Could not link that order. Please try again.',
+    unlink_aria: 'Unlink {name}',
+    toast_order_unlinked: 'Design unlinked. You can now link it to a different event.',
+    toast_order_unlink_error: 'Could not unlink that order. Please try again.',
     delete_dialog_title: 'Delete "{name}"?',
     delete_dialog_description:
       "This also removes the event from every guest's invitation. It can't be undone.",

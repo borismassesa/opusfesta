@@ -1618,6 +1618,27 @@ export async function assignOrderToEvent(orderId: string, eventId: string): Prom
   revalidateDashboard()
 }
 
+/** Undo an `assignOrderToEvent` link — sends the order back to "unassigned"
+ *  so it can be re-linked to the correct event instead. */
+export async function unassignOrderFromEvent(orderId: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.id === orderId)
+  if (!order) throw new Error('Order not found')
+
+  const { error } = await supabase.from('invitation_orders').update({ event_id: null }).eq('id', orderId)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
 /**
  * Persist the couple-confirmed WhatsApp template values: {{2}} host name and
  * {{3}} event category. Sending is blocked until these are saved once; the

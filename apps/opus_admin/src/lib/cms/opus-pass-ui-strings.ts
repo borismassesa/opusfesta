@@ -768,6 +768,9 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     linked_order_none_available: "You haven't purchased an invitation design yet. Designs you buy show up here to link.",
     toast_order_linked: 'Design linked to this event.',
     toast_order_link_error: 'Could not link that order. Please try again.',
+    unlink_aria: 'Unlink {name}',
+    toast_order_unlinked: 'Design unlinked. You can now link it to a different event.',
+    toast_order_unlink_error: 'Could not unlink that order. Please try again.',
     delete_dialog_title: 'Delete "{name}"?',
     delete_dialog_description:
       "This also removes the event from every guest's invitation. It can't be undone.",
@@ -2077,6 +2080,9 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'linked_order_none_available', label: 'No unassigned orders message', kind: 'textarea', max: 160 },
         { key: 'toast_order_linked', label: 'Success toast', kind: 'text', max: 80 },
         { key: 'toast_order_link_error', label: 'Error toast', kind: 'text', max: 80 },
+        { key: 'unlink_aria', label: 'Unlink button aria-label ({name})', kind: 'text', max: 60 },
+        { key: 'toast_order_unlinked', label: 'Unlink success toast', kind: 'text', max: 100 },
+        { key: 'toast_order_unlink_error', label: 'Unlink error toast', kind: 'text', max: 80 },
       ],
     },
     {

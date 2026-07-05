@@ -18,11 +18,19 @@ import {
   Globe2,
   ImageOff,
   Link2,
+  Unlink,
 } from 'lucide-react'
 import { Card } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Field, inputClass } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
-import { createEvent, updateEvent, deleteEvent, assignOrderToEvent, type EventInput } from '@/lib/dashboard/actions'
+import {
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  assignOrderToEvent,
+  unassignOrderFromEvent,
+  type EventInput,
+} from '@/lib/dashboard/actions'
 import {
   EVENT_TYPE_LABELS,
   eventTypeLabel,
@@ -533,6 +541,7 @@ export default function EventsManager({
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <PreviewCard form={form} editing={editing} strings={strings} />
           <LinkedOrderCard
+            key={editing ? editing.id : 'new'}
             editing={editing}
             orderLinks={orderLinks}
             strings={strings}
@@ -935,7 +944,23 @@ function PreviewCard({
   )
 }
 
-function OrderRow({ order, strings }: { order: PaidOrderSummary; strings: DashboardEventsStrings }) {
+const FALLBACK_ORDER_NAME = 'Invitation design'
+
+function orderLabel(order: PaidOrderSummary, strings: DashboardEventsStrings): string {
+  return `${order.cardName ?? FALLBACK_ORDER_NAME} · ${fmt(strings.linked_order_guests, { count: order.purchasedGuests })}`
+}
+
+function OrderRow({
+  order,
+  strings,
+  onUnlink,
+  unlinking,
+}: {
+  order: PaidOrderSummary
+  strings: DashboardEventsStrings
+  onUnlink: () => void
+  unlinking: boolean
+}) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-black/[0.08] bg-black/[0.015] p-2.5">
       <span className="relative flex h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-black/[0.06]">
@@ -947,10 +972,19 @@ function OrderRow({ order, strings }: { order: PaidOrderSummary; strings: Dashbo
           </span>
         )}
       </span>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-[#1A1A1A]">{order.cardName ?? 'Invitation design'}</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[#1A1A1A]">{order.cardName ?? FALLBACK_ORDER_NAME}</p>
         <p className="text-xs text-[#1A1A1A]/55">{fmt(strings.linked_order_guests, { count: order.purchasedGuests })}</p>
       </div>
+      <button
+        type="button"
+        onClick={onUnlink}
+        disabled={unlinking}
+        aria-label={fmt(strings.unlink_aria, { name: order.cardName ?? FALLBACK_ORDER_NAME })}
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[#1A1A1A]/45 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Unlink className="h-4 w-4" />
+      </button>
     </div>
   )
 }
@@ -987,6 +1021,18 @@ function LinkedOrderCard({
     })
   }
 
+  function unlink(orderId: string) {
+    startTransition(async () => {
+      try {
+        await unassignOrderFromEvent(orderId)
+        toast.success(strings.toast_order_unlinked)
+        onLinked()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_order_unlink_error)
+      }
+    })
+  }
+
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 py-3">
@@ -1005,7 +1051,13 @@ function LinkedOrderCard({
             {linked.length ? (
               <div className="space-y-2.5">
                 {linked.map((o) => (
-                  <OrderRow key={o.id} order={o} strings={strings} />
+                  <OrderRow
+                    key={o.id}
+                    order={o}
+                    strings={strings}
+                    unlinking={pending}
+                    onUnlink={() => unlink(o.id)}
+                  />
                 ))}
               </div>
             ) : (
@@ -1020,6 +1072,7 @@ function LinkedOrderCard({
                     <select
                       className={cn(inputClass, 'appearance-none pr-9 text-sm')}
                       value={picked}
+                      disabled={pending}
                       onChange={(e) => setPicked(e.target.value)}
                     >
                       <option value="" disabled>
@@ -1027,9 +1080,7 @@ function LinkedOrderCard({
                       </option>
                       {unassigned.map((o) => (
                         <option key={o.id} value={o.id}>
-                          {(o.cardName ?? 'Invitation design') +
-                            ' · ' +
-                            fmt(strings.linked_order_guests, { count: o.purchasedGuests })}
+                          {orderLabel(o, strings)}
                         </option>
                       ))}
                     </select>

@@ -979,7 +979,7 @@ export interface WhatsAppEntitlement {
   alreadySentIds: string[]
   /** Paid orders not yet assigned to any event — the couple needs to pick
    *  which event each one is for before it counts toward that event's quota. */
-  unassignedOrders: { id: string; cardName: string | null; cardImageUrl: string | null; purchasedGuests: number }[]
+  unassignedOrders: PaidOrderSummary[]
 }
 
 interface PaidOrderItem {
@@ -1232,7 +1232,7 @@ export interface SendInvitesData {
   selectedEventId: string | null
   /** Paid orders not yet assigned to any event — show a prompt to assign them
    *  so their design/quota isn't invisible to every event. */
-  unassignedOrders: { id: string; cardName: string | null; cardImageUrl: string | null; purchasedGuests: number }[]
+  unassignedOrders: PaidOrderSummary[]
   funnel: { invited: number; delivered: number; viewed: number; rsvpd: number }
   quota: { used: number; purchased: number; remaining: number; hasPaidOrder: boolean }
   publicLink: { enabled: boolean; slug: string | null; url: string | null }
