@@ -43,7 +43,9 @@ export default async function OpusPassAddonsFaqEditorPage() {
         paperPrints: stored.paperPrints ?? fb.paperPrints,
         doorScan: stored.doorScan ?? fb.doorScan,
         doorScanIncluded: stored.doorScanIncluded ?? fb.doorScanIncluded,
-        faq: Array.isArray(stored.faq) && stored.faq.length > 0 ? stored.faq : fb.faq,
+        // An empty array is a deliberate "no FAQ items" choice, not a missing
+        // field — only fall back when the key is absent entirely.
+        faq: Array.isArray(stored.faq) ? stored.faq : fb.faq,
       }
     : fb
 

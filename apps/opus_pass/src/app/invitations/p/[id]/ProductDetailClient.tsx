@@ -17,7 +17,7 @@ import type { CatalogProduct } from '@/data/invitations-products'
 import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
-import type { ProductAddonsFaqContent } from '@/lib/cms/product-addons-faq'
+import type { FaqItem, ProductAddonsFaqContent } from '@/lib/cms/product-addons-faq'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
@@ -96,6 +96,39 @@ const DETAILS_CLAMP = 'max-h-[5.4em] overflow-hidden lg:max-h-none lg:overflow-v
 const DESCRIPTION_SANITIZE = {
   ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 's', 'u', 'ul', 'ol', 'li', 'a'],
   ALLOWED_ATTR: ['href', 'target', 'rel'],
+}
+
+// Renders an FAQ answer, splicing in a real <Link> for items that carry one
+// (e.g. Cancellation policy → /cancellation). Splits the body around the
+// {link} placeholder so admins can position the link mid-sentence — but if
+// link_href is set and the placeholder was edited out of the body, the link
+// is appended at the end rather than silently dropped, so a CMS edit can
+// never make it disappear.
+function renderFaqBody(item: FaqItem): React.ReactNode {
+  if (!item.link_href) return item.body
+  const link = (
+    <Link
+      href={item.link_href}
+      className="font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-600"
+    >
+      {item.link_label}
+    </Link>
+  )
+  const parts = item.body.split('{link}')
+  if (parts.length === 1) {
+    return (
+      <>
+        {item.body}{' '}
+        {link}
+      </>
+    )
+  }
+  return parts.map((chunk, i, arr) => (
+    <span key={i}>
+      {chunk}
+      {i < arr.length - 1 && link}
+    </span>
+  ))
 }
 
 export default function ProductDetailClient({ product, allProducts, packages, addonsFaq }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent; addonsFaq: ProductAddonsFaqContent }) {
@@ -620,28 +653,8 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
             {/* Collapsible sections */}
             <div className="border-t border-gray-200">
               {addonsFaq.faq.map((item) => (
-                <Accordion key={item.id} title={item.title}>
-                  <p>
-                    {item.link_href ? (
-                      // Split the body around the {link} placeholder so the
-                      // inline link renders as a real <Link>, not plain text.
-                      item.body.split('{link}').map((chunk, i, arr) => (
-                        <span key={i}>
-                          {chunk}
-                          {i < arr.length - 1 && (
-                            <Link
-                              href={item.link_href}
-                              className="font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-600"
-                            >
-                              {item.link_label}
-                            </Link>
-                          )}
-                        </span>
-                      ))
-                    ) : (
-                      item.body
-                    )}
-                  </p>
+                <Accordion key={item.id} id={item.id} title={item.title}>
+                  <p>{renderFaqBody(item)}</p>
                 </Accordion>
               ))}
             </div>
@@ -767,21 +780,25 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
 }
 
 function Accordion({
+  id,
   title,
   defaultOpen = false,
   children,
 }: {
+  id?: string
   title: string
   defaultOpen?: boolean
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  // Deterministic id from the (unique) title — NOT useId. useId is derived from
-  // the component's position in the tree, and Next 16's dev-only segment-explorer
-  // wrappers shift that position between SSR and hydration, spamming the console
-  // with hydration-mismatch errors in dev (prod is unaffected). A title-derived
-  // id is identical on both sides by construction.
-  const panelId = `accordion-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+  // Deterministic id — NOT useId. useId is derived from the component's
+  // position in the tree, and Next 16's dev-only segment-explorer wrappers
+  // shift that position between SSR and hydration, spamming the console with
+  // hydration-mismatch errors in dev (prod is unaffected). Prefer the caller's
+  // stable `id` (e.g. a CMS item's own id) since two admin-edited titles can
+  // collide (both left as "New question"); fall back to a title slug only
+  // when no stable id is available.
+  const panelId = `accordion-${(id ?? title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
   return (
     <div className="border-b border-gray-200">
       <button

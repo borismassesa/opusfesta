@@ -33,7 +33,7 @@ export async function publishOpusPassAddonsFaq(): Promise<void> {
     .select('draft_content')
     .eq('page_key', PAGE_KEY)
     .eq('section_key', SECTION_KEY)
-    .single()
+    .maybeSingle()
   if (loadErr) throw loadErr
   if (!row?.draft_content) return
 

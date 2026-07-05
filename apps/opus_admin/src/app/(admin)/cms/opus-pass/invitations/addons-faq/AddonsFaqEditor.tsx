@@ -284,6 +284,31 @@ export default function AddonsFaqEditor({ initial, hasDraft: initialHasDraft }: 
   )
 }
 
+// Mirrors the public renderer's renderFaqBody (apps/opus_pass ProductDetailClient.tsx):
+// splices the link into the {link} placeholder when present, but if link_href
+// is set and the admin edited the placeholder out of the body, appends the
+// link at the end rather than silently dropping it — so the preview never
+// shows a false "the link disappeared" state that production wouldn't also show.
+function renderFaqPreviewBody(item: FaqItem): React.ReactNode {
+  if (!item.link_href) return item.body
+  const link = <span className="font-semibold text-gray-900 underline underline-offset-2">{item.link_label}</span>
+  const parts = item.body.split('{link}')
+  if (parts.length === 1) {
+    return (
+      <>
+        {item.body}{' '}
+        {link}
+      </>
+    )
+  }
+  return parts.map((chunk, i, arr) => (
+    <span key={i}>
+      {chunk}
+      {i < arr.length - 1 && link}
+    </span>
+  ))
+}
+
 function AddonsFaqPreview({ content }: { content: ProductAddonsFaqContent }) {
   return (
     <div className="space-y-5">
@@ -312,14 +337,7 @@ function AddonsFaqPreview({ content }: { content: ProductAddonsFaqContent }) {
             <div key={f.id} className="py-2.5">
               <p className="text-[13px] font-medium text-gray-900 flex items-center gap-1.5"><GripVertical className="w-3 h-3 text-gray-300" />{f.title || 'Question'}</p>
               <p className="mt-1 text-[11px] text-gray-600 leading-relaxed pl-[18px]">
-                {f.link_href
-                  ? f.body.split('{link}').map((chunk, i, arr) => (
-                      <span key={i}>
-                        {chunk}
-                        {i < arr.length - 1 && <span className="font-semibold text-gray-900 underline underline-offset-2">{f.link_label}</span>}
-                      </span>
-                    ))
-                  : f.body}
+                {renderFaqPreviewBody(f)}
               </p>
             </div>
           ))}
