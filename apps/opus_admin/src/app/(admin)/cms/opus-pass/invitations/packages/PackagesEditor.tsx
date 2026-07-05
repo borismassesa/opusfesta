@@ -215,6 +215,14 @@ export default function PackagesEditor({ initial, hasDraft: initialHasDraft }: P
             <Field label="'per guest' price suffix (EN)"><input className={inputCls} value={draft.perGuestLabel} onChange={(e) => setField('perGuestLabel', e.target.value)} /></Field>
             <Field label="(SW)"><input className={inputCls} value={draft.perGuestLabel_sw} onChange={(e) => setField('perGuestLabel_sw', e.target.value)} /></Field>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Card-count stepper label (EN)"><input className={inputCls} value={draft.cardsCountLabel} onChange={(e) => setField('cardsCountLabel', e.target.value)} /></Field>
+            <Field label="(SW)"><input className={inputCls} value={draft.cardsCountLabel_sw} onChange={(e) => setField('cardsCountLabel_sw', e.target.value)} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Minimum-guests line (EN) — use {count} as a placeholder"><input className={inputCls} value={draft.minGuestsTemplate} onChange={(e) => setField('minGuestsTemplate', e.target.value)} /></Field>
+            <Field label="(SW)"><input className={inputCls} value={draft.minGuestsTemplate_sw} onChange={(e) => setField('minGuestsTemplate_sw', e.target.value)} /></Field>
+          </div>
         </FieldGroup>
 
         {/* ── Tiers ── */}

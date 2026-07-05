@@ -80,6 +80,13 @@ export type PackagesContent = {
   // per-tier copy, so it lives once at the content level.
   perGuestLabel: string
   perGuestLabel_sw: string
+  // Label above the guest-count stepper.
+  cardsCountLabel: string
+  cardsCountLabel_sw: string
+  // Helper line below the stepper — contains a literal "{count}" placeholder
+  // the renderer substitutes with the actual minimum guest count.
+  minGuestsTemplate: string
+  minGuestsTemplate_sw: string
   tiers: PackageTier[]
   addons: PackageAddon[]
 }
@@ -138,6 +145,10 @@ export const PACKAGES_FALLBACK: PackagesContent = {
   note_sw: 'Matukio ya wageni zaidi ya 600 yanapata bei ya punguzo (kikomo).',
   perGuestLabel: 'per guest',
   perGuestLabel_sw: 'kwa mgeni',
+  cardsCountLabel: 'Number of digital cards & OpusPass tickets',
+  cardsCountLabel_sw: 'Idadi ya kadi za kidijitali na tiketi za OpusPass',
+  minGuestsTemplate: 'Minimum {count} guests',
+  minGuestsTemplate_sw: 'Angalau wageni {count}',
   tiers: [
     {
       id: 'lite',
@@ -256,6 +267,10 @@ export async function loadPackagesContent(
           note_sw: stored.note_sw ?? PACKAGES_FALLBACK.note_sw,
           perGuestLabel: stored.perGuestLabel ?? PACKAGES_FALLBACK.perGuestLabel,
           perGuestLabel_sw: stored.perGuestLabel_sw ?? PACKAGES_FALLBACK.perGuestLabel_sw,
+          cardsCountLabel: stored.cardsCountLabel ?? PACKAGES_FALLBACK.cardsCountLabel,
+          cardsCountLabel_sw: stored.cardsCountLabel_sw ?? PACKAGES_FALLBACK.cardsCountLabel_sw,
+          minGuestsTemplate: stored.minGuestsTemplate ?? PACKAGES_FALLBACK.minGuestsTemplate,
+          minGuestsTemplate_sw: stored.minGuestsTemplate_sw ?? PACKAGES_FALLBACK.minGuestsTemplate_sw,
           tiers:
             Array.isArray(stored.tiers) && stored.tiers.length > 0
               ? stored.tiers
@@ -280,6 +295,8 @@ function resolvePackagesLocale(c: PackagesContent, locale: Locale): PackagesCont
     subheading: pick(c.subheading, c.subheading_sw, locale),
     note: pick(c.note, c.note_sw, locale),
     perGuestLabel: pick(c.perGuestLabel, c.perGuestLabel_sw, locale),
+    cardsCountLabel: pick(c.cardsCountLabel, c.cardsCountLabel_sw, locale),
+    minGuestsTemplate: pick(c.minGuestsTemplate, c.minGuestsTemplate_sw, locale),
     tiers: c.tiers.map((t) => ({
       ...t,
       name: pick(t.name, t.name_sw, locale),
