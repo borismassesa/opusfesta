@@ -32,6 +32,7 @@ export default async function OpusPassAddonsFaqEditorPage() {
         priceFromLabel_sw: stored.priceFromLabel_sw ?? fb.priceFromLabel_sw,
         howManyLabel: stored.howManyLabel ?? fb.howManyLabel,
         howManyLabel_sw: stored.howManyLabel_sw ?? fb.howManyLabel_sw,
+        quotePhoneNumber: stored.quotePhoneNumber ?? fb.quotePhoneNumber,
         descriptionLabel: stored.descriptionLabel ?? fb.descriptionLabel,
         descriptionLabel_sw: stored.descriptionLabel_sw ?? fb.descriptionLabel_sw,
         readMoreLabel: stored.readMoreLabel ?? fb.readMoreLabel,

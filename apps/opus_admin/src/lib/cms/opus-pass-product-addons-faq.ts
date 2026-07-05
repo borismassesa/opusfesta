@@ -70,6 +70,9 @@ export type ProductAddonsFaqContent = {
   priceFromLabel_sw: string
   howManyLabel: string
   howManyLabel_sw: string
+  // Phone number every 'quote' add-on's CTA dials — shared across all of
+  // them (not per-add-on, not translatable).
+  quotePhoneNumber: string
   descriptionLabel: string
   descriptionLabel_sw: string
   readMoreLabel: string
@@ -109,8 +112,8 @@ const addOnDefaults = (): Omit<AddOn, 'id' | 'title' | 'title_sw' | 'description
   defaultQty: 1,
   quoteLabel: 'Price upon consultation call',
   quoteLabel_sw: 'Bei baada ya simu ya ushauri',
-  quoteCtaLabel: 'Contact us',
-  quoteCtaLabel_sw: 'Wasiliana nasi',
+  quoteCtaLabel: 'Call us',
+  quoteCtaLabel_sw: 'Tupigie',
   includedInTierIds: [],
   includedTitle: '',
   includedTitle_sw: '',
@@ -130,6 +133,7 @@ export const OPUS_PASS_PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
   priceFromLabel_sw: 'Kuanzia',
   howManyLabel: 'How many?',
   howManyLabel_sw: 'Ngapi?',
+  quotePhoneNumber: '+255 799 202 171',
   descriptionLabel: 'Description',
   descriptionLabel_sw: 'Maelezo',
   readMoreLabel: 'Read More',

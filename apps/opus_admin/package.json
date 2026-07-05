@@ -1,7 +1,7 @@
 {
   "name": "@opusfesta/opus-admin",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "scripts": {
     "dev": "next dev --port 3010",
     "build": "next build",

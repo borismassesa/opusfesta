@@ -207,6 +207,9 @@ export default function AddonsFaqEditor({ initial, hasDraft: initialHasDraft }: 
             <Field label="'How many?' stepper label (EN)"><input className={inputCls} value={draft.howManyLabel} onChange={(e) => setField('howManyLabel', e.target.value)} /></Field>
             <Field label="(SW)"><input className={inputCls} value={draft.howManyLabel_sw} onChange={(e) => setField('howManyLabel_sw', e.target.value)} /></Field>
           </div>
+          <Field label="Phone number every 'priced on a call' add-on's CTA dials">
+            <input className={inputCls} value={draft.quotePhoneNumber} onChange={(e) => setField('quotePhoneNumber', e.target.value)} placeholder="+255 799 202 171" />
+          </Field>
         </FieldGroup>
 
         {/* ── Add-ons ── */}

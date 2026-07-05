@@ -87,6 +87,10 @@ export type ProductAddonsFaqContent = {
   // not per-add-on copy, so it lives once at the content level.
   howManyLabel: string
   howManyLabel_sw: string
+  // Phone number every 'quote' add-on's CTA dials — shared across all of
+  // them (not per-add-on, not translatable). Admin-editable so it never
+  // needs a code change to update.
+  quotePhoneNumber: string
   descriptionLabel: string
   descriptionLabel_sw: string
   readMoreLabel: string
@@ -109,8 +113,8 @@ const addOnDefaults = (): Omit<AddOn, 'id' | 'title' | 'title_sw' | 'description
   defaultQty: 1,
   quoteLabel: 'Price upon consultation call',
   quoteLabel_sw: 'Bei baada ya simu ya ushauri',
-  quoteCtaLabel: 'Contact us',
-  quoteCtaLabel_sw: 'Wasiliana nasi',
+  quoteCtaLabel: 'Call us',
+  quoteCtaLabel_sw: 'Tupigie',
   includedInTierIds: [],
   includedTitle: '',
   includedTitle_sw: '',
@@ -128,6 +132,7 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
   priceFromLabel_sw: 'Kuanzia',
   howManyLabel: 'How many?',
   howManyLabel_sw: 'Ngapi?',
+  quotePhoneNumber: '+255 799 202 171',
   descriptionLabel: 'Description',
   descriptionLabel_sw: 'Maelezo',
   readMoreLabel: 'Read More',
@@ -320,6 +325,7 @@ export async function loadProductAddonsFaqContent(
           priceFromLabel_sw: stored.priceFromLabel_sw ?? fb.priceFromLabel_sw,
           howManyLabel: stored.howManyLabel ?? fb.howManyLabel,
           howManyLabel_sw: stored.howManyLabel_sw ?? fb.howManyLabel_sw,
+          quotePhoneNumber: stored.quotePhoneNumber ?? fb.quotePhoneNumber,
           descriptionLabel: stored.descriptionLabel ?? fb.descriptionLabel,
           descriptionLabel_sw: stored.descriptionLabel_sw ?? fb.descriptionLabel_sw,
           readMoreLabel: stored.readMoreLabel ?? fb.readMoreLabel,

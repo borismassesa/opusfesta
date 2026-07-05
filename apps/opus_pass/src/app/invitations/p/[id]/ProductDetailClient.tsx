@@ -29,10 +29,6 @@ import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
 //                     the order total). An add-on can also be bundled free
 //                     into specific package tiers (`includedInTierIds`).
 
-// Same OpusFesta WhatsApp number used sitewide (footer, invoice fallback) —
-// the destination for "quote" add-ons' Contact us CTA.
-const CONTACT_WHATSAPP_NUMBER = '255799242471'
-
 // Admin-chosen badge icon → lucide component. 'none' renders a text-only pill.
 const TIER_BADGE_ICON: Record<TierBadgeIcon, LucideIcon | null> = {
   none: null,
@@ -568,9 +564,9 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                   )
                 }
 
-                // Priced on a call — no checkout state, just a Contact us CTA.
+                // Priced on a call — no checkout state, just a Call us CTA.
                 if (a.pricingMode === 'quote') {
-                  return <QuoteAddOnCard key={a.id} addOn={a} productName={product.name} />
+                  return <QuoteAddOnCard key={a.id} addOn={a} phoneNumber={addonsFaq.quotePhoneNumber} />
                 }
 
                 const sel = addOnSelections[a.id] ?? { selected: false, qty: a.defaultQty }
@@ -810,11 +806,12 @@ function AddOnQuantityStepper({
 }
 
 // 'quote' add-on — priced on a call, so instead of a checkbox/price it shows
-// a WhatsApp CTA prefilled with the add-on + product name. Never affects the
-// order total.
-function QuoteAddOnCard({ addOn, productName }: { addOn: AddOn; productName: string }) {
-  const message = `Hi, I'd like a quote for ${addOn.title} on ${productName}.`
-  const href = `https://wa.me/${CONTACT_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
+// a "Call us" CTA that dials the admin-configured phone number directly.
+// Never affects the order total.
+function QuoteAddOnCard({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: string }) {
+  // tel: accepts spaces/formatting fine, but strip everything except a
+  // leading + and digits so dialers on every platform parse it consistently.
+  const dialablePhone = phoneNumber.replace(/(?!^\+)[^\d]/g, '')
   return (
     <div className="mb-3 rounded-md border border-gray-200 bg-white">
       <div className="p-4">
@@ -823,9 +820,7 @@ function QuoteAddOnCard({ addOn, productName }: { addOn: AddOn; productName: str
         <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
           <span className="text-[12px] font-bold text-[#1A1A1A]">{addOn.quoteLabel}</span>
           <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`tel:${dialablePhone}`}
             className="inline-flex items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
           >
             {addOn.quoteCtaLabel}
