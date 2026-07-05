@@ -4,18 +4,15 @@ import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requirePermission } from '@/lib/admin-auth'
-import type { OpusPassPackagesContent } from '@/lib/cms/opus-pass-packages'
+import type { ProductAddonsFaqContent } from '@/lib/cms/opus-pass-product-addons-faq'
 
-const PAGE_KEY = 'opus-pass-packages'
-const SECTION_KEY = 'wedding-tiers'
-const EDITOR_PATH = '/cms/opus-pass/invitations/packages'
+const PAGE_KEY = 'opus-pass-product-detail'
+const SECTION_KEY = 'addons-faq'
+const EDITOR_PATH = '/cms/opus-pass/invitations/addons-faq'
 
-// Public OpusPass paths that read the packages content (product detail pages are
-// force-dynamic and refresh on their own; the catalog/cart cards read the
-// "from per-guest price" derived from these tiers and are ISR-cached).
-const PUBLIC_PATHS = ['/invitations', '/invitations/catalog', '/invitations/cart']
-
-export async function saveOpusPassPackagesDraft(draft: OpusPassPackagesContent): Promise<void> {
+// Product detail pages are force-dynamic, so no ISR path needs revalidating —
+// they read the published content fresh on every request.
+export async function saveOpusPassAddonsFaqDraft(draft: ProductAddonsFaqContent): Promise<void> {
   await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
@@ -28,7 +25,7 @@ export async function saveOpusPassPackagesDraft(draft: OpusPassPackagesContent):
   revalidatePath(EDITOR_PATH)
 }
 
-export async function publishOpusPassPackages(): Promise<void> {
+export async function publishOpusPassAddonsFaq(): Promise<void> {
   await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
@@ -48,10 +45,10 @@ export async function publishOpusPassPackages(): Promise<void> {
   if (error) throw error
 
   revalidatePath(EDITOR_PATH)
-  await revalidateOpusPass(...PUBLIC_PATHS)
+  await revalidateOpusPass('/invitations')
 }
 
-export async function discardOpusPassPackagesDraft(): Promise<void> {
+export async function discardOpusPassAddonsFaqDraft(): Promise<void> {
   await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase

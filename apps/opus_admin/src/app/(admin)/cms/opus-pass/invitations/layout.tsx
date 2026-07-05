@@ -17,6 +17,7 @@ import {
   Send,
   Trash2,
   Wallet,
+  ListChecks,
 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
@@ -40,6 +41,14 @@ const sections: CmsSection[] = [
     href: '/cms/opus-pass/invitations/packages',
     status: 'live',
     description: 'Per-guest tiers, prices and the "package includes" matrix on the card detail page.',
+  },
+  {
+    key: 'addons-faq',
+    label: 'Add-ons & FAQ',
+    icon: ListChecks,
+    href: '/cms/opus-pass/invitations/addons-faq',
+    status: 'live',
+    description: 'Optional add-ons cards and FAQ accordion on the card detail page.',
   },
   {
     key: 'categories',
