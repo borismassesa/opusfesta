@@ -945,6 +945,64 @@ interface PaidOrderItem {
   addOns?: string[]
 }
 
+interface PaidOrderRow {
+  id: string
+  items: PaidOrderItem[] | null
+  paid_at: string
+  event_id: string | null
+}
+
+/**
+ * Every paid order that belongs to this couple. Matches by user_id first;
+ * email/phone are ONLY consulted for guest-checkout orders (user_id IS NULL —
+ * the buyer wasn't signed in yet) so an order that already carries a
+ * DIFFERENT user_id can never be pulled in by a coincidental email/phone
+ * match — important now that assignOrderToEvent can WRITE to a matched row,
+ * not just read it.
+ */
+export async function fetchPaidOrdersForCouple(
+  supabase: ReturnType<typeof createDashboardClient>,
+  userId: string,
+  email: string | null | undefined,
+  whatsappPhone: string | null,
+): Promise<PaidOrderRow[]> {
+  const guestCheckoutOrs: string[] = []
+  if (email) guestCheckoutOrs.push(`and(user_id.is.null,contact_email.eq.${email})`)
+  if (whatsappPhone) guestCheckoutOrs.push(`and(user_id.is.null,contact_phone.eq.${whatsappPhone})`)
+  const ors = [`user_id.eq.${userId}`, ...guestCheckoutOrs]
+
+  const { data } = await supabase
+    .from('invitation_orders')
+    .select('id, items, paid_at, event_id')
+    .eq('status', 'paid')
+    .or(ors.join(','))
+    .order('paid_at', { ascending: false })
+  return (data ?? []) as PaidOrderRow[]
+}
+
+/** Paid orders not yet attached to any event, shaped for the "assign this
+ *  design to an event" prompt. */
+function unassignedOrdersFrom(
+  orders: PaidOrderRow[],
+): { id: string; cardName: string | null; cardImageUrl: string | null; purchasedGuests: number }[] {
+  return orders
+    .filter((o) => !o.event_id)
+    .map((o) => {
+      const items = o.items ?? []
+      const withImage = items.find((it) => it.image)
+      const purchasedGuests = items.reduce(
+        (sum, it) => sum + (typeof it.guests === 'number' && it.guests > 0 ? Math.floor(it.guests) : 0),
+        0,
+      )
+      return {
+        id: o.id,
+        cardName: withImage?.name ?? items[0]?.name ?? null,
+        cardImageUrl: withImage?.image ?? null,
+        purchasedGuests,
+      }
+    })
+}
+
 export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppEntitlement> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
@@ -982,19 +1040,9 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
     hostOverride ??
     (coupleNames.length ? coupleNames.join(' & ') : primaryEvent?.name?.trim() || 'The Couple')
 
-  // Match paid orders to this couple: explicit user_id, or buyer email/phone.
-  const ors = [`user_id.eq.${user.id}`]
-  if (user.email) ors.push(`contact_email.eq.${user.email}`)
-  if (profile?.whatsapp_phone) ors.push(`contact_phone.eq.${profile.whatsapp_phone}`)
+  const allPaidOrders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
 
-  const { data: allPaidOrders } = await supabase
-    .from('invitation_orders')
-    .select('id, items, paid_at, event_id')
-    .eq('status', 'paid')
-    .or(ors.join(','))
-    .order('paid_at', { ascending: false })
-
-  const orders = (allPaidOrders ?? []).filter((o) => o.event_id === eventId) as {
+  const orders = allPaidOrders.filter((o) => o.event_id === eventId) as {
     items: PaidOrderItem[] | null
   }[]
 
@@ -1020,31 +1068,20 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
 
   // Paid orders that exist but aren't attached to ANY event yet — surfaced so
   // the couple can assign them instead of them silently counting for nothing.
-  const unassignedOrders = (allPaidOrders ?? [])
-    .filter((o) => !o.event_id)
-    .map((o) => {
-      const items = (o.items ?? []) as PaidOrderItem[]
-      const withImage = items.find((it) => it.image)
-      const purchasedGuests = items.reduce(
-        (sum, it) => sum + (typeof it.guests === 'number' && it.guests > 0 ? Math.floor(it.guests) : 0),
-        0,
-      )
-      return {
-        id: o.id as string,
-        cardName: withImage?.name ?? items[0]?.name ?? null,
-        cardImageUrl: withImage?.image ?? null,
-        purchasedGuests,
-      }
-    })
+  const unassignedOrders = unassignedOrdersFrom(allPaidOrders)
 
   // Used = distinct guests already sent a REAL WhatsApp invite FOR THIS EVENT.
-  // Dry-run stub sends log fake wamid.STUB-* ids — they must never consume
-  // paid credits.
+  // Also count sends logged BEFORE event-scoping shipped (event_id IS NULL) —
+  // those predate this feature and can't be attributed to a specific event,
+  // but treating them as "never sent" would double-invite AND double-charge a
+  // guest who was genuinely already invited. Erring toward a free resend is
+  // the safer failure mode for a paying customer. Dry-run stub sends log fake
+  // wamid.STUB-* ids — they must never consume paid credits.
   const { data: sent } = await supabase
     .from('whatsapp_messages')
     .select('guest_contact_id')
     .eq('user_id', user.id)
-    .eq('event_id', eventId)
+    .or(`event_id.eq.${eventId},event_id.is.null`)
     .eq('direction', 'out')
     .eq('kind', 'invite')
     .eq('status', 'sent')
@@ -1152,9 +1189,17 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
   const selectedEvent = (eventId && events.find((e) => e.id === eventId)) || events[0] || null
   const selectedEventId = selectedEvent?.id ?? null
 
-  // No events at all yet: nothing to scope to. Return an empty, paid-order-free
-  // shell rather than throwing — the couple hasn't set up an event yet.
+  // No events at all yet: nothing to scope guests/quota to, but the couple
+  // may already have bought a design before setting up their first event —
+  // still surface it so they can create an event and assign it, rather than
+  // it silently vanishing.
   if (!selectedEventId) {
+    const paidOrders = await fetchPaidOrdersForCouple(
+      supabase,
+      user.id,
+      user.email,
+      profile?.whatsapp_phone ?? null,
+    )
     return {
       event: {
         coupleName: profile ? coupleDisplayName(profile) : 'The Couple',
@@ -1171,7 +1216,7 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
       },
       events: [],
       selectedEventId: null,
-      unassignedOrders: [],
+      unassignedOrders: unassignedOrdersFrom(paidOrders),
       funnel: { invited: 0, delivered: 0, viewed: 0, rsvpd: 0 },
       quota: { used: 0, purchased: 0, remaining: 0, hasPaidOrder: false },
       publicLink: {
