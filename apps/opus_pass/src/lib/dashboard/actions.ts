@@ -7,7 +7,7 @@ import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
 import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
@@ -1394,6 +1394,18 @@ export interface WhatsAppSendSummary {
 }
 
 /**
+ * Resolve which event a send is for when the caller doesn't pick one
+ * explicitly (e.g. the Guests page's quick-send button, which has no event
+ * switcher) — the couple's first event by their own sort order, matching the
+ * "primary event" concept every event-scoped surface falls back to.
+ */
+async function resolveDefaultEventId(explicit?: string): Promise<string | null> {
+  if (explicit) return explicit
+  const events = await getEvents()
+  return events[0]?.id ?? null
+}
+
+/**
  * Send the WhatsApp invitation to the given guests (or all confirmed guests
  * when no ids are passed). The header image is the card the COUPLE PAID FOR
  * (their purchased invitation design); the guest's first name goes in the
@@ -1404,11 +1416,11 @@ export interface WhatsAppSendSummary {
  * Uses the configured provider (Meta when credentials exist, else a dry-run
  * stub). Each send is logged to whatsapp_messages + guest_message_log.
  */
-export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsAppSendSummary> {
+export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string): Promise<WhatsAppSendSummary> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const provider = getWhatsAppProvider()
-  const ent = await getWhatsAppEntitlement()
+  const resolvedEventId = await resolveDefaultEventId(eventId)
 
   const summary: WhatsAppSendSummary = {
     sent: 0,
@@ -1416,14 +1428,20 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
     skipped: 0,
     blocked: 0,
     dryRun: !provider.live,
-    hasPaidOrder: ent.hasPaidOrder,
-    purchased: ent.purchased,
-    remaining: ent.remaining,
+    hasPaidOrder: false,
+    purchased: 0,
+    remaining: 0,
     results: [],
   }
+  if (!resolvedEventId) return summary // no event set up yet — nothing to send for
 
-  // Nothing to send until the couple has paid for a card (gives both the header
-  // image and the credit quota).
+  const ent = await getWhatsAppEntitlement(resolvedEventId)
+  summary.hasPaidOrder = ent.hasPaidOrder
+  summary.purchased = ent.purchased
+  summary.remaining = ent.remaining
+
+  // Nothing to send until the couple has paid for a card FOR THIS EVENT (gives
+  // both the header image and the credit quota).
   if (!ent.cardImageUrl || ent.purchased <= 0) return summary
 
   let q = supabase
@@ -1471,6 +1489,7 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
     await supabase.from('whatsapp_messages').insert({
       user_id: user.id,
       guest_contact_id: g.id,
+      event_id: resolvedEventId,
       direction: 'out',
       wamid: result.wamid ?? null,
       kind: 'invite',
@@ -1488,6 +1507,7 @@ export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsApp
       await supabase.from('guest_message_log').insert({
         user_id: user.id,
         guest_contact_id: g.id,
+        event_id: resolvedEventId,
         channel: 'whatsapp',
       })
       await supabase
@@ -1538,11 +1558,14 @@ function templateParam(value: string | undefined, fallback: string, max = 60): s
 export async function sendWhatsAppTestInvite(
   rawPhone: string,
   overrides?: TestInviteOverrides,
+  eventId?: string,
 ): Promise<WhatsAppTestSendResult> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const provider = getWhatsAppProvider()
-  const ent = await getWhatsAppEntitlement()
+  const resolvedEventId = await resolveDefaultEventId(eventId)
+  if (!resolvedEventId) return { ok: false, dryRun: !provider.live, error: 'no event set up yet' }
+  const ent = await getWhatsAppEntitlement(resolvedEventId)
 
   const to = normalizePhone(rawPhone)
   if (!to || to.length < 9) return { ok: false, dryRun: !provider.live, error: 'invalid phone number' }
@@ -1560,6 +1583,7 @@ export async function sendWhatsAppTestInvite(
   await supabase.from('whatsapp_messages').insert({
     user_id: user.id,
     guest_contact_id: null,
+    event_id: resolvedEventId,
     direction: 'out',
     wamid: result.wamid ?? null,
     kind: 'invite_test',
@@ -1568,6 +1592,48 @@ export async function sendWhatsAppTestInvite(
   })
 
   return { ok: result.ok, dryRun: Boolean(result.dryRun), error: result.error }
+}
+
+/**
+ * Attach a paid invitation order to one of the couple's events, so its
+ * design/quota becomes visible to that event's Send Invites page instead of
+ * sitting unassigned. Ownership is enforced via the user_id/contact match
+ * `getWhatsAppEntitlement` already uses to surface `unassignedOrders`.
+ */
+export async function assignOrderToEvent(orderId: string, eventId: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ id: string }>()
+  if (!event) throw new Error('Event not found')
+
+  const ors = [`user_id.eq.${user.id}`]
+  if (user.email) ors.push(`contact_email.eq.${user.email}`)
+  if (profile?.whatsapp_phone) ors.push(`contact_phone.eq.${profile.whatsapp_phone}`)
+
+  const { data: order } = await supabase
+    .from('invitation_orders')
+    .select('id')
+    .eq('id', orderId)
+    .eq('status', 'paid')
+    .or(ors.join(','))
+    .maybeSingle<{ id: string }>()
+  if (!order) throw new Error('Order not found')
+
+  const { error } = await supabase.from('invitation_orders').update({ event_id: eventId }).eq('id', orderId)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
 }
 
 /**
@@ -1706,7 +1772,11 @@ async function sendWhatsAppLinkRequests(
 
   if (!token || !guestIds.length) return summary
 
-  const ent = await getWhatsAppEntitlement()
+  // Collector/pledge links are couple-level, not tied to any one event — only
+  // coupleName is needed here, so any resolvable event id is sufficient.
+  const resolvedEventId = await resolveDefaultEventId()
+  if (!resolvedEventId) return summary
+  const ent = await getWhatsAppEntitlement(resolvedEventId)
   // Generic OpusPass banner — collector/pledge links aren't tied to a paid card.
   const headerImageUrl = `${publicOrigin()}/assets/images/couples_together.jpg`
 
