@@ -125,8 +125,8 @@ const addOnDefaults = (): Omit<AddOn, 'id' | 'title' | 'title_sw' | 'description
 // Keep in sync with apps/opus_pass PRODUCT_ADDONS_FAQ_FALLBACK so the editor
 // opens on the real content when no CMS row has been saved yet.
 export const OPUS_PASS_PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
-  addonsHeading: 'Optional add-ons',
-  addonsHeading_sw: 'Nyongeza za hiari',
+  addonsHeading: 'Available Optional add-ons',
+  addonsHeading_sw: 'Nyongeza za hiari zinazopatikana',
   includedPillLabel: 'Included',
   includedPillLabel_sw: 'Imejumuishwa',
   priceFromLabel: 'From',
