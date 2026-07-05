@@ -60,6 +60,8 @@ export type InitiateRequest = {
   contact: InitiateContact
   items: InitiateItem[]
   eventDate?: string
+  /** Which of the couple's wedding_events this order's design/quota is for. */
+  eventId?: string
   /** Label persisted for the invoice, e.g. "M-Pesa +255…". */
   paymentLabel?: string
 }

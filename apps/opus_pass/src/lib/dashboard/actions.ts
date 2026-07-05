@@ -7,7 +7,7 @@ import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
 import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
@@ -330,19 +330,6 @@ function guestColumnsFromInput(input: GuestInput): Record<string, unknown> {
     address_region: (input.address_region ?? '').trim() || null,
     address_postal_code: (input.address_postal_code ?? '').trim() || null,
   }
-}
-
-/** Returns only the event ids that belong to this user — prevents attaching a
- *  guest to another couple's event (the FK only checks existence, not ownership). */
-async function ownedEventIds(userId: string, eventIds: string[]): Promise<string[]> {
-  if (eventIds.length === 0) return []
-  const supabase = createDashboardClient()
-  const { data } = await supabase
-    .from('wedding_events')
-    .select('id')
-    .eq('user_id', userId)
-    .in('id', eventIds)
-  return (data ?? []).map((r) => r.id as string)
 }
 
 async function syncInvitations(userId: string, guestId: string, requestedEventIds: string[]) {

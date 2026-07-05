@@ -1,6 +1,6 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
-import { requireDashboardUser } from './auth'
+import { getDashboardUser, requireDashboardUser } from './auth'
 import { formatLongDate, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
@@ -59,6 +59,51 @@ export async function getEvents(): Promise<WeddingEvent[]> {
     .order('starts_at', { ascending: true, nullsFirst: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as WeddingEvent[]
+}
+
+/**
+ * Events for the checkout event picker. Unlike `getEvents()`, this never
+ * redirects — guest/anonymous checkout has no couple account and simply gets
+ * no picker (single implicit "unassigned" order, same as today).
+ */
+export async function getEventsForCheckout(
+  locale: 'en' | 'sw' = 'en',
+): Promise<{ id: string; name: string; eventTypeLabel: string }[]> {
+  const user = await getDashboardUser()
+  if (!user) return []
+  const events = await getEvents()
+  const label = locale === 'sw' ? eventTypeLabelSw : eventTypeLabel
+  return events.map((e) => ({ id: e.id, name: e.name, eventTypeLabel: label(e.event_type) }))
+}
+
+/** Returns only the event ids that belong to this user — prevents attaching a
+ *  guest (or an order) to another couple's event (the FK only checks
+ *  existence, not ownership). */
+export async function ownedEventIds(userId: string, eventIds: string[]): Promise<string[]> {
+  if (eventIds.length === 0) return []
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', eventIds)
+  return (data ?? []).map((r) => r.id as string)
+}
+
+/** Verifies `eventId` belongs to `userId` before it's trusted on a paid order. */
+export async function resolveOwnedEventId(
+  userId: string,
+  eventId?: string | null,
+): Promise<string | null> {
+  if (!eventId) return null
+  try {
+    const [owned] = await ownedEventIds(userId, [eventId])
+    return owned ?? null
+  } catch {
+    // Malformed id (or transient query failure) — treat as unowned rather
+    // than letting a payment request 500 on a bad eventId.
+    return null
+  }
 }
 
 /** All RSVP questions the couple has configured (per-event + general). */

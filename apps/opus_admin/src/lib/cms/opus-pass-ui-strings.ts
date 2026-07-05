@@ -463,6 +463,8 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     block_add_contact_cta: 'Add one →',
     recap_delivering_to: 'Delivering to',
     recap_edit: 'Edit',
+    event_label: 'Which event is this for?',
+    event_placeholder: 'Choose an event',
     payer_name_label: 'Name on the account that paid',
     payer_name_placeholder: 'e.g. Mary Mwakasege',
     payer_name_hint:
@@ -481,6 +483,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     error_payer_name: 'Enter the name on the account the payment came from.',
     error_payref:
       'Enter the confirmation code from your payment SMS (6–25 letters or numbers).',
+    error_event_required: 'Please choose which event this is for.',
   },
   'checkout-payment': {
     choose_title: 'Choose how to pay',
@@ -1490,6 +1493,13 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       ],
     },
     {
+      legend: 'Event picker (couples with 2+ events)',
+      fields: [
+        { key: 'event_label', label: 'Field label', kind: 'text', max: 60 },
+        { key: 'event_placeholder', label: 'Unselected placeholder option', kind: 'text', max: 40 },
+      ],
+    },
+    {
       legend: 'Manual payment form — fields',
       fields: [
         { key: 'payer_name_label', label: 'Payer name — label', kind: 'text', max: 60 },
@@ -1512,6 +1522,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'error_phone', label: 'Invalid phone', kind: 'text', max: 80 },
         { key: 'error_payer_name', label: 'Payer name required', kind: 'text', max: 100 },
         { key: 'error_payref', label: 'Invalid transaction reference', kind: 'text', max: 120 },
+        { key: 'error_event_required', label: 'Event not chosen', kind: 'text', max: 100 },
       ],
     },
   ],

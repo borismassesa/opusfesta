@@ -4,6 +4,7 @@ import type { InitiateRequest, InitiateResponse } from '@/lib/payments/types'
 import { priceOrder } from '@/lib/payments/pricing'
 import { getDashboardUser } from '@/lib/dashboard/auth'
 import { createNotification } from '@/lib/dashboard/notifications'
+import { resolveOwnedEventId } from '@/lib/dashboard/queries'
 import {
   createPendingOrder,
   markManualPaymentEmails,
@@ -95,6 +96,10 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
   const payerPhone = method === 'mobile' || method === 'lipa_namba'
     ? normalizeMsisdn(body.phone!.trim())
     : null
+  // Re-verify the client-supplied eventId against this couple's own events —
+  // never trust it directly (it would otherwise let an order reference a
+  // wedding_events row that isn't the buyer's).
+  const eventId = dashboardUser ? await resolveOwnedEventId(dashboardUser.id, body.eventId) : null
 
   if (method === 'lipa_namba') {
     const payerName = body.payerName?.trim() ?? ''
@@ -108,6 +113,7 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
       amountTotal: pricing.amountTotal,
       contact: { name: contact.name, email: contact.email, phone: contact.phone },
       eventDate: body.eventDate ?? null,
+      eventId,
       items: pricing.items,
       status: 'processing',
       provider: 'mpesa_lipa_namba',
@@ -157,6 +163,7 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
     amountTotal: pricing.amountTotal,
     contact: { name: contact.name, email: contact.email, phone: contact.phone },
     eventDate: body.eventDate ?? null,
+    eventId,
     items: pricing.items,
     paymentMethod: method,
     payerPhone,
