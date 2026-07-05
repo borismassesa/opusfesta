@@ -101,6 +101,28 @@ export async function POST(req: Request) {
       .update({ user_id: guest.user_id, guest_contact_id: guest.id, status: 'processed' })
       .eq('wamid', tap.wamid)
 
+    // Which event this tap is about. New sends embed the event id directly
+    // in the button payload (authoritative — see InviteSend.eventId); older
+    // sends predate that and fall back to a best-effort guess from the
+    // guest's most recent successfully-delivered invite. The guest's own
+    // public_token is per-guest, not per-event, so without an embedded
+    // eventId there is no way to know for certain which invite was tapped.
+    let resolvedEventId = tap.eventId
+    if (!resolvedEventId) {
+      const { data: lastInvite } = await supabase
+        .from('whatsapp_messages')
+        .select('event_id')
+        .eq('guest_contact_id', guest.id)
+        .eq('direction', 'out')
+        .eq('kind', 'invite')
+        .eq('status', 'sent')
+        .not('event_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<{ event_id: string }>()
+      resolvedEventId = lastInvite?.event_id ?? null
+    }
+
     if (tap.kind === BTN.RSVP_YES || tap.kind === BTN.RSVP_NO) {
       const status = tap.kind === BTN.RSVP_YES ? 'attending' : 'declined'
       // Unified roster: a tap must never be lost because the guest predates
@@ -123,10 +145,15 @@ export async function POST(req: Request) {
             .insert(missing.map((event_id) => ({ user_id: guest.user_id, guest_contact_id: guest.id, event_id })))
         }
       }
-      await supabase
+      // Scope the RSVP to the specific event this tap was about when known —
+      // a guest invited to 2+ events must not have EVERY event flipped by one
+      // button tap. Only fall back to updating every invitation when we
+      // genuinely can't tell which event this tap belongs to (legacy sends).
+      const rsvpUpdate = supabase
         .from('guest_invitations')
         .update({ rsvp_status: status, responded_at: new Date().toISOString() })
         .eq('guest_contact_id', guest.id)
+      await (resolvedEventId ? rsvpUpdate.eq('event_id', resolvedEventId) : rsvpUpdate)
       await createNotification({
         userId: guest.user_id,
         type: 'rsvp_received',
@@ -141,6 +168,16 @@ export async function POST(req: Request) {
           ? 'Asante! Tumepokea uthibitisho wako wa kuhudhuria. Tunakusubiri! 🎉'
           : 'Asante kwa kutujulisha. Tunasikitika kwamba hutoweza kuhudhuria. 💐'
       const confirmResult = await provider.sendText(tap.from, confirmMsg)
+      await supabase.from('whatsapp_messages').insert({
+        user_id: guest.user_id,
+        guest_contact_id: guest.id,
+        event_id: resolvedEventId,
+        direction: 'out',
+        wamid: confirmResult.wamid ?? null,
+        kind: 'rsvp_confirmation',
+        status: confirmResult.ok ? 'sent' : 'failed',
+        error: confirmResult.error ?? null,
+      })
       if (!confirmResult.ok) {
         console.error('[whatsapp webhook] rsvp confirmation send failed', {
           guestId: guest.id,
@@ -148,27 +185,14 @@ export async function POST(req: Request) {
         })
       }
     } else if (tap.kind === BTN.VIEW_LOCATION) {
-      // Reply with the SPECIFIC event this guest was invited to (via their
-      // most recent outbound invite's event_id), not just "soonest public
-      // event" — a couple with 2+ events could otherwise get the wrong venue
-      // sent back for whichever event the guest actually tapped from.
-      const { data: lastInvite } = await supabase
-        .from('whatsapp_messages')
-        .select('event_id')
-        .eq('guest_contact_id', guest.id)
-        .eq('direction', 'out')
-        .eq('kind', 'invite')
-        .not('event_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle<{ event_id: string }>()
-
+      // Reply with the specific event this tap was about; fall back to the
+      // couple's soonest public event only when it can't be determined.
       const eventQuery = supabase
         .from('wedding_events')
         .select('name, venue_name, address, city, starts_at')
         .eq('user_id', guest.user_id)
-      const { data: ev } = lastInvite?.event_id
-        ? await eventQuery.eq('id', lastInvite.event_id).maybeSingle<EventVenue>()
+      const { data: ev } = resolvedEventId
+        ? await eventQuery.eq('id', resolvedEventId).maybeSingle<EventVenue>()
         : await eventQuery
             .eq('is_public', true)
             .order('starts_at', { ascending: true, nullsFirst: false })
@@ -184,6 +208,16 @@ export async function POST(req: Request) {
           (when ? `\n🗓️ ${when}` : '') +
           (maps ? `\n${maps}` : '')
         const locationResult = await provider.sendText(tap.from, msg)
+        await supabase.from('whatsapp_messages').insert({
+          user_id: guest.user_id,
+          guest_contact_id: guest.id,
+          event_id: resolvedEventId,
+          direction: 'out',
+          wamid: locationResult.wamid ?? null,
+          kind: 'location_reply',
+          status: locationResult.ok ? 'sent' : 'failed',
+          error: locationResult.error ?? null,
+        })
         if (!locationResult.ok) {
           console.error('[whatsapp webhook] location reply send failed', {
             guestId: guest.id,
@@ -194,6 +228,7 @@ export async function POST(req: Request) {
         console.error('[whatsapp webhook] view_location: no event found for guest', {
           guestId: guest.id,
           userId: guest.user_id,
+          resolvedEventId,
         })
       }
     }

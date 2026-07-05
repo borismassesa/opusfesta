@@ -79,7 +79,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
   }
 
   async sendInvite(send: InviteSend): Promise<SendResult> {
-    const payload = (kind: string) => `${kind}:${send.token}`
+    const payload = (kind: string) => `${kind}:${send.token}:${send.eventId ?? ''}`
     return this.post({
       messaging_product: 'whatsapp',
       to: send.to,
