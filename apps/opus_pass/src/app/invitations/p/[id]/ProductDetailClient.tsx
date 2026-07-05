@@ -815,11 +815,10 @@ function QuoteCallCta({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: strin
   // leading + and digits so dialers on every platform parse it consistently.
   const dialablePhone = phoneNumber.replace(/(?!^\+)[^\d]/g, '')
   return (
-    <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
-      <p className="text-[12px] text-gray-600">{addOn.quoteLabel}</p>
+    <div className="mt-4 border-t border-gray-100 pt-4">
       <a
         href={`tel:${dialablePhone}`}
-        className="inline-flex shrink-0 items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
+        className="inline-flex items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
       >
         {addOn.quoteCtaLabel}
       </a>
