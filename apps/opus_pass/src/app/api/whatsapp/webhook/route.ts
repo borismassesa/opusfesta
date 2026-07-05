@@ -5,6 +5,14 @@ import { BTN, getWhatsAppProvider, parseInboundButtons, parseStatusUpdates, veri
 
 export const dynamic = 'force-dynamic'
 
+type EventVenue = {
+  name: string
+  venue_name: string | null
+  address: string | null
+  city: string | null
+  starts_at: string | null
+}
+
 // Meta Cloud API verification handshake: echo hub.challenge when the token matches.
 export async function GET(req: Request) {
   const url = new URL(req.url)
@@ -76,7 +84,17 @@ export async function POST(req: Request) {
     const { data: guest } = tap.token
       ? await guestQuery.eq('public_token', tap.token).maybeSingle<{ id: string; user_id: string; full_name: string }>()
       : await guestQuery.eq('phone', tap.from).maybeSingle<{ id: string; user_id: string; full_name: string }>()
-    if (!guest) continue
+    if (!guest) {
+      // No matching guest — the tap is recorded above (for idempotency/audit)
+      // but nothing else can happen. Log it: this is the #1 silent-failure
+      // mode when a guest sees no reaction to a button tap.
+      console.error('[whatsapp webhook] no guest matched for tap', {
+        kind: tap.kind,
+        hasToken: Boolean(tap.token),
+        from: tap.from,
+      })
+      continue
+    }
 
     await supabase
       .from('whatsapp_messages')
@@ -116,16 +134,47 @@ export async function POST(req: Request) {
         body: status === 'attending' ? 'Attending' : 'Declined',
         href: '/my/dashboard/rsvps',
       })
+      // Without this, tapping a button silently updates the couple's
+      // dashboard but the guest who tapped it sees nothing happen at all.
+      const confirmMsg =
+        status === 'attending'
+          ? 'Asante! Tumepokea uthibitisho wako wa kuhudhuria. Tunakusubiri! 🎉'
+          : 'Asante kwa kutujulisha. Tunasikitika kwamba hutoweza kuhudhuria. 💐'
+      const confirmResult = await provider.sendText(tap.from, confirmMsg)
+      if (!confirmResult.ok) {
+        console.error('[whatsapp webhook] rsvp confirmation send failed', {
+          guestId: guest.id,
+          error: confirmResult.error,
+        })
+      }
     } else if (tap.kind === BTN.VIEW_LOCATION) {
-      // Reply with the soonest event's venue.
-      const { data: ev } = await supabase
+      // Reply with the SPECIFIC event this guest was invited to (via their
+      // most recent outbound invite's event_id), not just "soonest public
+      // event" — a couple with 2+ events could otherwise get the wrong venue
+      // sent back for whichever event the guest actually tapped from.
+      const { data: lastInvite } = await supabase
+        .from('whatsapp_messages')
+        .select('event_id')
+        .eq('guest_contact_id', guest.id)
+        .eq('direction', 'out')
+        .eq('kind', 'invite')
+        .not('event_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<{ event_id: string }>()
+
+      const eventQuery = supabase
         .from('wedding_events')
         .select('name, venue_name, address, city, starts_at')
         .eq('user_id', guest.user_id)
-        .eq('is_public', true)
-        .order('starts_at', { ascending: true, nullsFirst: false })
-        .limit(1)
-        .maybeSingle<{ name: string; venue_name: string | null; address: string | null; city: string | null; starts_at: string | null }>()
+      const { data: ev } = lastInvite?.event_id
+        ? await eventQuery.eq('id', lastInvite.event_id).maybeSingle<EventVenue>()
+        : await eventQuery
+            .eq('is_public', true)
+            .order('starts_at', { ascending: true, nullsFirst: false })
+            .limit(1)
+            .maybeSingle<EventVenue>()
+
       if (ev) {
         const place = [ev.venue_name, ev.address, ev.city].filter(Boolean).join(', ')
         const maps = place ? `https://maps.google.com/?q=${encodeURIComponent(place)}` : ''
@@ -134,7 +183,18 @@ export async function POST(req: Request) {
           `📍 ${ev.name}\n${place || 'Venue TBC'}` +
           (when ? `\n🗓️ ${when}` : '') +
           (maps ? `\n${maps}` : '')
-        await provider.sendText(tap.from, msg)
+        const locationResult = await provider.sendText(tap.from, msg)
+        if (!locationResult.ok) {
+          console.error('[whatsapp webhook] location reply send failed', {
+            guestId: guest.id,
+            error: locationResult.error,
+          })
+        }
+      } else {
+        console.error('[whatsapp webhook] view_location: no event found for guest', {
+          guestId: guest.id,
+          userId: guest.user_id,
+        })
       }
     }
   }
