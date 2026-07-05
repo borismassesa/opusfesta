@@ -492,7 +492,13 @@ export default function GuestsManager({
     // WhatsApp Business live → send the approved invite template (card image +
     // RSVP buttons), same pipeline as Send Invites. The wa.me prefill remains
     // for pre-go-live and for couples without a paid card (the template needs one).
-    if (!whatsappLive) {
+    //
+    // This page has no event switcher — with 2+ events, a templated send has
+    // no way to know WHICH event's design/quota to use (it would silently
+    // fall back to the couple's first event, which may not even be the event
+    // this guest is invited to). Fall back to the manual wa.me share instead,
+    // which carries no event-specific card and can't charge the wrong quota.
+    if (!whatsappLive || events.length > 1) {
       openManualWhatsApp(g)
       return
     }
