@@ -455,7 +455,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                               TIER_BADGE_TONE[t.badge_tone] ?? TIER_BADGE_TONE.slate,
                             )}
                           >
-                            {BadgeIcon && <BadgeIcon size={12} strokeWidth={2.5} aria-hidden="true" />}
+                            {BadgeIcon && <BadgeIcon size={14} strokeWidth={3} className="shrink-0" aria-hidden="true" />}
                             {t.badge_label}
                           </span>
                         )
