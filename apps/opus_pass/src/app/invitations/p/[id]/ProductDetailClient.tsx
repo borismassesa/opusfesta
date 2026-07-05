@@ -564,16 +564,13 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                   )
                 }
 
-                // Priced on a call — no checkout state, just a Call us CTA.
-                if (a.pricingMode === 'quote') {
-                  return <QuoteAddOnCard key={a.id} addOn={a} phoneNumber={addonsFaq.quotePhoneNumber} />
-                }
-
                 const sel = addOnSelections[a.id] ?? { selected: false, qty: a.defaultQty }
                 const priceLabel =
                   a.pricingMode === 'flat'
                     ? `TZS ${a.flatFee.toLocaleString('en-US')} ${a.flatFeeLabel}`
-                    : `${addonsFaq.priceFromLabel} TZS ${a.unitPrice.toLocaleString('en-US')} ${a.unitLabel}`
+                    : a.pricingMode === 'per_unit'
+                    ? `${addonsFaq.priceFromLabel} TZS ${a.unitPrice.toLocaleString('en-US')} ${a.unitLabel}`
+                    : a.quoteLabel
 
                 return (
                   <Fragment key={a.id}>
@@ -594,6 +591,9 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                           step={a.qtyStep}
                           onChange={(qty) => setAddOnQty(a.id, qty)}
                         />
+                      )}
+                      {a.pricingMode === 'quote' && sel.selected && (
+                        <QuoteCallCta addOn={a} phoneNumber={addonsFaq.quotePhoneNumber} />
                       )}
                     </AddOnCard>
                     {a.pricingMode === 'flat' && a.showGuestTicketPreview && sel.selected && (
@@ -805,28 +805,24 @@ function AddOnQuantityStepper({
   )
 }
 
-// 'quote' add-on — priced on a call, so instead of a checkbox/price it shows
-// a "Call us" CTA that dials the admin-configured phone number directly.
-// Never affects the order total.
-function QuoteAddOnCard({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: string }) {
+// 'quote' add-on — priced on a call. The AddOnCard's priceLabel already shows
+// `quoteLabel` ("Price upon consultation call") whether checked or not; once
+// the buyer checks the box to select it, this reveals the "Call us" button
+// that dials the admin-configured phone number directly. Never affects the
+// order total (see addOnLines, which excludes 'quote' add-ons).
+function QuoteCallCta({ addOn, phoneNumber }: { addOn: AddOn; phoneNumber: string }) {
   // tel: accepts spaces/formatting fine, but strip everything except a
   // leading + and digits so dialers on every platform parse it consistently.
   const dialablePhone = phoneNumber.replace(/(?!^\+)[^\d]/g, '')
   return (
-    <div className="mb-3 rounded-md border border-gray-200 bg-white">
-      <div className="p-4">
-        <p className="text-[14px] font-bold text-gray-900">{addOn.title}</p>
-        <p className="mt-1 text-[12px] text-gray-600 leading-relaxed">{addOn.description}</p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-          <span className="text-[12px] font-bold text-[#1A1A1A]">{addOn.quoteLabel}</span>
-          <a
-            href={`tel:${dialablePhone}`}
-            className="inline-flex items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
-          >
-            {addOn.quoteCtaLabel}
-          </a>
-        </div>
-      </div>
+    <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+      <p className="text-[12px] text-gray-600">{addOn.quoteLabel}</p>
+      <a
+        href={`tel:${dialablePhone}`}
+        className="inline-flex shrink-0 items-center rounded-full border border-[#1A1A1A] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#1A1A1A] transition hover:bg-gray-50"
+      >
+        {addOn.quoteCtaLabel}
+      </a>
     </div>
   )
 }
