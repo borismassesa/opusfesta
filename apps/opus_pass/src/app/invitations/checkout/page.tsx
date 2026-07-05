@@ -14,7 +14,7 @@ export default async function CheckoutPage() {
     loadUiStrings('checkout-form', locale),
     loadUiStrings('checkout-payment', locale),
     loadUiStrings('checkout-summary', locale),
-    getEventsForCheckout(),
+    getEventsForCheckout(locale),
   ])
   return (
     <UIStringsProvider

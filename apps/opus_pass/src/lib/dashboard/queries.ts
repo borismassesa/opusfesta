@@ -66,13 +66,28 @@ export async function getEvents(): Promise<WeddingEvent[]> {
  * redirects — guest/anonymous checkout has no couple account and simply gets
  * no picker (single implicit "unassigned" order, same as today).
  */
-export async function getEventsForCheckout(): Promise<
-  { id: string; name: string; eventTypeLabel: string }[]
-> {
+export async function getEventsForCheckout(
+  locale: 'en' | 'sw' = 'en',
+): Promise<{ id: string; name: string; eventTypeLabel: string }[]> {
   const user = await getDashboardUser()
   if (!user) return []
   const events = await getEvents()
-  return events.map((e) => ({ id: e.id, name: e.name, eventTypeLabel: eventTypeLabel(e.event_type) }))
+  const label = locale === 'sw' ? eventTypeLabelSw : eventTypeLabel
+  return events.map((e) => ({ id: e.id, name: e.name, eventTypeLabel: label(e.event_type) }))
+}
+
+/** Returns only the event ids that belong to this user — prevents attaching a
+ *  guest (or an order) to another couple's event (the FK only checks
+ *  existence, not ownership). */
+export async function ownedEventIds(userId: string, eventIds: string[]): Promise<string[]> {
+  if (eventIds.length === 0) return []
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', eventIds)
+  return (data ?? []).map((r) => r.id as string)
 }
 
 /** Verifies `eventId` belongs to `userId` before it's trusted on a paid order. */
@@ -81,14 +96,14 @@ export async function resolveOwnedEventId(
   eventId?: string | null,
 ): Promise<string | null> {
   if (!eventId) return null
-  const supabase = createDashboardClient()
-  const { data } = await supabase
-    .from('wedding_events')
-    .select('id')
-    .eq('id', eventId)
-    .eq('user_id', userId)
-    .maybeSingle<{ id: string }>()
-  return data?.id ?? null
+  try {
+    const [owned] = await ownedEventIds(userId, [eventId])
+    return owned ?? null
+  } catch {
+    // Malformed id (or transient query failure) — treat as unowned rather
+    // than letting a payment request 500 on a bad eventId.
+    return null
+  }
 }
 
 /** All RSVP questions the couple has configured (per-event + general). */
