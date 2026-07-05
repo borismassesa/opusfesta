@@ -211,6 +211,10 @@ export default function PackagesEditor({ initial, hasDraft: initialHasDraft }: P
             <Field label="Subheading (EN)"><input className={inputCls} value={draft.subheading} onChange={(e) => setField('subheading', e.target.value)} /></Field>
             <Field label="Subheading (SW)"><input className={inputCls} value={draft.subheading_sw} onChange={(e) => setField('subheading_sw', e.target.value)} /></Field>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="'per guest' price suffix (EN)"><input className={inputCls} value={draft.perGuestLabel} onChange={(e) => setField('perGuestLabel', e.target.value)} /></Field>
+            <Field label="(SW)"><input className={inputCls} value={draft.perGuestLabel_sw} onChange={(e) => setField('perGuestLabel_sw', e.target.value)} /></Field>
+          </div>
         </FieldGroup>
 
         {/* ── Tiers ── */}

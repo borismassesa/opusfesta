@@ -76,6 +76,10 @@ export type PackagesContent = {
   subheading_sw: string
   note: string
   note_sw: string
+  // "per guest" suffix shown after each tier's price — shared chrome, not
+  // per-tier copy, so it lives once at the content level.
+  perGuestLabel: string
+  perGuestLabel_sw: string
   tiers: PackageTier[]
   addons: PackageAddon[]
 }
@@ -132,6 +136,8 @@ export const PACKAGES_FALLBACK: PackagesContent = {
   subheading_sw: 'Lipa kwa kila mgeni — kila kitu kinakua kulingana na idadi ya wageni.',
   note: 'Events above 600 guests get a capped, discounted per-guest rate.',
   note_sw: 'Matukio ya wageni zaidi ya 600 yanapata bei ya punguzo (kikomo).',
+  perGuestLabel: 'per guest',
+  perGuestLabel_sw: 'kwa mgeni',
   tiers: [
     {
       id: 'lite',
@@ -248,6 +254,8 @@ export async function loadPackagesContent(
           subheading_sw: stored.subheading_sw ?? PACKAGES_FALLBACK.subheading_sw,
           note: stored.note ?? PACKAGES_FALLBACK.note,
           note_sw: stored.note_sw ?? PACKAGES_FALLBACK.note_sw,
+          perGuestLabel: stored.perGuestLabel ?? PACKAGES_FALLBACK.perGuestLabel,
+          perGuestLabel_sw: stored.perGuestLabel_sw ?? PACKAGES_FALLBACK.perGuestLabel_sw,
           tiers:
             Array.isArray(stored.tiers) && stored.tiers.length > 0
               ? stored.tiers
@@ -271,6 +279,7 @@ function resolvePackagesLocale(c: PackagesContent, locale: Locale): PackagesCont
     heading: pick(c.heading, c.heading_sw, locale),
     subheading: pick(c.subheading, c.subheading_sw, locale),
     note: pick(c.note, c.note_sw, locale),
+    perGuestLabel: pick(c.perGuestLabel, c.perGuestLabel_sw, locale),
     tiers: c.tiers.map((t) => ({
       ...t,
       name: pick(t.name, t.name_sw, locale),
