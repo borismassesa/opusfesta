@@ -758,6 +758,16 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     promo_body:
       'Each event has its own RSVP link. Send it on WhatsApp, SMS or email and guests reply per event. You can see every response in the guest list.',
     promo_cta: 'Open guest list',
+    linked_order_label: 'Paid design',
+    linked_order_empty_new: 'Save this event first, then link one of your paid designs to it.',
+    linked_order_none: 'No paid design linked to this event yet.',
+    linked_order_guests: '{count} guests',
+    linked_order_pick_label: 'Link a paid order to this event',
+    linked_order_pick_placeholder: 'Choose an unassigned order',
+    linked_order_pick_cta: 'Link',
+    linked_order_none_available: "You haven't purchased an invitation design yet. Designs you buy show up here to link.",
+    toast_order_linked: 'Design linked to this event.',
+    toast_order_link_error: 'Could not link that order. Please try again.',
     delete_dialog_title: 'Delete "{name}"?',
     delete_dialog_description:
       "This also removes the event from every guest's invitation. It can't be undone.",
@@ -2052,6 +2062,21 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'promo_label', label: 'Card header', kind: 'text', max: 24 },
         { key: 'promo_body', label: 'Card body', kind: 'textarea', max: 240 },
         { key: 'promo_cta', label: 'CTA link', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Linked paid design card',
+      fields: [
+        { key: 'linked_order_label', label: 'Card header', kind: 'text', max: 24 },
+        { key: 'linked_order_empty_new', label: 'Unsaved-event message', kind: 'textarea', max: 160 },
+        { key: 'linked_order_none', label: 'No design linked message', kind: 'textarea', max: 160 },
+        { key: 'linked_order_guests', label: 'Guest count ({count})', kind: 'text', max: 40 },
+        { key: 'linked_order_pick_label', label: 'Picker label', kind: 'text', max: 60 },
+        { key: 'linked_order_pick_placeholder', label: 'Picker placeholder', kind: 'text', max: 60 },
+        { key: 'linked_order_pick_cta', label: 'Link button', kind: 'text', max: 20 },
+        { key: 'linked_order_none_available', label: 'No unassigned orders message', kind: 'textarea', max: 160 },
+        { key: 'toast_order_linked', label: 'Success toast', kind: 'text', max: 80 },
+        { key: 'toast_order_link_error', label: 'Error toast', kind: 'text', max: 80 },
       ],
     },
     {

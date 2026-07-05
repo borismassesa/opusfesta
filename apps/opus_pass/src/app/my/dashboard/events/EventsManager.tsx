@@ -1,7 +1,9 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import Image from 'next/image'
 import {
   ArrowRight,
   ArrowLeft,
@@ -14,17 +16,20 @@ import {
   Trash2,
   Clock,
   Globe2,
+  ImageOff,
+  Link2,
 } from 'lucide-react'
 import { Card } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Field, inputClass } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
-import { createEvent, updateEvent, deleteEvent, type EventInput } from '@/lib/dashboard/actions'
+import { createEvent, updateEvent, deleteEvent, assignOrderToEvent, type EventInput } from '@/lib/dashboard/actions'
 import {
   EVENT_TYPE_LABELS,
   eventTypeLabel,
   type EventType,
   type WeddingEvent,
 } from '@/lib/dashboard/types'
+import type { EventOrderLinks, PaidOrderSummary } from '@/lib/dashboard/queries'
 import type { DashboardEventsStrings } from '@/lib/cms/ui-strings-fallback'
 
 // Substitute {var} placeholders in a CMS template with runtime values.
@@ -175,11 +180,14 @@ type SelectedId = string | 'new'
 
 export default function EventsManager({
   initialEvents,
+  orderLinks,
   strings,
 }: {
   initialEvents: WeddingEvent[]
+  orderLinks: EventOrderLinks
   strings: DashboardEventsStrings
 }) {
+  const router = useRouter()
   // Top-level view: the list of events, or the create/edit form.
   const [view, setView] = useState<'list' | 'form'>(
     initialEvents.length ? 'list' : 'form',
@@ -524,6 +532,12 @@ export default function EventsManager({
         {/* ──────────────────────── Right: preview ──────────────────────── */}
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <PreviewCard form={form} editing={editing} strings={strings} />
+          <LinkedOrderCard
+            editing={editing}
+            orderLinks={orderLinks}
+            strings={strings}
+            onLinked={() => router.refresh()}
+          />
           <PromoCard strings={strings} />
         </aside>
       </div>
@@ -916,6 +930,124 @@ function PreviewCard({
             </div>
           </div>
         ) : null}
+      </div>
+    </Card>
+  )
+}
+
+function OrderRow({ order, strings }: { order: PaidOrderSummary; strings: DashboardEventsStrings }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-black/[0.08] bg-black/[0.015] p-2.5">
+      <span className="relative flex h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-black/[0.06]">
+        {order.cardImageUrl ? (
+          <Image src={order.cardImageUrl} alt="" fill sizes="44px" className="object-cover" unoptimized />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-[#1A1A1A]/30">
+            <ImageOff className="h-4 w-4" />
+          </span>
+        )}
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-[#1A1A1A]">{order.cardName ?? 'Invitation design'}</p>
+        <p className="text-xs text-[#1A1A1A]/55">{fmt(strings.linked_order_guests, { count: order.purchasedGuests })}</p>
+      </div>
+    </div>
+  )
+}
+
+function LinkedOrderCard({
+  editing,
+  orderLinks,
+  strings,
+  onLinked,
+}: {
+  editing: WeddingEvent | null
+  orderLinks: EventOrderLinks
+  strings: DashboardEventsStrings
+  onLinked: () => void
+}) {
+  const [picked, setPicked] = useState('')
+  const [pending, startTransition] = useTransition()
+
+  const linked = editing ? orderLinks.byEvent[editing.id] ?? [] : []
+  const unassigned = orderLinks.unassigned
+  const hasAnyOrders = linked.length > 0 || unassigned.length > 0
+
+  function link() {
+    if (!editing || !picked) return
+    startTransition(async () => {
+      try {
+        await assignOrderToEvent(picked, editing.id)
+        toast.success(strings.toast_order_linked)
+        setPicked('')
+        onLinked()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_order_link_error)
+      }
+    })
+  }
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 py-3">
+        <Link2 className="h-3.5 w-3.5 text-[#1A1A1A]/55" />
+        <span className="text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/55">
+          {strings.linked_order_label}
+        </span>
+      </div>
+      <div className="space-y-4 p-5">
+        {!editing ? (
+          <p className="text-sm text-[#1A1A1A]/55">{strings.linked_order_empty_new}</p>
+        ) : !hasAnyOrders ? (
+          <p className="text-sm text-[#1A1A1A]/55">{strings.linked_order_none_available}</p>
+        ) : (
+          <>
+            {linked.length ? (
+              <div className="space-y-2.5">
+                {linked.map((o) => (
+                  <OrderRow key={o.id} order={o} strings={strings} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[#1A1A1A]/55">{strings.linked_order_none}</p>
+            )}
+
+            {unassigned.length ? (
+              <div className="space-y-2 border-t border-black/[0.06] pt-4">
+                <p className="text-xs font-medium text-[#1A1A1A]/70">{strings.linked_order_pick_label}</p>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <select
+                      className={cn(inputClass, 'appearance-none pr-9 text-sm')}
+                      value={picked}
+                      onChange={(e) => setPicked(e.target.value)}
+                    >
+                      <option value="" disabled>
+                        {strings.linked_order_pick_placeholder}
+                      </option>
+                      {unassigned.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {(o.cardName ?? 'Invitation design') +
+                            ' · ' +
+                            fmt(strings.linked_order_guests, { count: o.purchasedGuests })}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1A1A1A]/45" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={link}
+                    disabled={!picked || pending}
+                    className="inline-flex shrink-0 items-center rounded-xl bg-[#1A1A1A] px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {strings.linked_order_pick_cta}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </Card>
   )

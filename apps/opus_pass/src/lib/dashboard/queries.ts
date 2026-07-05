@@ -1025,27 +1025,60 @@ export async function fetchPaidOrdersForCouple(
   return (data ?? []) as PaidOrderRow[]
 }
 
+export interface PaidOrderSummary {
+  id: string
+  cardName: string | null
+  cardImageUrl: string | null
+  purchasedGuests: number
+}
+
+function orderSummaryFrom(o: PaidOrderRow): PaidOrderSummary {
+  const items = o.items ?? []
+  const withImage = items.find((it) => it.image)
+  const purchasedGuests = items.reduce(
+    (sum, it) => sum + (typeof it.guests === 'number' && it.guests > 0 ? Math.floor(it.guests) : 0),
+    0,
+  )
+  return {
+    id: o.id,
+    cardName: withImage?.name ?? items[0]?.name ?? null,
+    cardImageUrl: withImage?.image ?? null,
+    purchasedGuests,
+  }
+}
+
 /** Paid orders not yet attached to any event, shaped for the "assign this
  *  design to an event" prompt. */
-function unassignedOrdersFrom(
-  orders: PaidOrderRow[],
-): { id: string; cardName: string | null; cardImageUrl: string | null; purchasedGuests: number }[] {
-  return orders
-    .filter((o) => !o.event_id)
-    .map((o) => {
-      const items = o.items ?? []
-      const withImage = items.find((it) => it.image)
-      const purchasedGuests = items.reduce(
-        (sum, it) => sum + (typeof it.guests === 'number' && it.guests > 0 ? Math.floor(it.guests) : 0),
-        0,
-      )
-      return {
-        id: o.id,
-        cardName: withImage?.name ?? items[0]?.name ?? null,
-        cardImageUrl: withImage?.image ?? null,
-        purchasedGuests,
-      }
-    })
+function unassignedOrdersFrom(orders: PaidOrderRow[]): PaidOrderSummary[] {
+  return orders.filter((o) => !o.event_id).map(orderSummaryFrom)
+}
+
+export interface EventOrderLinks {
+  /** Paid orders currently linked to each event, keyed by event id — an
+   *  event can have more than one order (quota adds up across them). */
+  byEvent: Record<string, PaidOrderSummary[]>
+  /** Paid orders not yet linked to any event. */
+  unassigned: PaidOrderSummary[]
+}
+
+/** Powers the "linked paid design" card on the Events editor: which order(s)
+ *  are already tied to each event, and which paid orders are still up for grabs. */
+export async function getEventOrderLinks(): Promise<EventOrderLinks> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+
+  const byEvent: Record<string, PaidOrderSummary[]> = {}
+  for (const o of orders) {
+    if (!o.event_id) continue
+    ;(byEvent[o.event_id] ??= []).push(orderSummaryFrom(o))
+  }
+  return { byEvent, unassigned: unassignedOrdersFrom(orders) }
 }
 
 export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppEntitlement> {

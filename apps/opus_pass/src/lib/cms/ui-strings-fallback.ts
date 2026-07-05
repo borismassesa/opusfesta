@@ -839,6 +839,17 @@ export interface DashboardEventsStrings {
   promo_label: string
   promo_body: string
   promo_cta: string
+  // Linked paid design card
+  linked_order_label: string
+  linked_order_empty_new: string
+  linked_order_none: string
+  linked_order_guests: string // uses {count}
+  linked_order_pick_label: string
+  linked_order_pick_placeholder: string
+  linked_order_pick_cta: string
+  linked_order_none_available: string
+  toast_order_linked: string
+  toast_order_link_error: string
   // Delete confirmation dialog
   delete_dialog_title: string
   delete_dialog_description: string
@@ -1750,6 +1761,16 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     promo_body:
       'Each event has its own RSVP link. Send it on WhatsApp, SMS or email and guests reply per event. You can see every response in the guest list.',
     promo_cta: 'Open guest list',
+    linked_order_label: 'Paid design',
+    linked_order_empty_new: 'Save this event first, then link one of your paid designs to it.',
+    linked_order_none: 'No paid design linked to this event yet.',
+    linked_order_guests: '{count} guests',
+    linked_order_pick_label: 'Link a paid order to this event',
+    linked_order_pick_placeholder: 'Choose an unassigned order',
+    linked_order_pick_cta: 'Link',
+    linked_order_none_available: "You haven't purchased an invitation design yet. Designs you buy show up here to link.",
+    toast_order_linked: 'Design linked to this event.',
+    toast_order_link_error: 'Could not link that order. Please try again.',
     delete_dialog_title: 'Delete "{name}"?',
     delete_dialog_description:
       "This also removes the event from every guest's invitation. It can't be undone.",
