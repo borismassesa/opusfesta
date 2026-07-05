@@ -57,9 +57,22 @@ export async function createClerkSupabaseServerClient(): Promise<SupabaseClient>
     if (!isMissingTemplate) throw err
     // Keyless / dev fallback: use the service-role admin client so writes
     // actually land. See jsdoc above for the trust-boundary rationale.
-    console.warn(
-      "[supabase] Clerk JWT template 'supabase' not found (404). Falling back to service-role admin client. Configure the template at https://dashboard.clerk.com/last-active?path=jwt-templates to enable RLS-backed reads in production.",
-    )
+    //
+    // SECURITY: with this fallback active, RLS is NOT enforced for the
+    // request — every query made through this client MUST pin explicit
+    // tenant filters (WHERE vendor_id / id = ...). An unfiltered query here
+    // is exactly how agreement signatures once landed on another vendor's
+    // record (PR #192).
+    const message =
+      "[supabase] Clerk JWT template 'supabase' not found (404): falling back to the SERVICE-ROLE client — RLS is NOT enforced for this request. Configure the template at https://dashboard.clerk.com/last-active?path=jwt-templates to restore RLS defense-in-depth."
+    if (process.env.NODE_ENV === 'production') {
+      // Error-level so production monitoring can't miss the misconfiguration.
+      // TODO: once the production Clerk instance has the template configured
+      // and has soaked, make this branch throw instead of falling back.
+      console.error(message)
+    } else {
+      console.warn(message)
+    }
     return createSupabaseAdminClient()
   }
   return createClient(url, key, {
