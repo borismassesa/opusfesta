@@ -481,9 +481,9 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <label htmlFor="card-count" className="text-[12px] font-bold text-gray-900 sm:text-[13px]">
-                    Number of digital cards &amp; OpusPass tickets
+                    {packages.cardsCountLabel}
                   </label>
-                  <p className="text-[11px] text-gray-500">Minimum {MIN_CARDS} guests</p>
+                  <p className="text-[11px] text-gray-500">{packages.minGuestsTemplate.replace('{count}', String(MIN_CARDS))}</p>
                 </div>
                 <div className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
                   <button
