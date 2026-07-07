@@ -26,6 +26,8 @@ export default function InvitationsLandingClient({
   faqs,
   editorsPicks,
   fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
   testimonials,
 }: {
   styleStrip: InvitationsStyleStripContent
@@ -39,12 +41,20 @@ export default function InvitationsLandingClient({
   editorsPicks: InvitationsEditorsPicksContent
   /** Lowest per-guest package price — shown as the digital "from" anchor on real products. */
   fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
   testimonials?: React.ReactNode
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
       <SuiteHero heading={heroHeading} description={heroDescription} items={styleStrip.items} />
-      <EditorsPicks rows={editorsPicks.rows} exploreLabel={editorsPicks.exploreLabel} fromGuestPrice={fromGuestPrice} />
+      <EditorsPicks
+        rows={editorsPicks.rows}
+        exploreLabel={editorsPicks.exploreLabel}
+        fromGuestPrice={fromGuestPrice}
+        perGuestLabel={perGuestLabel}
+        perDesignLabel={perDesignLabel}
+      />
       <section className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-16 sm:pt-24">
           <div className="text-center mb-10 sm:mb-14">
@@ -240,10 +250,14 @@ function EditorsPicks({
   rows: cmsRows,
   exploreLabel,
   fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
 }: {
   rows: InvitationsEditorsPicksContent['rows']
   exploreLabel: string
   fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
 }) {
   // Keep the first catalog section close to the page chrome now that the landing
   // hero has been removed.
@@ -289,7 +303,7 @@ function EditorsPicks({
                   >
                     <PickVisual pick={p} />
                   </PickCard>
-                  <ProductInfo product={pickToProduct(p)} href={productHref} fromGuestPrice={fromGuestPrice} />
+                  <ProductInfo product={pickToProduct(p)} href={productHref} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} />
                 </Link>
               )
             })}

@@ -32,6 +32,8 @@ export default async function OpusPassPackagesEditorPage() {
         note_sw: stored.note_sw ?? fb.note_sw,
         perGuestLabel: stored.perGuestLabel ?? fb.perGuestLabel,
         perGuestLabel_sw: stored.perGuestLabel_sw ?? fb.perGuestLabel_sw,
+        perDesignLabel: stored.perDesignLabel ?? fb.perDesignLabel,
+        perDesignLabel_sw: stored.perDesignLabel_sw ?? fb.perDesignLabel_sw,
         cardsCountLabel: stored.cardsCountLabel ?? fb.cardsCountLabel,
         cardsCountLabel_sw: stored.cardsCountLabel_sw ?? fb.cardsCountLabel_sw,
         minGuestsTemplate: stored.minGuestsTemplate ?? fb.minGuestsTemplate,
