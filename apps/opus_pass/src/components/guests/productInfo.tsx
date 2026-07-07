@@ -12,7 +12,12 @@ export const PROMO_CODE = 'KARIBU40'
 
 export type Product = {
   id: string
+  /** Stable, always-English key — other code matches/looks up by this, so it
+   *  must never be locale-translated. Use `categoryLabel` for display. */
   category: string
+  /** Locale-resolved display text for `category`. Falls back to `category`
+   *  itself when absent (e.g. dummy/CMS-fallback picks that predate this field). */
+  categoryLabel?: string
   name: string
   /** Optional — TOTAL price for a PACK_QTY-piece paper pack (used to derive per-piece paper pricing). */
   priceWas?: number
@@ -50,7 +55,7 @@ export function ProductInfo({
   return (
     <>
       {/* Category label — lighter for hierarchy */}
-      <p className="mt-3 text-[11px] text-[#1A1A1A]/50">{product.category}</p>
+      <p className="mt-3 text-[11px] text-[#1A1A1A]/50">{product.categoryLabel ?? product.category}</p>
 
       {/* Title — bigger and bolder, capped at 2 lines for consistent card heights */}
       <p className="mt-1 text-[15px] sm:text-[16px] font-bold text-[#1A1A1A] leading-snug line-clamp-2">

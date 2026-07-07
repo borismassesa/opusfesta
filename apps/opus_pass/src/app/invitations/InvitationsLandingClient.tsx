@@ -227,6 +227,7 @@ function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
   return {
     id: pick.product_id ?? pick.id,
     category: pick.category,
+    categoryLabel: pick.categoryLabel,
     name: pick.name,
     priceWas: pick.price_was,
     priceNow: pick.price_now,

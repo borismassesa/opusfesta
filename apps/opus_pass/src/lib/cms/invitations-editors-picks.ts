@@ -28,6 +28,8 @@ export type InvitationsEditorsPicksPick = {
   /** Catalog product ID (p1, p2, …) — used to build the /invitations/p/:id link */
   product_id?: string
   category: string
+  /** Locale-resolved display text for `category` — see Product.categoryLabel. */
+  categoryLabel?: string
   name: string
   price_was?: number
   price_now: number
@@ -111,6 +113,7 @@ function productToPick(product: CatalogProduct): InvitationsEditorsPicksPick {
     id: product.id,
     product_id: product.id,
     category: product.category,
+    categoryLabel: product.categoryLabel,
     name: product.name,
     price_was: product.priceWas,
     price_now: product.priceNow,

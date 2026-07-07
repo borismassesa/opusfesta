@@ -34,13 +34,26 @@ type ProductRow = {
 }
 
 // Category values are a small fixed set (set by admins when creating a
-// product), not free text — so a static lookup translates them without
-// needing a database column. Unknown/legacy values pass through untranslated.
+// product), not free text — so a static lookup translates them for DISPLAY
+// only, without needing a database column. `category` itself must stay the
+// raw English value: other code (category-page filtering, event-type
+// lookups) treats it as a stable machine key, not display text. Unknown/
+// legacy values pass through untranslated.
 const CATEGORY_SW: Record<string, string> = {
+  // Admin picklist values (PRODUCT_CATEGORIES in opus_admin).
+  'Wedding': 'Harusi',
+  'Sendoff': 'Send-off',
+  'Kitchen Party': 'Kitchen Party',
+  'Save the Date': 'Kutunza Tarehe',
+  'Kadi za Michango': 'Kadi za Michango',
+  'Anniversary': 'Kumbukumbu ya Ndoa',
+  'Communio': 'Komunio',
+  'Birthday': 'Siku ya Kuzaliwa',
+  'Gala Dinner': 'Chakula cha Gala',
+  'Muslim Wedding': 'Harusi ya Kiislamu',
+  // Legacy/plural values seen on live rows and the editors'-picks CMS fallback.
   'Wedding Invitations': 'Mialiko ya Harusi',
   'Save the Dates': 'Kadi za Kutunza Tarehe',
-  'Kitchen Party': 'Kitchen Party',
-  'Sendoff': 'Send-off',
   'Reception Cards': 'Kadi za Karamu',
   'Day-of Paper Set': 'Seti ya Karatasi za Siku ya Tukio',
   'Menu Cards': 'Kadi za Menyu',
@@ -60,7 +73,8 @@ function rowToProduct(row: ProductRow, locale: Locale): CatalogProduct {
   return {
     id:               row.id,
     slug:             row.slug,
-    category:         translateProductCategory(row.category, locale),
+    category:         row.category,
+    categoryLabel:    translateProductCategory(row.category, locale),
     name,
     designer:         row.designer,
     description:      description?.trim() || undefined,
