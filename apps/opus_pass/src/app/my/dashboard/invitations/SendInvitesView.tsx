@@ -20,12 +20,14 @@ import {
   Pencil,
   Trash2,
   Check,
+  Ticket,
 } from 'lucide-react'
 import {
   enablePublicSharing,
   setPublicSharing,
   sendWhatsAppInvites,
   sendWhatsAppTestInvite,
+  sendEntrancePasses,
   saveInviteSendSettings,
   assignOrderToEvent,
   updateGuestPhone,
@@ -152,7 +154,7 @@ export default function SendInvitesView({
 
   const [pending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'notsent' | 'awaiting'>('all')
+  const [filter, setFilter] = useState<'all' | 'notsent' | 'awaiting' | 'attending'>('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendingRow, setSendingRow] = useState<string | null>(null)
@@ -162,6 +164,7 @@ export default function SendInvitesView({
   const [testPhone, setTestPhone] = useState(data.testPhone ?? '')
   const [testSending, setTestSending] = useState(false)
   const [phoneEdit, setPhoneEdit] = useState<{ id: string; value: string } | null>(null)
+  const [confirmEntranceSend, setConfirmEntranceSend] = useState<{ ids?: string[]; recipients: number } | null>(null)
   // Inline guest-list editing: one row at a time, plus an add-guest row.
   const [rowEdit, setRowEdit] = useState<{ id: string; name: string; phone: string; askDelete: boolean } | null>(null)
   const [newGuest, setNewGuest] = useState<{ name: string; phone: string } | null>(null)
@@ -183,12 +186,14 @@ export default function SendInvitesView({
 
   const notSentCount = useMemo(() => guests.filter((g) => g.status === 'none').length, [guests])
   const awaitingCount = useMemo(() => guests.filter((g) => isAwaiting(g.status)).length, [guests])
+  const attendingCount = useMemo(() => guests.filter((g) => g.status === 'attending').length, [guests])
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     return guests.filter((g) => {
       if (filter === 'notsent' && g.status !== 'none') return false
       if (filter === 'awaiting' && !isAwaiting(g.status)) return false
+      if (filter === 'attending' && g.status !== 'attending') return false
       if (q && !`${g.name} ${g.phone ?? ''} ${g.whatsappPhone ?? ''}`.toLowerCase().includes(q)) {
         return false
       }
@@ -317,6 +322,41 @@ export default function SendInvitesView({
       const parts = [`${res.sent} ${verb}`]
       if (res.failed > 0) parts.push(fmt(strings.send_failed_n, { n: res.failed }))
       if (res.blocked > 0) parts.push(fmt(strings.send_over_quota, { n: res.blocked }))
+      if (res.skipped > 0) parts.push(fmt(strings.send_no_phone, { n: res.skipped }))
+      const summaryLine = parts.join(' · ')
+      if (res.sent > 0) toast.success(summaryLine)
+      else toast.error(summaryLine)
+      setReport(res)
+      setSelected(new Set())
+      router.refresh()
+    })
+  }
+
+  /** Stage sending the entrance-pass ticket to attending guests — a separate,
+   *  simpler confirm flow from the invite send: no {{2}}/{{3}} to approve
+   *  (the ticket's copy is generated server-side) and no credit cost. */
+  function stageEntranceSend(ids?: string[]) {
+    const pool = ids ? guests.filter((g) => ids.includes(g.id)) : guests.filter((g) => g.status === 'attending')
+    const eligible = pool.filter(hasPhone)
+    if (eligible.length === 0) {
+      toast.error(strings.toast_nothing_sent)
+      return
+    }
+    setConfirmEntranceSend({ ids, recipients: eligible.length })
+  }
+
+  function runEntranceSend() {
+    const ids = confirmEntranceSend?.ids
+    setConfirmEntranceSend(null)
+    startTransition(async () => {
+      const res = await sendEntrancePasses(ids, eventId)
+      if (res.sent === 0 && res.failed === 0 && res.skipped === 0) {
+        toast.error(strings.toast_nothing_sent)
+        setSelected(new Set())
+        return
+      }
+      const parts = [`${res.sent} ${res.dryRun ? strings.send_verb_dryrun : strings.send_verb_sent}`]
+      if (res.failed > 0) parts.push(fmt(strings.send_failed_n, { n: res.failed }))
       if (res.skipped > 0) parts.push(fmt(strings.send_no_phone, { n: res.skipped }))
       const summaryLine = parts.join(' · ')
       if (res.sent > 0) toast.success(summaryLine)
@@ -716,6 +756,11 @@ export default function SendInvitesView({
                 <BellRing size={15} />{fmt(strings.remind_awaiting, { n: awaitingCount })}
               </button>
             ) : null}
+            {attendingCount > 0 ? (
+              <button className="chip remind" disabled={pending} onClick={() => stageEntranceSend()}>
+                <Ticket size={15} />{fmt(strings.send_entrance_passes, { n: attendingCount })}
+              </button>
+            ) : null}
             <button className="chip" onClick={() => setPreviewOpen(true)}>
               <Eye size={15} />{strings.preview_button}
             </button>
@@ -792,6 +837,9 @@ export default function SendInvitesView({
               <button className={`sg ${filter === 'awaiting' ? 'on' : ''}`} onClick={() => setFilter('awaiting')}>
                 {strings.filter_awaiting}{awaitingCount ? ` ${awaitingCount}` : ''}
               </button>
+              <button className={`sg ${filter === 'attending' ? 'on' : ''}`} onClick={() => setFilter('attending')}>
+                {strings.filter_attending}{attendingCount ? ` ${attendingCount}` : ''}
+              </button>
             </div>
             {selected.size > 0 ? <span className="selcnt">{fmt(strings.selected_count, { n: selected.size })}</span> : null}
             {selected.size > 0 ? (
@@ -802,8 +850,12 @@ export default function SendInvitesView({
             <button className="btn ghost" disabled={pending} onClick={() => setNewGuest({ name: '', phone: '' })}>
               <Plus size={14} /> {strings.add_guest}
             </button>
-            <button className="btn pri" disabled={pending || selected.size === 0} onClick={() => stageBulkSend([...selected])}>
-              {strings.send_to_selected} <ArrowRight size={15} />
+            <button
+              className="btn pri"
+              disabled={pending || selected.size === 0}
+              onClick={() => (filter === 'attending' ? stageEntranceSend([...selected]) : stageBulkSend([...selected]))}
+            >
+              {filter === 'attending' ? strings.send_entrance_to_selected : strings.send_to_selected} <ArrowRight size={15} />
             </button>
           </div>
         </div>
@@ -815,7 +867,9 @@ export default function SendInvitesView({
                 ? strings.empty_notsent
                 : filter === 'awaiting'
                   ? strings.empty_awaiting
-                  : strings.empty_none}
+                  : filter === 'attending'
+                    ? strings.empty_attending
+                    : strings.empty_none}
           </div>
         ) : (
           <div className="scroll">
@@ -993,6 +1047,23 @@ export default function SendInvitesView({
                 onClick={() => runBulkSend(confirmSend.ids, confirmSend.reminder)}
               >
                 <MessageCircle size={15} /> {strings.confirm_confirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Entrance-pass confirm — simpler than the invite dialog: the ticket's
+          copy is generated server-side, nothing to approve, no credit cost. */}
+      {confirmEntranceSend ? (
+        <div className="ovl" onClick={() => setConfirmEntranceSend(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{strings.confirm_entrance_title}</h3>
+            <p className="big">{fmt(strings.confirm_recipients, { n: confirmEntranceSend.recipients })}</p>
+            <div className="mrow">
+              <button className="btn ghost" onClick={() => setConfirmEntranceSend(null)}>{strings.confirm_cancel}</button>
+              <button className="btn pri" disabled={pending} onClick={runEntranceSend}>
+                <Ticket size={15} /> {strings.confirm_confirm}
               </button>
             </div>
           </div>

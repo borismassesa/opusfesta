@@ -4,7 +4,7 @@ import { MetaWhatsAppProvider, readMetaConfig } from './meta'
 import { StubWhatsAppProvider } from './stub'
 import { BTN, type ButtonKind, type InboundButton, type WhatsAppProvider } from './types'
 
-export type { WhatsAppProvider, InviteSend, SendResult, InboundButton, ButtonKind } from './types'
+export type { WhatsAppProvider, InviteSend, EntrancePassSend, SendResult, InboundButton, ButtonKind } from './types'
 export { BTN } from './types'
 
 /** Returns the live Meta provider when credentials are set, else the dry-run stub. */
