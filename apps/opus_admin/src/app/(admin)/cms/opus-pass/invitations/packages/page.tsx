@@ -36,6 +36,8 @@ export default async function OpusPassPackagesEditorPage() {
         cardsCountLabel_sw: stored.cardsCountLabel_sw ?? fb.cardsCountLabel_sw,
         minGuestsTemplate: stored.minGuestsTemplate ?? fb.minGuestsTemplate,
         minGuestsTemplate_sw: stored.minGuestsTemplate_sw ?? fb.minGuestsTemplate_sw,
+        includesSuffixLabel: stored.includesSuffixLabel ?? fb.includesSuffixLabel,
+        includesSuffixLabel_sw: stored.includesSuffixLabel_sw ?? fb.includesSuffixLabel_sw,
         tiers: Array.isArray(stored.tiers) && stored.tiers.length > 0 ? stored.tiers : fb.tiers,
         addons: Array.isArray(stored.addons) ? stored.addons : fb.addons,
       }

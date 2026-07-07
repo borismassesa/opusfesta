@@ -525,7 +525,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
               {/* What this tier includes — the tier's own bullet list */}
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-700 mb-2.5">
-                  {tier?.name} Package includes
+                  {tier?.name} {packages.includesSuffixLabel}
                 </p>
                 <ul className="columns-1 gap-x-6 text-[13px] text-gray-700 sm:columns-2">
                   {(tier?.includes ?? []).map((b) => (
@@ -659,7 +659,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
         <section ref={similarRef} className="px-4 sm:px-6 pb-16 sm:pb-24 border-t border-gray-200">
           <div className="mx-auto max-w-7xl pt-12 sm:pt-16">
             <h2 className="text-xl md:text-2xl font-serif font-medium text-gray-900 mb-6 sm:mb-8">
-              Explore similar designs
+              {addonsFaq.similarDesignsHeading}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
               {recommendations.map((p) => {

@@ -21,7 +21,11 @@ export default async function OpusPassInvitationsEditorsPicksEditorPage() {
     | null
   const initial: OpusPassInvitationsEditorsPicksContent =
     stored?.rows && Array.isArray(stored.rows) && stored.rows.length > 0
-      ? { rows: stored.rows }
+      ? {
+          rows: stored.rows,
+          exploreLabel:
+            stored.exploreLabel ?? OPUS_PASS_INVITATIONS_EDITORS_PICKS_FALLBACK.exploreLabel,
+        }
       : OPUS_PASS_INVITATIONS_EDITORS_PICKS_FALLBACK
   const hasDraft = !!row?.draft_content
   return <EditorsPicksEditor initial={initial} hasDraft={hasDraft} />

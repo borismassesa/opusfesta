@@ -40,6 +40,7 @@ export default async function OpusPassHeroEditorPage() {
           stored.featured_in && Array.isArray(stored.featured_in) && stored.featured_in.length > 0
             ? stored.featured_in
             : F.featured_in,
+        featured_in_label: stored.featured_in_label ?? F.featured_in_label,
       }
     : OPUS_PASS_HERO_FALLBACK
   const hasDraft = !!row?.draft_content

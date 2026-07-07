@@ -14,6 +14,7 @@ export type OpusPassHeroContent = {
   rating: string
   avatars: string[]
   featured_in: string[]
+  featured_in_label: MaybeLocalized
 }
 
 export type OpusPassHeroRow = {
@@ -45,4 +46,5 @@ export const OPUS_PASS_HERO_FALLBACK: OpusPassHeroContent = {
     '/assets/images/mauzo_crew.jpg',
   ],
   featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
+  featured_in_label: 'As featured in',
 }

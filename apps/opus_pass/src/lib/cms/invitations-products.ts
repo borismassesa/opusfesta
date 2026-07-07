@@ -33,6 +33,37 @@ type ProductRow = {
   created_at: string | null
 }
 
+// Category values are a small fixed set (set by admins when creating a
+// product), not free text — so a static lookup translates them for DISPLAY
+// only, without needing a database column. `category` itself must stay the
+// raw English value: other code (category-page filtering, event-type
+// lookups) treats it as a stable machine key, not display text. Unknown/
+// legacy values pass through untranslated.
+const CATEGORY_SW: Record<string, string> = {
+  // Admin picklist values (PRODUCT_CATEGORIES in opus_admin).
+  'Wedding': 'Harusi',
+  'Sendoff': 'Send-off',
+  'Kitchen Party': 'Kitchen Party',
+  'Save the Date': 'Kutunza Tarehe',
+  'Kadi za Michango': 'Kadi za Michango',
+  'Anniversary': 'Kumbukumbu ya Ndoa',
+  'Communio': 'Komunio',
+  'Birthday': 'Siku ya Kuzaliwa',
+  'Gala Dinner': 'Chakula cha Gala',
+  'Muslim Wedding': 'Harusi ya Kiislamu',
+  // Legacy/plural values seen on live rows and the editors'-picks CMS fallback.
+  'Wedding Invitations': 'Mialiko ya Harusi',
+  'Save the Dates': 'Kadi za Kutunza Tarehe',
+  'Reception Cards': 'Kadi za Karamu',
+  'Day-of Paper Set': 'Seti ya Karatasi za Siku ya Tukio',
+  'Menu Cards': 'Kadi za Menyu',
+  'Foil & Letterpress': 'Foil na Letterpress',
+}
+
+export function translateProductCategory(category: string, locale: Locale): string {
+  return locale === 'sw' ? CATEGORY_SW[category] ?? category : category
+}
+
 function rowToProduct(row: ProductRow, locale: Locale): CatalogProduct {
   const imageUrl = row.image_url || undefined
   // Swahili falls back to English when blank/absent.
@@ -43,6 +74,7 @@ function rowToProduct(row: ProductRow, locale: Locale): CatalogProduct {
     id:               row.id,
     slug:             row.slug,
     category:         row.category,
+    categoryLabel:    translateProductCategory(row.category, locale),
     name,
     designer:         row.designer,
     description:      description?.trim() || undefined,

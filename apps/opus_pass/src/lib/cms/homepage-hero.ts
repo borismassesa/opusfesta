@@ -15,6 +15,7 @@ export type HomepageHeroContent = {
   rating: string
   avatars: string[]
   featured_in: string[]
+  featured_in_label: string
 }
 
 export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
@@ -36,6 +37,7 @@ export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
     '/assets/images/mauzo_crew.jpg',
   ],
   featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
+  featured_in_label: 'As featured in',
 }
 
 // Stored shape: translatable fields may be a localized { en, sw } object or a
@@ -54,6 +56,7 @@ type StoredHomepageHero = {
   rating?: string
   avatars?: string[]
   featured_in?: string[]
+  featured_in_label?: MaybeLocalized
 }
 
 export async function loadHomepageHeroContent(
@@ -97,6 +100,7 @@ export async function loadHomepageHeroContent(
           stored.featured_in && Array.isArray(stored.featured_in) && stored.featured_in.length > 0
             ? stored.featured_in
             : F.featured_in,
+        featured_in_label: resolveLocalized(stored.featured_in_label ?? F.featured_in_label, locale),
       }
     }
     return HOMEPAGE_HERO_FALLBACK

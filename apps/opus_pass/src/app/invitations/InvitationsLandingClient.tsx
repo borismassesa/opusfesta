@@ -20,6 +20,8 @@ import type {
 
 export default function InvitationsLandingClient({
   styleStrip,
+  heroHeading,
+  heroDescription,
   features,
   faqs,
   editorsPicks,
@@ -27,6 +29,11 @@ export default function InvitationsLandingClient({
   testimonials,
 }: {
   styleStrip: InvitationsStyleStripContent
+  /** Bilingual hero heading/description — sourced from the invitations-categories
+   *  CMS content (same section that backs the category grid below), resolved
+   *  for the current locale by the server. */
+  heroHeading: string
+  heroDescription: string
   features: InvitationsFeaturesContent
   faqs: InvitationsFaqsContent
   editorsPicks: InvitationsEditorsPicksContent
@@ -36,8 +43,8 @@ export default function InvitationsLandingClient({
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <SuiteHero items={styleStrip.items} />
-      <EditorsPicks rows={editorsPicks.rows} fromGuestPrice={fromGuestPrice} />
+      <SuiteHero heading={heroHeading} description={heroDescription} items={styleStrip.items} />
+      <EditorsPicks rows={editorsPicks.rows} exploreLabel={editorsPicks.exploreLabel} fromGuestPrice={fromGuestPrice} />
       <section className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-16 sm:pt-24">
           <div className="text-center mb-10 sm:mb-14">
@@ -64,16 +71,23 @@ export default function InvitationsLandingClient({
 //  SUITE HERO — "shop by moment" heading + category circles (static, no morph)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SuiteHero({ items }: { items: InvitationsStyleStripContent['items'] }) {
+function SuiteHero({
+  heading,
+  description,
+  items,
+}: {
+  heading: string
+  description: string
+  items: InvitationsStyleStripContent['items']
+}) {
   return (
     <section className="bg-white px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-12 lg:pb-16 lg:pt-16">
       <div className="mx-auto max-w-7xl text-center">
         <h2 className="font-serif text-2xl font-medium text-gray-900 sm:text-3xl lg:text-4xl">
-          Invitations for Every Moment
+          {heading}
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-gray-700 md:text-base">
-          Pick one design once, and every card across your day matches your suite. No mixing fonts,
-          no clashing palettes, no last-minute hunt for matching paper.
+          {description}
         </p>
       </div>
 
@@ -213,6 +227,7 @@ function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
   return {
     id: pick.product_id ?? pick.id,
     category: pick.category,
+    categoryLabel: pick.categoryLabel,
     name: pick.name,
     priceWas: pick.price_was,
     priceNow: pick.price_now,
@@ -223,9 +238,11 @@ function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
 
 function EditorsPicks({
   rows: cmsRows,
+  exploreLabel,
   fromGuestPrice,
 }: {
   rows: InvitationsEditorsPicksContent['rows']
+  exploreLabel: string
   fromGuestPrice?: number
 }) {
   // Keep the first catalog section close to the page chrome now that the landing
@@ -251,6 +268,7 @@ function EditorsPicks({
                   </>
                 }
                 align={row.align}
+                exploreLabel={exploreLabel}
               />
             </div>
             {row.picks.map((p, i) => {
@@ -285,9 +303,11 @@ function EditorsPicks({
 function EditorialTitleCell({
   title,
   align,
+  exploreLabel,
 }: {
   title: React.ReactNode
   align: 'left' | 'right'
+  exploreLabel: string
 }) {
   return (
     <div
@@ -305,7 +325,7 @@ function EditorialTitleCell({
         href="/invitations/catalog"
         className="inline-flex w-fit shrink-0 items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-4 py-2 sm:px-5 sm:py-2.5 text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[0.1em] sm:tracking-[0.12em] md:mt-5"
       >
-        Explore designs
+        {exploreLabel}
       </Link>
     </div>
   )

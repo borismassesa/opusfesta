@@ -200,6 +200,10 @@ export default function AddonsFaqEditor({ initial, hasDraft: initialHasDraft }: 
             <Field label="(SW)"><input className={inputCls} value={draft.readLessLabel_sw} onChange={(e) => setField('readLessLabel_sw', e.target.value)} /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <Field label="'Explore similar designs' heading (EN)"><input className={inputCls} value={draft.similarDesignsHeading} onChange={(e) => setField('similarDesignsHeading', e.target.value)} /></Field>
+            <Field label="Heading (SW)"><input className={inputCls} value={draft.similarDesignsHeading_sw} onChange={(e) => setField('similarDesignsHeading_sw', e.target.value)} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <Field label="'From' price prefix (EN)"><input className={inputCls} value={draft.priceFromLabel} onChange={(e) => setField('priceFromLabel', e.target.value)} /></Field>
             <Field label="(SW)"><input className={inputCls} value={draft.priceFromLabel_sw} onChange={(e) => setField('priceFromLabel_sw', e.target.value)} /></Field>
           </div>

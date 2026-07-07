@@ -244,6 +244,12 @@ export default function EditorsPicksEditor({ initial, hasDraft: initialHasDraft 
           treatment as the visual.
         </p>
 
+        <BilingualField
+          label="Explore designs button label (shared by every row)"
+          value={draft.exploreLabel}
+          onChange={(v) => setDraft((d) => ({ ...d, exploreLabel: v }))}
+        />
+
         <div className="space-y-3">
           {draft.rows.map((row, rIdx) => (
             <CollapsibleCard
