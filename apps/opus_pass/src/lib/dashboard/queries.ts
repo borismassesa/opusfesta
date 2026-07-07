@@ -771,8 +771,14 @@ export interface EntrancePassData {
   eventTypeLabel: string
   venue: string | null
   dateLabel: string | null
+  /** e.g. "5:00 PM" — starts_at's time component, for templates that show
+   *  date and time as separate lines. Null when starts_at has no time set. */
+  timeLabel: string | null
   cardImageUrl: string | null
   cardTier: string | null
+  /** Package tier id (lite/classic/elegant/signature) — selects which
+   *  entrance-pass ticket template to composite. */
+  cardTierId: string | null
 }
 
 /**
@@ -836,6 +842,12 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
   const items = order?.items ?? []
   const withImage = items.find((it) => it.image)
 
+  // A bare date (no time picked) parses to local midnight — treat that as
+  // "no time set" rather than printing a misleading "12:00 AM".
+  const startsAt = event.starts_at ? new Date(event.starts_at) : null
+  const hasTime = startsAt && !Number.isNaN(startsAt.getTime()) && (startsAt.getHours() !== 0 || startsAt.getMinutes() !== 0)
+  const timeLabel = hasTime ? startsAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null
+
   return {
     guestName: guest.full_name,
     invitationId: invitation.id,
@@ -845,8 +857,10 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     eventTypeLabel: eventTypeLabel(event.event_type),
     venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
     dateLabel: formatLongDate(event.starts_at) || null,
+    timeLabel,
     cardImageUrl: withImage?.image ?? null,
     cardTier: withImage?.tier ?? items[0]?.tier ?? null,
+    cardTierId: withImage?.tierId ?? items[0]?.tierId ?? null,
   }
 }
 
@@ -1075,6 +1089,9 @@ interface PaidOrderItem {
   guests?: number
   image?: string
   tier?: string
+  /** Package tier id (lite/classic/elegant/signature) — drives which
+   *  entrance-pass ticket template to composite (see entrance-pass route). */
+  tierId?: string
   addOns?: string[]
 }
 
