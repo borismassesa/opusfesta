@@ -1481,22 +1481,22 @@ function GuestInfoTab({
               placeholder="you@example.com"
             />
           </Field>
-          <Field label="Mobile">
+          <Field label="Mobile" hint="Include the country code for guests outside Tanzania">
             <input
               className={inputClass}
               value={form.phone ?? ''}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="07XX XXX XXX"
+              placeholder="+255 7XX XXX XXX"
             />
           </Field>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="WhatsApp" hint="If different from mobile">
+          <Field label="WhatsApp" hint="If different from mobile — include the country code">
             <input
               className={inputClass}
               value={form.whatsapp_phone ?? ''}
               onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
-              placeholder="07XX XXX XXX"
+              placeholder="+255 7XX XXX XXX"
             />
           </Field>
           <Field label="Group">
