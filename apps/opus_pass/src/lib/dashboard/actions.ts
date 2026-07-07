@@ -6,7 +6,7 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
+import { coupleSlugBase, firstNameOf, formatLongDate, normalizePhone, publicOrigin } from './share'
 import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
@@ -1510,6 +1510,119 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
   }
 
   summary.remaining = remaining
+  revalidateDashboard()
+  return summary
+}
+
+/**
+ * Send an "OpusPass Entrance Pass" — a ticket image bearing the guest's name
+ * and a scannable check-in QR — to guests who have confirmed attending the
+ * given event. Unlike sendWhatsAppInvites, this is NOT gated by invite
+ * credits: it serves a different purpose (check-in, not the paid invite), so
+ * every attending guest can always receive or re-receive one for free.
+ */
+export async function sendEntrancePasses(guestIds?: string[], eventId?: string): Promise<WhatsAppSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getWhatsAppProvider()
+  const resolvedEventId = await resolveDefaultEventId(eventId)
+
+  const summary: WhatsAppSendSummary = {
+    sent: 0,
+    failed: 0,
+    skipped: 0,
+    blocked: 0,
+    dryRun: !provider.live,
+    hasPaidOrder: false,
+    purchased: 0,
+    remaining: 0,
+    results: [],
+  }
+  if (!resolvedEventId) return summary
+
+  const [{ data: event }, { data: profile }] = await Promise.all([
+    supabase
+      .from('wedding_events')
+      .select('name, starts_at')
+      .eq('id', resolvedEventId)
+      .eq('user_id', user.id)
+      .maybeSingle<{ name: string; starts_at: string | null }>(),
+    supabase
+      .from('couple_profiles')
+      .select('partner1_name, partner2_name')
+      .eq('user_id', user.id)
+      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null }>(),
+  ])
+  if (!event) return summary
+
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const coupleName = names.length ? names.join(' & ') : event.name
+  const eventDate = formatLongDate(event.starts_at) || 'TBC'
+
+  const { data: invitations } = await supabase
+    .from('guest_invitations')
+    .select('guest_contact_id')
+    .eq('user_id', user.id)
+    .eq('event_id', resolvedEventId)
+    .eq('rsvp_status', 'attending')
+  const attendingIds = new Set((invitations ?? []).map((i) => i.guest_contact_id as string))
+  if (!attendingIds.size) return summary
+
+  const targetIds = guestIds && guestIds.length ? guestIds.filter((id) => attendingIds.has(id)) : [...attendingIds]
+  if (!targetIds.length) return summary
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, phone, whatsapp_phone, public_token')
+    .eq('user_id', user.id)
+    .in('id', targetIds)
+  if (error) throw new Error(error.message)
+
+  const origin = publicOrigin()
+
+  for (const g of (guests ?? []) as {
+    id: string
+    full_name: string
+    phone: string | null
+    whatsapp_phone: string | null
+    public_token: string
+  }[]) {
+    const to = normalizePhone(g.whatsapp_phone ?? g.phone)
+    if (!to) {
+      summary.skipped += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'skipped' })
+      continue
+    }
+
+    const result = await provider.sendEntrancePass({
+      to,
+      guestName: firstNameOf(g.full_name),
+      coupleName,
+      eventName: event.name,
+      eventDate,
+      headerImageUrl: `${origin}/entrance-pass/${g.public_token}?event=${resolvedEventId}`,
+    })
+
+    await supabase.from('whatsapp_messages').insert({
+      user_id: user.id,
+      guest_contact_id: g.id,
+      event_id: resolvedEventId,
+      direction: 'out',
+      wamid: result.wamid ?? null,
+      kind: 'entrance_pass',
+      status: result.ok ? 'sent' : 'failed',
+      error: result.error ?? null,
+    })
+
+    if (result.ok) {
+      summary.sent += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'sent' })
+    } else {
+      summary.failed += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
+    }
+  }
+
   revalidateDashboard()
   return summary
 }

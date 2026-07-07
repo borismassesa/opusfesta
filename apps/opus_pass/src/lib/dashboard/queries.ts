@@ -762,6 +762,94 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
   }
 }
 
+export interface EntrancePassData {
+  guestName: string
+  invitationId: string
+  guestContactId: string
+  coupleName: string
+  eventName: string
+  eventTypeLabel: string
+  venue: string | null
+  dateLabel: string | null
+  cardImageUrl: string | null
+  cardTier: string | null
+}
+
+/**
+ * Data for the guest-facing entrance-pass ticket image
+ * (/entrance-pass/[token]/image). Returns null unless the guest is confirmed
+ * ATTENDING the given event — a ticket only exists for guests who said yes,
+ * so a guest_contacts token guessed for the wrong event or a not-yet-attending
+ * guest gets nothing rather than a leaked venue/QR.
+ */
+export async function getEntrancePassData(token: string, eventId: string): Promise<EntrancePassData | null> {
+  const supabase = createDashboardClient()
+
+  const { data: guest } = await supabase
+    .from('guest_contacts')
+    .select('id, user_id, full_name')
+    .eq('public_token', token)
+    .maybeSingle<{ id: string; user_id: string; full_name: string }>()
+  if (!guest) return null
+
+  const { data: invitation } = await supabase
+    .from('guest_invitations')
+    .select('id, rsvp_status')
+    .eq('guest_contact_id', guest.id)
+    .eq('event_id', eventId)
+    .maybeSingle<{ id: string; rsvp_status: string }>()
+  if (!invitation || invitation.rsvp_status !== 'attending') return null
+
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('name, event_type, venue_name, address, city, starts_at')
+    .eq('id', eventId)
+    .eq('user_id', guest.user_id)
+    .maybeSingle<{
+      name: string
+      event_type: string
+      venue_name: string | null
+      address: string | null
+      city: string | null
+      starts_at: string | null
+    }>()
+  if (!event) return null
+
+  const [{ data: profile }, { data: order }] = await Promise.all([
+    supabase
+      .from('couple_profiles')
+      .select('partner1_name, partner2_name')
+      .eq('user_id', guest.user_id)
+      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null }>(),
+    supabase
+      .from('invitation_orders')
+      .select('items')
+      .eq('user_id', guest.user_id)
+      .eq('event_id', eventId)
+      .eq('status', 'paid')
+      .order('paid_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ items: PaidOrderItem[] | null }>(),
+  ])
+
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+
+  return {
+    guestName: guest.full_name,
+    invitationId: invitation.id,
+    guestContactId: guest.id,
+    coupleName: names.length ? names.join(' & ') : event.name,
+    eventName: event.name,
+    eventTypeLabel: eventTypeLabel(event.event_type),
+    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
+    dateLabel: formatLongDate(event.starts_at) || null,
+    cardImageUrl: withImage?.image ?? null,
+    cardTier: withImage?.tier ?? items[0]?.tier ?? null,
+  }
+}
+
 // ──────────────────────────── Public invitation hub ────────────────────────────
 
 /** A non-PII projection of an event for the public /i/<slug> hub + OG card. */
