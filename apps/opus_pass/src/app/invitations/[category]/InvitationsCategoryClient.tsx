@@ -14,6 +14,7 @@ export default function InvitationsCategoryClient({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
   promoBanner,
   styleStrip,
 }: {
@@ -24,6 +25,7 @@ export default function InvitationsCategoryClient({
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
   promoBanner: InvitationsPromoBannerContent
   styleStrip: InvitationsStyleStripContent
 }) {
@@ -43,6 +45,7 @@ export default function InvitationsCategoryClient({
       fromGuestPrice={fromGuestPrice}
       perGuestLabel={perGuestLabel}
       perDesignLabel={perDesignLabel}
+      fromLabel={fromLabel}
       title={category.label}
       subtitle={category.subtitle}
       promoBanner={promoBanner}

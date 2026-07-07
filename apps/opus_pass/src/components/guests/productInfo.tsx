@@ -40,6 +40,7 @@ export function ProductInfo({
   fromGuestPrice,
   perGuestLabel = 'per guest',
   perDesignLabel = 'per design',
+  fromLabel = 'From',
 }: {
   product: Product
   href?: string
@@ -48,6 +49,8 @@ export function ProductInfo({
   /** Locale-resolved "per guest"/"per design" price suffixes — see packages.ts. */
   perGuestLabel?: string
   perDesignLabel?: string
+  /** Locale-resolved "From" price-anchor prefix — see packages.ts. */
+  fromLabel?: string
 }) {
   const unitNow = Math.round(product.priceNow / PACK_QTY / 10) * 10
   const unitWas = product.priceWas
@@ -78,7 +81,7 @@ export function ProductInfo({
       {product.digitalUnitPrice ? (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-[15px] sm:text-[16px] font-bold text-[#1A1A1A]">
-            From TZS {(perGuest ?? product.digitalUnitPrice).toLocaleString('en-US')}
+            {fromLabel} TZS {(perGuest ?? product.digitalUnitPrice).toLocaleString('en-US')}
           </span>
           <span className="text-[11px] text-[#1A1A1A]/60">
             {perGuest ? perGuestLabel : perDesignLabel}

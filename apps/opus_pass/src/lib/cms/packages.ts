@@ -84,6 +84,9 @@ export type PackagesContent = {
   // catalog card/pick when no per-guest package price is available yet.
   perDesignLabel: string
   perDesignLabel_sw: string
+  // "From" price-anchor prefix — "{fromLabel} TZS X {perGuestLabel}".
+  fromLabel: string
+  fromLabel_sw: string
   // Label above the guest-count stepper.
   cardsCountLabel: string
   cardsCountLabel_sw: string
@@ -155,6 +158,8 @@ export const PACKAGES_FALLBACK: PackagesContent = {
   perGuestLabel_sw: 'kwa mgeni',
   perDesignLabel: 'per design',
   perDesignLabel_sw: 'kwa muundo',
+  fromLabel: 'From',
+  fromLabel_sw: 'Kuanzia',
   cardsCountLabel: 'Number of digital cards & OpusPass tickets',
   cardsCountLabel_sw: 'Idadi ya kadi za kidijitali na tiketi za OpusPass',
   minGuestsTemplate: 'Minimum {count} guests',
@@ -281,6 +286,8 @@ export async function loadPackagesContent(
           perGuestLabel_sw: stored.perGuestLabel_sw ?? PACKAGES_FALLBACK.perGuestLabel_sw,
           perDesignLabel: stored.perDesignLabel ?? PACKAGES_FALLBACK.perDesignLabel,
           perDesignLabel_sw: stored.perDesignLabel_sw ?? PACKAGES_FALLBACK.perDesignLabel_sw,
+          fromLabel: stored.fromLabel ?? PACKAGES_FALLBACK.fromLabel,
+          fromLabel_sw: stored.fromLabel_sw ?? PACKAGES_FALLBACK.fromLabel_sw,
           cardsCountLabel: stored.cardsCountLabel ?? PACKAGES_FALLBACK.cardsCountLabel,
           cardsCountLabel_sw: stored.cardsCountLabel_sw ?? PACKAGES_FALLBACK.cardsCountLabel_sw,
           minGuestsTemplate: stored.minGuestsTemplate ?? PACKAGES_FALLBACK.minGuestsTemplate,
@@ -312,6 +319,7 @@ function resolvePackagesLocale(c: PackagesContent, locale: Locale): PackagesCont
     note: pick(c.note, c.note_sw, locale),
     perGuestLabel: pick(c.perGuestLabel, c.perGuestLabel_sw, locale),
     perDesignLabel: pick(c.perDesignLabel, c.perDesignLabel_sw, locale),
+    fromLabel: pick(c.fromLabel, c.fromLabel_sw, locale),
     cardsCountLabel: pick(c.cardsCountLabel, c.cardsCountLabel_sw, locale),
     minGuestsTemplate: pick(c.minGuestsTemplate, c.minGuestsTemplate_sw, locale),
     includesSuffixLabel: pick(c.includesSuffixLabel, c.includesSuffixLabel_sw, locale),

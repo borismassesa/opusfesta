@@ -680,7 +680,7 @@ export default function ProductDetailClient({ product, allProducts, packages, ad
                   </div>
                   <p className="mt-2.5 text-[14px] font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
                   <p className="mt-1 text-[13px] text-gray-700">
-                    From TZS {fromGuestPrice.toLocaleString('en-US')} {packages.perGuestLabel}
+                    {packages.fromLabel} TZS {fromGuestPrice.toLocaleString('en-US')} {packages.perGuestLabel}
                   </p>
                 </Link>
                 )

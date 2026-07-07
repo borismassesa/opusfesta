@@ -51,6 +51,7 @@ export default function InvitationsCatalogClient({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
   title = 'Wedding Invitations',
   subtitle = 'A handpicked edit of digital invitation designs, browse by style.',
   promoBanner,
@@ -61,6 +62,7 @@ export default function InvitationsCatalogClient({
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
   title?: string
   subtitle?: string
   promoBanner: InvitationsPromoBannerContent
@@ -247,6 +249,7 @@ export default function InvitationsCatalogClient({
               fromGuestPrice={fromGuestPrice}
               perGuestLabel={perGuestLabel}
               perDesignLabel={perDesignLabel}
+              fromLabel={fromLabel}
               favourites={favourites}
               onToggleFavourite={toggleFavourite}
             />
@@ -476,6 +479,7 @@ function ProductGrid({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
   favourites,
   onToggleFavourite,
 }: {
@@ -483,6 +487,7 @@ function ProductGrid({
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
   favourites: Set<string>
   onToggleFavourite: (id: string) => void
 }) {
@@ -495,6 +500,7 @@ function ProductGrid({
           fromGuestPrice={fromGuestPrice}
           perGuestLabel={perGuestLabel}
           perDesignLabel={perDesignLabel}
+          fromLabel={fromLabel}
           favourited={favourites.has(product.id)}
           onToggleFavourite={() => onToggleFavourite(product.id)}
         />
@@ -508,6 +514,7 @@ function ProductCard({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
   favourited,
   onToggleFavourite,
 }: {
@@ -515,6 +522,7 @@ function ProductCard({
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
   favourited: boolean
   onToggleFavourite: () => void
 }) {
@@ -558,7 +566,7 @@ function ProductCard({
         </button>
 
       </Link>
-      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} />
+      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
     </div>
   )
 }
