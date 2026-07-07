@@ -1549,14 +1549,15 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
       .maybeSingle<{ name: string; starts_at: string | null }>(),
     supabase
       .from('couple_profiles')
-      .select('partner1_name, partner2_name')
+      .select('partner1_name, partner2_name, invite_host_name')
       .eq('user_id', user.id)
-      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null }>(),
+      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>(),
   ])
   if (!event) return summary
 
+  const hostOverride = profile?.invite_host_name?.trim() || null
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
-  const coupleName = names.length ? names.join(' & ') : event.name
+  const coupleName = hostOverride ?? (names.length ? names.join(' & ') : event.name)
   const eventDate = formatLongDate(event.starts_at) || 'TBC'
 
   const { data: invitations } = await supabase
@@ -1603,6 +1604,10 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
       headerImageUrl: `${origin}/entrance-pass/${g.public_token}?event=${resolvedEventId}`,
     })
 
+    // Logged for delivery-status tracking only — unlike sendWhatsAppInvites,
+    // this intentionally doesn't touch guest_message_log / last_invited_at:
+    // those drive the invite-quota UI ("already invited") and this is a
+    // separate, quota-free, post-RSVP send.
     await supabase.from('whatsapp_messages').insert({
       user_id: user.id,
       guest_contact_id: g.id,

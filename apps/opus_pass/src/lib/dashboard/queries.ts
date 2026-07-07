@@ -768,14 +768,11 @@ export interface EntrancePassData {
   guestContactId: string
   coupleName: string
   eventName: string
-  eventTypeLabel: string
   venue: string | null
   dateLabel: string | null
   /** e.g. "5:00 PM" — starts_at's time component, for templates that show
    *  date and time as separate lines. Null when starts_at has no time set. */
   timeLabel: string | null
-  cardImageUrl: string | null
-  cardTier: string | null
   /** Package tier id (lite/classic/elegant/signature) — selects which
    *  entrance-pass ticket template to composite. */
   cardTierId: string | null
@@ -824,9 +821,9 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
   const [{ data: profile }, { data: order }] = await Promise.all([
     supabase
       .from('couple_profiles')
-      .select('partner1_name, partner2_name')
+      .select('partner1_name, partner2_name, invite_host_name')
       .eq('user_id', guest.user_id)
-      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null }>(),
+      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>(),
     supabase
       .from('invitation_orders')
       .select('items')
@@ -838,6 +835,9 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
       .maybeSingle<{ items: PaidOrderItem[] | null }>(),
   ])
 
+  // Same precedence as getWhatsAppEntitlement: the couple's explicitly
+  // confirmed template host name wins over their profile's partner names.
+  const hostOverride = profile?.invite_host_name?.trim() || null
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
   const items = order?.items ?? []
   const withImage = items.find((it) => it.image)
@@ -852,14 +852,11 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     guestName: guest.full_name,
     invitationId: invitation.id,
     guestContactId: guest.id,
-    coupleName: names.length ? names.join(' & ') : event.name,
+    coupleName: hostOverride ?? (names.length ? names.join(' & ') : event.name),
     eventName: event.name,
-    eventTypeLabel: eventTypeLabel(event.event_type),
     venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
     dateLabel: formatLongDate(event.starts_at) || null,
     timeLabel,
-    cardImageUrl: withImage?.image ?? null,
-    cardTier: withImage?.tier ?? items[0]?.tier ?? null,
     cardTierId: withImage?.tierId ?? items[0]?.tierId ?? null,
   }
 }

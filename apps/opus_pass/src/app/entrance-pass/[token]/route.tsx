@@ -41,13 +41,6 @@ const TICKET_SPECS: Record<
     bodyColor: '#5C2D8C',
     qr: { left: 1268, top: 100, size: 266 },
   },
-  elegant: {
-    file: 'classic.png',
-    bg: '#B4DBA1',
-    titleColor: '#5C2D8C',
-    bodyColor: '#5C2D8C',
-    qr: { left: 1268, top: 100, size: 266 },
-  },
   signature: {
     file: 'signature.png',
     bg: '#FFEBD2',
@@ -56,6 +49,11 @@ const TICKET_SPECS: Record<
     qr: { left: 1294, top: 119, size: 227 },
   },
 }
+// "elegant" is a real, separately-priced package tier (see lib/cms/packages.ts)
+// with no dedicated ticket design yet — aliased to "classic" as a visible,
+// trackable stopgap (see the console.warn below) rather than silently
+// duplicating the object, so a future dedicated design is a one-line change.
+TICKET_SPECS.elegant = TICKET_SPECS.classic
 const DEFAULT_TIER = 'lite'
 
 // Shared layout — identical grid position across every template.
@@ -63,8 +61,23 @@ const COUPLE_NAME_BOX = { left: 193, top: 105, width: 938, height: 130 }
 const DATE_TIME_BOX = { left: 200, top: 242, width: 478, height: 90 }
 const VENUE_BOX = { left: 705, top: 242, width: 459, height: 90 }
 
-async function readPublicFile(...segments: string[]): Promise<Buffer> {
-  return readFile(path.join(process.cwd(), 'public', ...segments))
+// Template PNGs and the font never change at runtime — memoize the read
+// (module-scoped, lives for the container's lifetime) instead of re-reading
+// disk and re-encoding base64 on every single guest/Meta request.
+const fileCache = new Map<string, Promise<Buffer>>()
+function readPublicFile(...segments: string[]): Promise<Buffer> {
+  const key = segments.join('/')
+  let cached = fileCache.get(key)
+  if (!cached) {
+    // Never cache a rejection — a transient read failure shouldn't poison
+    // every subsequent request for the rest of the container's lifetime.
+    cached = readFile(path.join(process.cwd(), 'public', ...segments)).catch((err) => {
+      fileCache.delete(key)
+      throw err
+    })
+    fileCache.set(key, cached)
+  }
+  return cached
 }
 
 function toDataUri(buf: Buffer, mime: string): string {
@@ -79,13 +92,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const pass = await getEntrancePassData(token, eventId)
   if (!pass) return new Response('Not found', { status: 404 })
 
+  if (!pass.cardTierId || !(pass.cardTierId in TICKET_SPECS)) {
+    console.warn('[entrance-pass] unrecognized or missing tier — falling back to default template', {
+      guestContactId: pass.guestContactId,
+      cardTierId: pass.cardTierId,
+    })
+  }
   const spec = TICKET_SPECS[pass.cardTierId ?? ''] ?? TICKET_SPECS[DEFAULT_TIER]
 
-  const [templateBuf, fontBuf, qrDataUrl] = await Promise.all([
-    readPublicFile('entrance-pass', spec.file),
-    readPublicFile('fonts', 'PlayfairDisplay-Bold.woff'),
-    generateEntryPassQrDataUrl(pass.guestContactId, pass.invitationId),
-  ])
+  let templateBuf: Buffer, fontBuf: Buffer, qrDataUrl: string
+  try {
+    ;[templateBuf, fontBuf, qrDataUrl] = await Promise.all([
+      readPublicFile('entrance-pass', spec.file),
+      readPublicFile('fonts', 'PlayfairDisplay-Bold.woff'),
+      generateEntryPassQrDataUrl(pass.guestContactId, pass.invitationId),
+    ])
+  } catch (err) {
+    console.error('[entrance-pass] failed to load ticket assets', err)
+    return new Response('Ticket temporarily unavailable', { status: 500 })
+  }
   const templateDataUri = toDataUri(templateBuf, 'image/png')
 
   return new ImageResponse(
@@ -107,13 +132,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            overflow: 'hidden',
             background: spec.bg,
           }}
         >
           <span
             style={{
               fontFamily: 'Playfair Display',
-              fontSize: pass.coupleName.length > 22 ? 56 : 72,
+              fontSize: pass.coupleName.length > 34 ? 44 : pass.coupleName.length > 22 ? 56 : 72,
               color: spec.titleColor,
               textAlign: 'center',
             }}
@@ -132,6 +158,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
+            overflow: 'hidden',
             background: spec.bg,
           }}
         >
@@ -155,6 +182,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
+            overflow: 'hidden',
             background: spec.bg,
           }}
         >
