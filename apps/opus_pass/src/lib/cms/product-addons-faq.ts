@@ -97,6 +97,8 @@ export type ProductAddonsFaqContent = {
   readMoreLabel_sw: string
   readLessLabel: string
   readLessLabel_sw: string
+  similarDesignsHeading: string
+  similarDesignsHeading_sw: string
   addons: AddOn[]
   faq: FaqItem[]
 }
@@ -139,6 +141,8 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
   readMoreLabel_sw: 'Soma Zaidi',
   readLessLabel: 'Read Less',
   readLessLabel_sw: 'Soma Kidogo',
+  similarDesignsHeading: 'Explore similar designs',
+  similarDesignsHeading_sw: 'Angalia miundo mingine kama hii',
   addons: [
     {
       ...addOnDefaults(),
@@ -321,6 +325,8 @@ export async function loadProductAddonsFaqContent(
           readMoreLabel_sw: stored.readMoreLabel_sw ?? fb.readMoreLabel_sw,
           readLessLabel: stored.readLessLabel ?? fb.readLessLabel,
           readLessLabel_sw: stored.readLessLabel_sw ?? fb.readLessLabel_sw,
+          similarDesignsHeading: stored.similarDesignsHeading ?? fb.similarDesignsHeading,
+          similarDesignsHeading_sw: stored.similarDesignsHeading_sw ?? fb.similarDesignsHeading_sw,
           // An empty array is a deliberate choice, not a missing field — only
           // fall back when the key is absent entirely (legacy rows saved
           // before this field existed).
@@ -362,6 +368,7 @@ function resolveProductAddonsFaqLocale(
     descriptionLabel: pick(c.descriptionLabel, c.descriptionLabel_sw, locale),
     readMoreLabel: pick(c.readMoreLabel, c.readMoreLabel_sw, locale),
     readLessLabel: pick(c.readLessLabel, c.readLessLabel_sw, locale),
+    similarDesignsHeading: pick(c.similarDesignsHeading, c.similarDesignsHeading_sw, locale),
     addons: c.addons.map((a) => resolveAddOn(a, locale)),
     faq: c.faq.map((f) => ({
       ...f,

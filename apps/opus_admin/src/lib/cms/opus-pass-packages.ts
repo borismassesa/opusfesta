@@ -72,6 +72,8 @@ export type OpusPassPackagesContent = {
   cardsCountLabel_sw: string
   minGuestsTemplate: string
   minGuestsTemplate_sw: string
+  includesSuffixLabel: string
+  includesSuffixLabel_sw: string
   tiers: PackageTier[]
   addons: PackageAddon[]
 }
@@ -127,6 +129,8 @@ export const OPUS_PASS_PACKAGES_FALLBACK: OpusPassPackagesContent = {
   cardsCountLabel_sw: 'Idadi ya kadi za kidijitali na tiketi za OpusPass',
   minGuestsTemplate: 'Minimum {count} guests',
   minGuestsTemplate_sw: 'Angalau wageni {count}',
+  includesSuffixLabel: 'Package includes',
+  includesSuffixLabel_sw: 'Kifurushi kinajumuisha',
   tiers: [
     {
       id: 'lite', name: 'Essential', name_sw: 'Essential', featured: false, price_per_guest: 1200,

@@ -7,7 +7,7 @@ import {
   loadInvitationsEditorsPicksContent,
   editorsPicksRowsFromProducts,
 } from '@/lib/cms/invitations-editors-picks'
-import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
+import { loadInvitationsCategoriesContent, cmsCategoryToRuntime } from '@/lib/cms/invitations-categories'
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
@@ -33,7 +33,7 @@ export default async function InvitationsLandingPage() {
   const locale = await getLocale()
   const [
     { isEnabled: isDraft },
-    categories,
+    categoriesContent,
     features,
     faqs,
     editorsPicksTemplate,
@@ -41,13 +41,14 @@ export default async function InvitationsLandingPage() {
     packages,
   ] = await Promise.all([
     draftMode(),
-    loadInvitationCategoriesList(locale),
+    loadInvitationsCategoriesContent(locale),
     loadInvitationsFeaturesContent(locale),
     loadInvitationsFaqsContent(locale),
     loadInvitationsEditorsPicksContent(locale),
     loadInvitationProducts(locale),
     loadPackagesContent(locale),
   ])
+  const categories = categoriesContent.categories.map(cmsCategoryToRuntime)
   const styleStrip = styleStripFromCategories(categories)
   // Editors' Picks renders live products from the DB (same source as the
   // catalog); the CMS section only supplies the editorial row headings.
@@ -71,6 +72,8 @@ export default async function InvitationsLandingPage() {
       {isDraft && <PreviewBanner />}
       <InvitationsLandingClient
         styleStrip={styleStrip}
+        heroHeading={categoriesContent.heading}
+        heroDescription={categoriesContent.description}
         features={features}
         faqs={faqs}
         editorsPicks={editorsPicks}

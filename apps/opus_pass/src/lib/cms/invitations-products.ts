@@ -33,6 +33,24 @@ type ProductRow = {
   created_at: string | null
 }
 
+// Category values are a small fixed set (set by admins when creating a
+// product), not free text — so a static lookup translates them without
+// needing a database column. Unknown/legacy values pass through untranslated.
+const CATEGORY_SW: Record<string, string> = {
+  'Wedding Invitations': 'Mialiko ya Harusi',
+  'Save the Dates': 'Kadi za Kutunza Tarehe',
+  'Kitchen Party': 'Kitchen Party',
+  'Sendoff': 'Send-off',
+  'Reception Cards': 'Kadi za Karamu',
+  'Day-of Paper Set': 'Seti ya Karatasi za Siku ya Tukio',
+  'Menu Cards': 'Kadi za Menyu',
+  'Foil & Letterpress': 'Foil na Letterpress',
+}
+
+export function translateProductCategory(category: string, locale: Locale): string {
+  return locale === 'sw' ? CATEGORY_SW[category] ?? category : category
+}
+
 function rowToProduct(row: ProductRow, locale: Locale): CatalogProduct {
   const imageUrl = row.image_url || undefined
   // Swahili falls back to English when blank/absent.
@@ -42,7 +60,7 @@ function rowToProduct(row: ProductRow, locale: Locale): CatalogProduct {
   return {
     id:               row.id,
     slug:             row.slug,
-    category:         row.category,
+    category:         translateProductCategory(row.category, locale),
     name,
     designer:         row.designer,
     description:      description?.trim() || undefined,

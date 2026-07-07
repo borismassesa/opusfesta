@@ -23,6 +23,7 @@ export type LandingHeroContent = {
   rating?: string
   avatars?: string[]
   featured_in?: string[]
+  featured_in_label?: string
 }
 
 // Default couple photos for the "trusted by" avatar cluster.
@@ -152,7 +153,7 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
         <div className="relative mt-10 sm:mt-14">
           <div className="relative z-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-x-8">
             <p className="shrink-0 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/40">
-              As featured in
+              {HERO.featured_in_label ?? 'As featured in'}
             </p>
 
             {/* Phones: marquee. Tripled list + the project's marquee keyframe

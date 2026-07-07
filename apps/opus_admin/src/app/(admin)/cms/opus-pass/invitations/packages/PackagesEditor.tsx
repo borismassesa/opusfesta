@@ -223,6 +223,10 @@ export default function PackagesEditor({ initial, hasDraft: initialHasDraft }: P
             <Field label="Minimum-guests line (EN) — use {count} as a placeholder"><input className={inputCls} value={draft.minGuestsTemplate} onChange={(e) => setField('minGuestsTemplate', e.target.value)} /></Field>
             <Field label="(SW)"><input className={inputCls} value={draft.minGuestsTemplate_sw} onChange={(e) => setField('minGuestsTemplate_sw', e.target.value)} /></Field>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="'Package includes' suffix (EN)"><input className={inputCls} value={draft.includesSuffixLabel} onChange={(e) => setField('includesSuffixLabel', e.target.value)} /></Field>
+            <Field label="(SW)"><input className={inputCls} value={draft.includesSuffixLabel_sw} onChange={(e) => setField('includesSuffixLabel_sw', e.target.value)} /></Field>
+          </div>
         </FieldGroup>
 
         {/* ── Tiers ── */}

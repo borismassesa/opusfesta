@@ -274,6 +274,13 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         </FieldGroup>
 
         <FieldGroup label={`As featured in (${draft.featured_in.length})`}>
+          <BilingualField
+            label="Label above the press names"
+            value={draft.featured_in_label}
+            onChange={(v) => set('featured_in_label', v)}
+            placeholder="As featured in"
+            max={40}
+          />
           {draft.featured_in.map((name, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <input

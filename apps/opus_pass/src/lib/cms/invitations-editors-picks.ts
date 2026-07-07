@@ -53,9 +53,11 @@ export type InvitationsEditorsPicksRow = {
 
 export type InvitationsEditorsPicksContent = {
   rows: InvitationsEditorsPicksRow[]
+  exploreLabel: string
 }
 
 export const INVITATIONS_EDITORS_PICKS_FALLBACK: InvitationsEditorsPicksContent = {
+  exploreLabel: 'Explore designs',
   rows: [
     {
       id: 'row-1', title_line_1: 'Save the dates', title_line_2: 'worth saving', align: 'left',
@@ -152,7 +154,7 @@ export function editorsPicksRowsFromProducts(
     cursor += PICKS_PER_ROW
   }
 
-  return { rows }
+  return { rows, exploreLabel: template.exploreLabel }
 }
 
 // Stored shape: only each row's two title lines are translatable (they may be a
@@ -168,6 +170,7 @@ type StoredEditorsPicksRow = Omit<InvitationsEditorsPicksRow, 'title_line_1' | '
 
 type StoredEditorsPicksContent = {
   rows?: StoredEditorsPicksRow[]
+  exploreLabel?: MaybeLocalized
 }
 
 export async function loadInvitationsEditorsPicksContent(
@@ -190,6 +193,10 @@ export async function loadInvitationsEditorsPicksContent(
       | undefined
     if (stored?.rows && Array.isArray(stored.rows) && stored.rows.length > 0) {
       return {
+        exploreLabel: resolveLocalized(
+          stored.exploreLabel ?? INVITATIONS_EDITORS_PICKS_FALLBACK.exploreLabel,
+          locale
+        ),
         rows: stored.rows.map((row) => ({
           ...row,
           title_line_1: resolveLocalized(row.title_line_1, locale),
