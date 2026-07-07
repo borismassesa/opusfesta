@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { assetPath } from '@/lib/asset-path'
 import { InvitationVisual, COUPLE_DEFAULT, type Treatment } from '@/components/guests/InvitationVisual'
@@ -128,7 +128,7 @@ export function DesignCarousel({
       {/* Thumbnail strip — uniform squares kept on a single row; scrolls
           horizontally rather than wrapping when there are many slides. */}
       {slides.length > 1 && (
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-8 flex gap-2 overflow-x-auto pt-1.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {slides.map((slide, i) => {
             const thumbActive = i === activeIndex
             return (
@@ -139,12 +139,25 @@ export function DesignCarousel({
                 aria-pressed={thumbActive}
                 onClick={() => setActive(i)}
                 className={cn(
-                  'relative h-16 w-16 shrink-0 rounded-sm overflow-hidden transition',
-                  thumbActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
+                  'relative h-16 w-16 shrink-0 rounded-sm border-2 bg-white p-1 transition-all duration-150',
+                  thumbActive
+                    ? 'border-[#B98FD6] shadow-lg z-10'
+                    : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-400',
                 )}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={assetPath(slide.url)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <span className="absolute inset-1 block overflow-hidden rounded-[2px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={assetPath(slide.url)}
+                    alt=""
+                    className="h-full w-full object-cover object-top"
+                  />
+                </span>
+                {thumbActive && (
+                  <span className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-[#B98FD6] shadow ring-2 ring-white">
+                    <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                  </span>
+                )}
               </button>
             )
           })}

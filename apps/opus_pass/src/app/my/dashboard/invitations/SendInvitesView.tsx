@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { useBodyLock } from '@/hooks/useBodyLock'
 import {
   MessageCircle,
   Smartphone,
@@ -47,7 +48,7 @@ import {
   reminderMessage,
   firstNameOf,
 } from '@/lib/dashboard/share'
-import { INVITE_TEMPLATE } from '@/lib/whatsapp/types'
+import { INVITE_TEMPLATE, ENTRANCE_PASS_TEMPLATE } from '@/lib/whatsapp/types'
 import { EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
@@ -155,6 +156,7 @@ export default function SendInvitesView({
   const [pending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
   const [filter, setFilter] = useState<'all' | 'notsent' | 'awaiting' | 'attending'>('all')
+  const [sendTab, setSendTab] = useState<'cards' | 'ticket'>('cards')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendingRow, setSendingRow] = useState<string | null>(null)
@@ -165,10 +167,14 @@ export default function SendInvitesView({
   const [testSending, setTestSending] = useState(false)
   const [phoneEdit, setPhoneEdit] = useState<{ id: string; value: string } | null>(null)
   const [confirmEntranceSend, setConfirmEntranceSend] = useState<{ ids?: string[]; recipients: number } | null>(null)
+  const [entrancePreviewOpen, setEntrancePreviewOpen] = useState(false)
   // Inline guest-list editing: one row at a time, plus an add-guest row.
   const [rowEdit, setRowEdit] = useState<{ id: string; name: string; phone: string; askDelete: boolean } | null>(null)
   const [newGuest, setNewGuest] = useState<{ name: string; phone: string } | null>(null)
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  // Any full-screen overlay open — freeze the page behind it so scrolling
+  // over the (fixed-position) dim backdrop doesn't also scroll the page.
+  useBodyLock(Boolean(confirmSend || report || previewOpen || confirmEntranceSend || entrancePreviewOpen || confirmBulkDelete))
   // The template's {{2}}/{{3}}, editable everywhere they're shown and REQUIRED
   // before any send. {{1}} (guest name) is per-guest from the roster; the
   // sample here only drives the preview bubble and the test message.
@@ -188,18 +194,23 @@ export default function SendInvitesView({
   const awaitingCount = useMemo(() => guests.filter((g) => isAwaiting(g.status)).length, [guests])
   const attendingCount = useMemo(() => guests.filter((g) => g.status === 'attending').length, [guests])
 
+  // Pass Ticket tab only ever sends to confirmed guests — the guest list
+  // beneath it is always scoped to "attending", regardless of whatever
+  // filter was last picked on the Digital Cards tab.
+  const effectiveFilter = sendTab === 'ticket' ? 'attending' : filter
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     return guests.filter((g) => {
-      if (filter === 'notsent' && g.status !== 'none') return false
-      if (filter === 'awaiting' && !isAwaiting(g.status)) return false
-      if (filter === 'attending' && g.status !== 'attending') return false
+      if (effectiveFilter === 'notsent' && g.status !== 'none') return false
+      if (effectiveFilter === 'awaiting' && !isAwaiting(g.status)) return false
+      if (effectiveFilter === 'attending' && g.status !== 'attending') return false
       if (q && !`${g.name} ${g.phone ?? ''} ${g.whatsappPhone ?? ''}`.toLowerCase().includes(q)) {
         return false
       }
       return true
     })
-  }, [guests, filter, search])
+  }, [guests, effectiveFilter, search])
   const pct = quota.purchased > 0 ? Math.min(100, Math.round((quota.used / quota.purchased) * 100)) : 0
 
   // The webhook flips statuses (delivered, viewed, RSVP taps) server-side;
@@ -223,6 +234,18 @@ export default function SendInvitesView({
     .replace('{{1}}', sampleGuest.trim() || 'Amina')
     .replace('{{2}}', hostName.trim() || event.coupleName)
     .replace('{{3}}', eventCat.trim() || event.eventCategorySw)
+
+  // Real attending guest to preview the entrance pass with — the ticket
+  // image route 404s for anyone not yet confirmed attending, so this must
+  // be an actual guest, not a made-up sample name.
+  const entrancePreviewGuest = guests.find((g) => g.status === 'attending') ?? null
+  const entrancePreviewBody = ENTRANCE_PASS_TEMPLATE.body
+    .replace('{{1}}', entrancePreviewGuest ? firstNameOf(entrancePreviewGuest.name) : 'Amina')
+    .replace('{{2}}', event.eventCategorySw)
+    .replace('{{3}}', event.coupleName)
+    .replace('{{4}}', event.entranceDateLabel)
+    .replace('{{5}}', event.entranceTimeLabel)
+    .replace('{{6}}', event.entranceVenue)
 
   /** Switch which event this page is scoped to — a fresh server fetch of the
    *  design/quota/guest-statuses for that event (not client-side filtering,
@@ -336,18 +359,27 @@ export default function SendInvitesView({
    *  simpler confirm flow from the invite send: no {{2}}/{{3}} to approve
    *  (the ticket's copy is generated server-side) and no credit cost. */
   function stageEntranceSend(ids?: string[]) {
-    const pool = ids ? guests.filter((g) => ids.includes(g.id)) : guests.filter((g) => g.status === 'attending')
+    // Guard against a stale selection from another tab (e.g. checked on
+    // "All", then switched to "Attending" and clicked send) — only guests
+    // who have actually confirmed attending can ever receive a ticket, both
+    // here and (redundantly, server-side) in sendEntrancePasses itself.
+    const pool = (ids ? guests.filter((g) => ids.includes(g.id)) : guests).filter((g) => g.status === 'attending')
     const eligible = pool.filter(hasPhone)
     if (eligible.length === 0) {
       toast.error(strings.toast_nothing_sent)
       return
     }
-    setConfirmEntranceSend({ ids, recipients: eligible.length })
+    if (ids && eligible.length < ids.length) {
+      toast(fmt(strings.toast_entrance_excluded_notattending, { n: ids.length - eligible.length }))
+    }
+    setEntrancePreviewOpen(false)
+    setConfirmEntranceSend({ ids: eligible.map((g) => g.id), recipients: eligible.length })
   }
 
   function runEntranceSend() {
     const ids = confirmEntranceSend?.ids
     setConfirmEntranceSend(null)
+    setEntrancePreviewOpen(false)
     startTransition(async () => {
       const res = await sendEntrancePasses(ids, eventId)
       if (res.sent === 0 && res.failed === 0 && res.skipped === 0) {
@@ -410,7 +442,10 @@ export default function SendInvitesView({
             toast.success(fmt(remindingLive ? strings.toast_reminded_one : strings.toast_sent_one, { name: first }))
           else if (res.blocked > 0) toast.error(fmt(strings.send_over_quota, { n: res.blocked }))
           else if (res.skipped > 0) toast.error(fmt(strings.send_no_phone, { n: res.skipped }))
-          else toast.error(fmt(strings.toast_send_failed, { name: first }))
+          else {
+            const detail = res.results[0]?.error
+            toast.error(detail ? `${fmt(strings.toast_send_failed, { name: first })} (${detail})` : fmt(strings.toast_send_failed, { name: first }))
+          }
           router.refresh()
         } finally {
           setSendingRow(null)
@@ -690,8 +725,33 @@ export default function SendInvitesView({
       </div>
       <div className="livehint"><span className="pulse" />{strings.live_hint}</div>
 
+      {/* Digital Cards (invite sends: Targeted + Broadcast) vs. Pass Ticket
+          (post-RSVP entrance passes) — kept as separate tabs so the two
+          distinct WhatsApp sends are never visually confused. */}
+      <div className="sendtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={sendTab === 'cards'}
+          className={`stb ${sendTab === 'cards' ? 'on' : ''}`}
+          onClick={() => { setSendTab('cards'); setSelected(new Set()) }}
+        >
+          <MessageCircle size={14} /> {strings.tab_digital_cards}
+        </button>
+        <button
+          role="tab"
+          aria-selected={sendTab === 'ticket'}
+          className={`stb amber ${sendTab === 'ticket' ? 'on' : ''}`}
+          onClick={() => { setSendTab('ticket'); setSelected(new Set()) }}
+        >
+          <Ticket size={14} /> {strings.tab_pass_ticket}
+          {attendingCount > 0 ? <span className="stbcnt">{attendingCount}</span> : null}
+        </button>
+      </div>
+
       {/* Two modes: Targeted is the product's core, Broadcast is secondary */}
       <div className="modes">
+        {sendTab === 'cards' ? (
+        <>
         <section className="mode primary">
           <div className="hrow"><div><div className="tag">{strings.targeted_tag}</div><h2>{strings.targeted_title}</h2></div></div>
           <p>{strings.targeted_desc}</p>
@@ -756,11 +816,6 @@ export default function SendInvitesView({
                 <BellRing size={15} />{fmt(strings.remind_awaiting, { n: awaitingCount })}
               </button>
             ) : null}
-            {attendingCount > 0 ? (
-              <button className="chip remind" disabled={pending} onClick={() => stageEntranceSend()}>
-                <Ticket size={15} />{fmt(strings.send_entrance_passes, { n: attendingCount })}
-              </button>
-            ) : null}
             <button className="chip" onClick={() => setPreviewOpen(true)}>
               <Eye size={15} />{strings.preview_button}
             </button>
@@ -806,6 +861,28 @@ export default function SendInvitesView({
 
           <div className="note"><span className="k">{strings.best_for}</span><span>{strings.broadcast_best_for}</span></div>
         </section>
+        </>
+        ) : (
+        <section className="mode entrance">
+          <div className="hrow"><div><div className="tag">{strings.entrance_tag}</div><h2>{strings.entrance_title}</h2></div></div>
+          <p>{strings.entrance_desc}</p>
+          {attendingCount > 0 ? (
+            <div className="chips">
+              <button className="btn amber lg" disabled={pending} onClick={() => stageEntranceSend()}>
+                <Ticket size={16} /> {fmt(strings.send_entrance_passes, { n: attendingCount })}
+              </button>
+              {entrancePreviewGuest ? (
+                <button className="chip" onClick={() => setEntrancePreviewOpen(true)}>
+                  <Eye size={15} />{strings.entrance_preview_button}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="empty">{strings.empty_attending}</div>
+          )}
+          <div className="note"><span className="k">{strings.best_for}</span><span>{strings.entrance_best_for}</span></div>
+        </section>
+        )}
       </div>
 
       {/* Guest table */}
@@ -827,20 +904,23 @@ export default function SendInvitesView({
             aria-label={strings.search_aria}
           />
           <div className="acts">
-            <div className="seg" role="tablist" aria-label={strings.filter_aria}>
-              <button className={`sg ${filter === 'all' ? 'on' : ''}`} onClick={() => setFilter('all')}>
-                {strings.filter_all}
-              </button>
-              <button className={`sg ${filter === 'notsent' ? 'on' : ''}`} onClick={() => setFilter('notsent')}>
-                {strings.filter_notsent}{notSentCount ? ` ${notSentCount}` : ''}
-              </button>
-              <button className={`sg ${filter === 'awaiting' ? 'on' : ''}`} onClick={() => setFilter('awaiting')}>
-                {strings.filter_awaiting}{awaitingCount ? ` ${awaitingCount}` : ''}
-              </button>
-              <button className={`sg ${filter === 'attending' ? 'on' : ''}`} onClick={() => setFilter('attending')}>
-                {strings.filter_attending}{attendingCount ? ` ${attendingCount}` : ''}
-              </button>
-            </div>
+            {sendTab === 'cards' ? (
+              <div className="seg" role="tablist" aria-label={strings.filter_aria}>
+                <button className={`sg ${filter === 'all' ? 'on' : ''}`} onClick={() => setFilter('all')}>
+                  {strings.filter_all}
+                </button>
+                <button className={`sg ${filter === 'notsent' ? 'on' : ''}`} onClick={() => setFilter('notsent')}>
+                  {strings.filter_notsent}{notSentCount ? ` ${notSentCount}` : ''}
+                </button>
+                <button className={`sg ${filter === 'awaiting' ? 'on' : ''}`} onClick={() => setFilter('awaiting')}>
+                  {strings.filter_awaiting}{awaitingCount ? ` ${awaitingCount}` : ''}
+                </button>
+              </div>
+            ) : (
+              <div className="seg">
+                <span className="sg on amber locked"><Ticket size={12} /> {strings.filter_attending}{attendingCount ? ` ${attendingCount}` : ''}</span>
+              </div>
+            )}
             {selected.size > 0 ? <span className="selcnt">{fmt(strings.selected_count, { n: selected.size })}</span> : null}
             {selected.size > 0 ? (
               <button className="btn ghost danger" disabled={pending} onClick={() => setConfirmBulkDelete(true)}>
@@ -851,11 +931,11 @@ export default function SendInvitesView({
               <Plus size={14} /> {strings.add_guest}
             </button>
             <button
-              className="btn pri"
+              className={`btn ${effectiveFilter === 'attending' ? 'amber' : 'pri'}`}
               disabled={pending || selected.size === 0}
-              onClick={() => (filter === 'attending' ? stageEntranceSend([...selected]) : stageBulkSend([...selected]))}
+              onClick={() => (effectiveFilter === 'attending' ? stageEntranceSend([...selected]) : stageBulkSend([...selected]))}
             >
-              {filter === 'attending' ? strings.send_entrance_to_selected : strings.send_to_selected} <ArrowRight size={15} />
+              {effectiveFilter === 'attending' ? strings.send_entrance_to_selected : strings.send_to_selected} <ArrowRight size={15} />
             </button>
           </div>
         </div>
@@ -863,11 +943,11 @@ export default function SendInvitesView({
           <div className="empty">
             {search.trim()
               ? strings.empty_search
-              : filter === 'notsent'
+              : effectiveFilter === 'notsent'
                 ? strings.empty_notsent
-                : filter === 'awaiting'
+                : effectiveFilter === 'awaiting'
                   ? strings.empty_awaiting
-                  : filter === 'attending'
+                  : effectiveFilter === 'attending'
                     ? strings.empty_attending
                     : strings.empty_none}
           </div>
@@ -1055,16 +1135,62 @@ export default function SendInvitesView({
 
       {/* Entrance-pass confirm — simpler than the invite dialog: the ticket's
           copy is generated server-side, nothing to approve, no credit cost. */}
-      {confirmEntranceSend ? (
+      {confirmEntranceSend && !entrancePreviewOpen ? (
         <div className="ovl" onClick={() => setConfirmEntranceSend(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{strings.confirm_entrance_title}</h3>
-            <p className="big">{fmt(strings.confirm_recipients, { n: confirmEntranceSend.recipients })}</p>
+            <p className="big">{fmt(strings.confirm_entrance_body, { n: confirmEntranceSend.recipients })}</p>
             <div className="mrow">
               <button className="btn ghost" onClick={() => setConfirmEntranceSend(null)}>{strings.confirm_cancel}</button>
-              <button className="btn pri" disabled={pending} onClick={runEntranceSend}>
+              {entrancePreviewGuest ? (
+                <button className="btn ghost" onClick={() => setEntrancePreviewOpen(true)}>
+                  <Eye size={14} /> {strings.entrance_preview_button}
+                </button>
+              ) : null}
+              <button className="btn amber" disabled={pending} onClick={runEntranceSend}>
                 <Ticket size={15} /> {strings.confirm_confirm}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Entrance-pass ticket + message preview — a real attending guest's
+          actual ticket image (with their real check-in QR) and the exact
+          WhatsApp text, so the couple can verify before sending in bulk. */}
+      {entrancePreviewOpen && entrancePreviewGuest ? (
+        <div className="ovl" onClick={() => setEntrancePreviewOpen(false)}>
+          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+            <div className="mhead">
+              <h3>{strings.entrance_preview_title}</h3>
+              <button className="xbtn" onClick={() => setEntrancePreviewOpen(false)} aria-label={strings.preview_close}><X size={16} /></button>
+            </div>
+            <p className="mutedp">{strings.entrance_preview_note}</p>
+            <div className="wawrap">
+              <div className="wabubble">
+                <Image
+                  src={entrancePreviewGuest.entrancePassUrl}
+                  alt=""
+                  width={760}
+                  height={222}
+                  className="waimgfull"
+                  unoptimized
+                />
+                <div className="wabody">{waText(entrancePreviewBody)}</div>
+                <div className="wafoot">{ENTRANCE_PASS_TEMPLATE.footer}</div>
+              </div>
+            </div>
+            <div className="mrow">
+              <button className="btn ghost" onClick={() => setEntrancePreviewOpen(false)}>{strings.confirm_cancel}</button>
+              {confirmEntranceSend ? (
+                <button className="btn amber" disabled={pending} onClick={runEntranceSend}>
+                  <Ticket size={15} /> {strings.confirm_confirm}
+                </button>
+              ) : (
+                <button className="btn amber" disabled={pending} onClick={() => stageEntranceSend()}>
+                  <Ticket size={15} /> {fmt(strings.send_entrance_passes, { n: attendingCount })}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1283,12 +1409,23 @@ const css = `
 .si .livehint{ display:flex; align-items:center; gap:7px; color:var(--faint); font-size:11px; margin:8px 2px 22px; }
 .si .pulse{ width:7px; height:7px; border-radius:50%; background:var(--ok-tx); animation:si-pulse 2.4s ease-in-out infinite; }
 @keyframes si-pulse{ 0%,100%{ opacity:.35 } 50%{ opacity:1 } }
+.si .sendtabs{ display:flex; gap:8px; margin-bottom:16px; }
+.si .stb{ display:inline-flex; align-items:center; gap:7px; background:#fff; border:1px solid var(--line); border-radius:10px;
+  padding:9px 16px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; }
+.si .stb.on{ background:var(--lav-soft); border-color:var(--lav); color:var(--purple-d); }
+.si .stb.amber.on{ background:var(--amber-bg); border-color:var(--amber-bd); color:var(--amber-tx); }
+.si .stbcnt{ background:var(--amber-bd); color:var(--amber-tx); font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; }
 .si .modes{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
 .si .mode{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:var(--soft);
   display:flex; flex-direction:column; }
 .si .mode.primary{ border-color:var(--lav); box-shadow:0 2px 10px rgba(107,63,160,.08); }
+.si .mode.entrance{ border-color:var(--amber-bd); box-shadow:0 2px 10px rgba(138,109,26,.08); grid-column:1/-1; }
 .si .tag{ font-size:10.5px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--lav); }
 .si .mode.primary .tag{ color:var(--purple); }
+.si .mode.entrance .tag{ color:var(--amber-tx); }
+.si .btn.amber{ background:var(--amber-bd); color:var(--amber-tx); box-shadow:var(--soft); }
+.si .seg .sg.on.amber{ background:var(--amber-bg); color:var(--amber-tx); }
+.si .seg .sg.locked{ cursor:default; }
 .si .mode h2{ font-size:20px; margin-top:6px; font-weight:600; }
 .si .mode p{ color:var(--muted); font-size:13px; margin-top:8px; line-height:1.55; }
 .si .mode p b{ color:var(--ink); font-weight:600; }
@@ -1329,7 +1466,7 @@ const css = `
 .si .gth .acts{ margin-left:auto; display:flex; gap:9px; align-items:center; flex-wrap:wrap; }
 .si .selcnt{ font-size:12px; font-weight:600; color:var(--purple-d); background:var(--lav-soft); padding:5px 11px; border-radius:999px; }
 .si .seg{ display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-.si .seg .sg{ background:#fff; border:none; padding:8px 12px; font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer; }
+.si .seg .sg{ display:inline-flex; align-items:center; gap:4px; background:#fff; border:none; padding:8px 12px; font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer; }
 .si .seg .sg + .sg{ border-left:1px solid var(--line); }
 .si .seg .sg.on{ background:var(--lav-soft); color:var(--purple-d); }
 .si .seg .sg:hover:not(.on){ background:var(--hover); }

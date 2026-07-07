@@ -144,9 +144,11 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
             type: 'body',
             parameters: [
               { type: 'text', text: send.guestName }, // {{1}}
-              { type: 'text', text: send.coupleName }, // {{2}}
-              { type: 'text', text: send.eventName }, // {{3}}
-              { type: 'text', text: send.eventDate }, // {{4}}
+              { type: 'text', text: send.eventCategory }, // {{2}}
+              { type: 'text', text: send.coupleName }, // {{3}}
+              { type: 'text', text: send.dateLabel }, // {{4}}
+              { type: 'text', text: send.timeLabel }, // {{5}}
+              { type: 'text', text: send.venue }, // {{6}}
             ],
           },
           // No buttons — see ENTRANCE_PASS_TEMPLATE.

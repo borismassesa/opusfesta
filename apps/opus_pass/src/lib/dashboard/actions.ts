@@ -6,8 +6,8 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, firstNameOf, formatLongDate, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds } from './queries'
+import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, computeEntrancePassVars } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
@@ -1543,22 +1543,35 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
   const [{ data: event }, { data: profile }] = await Promise.all([
     supabase
       .from('wedding_events')
-      .select('name, starts_at')
+      .select('name, starts_at, event_type, venue_name, address, city')
       .eq('id', resolvedEventId)
       .eq('user_id', user.id)
-      .maybeSingle<{ name: string; starts_at: string | null }>(),
+      .maybeSingle<{
+        name: string
+        starts_at: string | null
+        event_type: EventType | null
+        venue_name: string | null
+        address: string | null
+        city: string | null
+      }>(),
     supabase
       .from('couple_profiles')
-      .select('partner1_name, partner2_name, invite_host_name')
+      .select('partner1_name, partner2_name, invite_host_name, invite_event_category')
       .eq('user_id', user.id)
-      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>(),
+      .maybeSingle<{
+        partner1_name: string | null
+        partner2_name: string | null
+        invite_host_name: string | null
+        invite_event_category: string | null
+      }>(),
   ])
   if (!event) return summary
 
   const hostOverride = profile?.invite_host_name?.trim() || null
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
   const coupleName = hostOverride ?? (names.length ? names.join(' & ') : event.name)
-  const eventDate = formatLongDate(event.starts_at) || 'TBC'
+  const categoryOverride = profile?.invite_event_category?.trim() || null
+  const { eventCategory, dateLabel, timeLabel, venue } = computeEntrancePassVars(event, categoryOverride)
 
   const { data: invitations } = await supabase
     .from('guest_invitations')
@@ -1598,9 +1611,11 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
     const result = await provider.sendEntrancePass({
       to,
       guestName: firstNameOf(g.full_name),
+      eventCategory,
       coupleName,
-      eventName: event.name,
-      eventDate,
+      dateLabel,
+      timeLabel,
+      venue,
       headerImageUrl: `${origin}/entrance-pass/${g.public_token}?event=${resolvedEventId}`,
     })
 
