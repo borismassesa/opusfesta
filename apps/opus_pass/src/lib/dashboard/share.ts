@@ -8,9 +8,19 @@ export function publicOrigin(): string {
   return (process.env.NEXT_PUBLIC_OPUS_PASS_URL || 'https://opuspass.opusfesta.com').replace(/\/$/, '')
 }
 
-/** First word of a full name, for greetings — falls back to the full name. */
+/** Salutations that aren't a guest's actual first name — skipped so a name
+ *  like "Mr Boris Massesa" greets "Boris", not "Mr". */
+const NAME_TITLES = new Set([
+  'mr', 'mrs', 'ms', 'miss', 'mx', 'dr', 'prof', 'rev', 'sir', 'madam', 'chief', 'eng', 'engr', 'capt',
+])
+
+/** First given name from a full name, for greetings — skips a leading title
+ *  (Mr/Mrs/Dr/...) and falls back to the full name if nothing usable remains. */
 export function firstNameOf(name: string): string {
-  return name.trim().split(/\s+/)[0] || name
+  const words = name.trim().split(/\s+/)
+  let i = 0
+  while (i < words.length - 1 && NAME_TITLES.has(words[i].replace(/\.$/, '').toLowerCase())) i++
+  return words[i] || name
 }
 
 /** Slugify free text for a URL handle: lowercase, ASCII, dash-separated. */
