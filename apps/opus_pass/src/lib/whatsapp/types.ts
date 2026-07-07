@@ -95,6 +95,11 @@ export interface InviteSend {
   headerImageUrl: string
   /** Guest public_token, embedded in each button payload for webhook mapping. */
   token: string
+  /** Which event this invite is for — embedded in the button payload so a
+   *  reply can be scoped to the exact event tapped, not guessed from "most
+   *  recent send" (the token alone is per-guest, not per-event: one guest
+   *  invited to 2+ events reuses the same token for every send). */
+  eventId?: string
   /** Template language code, e.g. 'sw' or 'en'. */
   languageCode?: string
 }
@@ -118,6 +123,10 @@ export interface InboundButton {
   kind: ButtonKind
   /** Guest token parsed from the button payload, when present. */
   token: string | null
+  /** Which event this tap's original invite was sent for, when present —
+   *  authoritative (see InviteSend.eventId); older sends predate this and
+   *  carry no eventId, so callers must still handle null. */
+  eventId: string | null
 }
 
 export interface WhatsAppProvider {

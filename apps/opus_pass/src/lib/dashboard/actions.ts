@@ -1471,6 +1471,7 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
       eventCategory: ent.eventCategory,
       headerImageUrl: ent.cardImageUrl,
       token: g.public_token,
+      eventId: resolvedEventId,
     })
 
     await supabase.from('whatsapp_messages').insert({
@@ -1565,6 +1566,7 @@ export async function sendWhatsAppTestInvite(
     eventCategory: templateParam(overrides?.eventCategory, ent.eventCategory),
     headerImageUrl: ent.cardImageUrl,
     token: 'test',
+    eventId: resolvedEventId,
   })
 
   await supabase.from('whatsapp_messages').insert({

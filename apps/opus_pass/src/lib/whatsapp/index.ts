@@ -88,12 +88,15 @@ export function parseStatusUpdates(body: unknown): InboundStatus[] {
   return out
 }
 
-/** Split a button payload "kind:token" into its parts. */
-function parsePayload(payload: string | undefined | null): { kind: ButtonKind | null; token: string | null } {
-  if (!payload) return { kind: null, token: null }
-  const [kind, token] = payload.split(':')
+/** Split a button payload "kind:token:eventId" into its parts. `eventId` is
+ *  absent on sends from before it was added — always handle it as optional. */
+function parsePayload(
+  payload: string | undefined | null,
+): { kind: ButtonKind | null; token: string | null; eventId: string | null } {
+  if (!payload) return { kind: null, token: null, eventId: null }
+  const [kind, token, eventId] = payload.split(':')
   const known = Object.values(BTN).includes(kind as ButtonKind)
-  return { kind: known ? (kind as ButtonKind) : null, token: token || null }
+  return { kind: known ? (kind as ButtonKind) : null, token: token || null, eventId: eventId || null }
 }
 
 /**
@@ -125,9 +128,9 @@ export function parseInboundButtons(body: unknown): InboundButton[] {
         if (!payload && legacy?.payload) payload = legacy.payload
         if (!payload) continue
 
-        const { kind, token } = parsePayload(payload)
+        const { kind, token, eventId } = parsePayload(payload)
         if (!kind) continue
-        out.push({ from, wamid, kind, token })
+        out.push({ from, wamid, kind, token, eventId })
       }
     }
   }
