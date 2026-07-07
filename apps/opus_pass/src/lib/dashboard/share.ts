@@ -75,6 +75,36 @@ export function formatLongDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const SWAHILI_MONTHS = [
+  'Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni',
+  'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba',
+]
+
+/** Long, human date in Swahili, e.g. "02 Oktoba 2026". Empty if null. */
+export function formatLongDateSw(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${String(d.getDate()).padStart(2, '0')} ${SWAHILI_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+/**
+ * Traditional East African "saa" time, e.g. a 20:30 (8:30pm) start becomes
+ * "Saa 2:30 Usiku" — the Swahili clock runs 6 hours behind the standard one
+ * (Swahili "saa moja" = 7:00, since the day is reckoned from sunrise), so the
+ * hour is shifted by 6 before relabeling. Empty if iso has no time component.
+ */
+export function formatSwahiliTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const hour = d.getHours()
+  const minute = d.getMinutes()
+  const swahiliHour = ((hour - 6 + 12) % 12) || 12
+  const period = hour >= 5 && hour < 12 ? 'Asubuhi' : hour >= 12 && hour < 16 ? 'Mchana' : hour >= 16 && hour < 19 ? 'Jioni' : 'Usiku'
+  return `Saa ${swahiliHour}:${String(minute).padStart(2, '0')} ${period}`
+}
+
 /** Path (no origin) to a guest's public RSVP page. */
 export function rsvpPath(token: string): string {
   return `/rsvp/${token}`

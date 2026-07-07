@@ -59,9 +59,8 @@ export const HOMEPAGE_SHOWCASE_FALLBACK: HomepageShowcaseContent = {
   ],
   pills: [
     { id: 'visit-1', kind: 'visit', slot: 2, color: '#FFFFFF', side: 'left', label: 'Visit', sublabel: '' },
-    { id: 'stat-1', kind: 'stat', slot: 1, color: '#9FE870', side: 'left', label: 'Performance', sublabel: 'Sales' },
     { id: 'visit-2', kind: 'visit', slot: 5, color: '#FFFFFF', side: 'right', label: 'Visit', sublabel: '' },
-    { id: 'toggle-1', kind: 'toggle', slot: 6, color: '#9FE870', side: 'left', label: 'Live RSVPs', sublabel: '' },
+    { id: 'toggle-1', kind: 'toggle', slot: 5, color: '#9FE870', side: 'left', label: 'Live RSVPs', sublabel: '' },
   ],
   accent_color: '#9FE870',
 }

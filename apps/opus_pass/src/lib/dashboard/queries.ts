@@ -1,7 +1,7 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
-import { formatLongDate, publicOrigin } from './share'
+import { formatLongDate, formatLongDateSw, formatSwahiliTime, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
@@ -9,6 +9,7 @@ import type { SiteDoc } from '@/lib/builder/types'
 import type {
   DashboardStats,
   EventPledge,
+  EventType,
   GuestInvitation,
   GuestWithInvitations,
   LastSend,
@@ -762,6 +763,35 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
   }
 }
 
+/** WhatsApp-message-ready values for the entrance-pass template's
+ *  {{2}}-{{6}} placeholders — Swahili date/time, and always a non-empty
+ *  string (falls back to "will be announced" copy) since Meta rejects
+ *  empty template parameters. Shared by the real send (sendEntrancePasses
+ *  in actions.ts) and its in-dashboard preview, so what the couple previews
+ *  is exactly what gets sent. */
+export interface EntrancePassTemplateVars {
+  eventCategory: string
+  dateLabel: string
+  timeLabel: string
+  venue: string
+}
+
+export function computeEntrancePassVars(event: {
+  starts_at: string | null
+  event_type: EventType | null
+  venue_name: string | null
+  address: string | null
+  city: string | null
+}, categoryOverride: string | null): EntrancePassTemplateVars {
+  const eventCategory = categoryOverride ?? eventTypeLabelSw(event.event_type ?? 'other')
+  const dateLabel = formatLongDateSw(event.starts_at) || 'Tarehe itatangazwa hivi karibuni'
+  const startsAt = event.starts_at ? new Date(event.starts_at) : null
+  const hasTime = startsAt && !Number.isNaN(startsAt.getTime()) && (startsAt.getHours() !== 0 || startsAt.getMinutes() !== 0)
+  const timeLabel = (hasTime && formatSwahiliTime(event.starts_at)) || 'Muda utatangazwa hivi karibuni'
+  const venue = [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || 'Mahali patatangazwa hivi karibuni'
+  return { eventCategory, dateLabel, timeLabel, venue }
+}
+
 export interface EntrancePassData {
   guestName: string
   invitationId: string
@@ -1302,6 +1332,10 @@ export interface SendGuestRow {
   statusLabel: string
   /** Absolute personal RSVP link (for the per-row copy action). */
   rsvpUrl: string
+  /** Absolute entrance-pass ticket URL — only ever fetchable once this guest
+   *  is attending (the route 404s otherwise), but always present so the
+   *  entrance-pass preview can pick any attending guest as its sample. */
+  entrancePassUrl: string
 }
 
 export interface SendInvitesData {
@@ -1317,6 +1351,12 @@ export interface SendInvitesData {
     eventCategorySw: string
     dateLabel: string | null
     venue: string | null
+    /** Swahili-formatted date/time + venue for the entrance-pass WhatsApp
+     *  template preview — always non-empty (falls back to "will be
+     *  announced" copy), matching computeEntrancePassVars exactly. */
+    entranceDateLabel: string
+    entranceTimeLabel: string
+    entranceVenue: string
     cardTier: string | null
     /** The paid card/product name (e.g. "The Couple"). */
     cardName: string | null
@@ -1388,6 +1428,9 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
         eventCategorySw: 'sherehe',
         dateLabel: null,
         venue: null,
+        entranceDateLabel: 'Tarehe itatangazwa hivi karibuni',
+        entranceTimeLabel: 'Muda utatangazwa hivi karibuni',
+        entranceVenue: 'Mahali patatangazwa hivi karibuni',
         cardTier: null,
         cardName: null,
         cardImageUrl: null,
@@ -1468,6 +1511,7 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
       status,
       statusLabel,
       rsvpUrl: `${origin}/rsvp/${g.public_token}`,
+      entrancePassUrl: `${origin}/entrance-pass/${g.public_token}?event=${selectedEventId}`,
     }
   })
 
@@ -1481,6 +1525,9 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
   const eventName = selectedEvent.name?.trim() || null
   const eventTypeLbl = eventTypeLabel(selectedEvent.event_type)
   const venue = [selectedEvent.venue_name, selectedEvent.city].filter(Boolean).join(', ') || null
+  // Category is already resolved (with any couple override) in entitlement.eventCategory —
+  // only the date/time/venue fields are needed from here, computed identically to the real send.
+  const entranceVars = computeEntrancePassVars(selectedEvent, null)
 
   return {
     event: {
@@ -1490,6 +1537,9 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
       eventCategorySw: entitlement.eventCategory,
       dateLabel: formatLongDate(selectedEvent.starts_at) || null,
       venue,
+      entranceDateLabel: entranceVars.dateLabel,
+      entranceTimeLabel: entranceVars.timeLabel,
+      entranceVenue: entranceVars.venue,
       cardTier: entitlement.cardTier,
       cardName: entitlement.cardName,
       cardImageUrl: entitlement.cardImageUrl,

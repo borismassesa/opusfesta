@@ -68,15 +68,25 @@ export const PLEDGE_TEMPLATE = {
  * scannable QR baked in. No buttons (nothing to reply to) and no invite
  * credit is consumed sending it, unlike INVITE_TEMPLATE.
  *
- * NOT YET SUBMITTED TO META — this is the spec to submit for approval before
- * WHATSAPP_TEMPLATE_NAME_ENTRANCE_PASS can be set.
+ * Submitted to Meta as `opuspass_entrance_pass` (Swahili) — awaiting approval
+ * before WHATSAPP_TEMPLATE_NAME_ENTRANCE_PASS can be set.
  */
 export const ENTRANCE_PASS_TEMPLATE = {
   header: 'IMAGE' as const,
-  /** Body placeholders, in order: {{1}} guest name, {{2}} couple name,
-   *  {{3}} event name, {{4}} event date. */
-  body: 'Asante *{{1}}*!\nHiki ni kitambulisho chako cha kuingia kwa *{{3}}* ya *{{2}}*, tarehe {{4}}.\nOnyesha QR code iliyo hapo juu getini.',
-  footer: 'OpusPass — Entrance Pass',
+  /** Body placeholders, in order: {{1}} guest name, {{2}} event category
+   *  (Swahili noun, e.g. "Harusi"), {{3}} couple name, {{4}} date,
+   *  {{5}} time, {{6}} venue. */
+  body:
+    '🎉 Tiketi yako ya Kuingia iko Tayari!\n\n' +
+    'Habari {{1}},\n\n' +
+    'Umefanikiwa kuthibitishwa kuhudhuria:\n\n' +
+    '*{{2}}* ya *{{3}}*\n\n' +
+    '📅 {{4}}\n' +
+    '🕣 {{5}}\n' +
+    '📍 {{6}}\n\n' +
+    'Tafadhali onyesha tiketi hii yenye Msimbo wa QR kwenye lango la kuingilia ili kuthibitisha uhalali wa tiketi yako na kuruhusiwa kuingia kwenye tukio.\n\n' +
+    'Tunatarajia kusherehekea pamoja nawe. Karibu sana!',
+  footer: 'Sent by OpusPass',
   buttons: [] as const,
 } as const
 
@@ -86,12 +96,16 @@ export interface EntrancePassSend {
   to: string
   /** Guest name interpolated into the template body ({{1}}). */
   guestName: string
-  /** Couple/honoree name interpolated into the template body ({{2}}). */
+  /** Event category (Swahili noun, e.g. "Harusi") interpolated ({{2}}). */
+  eventCategory: string
+  /** Couple/honoree name interpolated into the template body ({{3}}). */
   coupleName: string
-  /** Event name interpolated into the template body ({{3}}). */
-  eventName: string
   /** Formatted event date interpolated into the template body ({{4}}). */
-  eventDate: string
+  dateLabel: string
+  /** Formatted event time interpolated into the template body ({{5}}). */
+  timeLabel: string
+  /** Venue interpolated into the template body ({{6}}). */
+  venue: string
   /** Absolute URL of the generated ticket image (template image header). */
   headerImageUrl: string
   /** Template language code, e.g. 'sw' or 'en'. */
