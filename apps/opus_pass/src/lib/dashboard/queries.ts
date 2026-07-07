@@ -1,7 +1,7 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
-import { formatLongDate, formatLongDateSw, formatSwahiliTime, publicOrigin } from './share'
+import { formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
@@ -785,8 +785,7 @@ export function computeEntrancePassVars(event: {
 }, categoryOverride: string | null): EntrancePassTemplateVars {
   const eventCategory = categoryOverride ?? eventTypeLabelSw(event.event_type ?? 'other')
   const dateLabel = formatLongDateSw(event.starts_at) || 'Tarehe itatangazwa hivi karibuni'
-  const startsAt = event.starts_at ? new Date(event.starts_at) : null
-  const hasTime = startsAt && !Number.isNaN(startsAt.getTime()) && (startsAt.getHours() !== 0 || startsAt.getMinutes() !== 0)
+  const hasTime = hasEatTimeComponent(event.starts_at)
   const timeLabel = (hasTime && formatSwahiliTime(event.starts_at)) || 'Muda utatangazwa hivi karibuni'
   const venue = [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || 'Mahali patatangazwa hivi karibuni'
   return { eventCategory, dateLabel, timeLabel, venue }

@@ -80,29 +80,69 @@ const SWAHILI_MONTHS = [
   'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba',
 ]
 
+// All OpusFesta events are Tanzanian weddings, so date/time in the couple's
+// own wall clock always means East Africa Time — never the server's local
+// zone. `starts_at` is written from the browser's local (EAT) time and
+// stored as a UTC ISO string; this app runs on Vercel, where the server's
+// `Date.prototype.get*` accessors read in UTC, not EAT. Reading the wrong
+// zone here would print a wrong arrival time on a real entry ticket, so we
+// always extract date/time parts through this explicitly EAT-zoned
+// formatter rather than the ambient runtime zone.
+const EAT_TIME_ZONE = 'Africa/Dar_es_Salaam'
+
+function eatDateParts(d: Date): { day: number; month: number; year: number; hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EAT_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d)
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value)
+  return { day: get('day'), month: get('month'), year: get('year'), hour: get('hour'), minute: get('minute') }
+}
+
 /** Long, human date in Swahili, e.g. "02 Oktoba 2026". Empty if null. */
 export function formatLongDateSw(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
   if (Number.isNaN(d.getTime())) return ''
-  return `${String(d.getDate()).padStart(2, '0')} ${SWAHILI_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  const { day, month, year } = eatDateParts(d)
+  return `${String(day).padStart(2, '0')} ${SWAHILI_MONTHS[month - 1]} ${year}`
 }
 
 /**
- * Traditional East African "saa" time, e.g. a 20:30 (8:30pm) start becomes
- * "Saa 2:30 Usiku" — the Swahili clock runs 6 hours behind the standard one
- * (Swahili "saa moja" = 7:00, since the day is reckoned from sunrise), so the
- * hour is shifted by 6 before relabeling. Empty if iso has no time component.
+ * Traditional East African "saa" time, e.g. a 20:30 (8:30pm) EAT start
+ * becomes "Saa 2:30 Usiku" — the Swahili clock runs 6 hours behind the
+ * standard one (Swahili "saa moja" = 7:00, since the day is reckoned from
+ * sunrise), so the hour is shifted by 6 before relabeling. Always reads the
+ * hour/minute in East Africa Time regardless of server timezone (see
+ * eatDateParts above). Empty if iso has no time component.
  */
 export function formatSwahiliTime(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const hour = d.getHours()
-  const minute = d.getMinutes()
+  const { hour, minute } = eatDateParts(d)
   const swahiliHour = ((hour - 6 + 12) % 12) || 12
   const period = hour >= 5 && hour < 12 ? 'Asubuhi' : hour >= 12 && hour < 16 ? 'Mchana' : hour >= 16 && hour < 19 ? 'Jioni' : 'Usiku'
   return `Saa ${swahiliHour}:${String(minute).padStart(2, '0')} ${period}`
+}
+
+/**
+ * True if `iso` carries a real (non-midnight) time-of-day in East Africa
+ * Time. Mirrors the same EAT-zoned reading formatSwahiliTime uses, so a
+ * "no time set" event (stored as EAT midnight) isn't misread as having a
+ * time just because the server's own timezone offset shifts it off 00:00.
+ */
+export function hasEatTimeComponent(iso: string | null | undefined): boolean {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  const { hour, minute } = eatDateParts(d)
+  return hour !== 0 || minute !== 0
 }
 
 /** Path (no origin) to a guest's public RSVP page. */
