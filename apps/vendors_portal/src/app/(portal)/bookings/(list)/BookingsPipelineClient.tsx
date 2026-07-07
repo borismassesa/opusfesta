@@ -19,6 +19,7 @@ import type { Booking, BookingStage } from '@/lib/mock-data'
 import {
   PIPELINE_STAGES,
   STAGE_META,
+  buildStageLabel,
   deriveAttention,
   durationUntil,
   formatTZS,
@@ -29,6 +30,7 @@ import {
   type AttentionKind,
 } from '@/lib/bookings'
 import { cn } from '@/lib/utils'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 
 type StageFilter = BookingStage | 'all'
 type SortKey = 'soonest' | 'value' | 'recent_activity'
@@ -38,6 +40,7 @@ export default function BookingsPipelineClient({
 }: {
   initialBookings: Booking[]
 }) {
+  const t = usePortalT('bookings')
   const [filter, setFilter] = useState<StageFilter>('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('soonest')
@@ -79,7 +82,7 @@ export default function BookingsPipelineClient({
     return list
   }, [filter, search, sort, initialBookings])
 
-  const attention = useMemo(() => deriveAttention(initialBookings), [initialBookings])
+  const attention = useMemo(() => deriveAttention(initialBookings, new Date(), t), [initialBookings, t])
 
   return (
     <div className="px-8 pt-5 pb-10">
@@ -116,50 +119,56 @@ const ATTENTION_ICON: Record<AttentionKind, typeof Timer> = {
   review_request: MailQuestion,
 }
 
-const ATTENTION_TONE: Record<
+function buildAttentionTone(t: Translator): Record<
   AttentionKind,
   { iconClass: string; chipClass: string; chipLabel: string }
-> = {
-  slot_expiring: {
-    iconClass: 'bg-rose-50 text-rose-600',
-    chipClass: 'bg-rose-50 text-rose-700 border-rose-200',
-    chipLabel: 'Urgent',
-  },
-  deposit_overdue: {
-    iconClass: 'bg-amber-50 text-amber-700',
-    chipClass: 'bg-amber-50 text-amber-700 border-amber-200',
-    chipLabel: 'Follow up',
-  },
-  contract_unsigned: {
-    iconClass: 'bg-amber-50 text-amber-700',
-    chipClass: 'bg-amber-50 text-amber-700 border-amber-200',
-    chipLabel: 'This week',
-  },
-  event_soon: {
-    iconClass: 'bg-emerald-50 text-emerald-700',
-    chipClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    chipLabel: 'Prep',
-  },
-  review_request: {
-    iconClass: 'bg-[#F0DFF6] text-[#7E5896]',
-    chipClass: 'bg-[#F0DFF6] text-[#7E5896] border-[#E0C7EE]',
-    chipLabel: 'Just done',
-  },
+> {
+  return {
+    slot_expiring: {
+      iconClass: 'bg-rose-50 text-rose-600',
+      chipClass: 'bg-rose-50 text-rose-700 border-rose-200',
+      chipLabel: t('attention_urgent'),
+    },
+    deposit_overdue: {
+      iconClass: 'bg-amber-50 text-amber-700',
+      chipClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      chipLabel: t('attention_follow_up'),
+    },
+    contract_unsigned: {
+      iconClass: 'bg-amber-50 text-amber-700',
+      chipClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      chipLabel: t('attention_this_week'),
+    },
+    event_soon: {
+      iconClass: 'bg-emerald-50 text-emerald-700',
+      chipClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      chipLabel: t('attention_prep'),
+    },
+    review_request: {
+      iconClass: 'bg-[#F0DFF6] text-[#7E5896]',
+      chipClass: 'bg-[#F0DFF6] text-[#7E5896] border-[#E0C7EE]',
+      chipLabel: t('attention_just_done'),
+    },
+  }
 }
 
 function NeedsAttention({ items }: { items: AttentionItem[] }) {
+  const t = usePortalT('bookings')
+  const attentionTone = buildAttentionTone(t)
   return (
     <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 lg:p-6">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">
-          Needs attention
+          {t('needs_attention_header')}
         </p>
-        <span className="text-xs text-gray-400 tabular-nums">{items.length} item{items.length === 1 ? '' : 's'}</span>
+        <span className="text-xs text-gray-400 tabular-nums">
+          {items.length} {items.length === 1 ? t('attention_item_singular') : t('attention_item_plural')}
+        </span>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map((it) => {
           const Icon = ATTENTION_ICON[it.kind]
-          const tone = ATTENTION_TONE[it.kind]
+          const tone = attentionTone[it.kind]
           return (
             <Link
               key={`${it.kind}-${it.bookingId}`}
@@ -219,11 +228,13 @@ function FilterBar({
   sort: SortKey
   onSort: (s: SortKey) => void
 }) {
+  const t = usePortalT('bookings')
+  const stageLabel = buildStageLabel(t)
   return (
     <div className="flex flex-wrap items-center gap-2 bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-2.5">
       <div className="flex items-center gap-1 flex-wrap">
         <FilterPill
-          label="All"
+          label={t('filter_all')}
           count={counts.all}
           active={filter === 'all'}
           onClick={() => onFilter('all')}
@@ -231,7 +242,7 @@ function FilterBar({
         {PIPELINE_STAGES.map((s) => (
           <FilterPill
             key={s}
-            label={STAGE_META[s].label}
+            label={stageLabel[s]}
             count={counts[s]}
             active={filter === s}
             dotClass={STAGE_META[s].dotClass}
@@ -246,8 +257,8 @@ function FilterBar({
             type="search"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Search couple, venue…"
-            aria-label="Search bookings"
+            placeholder={t('search_placeholder')}
+            aria-label={t('search_aria_label')}
             className="pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm w-56 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
           />
         </div>
@@ -256,12 +267,12 @@ function FilterBar({
           <select
             value={sort}
             onChange={(e) => onSort(e.target.value as SortKey)}
-            aria-label="Sort bookings"
+            aria-label={t('sort_aria_label')}
             className="bg-transparent outline-none cursor-pointer"
           >
-            <option value="soonest">Soonest event</option>
-            <option value="value">Highest value</option>
-            <option value="recent_activity">Recent activity</option>
+            <option value="soonest">{t('sort_soonest')}</option>
+            <option value="value">{t('sort_highest_value')}</option>
+            <option value="recent_activity">{t('sort_recent_activity')}</option>
           </select>
         </label>
       </div>
@@ -311,16 +322,17 @@ function FilterPill({
 /* ---------- Table ---------- */
 
 function BookingsTable({ rows }: { rows: Booking[] }) {
+  const t = usePortalT('bookings')
   return (
     <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
       <div className="hidden md:grid md:grid-cols-[2fr_1.4fr_1fr_1.1fr_1fr_1.5fr_auto] gap-4 px-5 py-2.5 border-b border-gray-100 bg-gray-50/60 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-        <span>Couple</span>
-        <span>Event date</span>
-        <span>Stage</span>
-        <span className="text-right">Value</span>
-        <span>Deposit</span>
-        <span>Last activity</span>
-        <span className="sr-only">Open</span>
+        <span>{t('table_couple')}</span>
+        <span>{t('table_event_date')}</span>
+        <span>{t('table_stage')}</span>
+        <span className="text-right">{t('table_value')}</span>
+        <span>{t('table_deposit')}</span>
+        <span>{t('table_last_activity')}</span>
+        <span className="sr-only">{t('table_open')}</span>
       </div>
       <ul className="divide-y divide-gray-100">
         {rows.map((b) => (
@@ -334,22 +346,24 @@ function BookingsTable({ rows }: { rows: Booking[] }) {
 }
 
 function BookingRow({ b }: { b: Booking }) {
+  const t = usePortalT('bookings')
+  const stageLabel = buildStageLabel(t)
   const stage = STAGE_META[b.stage]
   const initials = b.couple.split(/\s*&\s*|\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase() || 'C'
 
   let depositText: string
   let depositTone: 'paid' | 'pending' | 'na'
   if (b.stage === 'cancelled') {
-    depositText = b.depositPaid ? 'Forfeited' : '—'
+    depositText = b.depositPaid ? t('deposit_forfeited') : '—'
     depositTone = 'na'
   } else if (b.stage === 'quoted') {
     depositText = '—'
     depositTone = 'na'
   } else if (b.depositPaid) {
-    depositText = 'Paid'
+    depositText = t('deposit_paid')
     depositTone = 'paid'
   } else {
-    depositText = 'Pending'
+    depositText = t('deposit_pending')
     depositTone = 'pending'
   }
 
@@ -395,12 +409,12 @@ function BookingRow({ b }: { b: Booking }) {
             stage.pillClass,
           )}
         >
-          {stage.label}
+          {stageLabel[b.stage]}
         </span>
         {b.stage === 'reserved' && b.slotHeldUntil ? (
           <p className="text-[10px] text-rose-600 mt-1 inline-flex items-center gap-1 font-semibold">
             <Timer className="w-3 h-3" />
-            {durationUntil(b.slotHeldUntil)} left
+            {durationUntil(b.slotHeldUntil)} {t('slot_left_suffix')}
           </p>
         ) : null}
       </div>
@@ -435,7 +449,7 @@ function BookingRow({ b }: { b: Booking }) {
             <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(b.lastMessageAt)}</p>
           </>
         ) : (
-          <p className="text-gray-400 italic">No messages yet</p>
+          <p className="text-gray-400 italic">{t('no_messages_yet')}</p>
         )}
       </div>
 
@@ -448,6 +462,7 @@ function BookingRow({ b }: { b: Booking }) {
 /* ---------- Empty state ---------- */
 
 function EmptyState({ filter, search }: { filter: StageFilter; search: string }) {
+  const t = usePortalT('bookings')
   const hasFilter = filter !== 'all' || search.length > 0
   return (
     <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
@@ -455,12 +470,10 @@ function EmptyState({ filter, search }: { filter: StageFilter; search: string })
         {hasFilter ? <Search className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
       </span>
       <h3 className="text-base font-semibold text-gray-900 mt-4">
-        {hasFilter ? 'No bookings match these filters' : 'No bookings yet'}
+        {hasFilter ? t('empty_filter_title') : t('empty_no_bookings_title')}
       </h3>
       <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-        {hasFilter
-          ? 'Try clearing the search or switching to "All" to see every booking.'
-          : 'Couples who accept your quotes show up here. Add a manual booking if you took an inquiry off-platform.'}
+        {hasFilter ? t('empty_filter_desc') : t('empty_no_bookings_desc')}
       </p>
     </div>
   )

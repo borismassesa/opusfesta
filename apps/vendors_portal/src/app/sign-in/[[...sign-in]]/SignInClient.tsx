@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthShell from '@/components/AuthShell'
 import CodeBoxes from '@/components/CodeBoxes'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 // Fully headless sign-in — the counterpart to SignUpClient. We own the markup,
 // Clerk owns the auth (useSignIn: create / authenticateWithRedirect /
@@ -97,6 +98,7 @@ export default function SignInClient({
 }) {
   const { isLoaded, signIn, setActive } = useSignIn()
   const router = useRouter()
+  const t = usePortalT('auth')
 
   const [step, setStep] = useState<Step>('password')
   const [email, setEmail] = useState(initialEmail ?? '')
@@ -136,17 +138,17 @@ export default function SignInClient({
       const res = await signIn.create({ identifier: email.trim(), password })
       if (res.status === 'complete') {
         if (!(await activate(res.createdSessionId))) {
-          setError('Additional verification is required to sign in.')
+          setError(t('error_additional_verification'))
         }
       } else {
-        setError('Additional verification is required to sign in.')
+        setError(t('error_additional_verification'))
       }
     } catch (err) {
       // A failed password sign-in is often a Google account (no password) since
       // OpusFesta shares one login across the platform. Surface that as a hint
       // rather than probing supportedFirstFactors, which Clerk enumeration
       // protection can hide (it would wrongly block a real password user).
-      setError(clerkError(err, 'Incorrect email or password.'))
+      setError(clerkError(err, t('error_incorrect_password')))
       setPasswordFailed(true)
     } finally {
       setBusy(false)
@@ -162,7 +164,7 @@ export default function SignInClient({
       await signIn.create({ strategy: 'reset_password_email_code', identifier: email.trim() })
       setStep('reset')
     } catch (err) {
-      setError(clerkError(err, "We couldn't send a reset code to that email."))
+      setError(clerkError(err, t('reset_email_send_error')))
     } finally {
       setBusy(false)
     }
@@ -181,13 +183,13 @@ export default function SignInClient({
       })
       if (res.status === 'complete') {
         if (!(await activate(res.createdSessionId))) {
-          setError('Your password was reset, but sign-in needs another step.')
+          setError(t('reset_partial_error'))
         }
       } else {
-        setError('That code didn’t complete the reset. Please try again.')
+        setError(t('reset_incomplete_error'))
       }
     } catch (err) {
-      setError(clerkError(err, 'Invalid or expired code.'))
+      setError(clerkError(err, t('reset_invalid_code_error')))
     } finally {
       setBusy(false)
     }
@@ -204,7 +206,7 @@ export default function SignInClient({
         redirectUrlComplete: safeRedirectPath(redirectUrl),
       })
     } catch (err) {
-      setError(clerkError(err, "Couldn't continue with Google."))
+      setError(clerkError(err, t('oauth_google_error')))
       setOauthBusy(null)
     }
   }
@@ -218,18 +220,18 @@ export default function SignInClient({
 
   const subtitle =
     step === 'forgot'
-      ? 'Enter your email and we’ll send a reset code.'
+      ? t('signin_subtitle_forgot')
       : step === 'reset'
-        ? `Enter the code we sent to ${email} and choose a new password.`
-        : 'Welcome back — sign in to manage your storefront.'
+        ? t('signin_subtitle_reset', { email })
+        : t('signin_subtitle_default')
 
   return (
     <AuthShell
-      panelTitle="Welcome back to OpusFesta"
-      panelSubtitle="Pick up right where you left off — your leads, bookings, and storefront, all in one place."
+      panelTitle={t('signin_panel_title')}
+      panelSubtitle={t('signin_panel_subtitle')}
     >
       <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]">
-        Sign in to your account
+        {t('signin_heading')}
       </h1>
       <p className="mt-2 text-[15px] text-gray-500">{subtitle}</p>
 
@@ -237,23 +239,23 @@ export default function SignInClient({
         <div className="mt-6 py-14 text-center">
           {stalled ? (
             <>
-              <p className="text-sm font-medium text-[#1A1A1A]">Sign-in is temporarily unavailable</p>
+              <p className="text-sm font-medium text-[#1A1A1A]">{t('signin_stalled_title')}</p>
               <p className="mx-auto mt-2 max-w-xs text-sm text-gray-500">
-                We couldn&rsquo;t reach the authentication service. Please try again.
+                {t('auth_stalled_desc')}
               </p>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
                 className={`mt-5 ${buttonClass}`}
               >
-                Retry
+                {t('retry_button')}
               </button>
             </>
           ) : (
             <div
               className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#C9A0DC]"
               role="status"
-              aria-label="Loading"
+              aria-label={t('loading_aria')}
             />
           )}
         </div>
@@ -270,8 +272,7 @@ export default function SignInClient({
 
           {passwordFailed && step === 'password' && (
             <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
-              Signed up with Google? Use <strong>Continue with Google</strong>{' '}
-              above. To set a password, use <strong>Forgot password?</strong>.
+              {t('password_failed_hint')}
             </p>
           )}
 
@@ -285,19 +286,19 @@ export default function SignInClient({
                 className={`w-full ${oauthButtonClass}`}
               >
                 <GoogleIcon />
-                {oauthBusy === 'google' ? 'Redirecting…' : 'Continue with Google'}
+                {oauthBusy === 'google' ? t('oauth_redirecting') : t('oauth_google_button')}
               </button>
 
               <div className="my-5 flex items-center gap-3">
                 <span className="h-px flex-1 bg-gray-200" />
-                <span className="text-xs font-medium uppercase tracking-wider text-gray-400">or</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-gray-400">{t('or_divider')}</span>
                 <span className="h-px flex-1 bg-gray-200" />
               </div>
 
               <form onSubmit={onPassword} className="space-y-4">
                 <div>
                   <label htmlFor="email" className={labelClass}>
-                    Email address
+                    {t('field_email_label')}
                   </label>
                   <input
                     id="email"
@@ -306,14 +307,14 @@ export default function SignInClient({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@business.co.tz"
+                    placeholder={t('field_email_placeholder')}
                     className={inputClass}
                   />
                 </div>
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <label htmlFor="password" className="block text-sm font-medium text-[#1A1A1A]">
-                      Password
+                      {t('field_password_label')}
                     </label>
                     <button
                       type="button"
@@ -323,7 +324,7 @@ export default function SignInClient({
                       }}
                       className={linkClass}
                     >
-                      Forgot password?
+                      {t('forgot_password_link')}
                     </button>
                   </div>
                   <input
@@ -333,19 +334,19 @@ export default function SignInClient({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder={t('field_password_placeholder')}
                     className={inputClass}
                   />
                 </div>
                 <button type="submit" disabled={busy} className={buttonClass}>
-                  {busy ? 'Signing in…' : 'Sign in'}
+                  {busy ? t('signing_in_label') : t('signin_submit_button')}
                 </button>
               </form>
 
               <p className="mt-6 text-center text-sm text-gray-500">
-                New to OpusFesta?{' '}
+                {t('new_to_opusfesta')}{' '}
                 <Link href="/sign-up" className={linkClass}>
-                  Create an account
+                  {t('create_account_link')}
                 </Link>
               </p>
             </>
@@ -355,7 +356,7 @@ export default function SignInClient({
             <form onSubmit={onForgot} className="space-y-4">
               <div>
                 <label htmlFor="forgot-email" className={labelClass}>
-                  Email address
+                  {t('field_email_label')}
                 </label>
                 <input
                   id="forgot-email"
@@ -365,19 +366,19 @@ export default function SignInClient({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@business.co.tz"
+                  placeholder={t('field_email_placeholder')}
                   className={inputClass}
                 />
               </div>
               <button type="submit" disabled={busy} className={buttonClass}>
-                {busy ? 'Sending…' : 'Send reset code'}
+                {busy ? t('sending_label') : t('send_reset_code_button')}
               </button>
               <button
                 type="button"
                 onClick={backToSignIn}
                 className="block w-full text-center text-sm text-gray-500 hover:text-[#1A1A1A]"
               >
-                Back to sign in
+                {t('back_to_signin_button')}
               </button>
             </form>
           )}
@@ -385,12 +386,12 @@ export default function SignInClient({
           {step === 'reset' && (
             <form onSubmit={onReset} className="space-y-4">
               <div>
-                <span className={labelClass}>Verification code</span>
+                <span className={labelClass}>{t('verification_code_label')}</span>
                 <CodeBoxes value={code} onChange={setCode} autoFocus disabled={busy} />
               </div>
               <div>
                 <label htmlFor="new-password" className={labelClass}>
-                  New password
+                  {t('new_password_label')}
                 </label>
                 <input
                   id="new-password"
@@ -399,7 +400,7 @@ export default function SignInClient({
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder={t('new_password_placeholder')}
                   className={inputClass}
                 />
               </div>
@@ -408,14 +409,14 @@ export default function SignInClient({
                 disabled={busy || code.replace(/\D/g, '').length < 6}
                 className={buttonClass}
               >
-                {busy ? 'Resetting…' : 'Reset password & sign in'}
+                {busy ? t('resetting_label') : t('reset_submit_button')}
               </button>
               <button
                 type="button"
                 onClick={backToSignIn}
                 className="block w-full text-center text-sm text-gray-500 hover:text-[#1A1A1A]"
               >
-                Back to sign in
+                {t('back_to_signin_button')}
               </button>
             </form>
           )}

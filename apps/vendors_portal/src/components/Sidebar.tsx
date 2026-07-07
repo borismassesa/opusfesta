@@ -22,33 +22,42 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 import Logo from './ui/Logo'
 
 type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string }
 
-const topItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Inbox, label: 'Leads', href: '/leads' },
-]
+function buildTopItems(t: Translator): NavItem[] {
+  return [
+    { icon: LayoutDashboard, label: t('nav_dashboard'), href: '/dashboard' },
+    { icon: Inbox, label: t('nav_leads'), href: '/leads' },
+  ]
+}
 
-const mainItems: NavItem[] = [
-  { icon: Store, label: 'Storefront', href: '/storefront' },
-  { icon: CalendarCheck, label: 'Bookings', href: '/bookings' },
-  { icon: Star, label: 'Reviews', href: '/reviews' },
-]
+function buildMainItems(t: Translator): NavItem[] {
+  return [
+    { icon: Store, label: t('nav_storefront'), href: '/storefront' },
+    { icon: CalendarCheck, label: t('nav_bookings'), href: '/bookings' },
+    { icon: Star, label: t('nav_reviews'), href: '/reviews' },
+  ]
+}
 
-const growthItems: NavItem[] = [
-  { icon: SlidersHorizontal, label: 'Lead preferences', href: '/lead-preferences' },
-  { icon: Sparkles, label: 'Plans', href: '/plans' },
-  { icon: Rocket, label: 'Boost storefront', href: '/boost', badge: 'NEW' },
-  { icon: BarChart3, label: 'Insights', href: '/insights' },
-]
+function buildGrowthItems(t: Translator): NavItem[] {
+  return [
+    { icon: SlidersHorizontal, label: t('nav_lead_preferences'), href: '/lead-preferences' },
+    { icon: Sparkles, label: t('nav_plans'), href: '/plans' },
+    { icon: Rocket, label: t('nav_boost_storefront'), href: '/boost', badge: t('badge_new') },
+    { icon: BarChart3, label: t('nav_insights'), href: '/insights' },
+  ]
+}
 
-const bottomNavItems: NavItem[] = [
-  { icon: HelpCircle, label: 'Help center', href: '/help' },
-  { icon: MessageSquare, label: 'Feedback', href: '/feedback' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
-]
+function buildBottomNavItems(t: Translator): NavItem[] {
+  return [
+    { icon: HelpCircle, label: t('nav_help_center'), href: '/help' },
+    { icon: MessageSquare, label: t('nav_feedback'), href: '/feedback' },
+    { icon: Settings, label: t('nav_settings'), href: '/settings' },
+  ]
+}
 
 const COLLAPSED_KEY = 'opusfesta:vendors-sidebar-collapsed'
 
@@ -108,6 +117,12 @@ export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
   const pathname = usePathname()
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState(false)
+  const t = usePortalT('portal-chrome')
+
+  const topItems = buildTopItems(t)
+  const mainItems = buildMainItems(t)
+  const growthItems = buildGrowthItems(t)
+  const bottomNavItems = buildBottomNavItems(t)
 
   // Live "new leads" count badge. Capped display at 99+ to keep the pill tidy.
   const leadsBadge =
@@ -150,7 +165,7 @@ export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
         <button
           type="button"
           onClick={toggle}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? t('aria_expand_sidebar') : t('aria_collapse_sidebar')}
           className="text-gray-400 hover:text-gray-700 hover:bg-gray-50 p-1.5 rounded-lg transition-colors"
         >
           {collapsed ? (
@@ -165,7 +180,7 @@ export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
         <button
           type="button"
           onClick={expand}
-          aria-label="Search"
+          aria-label={t('aria_search')}
           className="self-center text-gray-400 hover:text-gray-900 hover:bg-gray-50 p-2 rounded-lg transition-colors mb-4"
         >
           <Search className="w-5 h-5" />
@@ -176,7 +191,7 @@ export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
             <Search className="w-4 h-4 text-gray-400 absolute left-3" />
             <input
               type="text"
-              placeholder="Search…"
+              placeholder={t('search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-3 py-2 bg-gray-50 border border-gray-100 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
@@ -199,7 +214,7 @@ export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
 
         {!collapsed && (
           <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            Your business
+            {t('section_your_business')}
           </p>
         )}
         <nav className="space-y-1">
@@ -215,7 +230,7 @@ export function Sidebar({ newLeadCount = 0 }: { newLeadCount?: number }) {
 
         {!collapsed && (
           <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            Grow
+            {t('section_grow')}
           </p>
         )}
         <nav className="space-y-1">

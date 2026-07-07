@@ -23,33 +23,55 @@ import {
 } from '@/lib/onboarding/draft'
 import type { CalendarBooking } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 import { loadAvailability, saveAvailability } from '../../../storefront/sections/actions'
 
+// English-only, used for internal grid math and off-day note generation
+// (stored data, not translated UI text — same scoping as bookings.ts's
+// deriveAttention title/detail strings). Display text uses buildWeekdayLabels
+// / buildMonthLabels below instead.
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 const MONTH_LABELS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ] as const
 
+function buildWeekdayLabels(t: Translator): string[] {
+  return [
+    t('weekday_mon'), t('weekday_tue'), t('weekday_wed'), t('weekday_thu'),
+    t('weekday_fri'), t('weekday_sat'), t('weekday_sun'),
+  ]
+}
+
+function buildMonthLabels(t: Translator): string[] {
+  return [
+    t('month_january'), t('month_february'), t('month_march'), t('month_april'),
+    t('month_may'), t('month_june'), t('month_july'), t('month_august'),
+    t('month_september'), t('month_october'), t('month_november'), t('month_december'),
+  ]
+}
+
 type CalendarView = 'month' | 'week' | 'day'
 
-const BOOKING_STATUS_META = {
-  pending: {
-    label: 'Pending',
-    pillClass: 'bg-amber-50 text-amber-700 border-amber-200',
-    dotClass: 'bg-amber-500',
-  },
-  confirmed: {
-    label: 'Confirmed',
-    pillClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    dotClass: 'bg-emerald-500',
-  },
-  completed: {
-    label: 'Completed',
-    pillClass: 'bg-gray-100 text-gray-700 border-gray-200',
-    dotClass: 'bg-gray-400',
-  },
-} as const
+function buildBookingStatusMeta(t: Translator) {
+  return {
+    pending: {
+      label: t('booking_status_pending'),
+      pillClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      dotClass: 'bg-amber-500',
+    },
+    confirmed: {
+      label: t('booking_status_confirmed'),
+      pillClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dotClass: 'bg-emerald-500',
+    },
+    completed: {
+      label: t('booking_status_completed'),
+      pillClass: 'bg-gray-100 text-gray-700 border-gray-200',
+      dotClass: 'bg-gray-400',
+    },
+  } as const
+}
 
 // Availability palette — kept identical to the storefront availability page so
 // the two calendars read as one colour system. Absence of an entry = Open;
@@ -129,6 +151,8 @@ export default function BookingsCalendarClient({
 }: {
   initialCalendarBookings: CalendarBooking[]
 }) {
+  const t = usePortalT('bookings')
+  const monthLabels = buildMonthLabels(t)
   const { draft, update, hydrated } = useOnboardingDraft()
 
   const todayKey = formatISODate(new Date())
@@ -235,7 +259,7 @@ export default function BookingsCalendarClient({
 
   const headerLabel = (() => {
     if (view === 'month') {
-      return `${MONTH_LABELS[anchor.getMonth()]} ${anchor.getFullYear()}`
+      return `${monthLabels[anchor.getMonth()]} ${anchor.getFullYear()}`
     }
     if (view === 'week') {
       const week = weekGrid(anchor)
@@ -243,8 +267,8 @@ export default function BookingsCalendarClient({
       const end = week[6]
       const sameMonth = start.getMonth() === end.getMonth()
       return sameMonth
-        ? `${start.getDate()} – ${end.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()}`
-        : `${start.getDate()} ${MONTH_LABELS[start.getMonth()].slice(0, 3)} – ${end.getDate()} ${MONTH_LABELS[end.getMonth()].slice(0, 3)} ${end.getFullYear()}`
+        ? `${start.getDate()} – ${end.getDate()} ${monthLabels[start.getMonth()]} ${start.getFullYear()}`
+        : `${start.getDate()} ${monthLabels[start.getMonth()].slice(0, 3)} – ${end.getDate()} ${monthLabels[end.getMonth()].slice(0, 3)} ${end.getFullYear()}`
     }
     return anchor.toLocaleDateString('en-GB', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -278,7 +302,7 @@ export default function BookingsCalendarClient({
                     type="button"
                     onClick={() => stepBy(-1)}
                     className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-                    aria-label="Previous"
+                    aria-label={t('calendar_previous')}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -289,7 +313,7 @@ export default function BookingsCalendarClient({
                     type="button"
                     onClick={() => stepBy(1)}
                     className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-                    aria-label="Next"
+                    aria-label={t('calendar_next')}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -301,7 +325,7 @@ export default function BookingsCalendarClient({
                     onClick={goToToday}
                     className="text-xs font-semibold text-gray-700 hover:text-gray-900 px-2.5 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
                   >
-                    Today
+                    {t('calendar_today')}
                   </button>
                   <ViewToggle view={view} onChange={setView} />
                 </div>
@@ -344,30 +368,30 @@ export default function BookingsCalendarClient({
 
               <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-gray-700">
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded bg-emerald-300 border border-emerald-500" /> Open
+                  <span className="w-3.5 h-3.5 rounded bg-emerald-300 border border-emerald-500" /> {t('availability_open')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded bg-amber-300 border border-amber-500" /> Limited
+                  <span className="w-3.5 h-3.5 rounded bg-amber-300 border border-amber-500" /> {t('availability_limited')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded bg-rose-300 border border-rose-500" /> Unavailable
+                  <span className="w-3.5 h-3.5 rounded bg-rose-300 border border-rose-500" /> {t('availability_unavailable')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <span
                     className="w-3.5 h-3.5 rounded bg-gray-200 border border-gray-400"
                     style={CLOSED_HATCH_STRONG}
                   />{' '}
-                  Closed
+                  {t('availability_closed')}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-gray-600">
                   <span className="w-3.5 h-3.5 rounded border border-emerald-200 bg-emerald-50 flex items-center justify-center">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   </span>
-                  Booking
+                  {t('availability_booking')}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-rose-600 font-semibold">
                   <AlertTriangle className="w-3 h-3" />
-                  Over capacity
+                  {t('availability_over_capacity')}
                 </span>
               </div>
             </section>
@@ -375,21 +399,21 @@ export default function BookingsCalendarClient({
             <section className="grid grid-cols-3 gap-3">
               <StatTile
                 icon={<CalendarRange className="w-4 h-4 text-emerald-600" />}
-                label="Upcoming bookings"
+                label={t('stat_upcoming_bookings')}
                 count={upcomingBookings}
-                hint="Confirmed and pending events"
+                hint={t('stat_upcoming_hint')}
               />
               <StatTile
                 icon={<CalendarOff className="w-4 h-4 text-gray-500" />}
-                label="Off days set"
+                label={t('stat_off_days')}
                 count={offDays}
-                hint="Vacation, training, etc."
+                hint={t('stat_off_days_hint')}
               />
               <StatTile
                 icon={<AlertTriangle className="w-4 h-4 text-rose-600" />}
-                label="Over capacity"
+                label={t('stat_over_capacity')}
                 count={overcapacityDays}
-                hint={`Days exceeding ${capacity}/day`}
+                hint={t('stat_over_capacity_hint', { capacity })}
               />
             </section>
           </div>
@@ -425,18 +449,15 @@ function CapacityCard({
   upcomingBookings: number
   overcapacityDays: number
 }) {
+  const t = usePortalT('bookings')
   return (
     <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5 lg:p-6 flex flex-wrap items-center gap-5">
       <span className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center shrink-0">
         <Users className="w-5 h-5" />
       </span>
       <div className="flex-1 min-w-[260px]">
-        <h3 className="text-sm font-semibold text-gray-900">Parallel-booking capacity</h3>
-        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-          How many weddings your team can run on the same day. Solo vendors stay at 1; venues
-          and multi-team studios can accept more. Couples can&rsquo;t request a date once it
-          fills up.
-        </p>
+        <h3 className="text-sm font-semibold text-gray-900">{t('capacity_title')}</h3>
+        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{t('capacity_desc')}</p>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
@@ -445,7 +466,7 @@ function CapacityCard({
           onClick={() => onChange(capacity - 1)}
           disabled={capacity <= 1}
           className="w-9 h-9 rounded-lg border border-gray-200 text-gray-700 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-          aria-label="Decrease capacity"
+          aria-label={t('capacity_decrease')}
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -462,22 +483,22 @@ function CapacityCard({
           onClick={() => onChange(capacity + 1)}
           disabled={capacity >= 20}
           className="w-9 h-9 rounded-lg border border-gray-200 text-gray-700 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-          aria-label="Increase capacity"
+          aria-label={t('capacity_increase')}
         >
           <Plus className="w-4 h-4" />
         </button>
-        <span className="text-xs text-gray-500 ml-1">/ day</span>
+        <span className="text-xs text-gray-500 ml-1">{t('capacity_per_day')}</span>
       </div>
 
       <div className="basis-full sm:basis-auto sm:ml-auto flex items-center gap-2">
         {overcapacityDays > 0 ? (
           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
             <AlertTriangle className="w-3 h-3" />
-            {overcapacityDays} day{overcapacityDays === 1 ? '' : 's'} over capacity
+            {overcapacityDays} {overcapacityDays === 1 ? t('capacity_over_capacity_singular') : t('capacity_over_capacity_plural')}
           </span>
         ) : null}
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700">
-          {upcomingBookings} upcoming bookings
+          {upcomingBookings} {t('capacity_upcoming_bookings_suffix')}
         </span>
       </div>
     </section>
@@ -487,10 +508,11 @@ function CapacityCard({
 /* ---------- View toggle ---------- */
 
 function ViewToggle({ view, onChange }: { view: CalendarView; onChange: (v: CalendarView) => void }) {
+  const t = usePortalT('bookings')
   const options: { id: CalendarView; label: string }[] = [
-    { id: 'month', label: 'Month' },
-    { id: 'week', label: 'Week' },
-    { id: 'day', label: 'Day' },
+    { id: 'month', label: t('view_month') },
+    { id: 'week', label: t('view_week') },
+    { id: 'day', label: t('view_day') },
   ]
   return (
     <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
@@ -527,6 +549,8 @@ function MonthView({
   onSelect: (iso: string) => void
   onWeekdayClick: (idx: number) => void
 }) {
+  const t = usePortalT('bookings')
+  const weekdayLabels = buildWeekdayLabels(t)
   const grid = monthGrid(anchor.getFullYear(), anchor.getMonth())
   return (
     <>
@@ -537,9 +561,9 @@ function MonthView({
               type="button"
               onClick={() => onWeekdayClick(i)}
               className="hover:text-gray-700 transition-colors"
-              title={`Block all ${w}s this month`}
+              title={t('block_weekday_tooltip', { weekday: weekdayLabels[i] })}
             >
-              {w}
+              {weekdayLabels[i]}
             </button>
           </div>
         ))}
@@ -616,6 +640,8 @@ function WeekView({
   closedWeekday: boolean[]
   onSelect: (iso: string) => void
 }) {
+  const t = usePortalT('bookings')
+  const weekdayLabels = buildWeekdayLabels(t)
   const week = weekGrid(anchor)
   return (
     <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
@@ -628,7 +654,7 @@ function WeekView({
         const avail = dayAvailability(off, closedWeekday, d)
         const isClosed = avail === 'closed'
         const availLabel =
-          avail === 'unavailable' ? 'Unavailable' : avail === 'limited' ? 'Limited' : avail === 'closed' ? 'Closed' : null
+          avail === 'unavailable' ? t('availability_unavailable') : avail === 'limited' ? t('availability_limited') : avail === 'closed' ? t('availability_closed') : null
         const bookings = bookingsByDate.get(iso) ?? []
         const over = bookings.length > capacity
         return (
@@ -647,7 +673,7 @@ function WeekView({
           >
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-                {WEEKDAY_LABELS[(d.getDay() + 6) % 7]}
+                {weekdayLabels[(d.getDay() + 6) % 7]}
               </span>
               <span className="text-sm font-semibold tabular-nums">
                 {d.getDate()}
@@ -663,7 +689,7 @@ function WeekView({
             </div>
             <span className="mt-1 text-[10px] text-gray-500 tabular-nums">
               {bookings.length}/{capacity}
-              {over ? <span className="ml-1 text-rose-600 font-semibold">over</span> : ''}
+              {over ? <span className="ml-1 text-rose-600 font-semibold">{t('week_view_over')}</span> : ''}
             </span>
           </button>
         )
@@ -685,6 +711,7 @@ function DayView({
   closedWeekday: boolean[]
   onSelect: (iso: string) => void
 }) {
+  const t = usePortalT('bookings')
   const iso = formatISODate(anchor)
   const off = offByDate.get(iso)
   const avail = dayAvailability(off, closedWeekday, anchor)
@@ -706,7 +733,7 @@ function DayView({
   }, [iso])
 
   const availLabel =
-    avail === 'unavailable' ? 'Unavailable' : avail === 'limited' ? 'Limited' : avail === 'closed' ? 'Closed' : 'Open'
+    avail === 'unavailable' ? t('availability_unavailable') : avail === 'limited' ? t('availability_limited') : avail === 'closed' ? t('availability_closed') : t('availability_open')
   const availPillClass =
     avail === 'unavailable'
       ? 'bg-rose-50 text-rose-700 border-rose-200'
@@ -736,11 +763,11 @@ function DayView({
         {over ? (
           <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
             <AlertTriangle className="w-3 h-3" />
-            Over capacity ({bookings.length} / {capacity})
+            {t('day_view_over_capacity', { bookings: bookings.length, capacity })}
           </span>
         ) : (
           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-gray-50 text-gray-600 border border-gray-200 tabular-nums">
-            {bookings.length} / {capacity} booked
+            {t('day_view_booked', { bookings: bookings.length, capacity })}
           </span>
         )}
       </div>
@@ -748,7 +775,7 @@ function DayView({
       {sorted.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-4 py-10 text-center">
           <p className="text-sm text-gray-500">
-            {off ? 'No bookings — and the day is marked off.' : 'No bookings on this day yet.'}
+            {off ? t('day_view_no_bookings_off') : t('day_view_no_bookings')}
           </p>
         </div>
       ) : (
@@ -772,7 +799,7 @@ function DayView({
                     : overlapping.length > 0
                       ? overlapping.map((b) => (
                           <span key={`${b.id}-cont`} className="text-[10px] text-gray-400 italic">
-                            (continues — {b.couple})
+                            {t('day_view_continues', { couple: b.couple })}
                           </span>
                         ))
                       : null}
@@ -789,7 +816,8 @@ function DayView({
 /* ---------- Booking chip ---------- */
 
 function BookingChip({ booking, dense }: { booking: CalendarBooking; dense?: boolean }) {
-  const meta = BOOKING_STATUS_META[booking.status]
+  const t = usePortalT('bookings')
+  const meta = buildBookingStatusMeta(t)[booking.status]
   return (
     <Link
       href={`/bookings/${booking.id}`}
@@ -823,6 +851,7 @@ function SelectedDatePanel({
   onClear: () => void
   onClose: () => void
 }) {
+  const t = usePortalT('bookings')
   const [note, setNote] = useState(entry?.note ?? '')
 
   useEffect(() => {
@@ -839,12 +868,12 @@ function SelectedDatePanel({
   return (
     <div>
       <div className="flex items-start justify-between gap-2 mb-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Selected date</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t('panel_selected_date')}</p>
         <button
           type="button"
           onClick={onClose}
           className="p-1 -mr-1 -mt-0.5 text-gray-400 hover:text-gray-700 rounded-md transition-colors"
-          aria-label="Close panel"
+          aria-label={t('panel_close')}
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -855,12 +884,12 @@ function SelectedDatePanel({
         {isOff ? (
           <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border bg-gray-100 text-gray-700 border-gray-200">
             <CalendarOff className="w-3 h-3" />
-            Off
+            {t('panel_off')}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200">
             <CalendarDays className="w-3 h-3" />
-            Operating
+            {t('panel_operating')}
           </span>
         )}
         <span
@@ -870,11 +899,11 @@ function SelectedDatePanel({
           )}
         >
           {over ? <AlertTriangle className="w-3 h-3" /> : null}
-          {bookings.length} / {capacity} booked
+          {t('panel_booked', { bookings: bookings.length, capacity })}
         </span>
       </div>
 
-      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">Operating status</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">{t('panel_status_label')}</p>
       <div className="grid grid-cols-2 gap-1.5">
         <button
           type="button"
@@ -884,7 +913,7 @@ function SelectedDatePanel({
             !isOff ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400',
           )}
         >
-          Operating
+          {t('panel_button_operating')}
         </button>
         <button
           type="button"
@@ -894,35 +923,33 @@ function SelectedDatePanel({
             isOff ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400',
           )}
         >
-          Mark off
+          {t('panel_button_mark_off')}
         </button>
       </div>
 
-      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">Off-day note</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-5 mb-2">{t('panel_off_day_note_label')}</p>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
         onBlur={() => { onMarkOff(note.trim() || undefined) }}
-        placeholder="e.g. Personal leave, training day"
+        placeholder={t('panel_off_day_placeholder')}
         rows={3}
         className="w-full text-xs bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none resize-none"
       />
-      <p className="text-[10px] text-gray-400 mt-1">
-        Saves on blur. Couples don&rsquo;t see this — only that the date is unavailable.
-      </p>
+      <p className="text-[10px] text-gray-400 mt-1">{t('panel_off_day_hint')}</p>
 
       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-6 mb-2">
-        Bookings ({bookings.length})
+        {t('panel_bookings_header', { bookings: bookings.length })}
       </p>
       {bookings.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No bookings on this date.</p>
+        <p className="text-xs text-gray-500 italic">{t('panel_no_bookings')}</p>
       ) : (
         <ul className="space-y-2">
           {bookings.map((b) => (
             <li key={b.id}>
               <Link
                 href={`/bookings/${b.id}`}
-                className={cn('block rounded-md border px-3 py-2 hover:bg-gray-50 transition-colors', BOOKING_STATUS_META[b.status].pillClass)}
+                className={cn('block rounded-md border px-3 py-2 hover:bg-gray-50 transition-colors', buildBookingStatusMeta(t)[b.status].pillClass)}
               >
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-semibold truncate">
@@ -944,7 +971,7 @@ function SelectedDatePanel({
           className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          Clear off-day mark
+          {t('panel_clear_off_day')}
         </button>
       ) : null}
     </div>
@@ -952,15 +979,14 @@ function SelectedDatePanel({
 }
 
 function EmptyPanel() {
+  const t = usePortalT('bookings')
   return (
     <div className="text-center py-6">
       <span className="mx-auto w-10 h-10 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center">
         <CalendarDays className="w-5 h-5" />
       </span>
-      <p className="text-sm font-semibold text-gray-900 mt-3">Click any date</p>
-      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-        Mark it as off-day or see the bookings already scheduled for that date.
-      </p>
+      <p className="text-sm font-semibold text-gray-900 mt-3">{t('empty_panel_title')}</p>
+      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{t('empty_panel_desc')}</p>
     </div>
   )
 }

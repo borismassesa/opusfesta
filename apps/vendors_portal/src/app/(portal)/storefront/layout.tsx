@@ -1,6 +1,7 @@
-'use client'
-
 import type { ReactNode } from 'react'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import { StorefrontPublishBar } from './StorefrontPublishBar'
 
 // NOTE: there is intentionally no "finish onboarding" gate here. The server
@@ -13,11 +14,13 @@ import { StorefrontPublishBar } from './StorefrontPublishBar'
 // "Your storefront isn't live yet / Start onboarding" dead-end that
 // contradicted the dashboard. Editors read their data from the DB, so they
 // render correctly without the local draft.
-export default function ListingLayout({ children }: { children: ReactNode }) {
+export default async function ListingLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale()
+  const storefrontChromeStrings = await loadPortalUiStrings('storefront-chrome', locale)
   return (
-    <>
+    <PortalUIStringsProvider bundles={{ 'storefront-chrome': storefrontChromeStrings }}>
       <StorefrontPublishBar />
       {children}
-    </>
+    </PortalUIStringsProvider>
   )
 }

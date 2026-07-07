@@ -2,6 +2,9 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentVendor } from '@/lib/vendor'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import { ActiveVendorProvider } from '@/lib/onboarding/active-vendor-context'
 import PortalShell from './PortalShell'
 
@@ -61,11 +64,16 @@ export default async function PortalLayout({
 
   const newLeadCount = state.kind === 'live' ? await loadNewLeadCount(state.vendor.id) : 0
 
+  const locale = await getLocale()
+  const portalChrome = await loadPortalUiStrings('portal-chrome', locale)
+
   return (
-    <ActiveVendorProvider vendorId={activeVendorId}>
-      <PortalShell vendorName={vendorName} vendorSlug={vendorSlug} newLeadCount={newLeadCount}>
-        {children}
-      </PortalShell>
-    </ActiveVendorProvider>
+    <PortalUIStringsProvider bundles={{ 'portal-chrome': portalChrome }}>
+      <ActiveVendorProvider vendorId={activeVendorId}>
+        <PortalShell vendorName={vendorName} vendorSlug={vendorSlug} newLeadCount={newLeadCount}>
+          {children}
+        </PortalShell>
+      </ActiveVendorProvider>
+    </PortalUIStringsProvider>
   )
 }

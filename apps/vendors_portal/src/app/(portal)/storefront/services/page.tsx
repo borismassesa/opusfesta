@@ -1,6 +1,9 @@
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { getServicesForCategory } from '@/lib/onboarding/services'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import ServicesEditor, { type ServicesSource } from './ServicesEditor'
 import { dbServicesToUi } from './mapping'
 
@@ -101,6 +104,11 @@ async function loadServices(): Promise<{
 }
 
 export default async function StorefrontServicesPage() {
-  const props = await loadServices()
-  return <ServicesEditor {...props} />
+  const [props, locale] = await Promise.all([loadServices(), getLocale()])
+  const servicesStrings = await loadPortalUiStrings('storefront-services', locale)
+  return (
+    <PortalUIStringsProvider bundles={{ 'storefront-services': servicesStrings }}>
+      <ServicesEditor {...props} />
+    </PortalUIStringsProvider>
+  )
 }

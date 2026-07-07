@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Eraser } from 'lucide-react'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 type Props = {
   /**
@@ -27,6 +28,7 @@ type Props = {
  *     pixel — keeps React renders cheap.
  */
 export function SignaturePad({ onChange, disabled }: Props) {
+  const t = usePortalT('verify')
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
   const lastPointRef = useRef<{ x: number; y: number } | null>(null)
@@ -120,21 +122,20 @@ export function SignaturePad({ onChange, disabled }: Props) {
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
           className="block w-full h-32 touch-none cursor-crosshair"
-          aria-label="Signature pad"
+          aria-label={t('signature_aria_label')}
         />
         {!hasInk && (
           <span
             className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-gray-400 italic"
             aria-hidden
           >
-            Sign here with your finger or mouse
+            {t('signature_placeholder')}
           </span>
         )}
       </div>
       <div className="mt-2 flex items-center justify-between">
         <p className="text-[11px] text-gray-500">
-          Drawing your signature is optional — typing your full legal name
-          above is what we record on the agreement.
+          {t('signature_hint')}
         </p>
         <button
           type="button"
@@ -143,7 +144,7 @@ export function SignaturePad({ onChange, disabled }: Props) {
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-40 disabled:hover:text-gray-600"
         >
           <Eraser className="w-3 h-3" />
-          Clear
+          {t('signature_clear')}
         </button>
       </div>
     </div>

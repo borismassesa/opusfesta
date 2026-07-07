@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CurrentVendor } from '@/lib/vendor'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 const CATEGORY_LABEL: Record<string, string> = {
   Venues: 'Venue',
@@ -45,6 +46,7 @@ type Props = {
 }
 
 function Avatar({ imageUrl, name }: { imageUrl: string | undefined; name: string | null }) {
+  const t = usePortalT('settings')
   const initials = name
     ? name.split(/\s+/).filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase()
     : '?'
@@ -54,7 +56,7 @@ function Avatar({ imageUrl, name }: { imageUrl: string | undefined; name: string
       {imageUrl ? (
         <Image
           src={imageUrl}
-          alt={name ?? 'Profile picture'}
+          alt={name ?? t('fallback_name')}
           width={80}
           height={80}
           className="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow"
@@ -66,7 +68,7 @@ function Avatar({ imageUrl, name }: { imageUrl: string | undefined; name: string
       )}
       <button
         type="button"
-        aria-label="Change photo"
+        aria-label={t('aria_change_photo')}
         className="absolute bottom-0 right-0 w-7 h-7 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
       >
         <Camera className="w-3.5 h-3.5 text-gray-500" />
@@ -112,6 +114,7 @@ function Row({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = usePortalT('settings')
   const isActive = status === 'active'
   return (
     <span
@@ -121,12 +124,13 @@ function StatusBadge({ status }: { status: string }) {
       )}
     >
       <CheckCircle2 className="w-3 h-3" />
-      {isActive ? 'Active' : 'Pending review'}
+      {isActive ? t('status_active') : t('status_pending_review')}
     </span>
   )
 }
 
 function PhoneField({ initial }: { initial: string | null }) {
+  const t = usePortalT('settings')
   const [phone, setPhone] = useState(initial ?? '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -147,7 +151,7 @@ function PhoneField({ initial }: { initial: string | null }) {
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        setError((json as Record<string, unknown>).error as string ?? 'Failed to save. Please try again.')
+        setError((json as Record<string, unknown>).error as string ?? t('phone_error_generic'))
         return
       }
       setSaved(true)
@@ -155,7 +159,7 @@ function PhoneField({ initial }: { initial: string | null }) {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('phone_error_network'))
     } finally {
       setSaving(false)
     }
@@ -172,7 +176,7 @@ function PhoneField({ initial }: { initial: string | null }) {
             type="tel"
             value={phone}
             onChange={(e) => { setPhone(e.target.value); setError(null) }}
-            placeholder="+255 7XX XXX XXX"
+            placeholder={t('phone_placeholder')}
             autoFocus
             className="flex-1 text-sm font-semibold border-b border-[#C9A0DC] bg-transparent focus:outline-none text-gray-900 pb-0.5"
           />
@@ -182,14 +186,14 @@ function PhoneField({ initial }: { initial: string | null }) {
             disabled={saving}
             className="text-xs font-bold text-[#7E5896] hover:text-[#6b4a80] transition-colors disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('phone_saving') : t('phone_save')}
           </button>
           <button
             type="button"
             onClick={() => { setPhone(initial ?? ''); setEditing(false); setError(null) }}
             className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
           >
-            Cancel
+            {t('phone_cancel')}
           </button>
         </div>
         {error && (
@@ -202,10 +206,10 @@ function PhoneField({ initial }: { initial: string | null }) {
   return (
     <Row
       icon={Phone}
-      label="Phone"
+      label={t('phone_label')}
       value={
         <span className={phone ? 'text-gray-900' : 'text-gray-400'}>
-          {phone || 'Add phone number'}
+          {phone || t('phone_add')}
         </span>
       }
       action={
@@ -217,7 +221,7 @@ function PhoneField({ initial }: { initial: string | null }) {
             saved ? 'text-green-600' : 'text-[#7E5896] hover:text-[#6b4a80]',
           )}
         >
-          {saved ? 'Saved ✓' : phone ? 'Edit' : 'Add'}
+          {saved ? t('phone_saved') : phone ? t('phone_edit') : t('phone_add_button')}
         </button>
       }
     />
@@ -225,6 +229,7 @@ function PhoneField({ initial }: { initial: string | null }) {
 }
 
 export default function SettingsClient({ phone, vendor }: Props) {
+  const t = usePortalT('settings')
   const { user } = useUser()
   const { openUserProfile, signOut } = useClerk()
 
@@ -238,7 +243,7 @@ export default function SettingsClient({ phone, vendor }: Props) {
       <div className="flex items-center gap-5">
         <Avatar imageUrl={imageUrl} name={name} />
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-gray-900 truncate">{name ?? email ?? 'Your profile'}</h1>
+          <h1 className="text-xl font-bold text-gray-900 truncate">{name ?? email ?? t('fallback_name')}</h1>
           {vendor && (
             <p className="text-sm text-gray-500 mt-0.5 truncate">
               {ROLE_LABEL[vendor.role] ?? vendor.role} · {CATEGORY_LABEL[vendor.category] ?? vendor.category}
@@ -248,10 +253,10 @@ export default function SettingsClient({ phone, vendor }: Props) {
       </div>
 
       {/* Account */}
-      <Section title="Account">
+      <Section title={t('section_account')}>
         <Row
           icon={User}
-          label="Full name"
+          label={t('row_full_name')}
           value={name}
           action={
             <button
@@ -259,13 +264,13 @@ export default function SettingsClient({ phone, vendor }: Props) {
               onClick={() => openUserProfile()}
               className="text-xs font-semibold text-[#7E5896] hover:text-[#6b4a80] transition-colors shrink-0"
             >
-              Edit
+              {t('action_edit')}
             </button>
           }
         />
         <Row
           icon={Mail}
-          label="Email"
+          label={t('row_email')}
           value={email}
           action={
             <button
@@ -273,21 +278,21 @@ export default function SettingsClient({ phone, vendor }: Props) {
               onClick={() => openUserProfile()}
               className="text-xs font-semibold text-[#7E5896] hover:text-[#6b4a80] transition-colors shrink-0"
             >
-              Manage
+              {t('action_manage')}
             </button>
           }
         />
         <PhoneField initial={phone} />
         <Row
           icon={Shield}
-          label="Password & security"
-          value="Manage 2FA, passwords, and connected accounts"
+          label={t('row_password_security')}
+          value={t('row_password_security_value')}
           action={
             <button
               type="button"
               onClick={() => openUserProfile()}
               className="text-gray-400 hover:text-gray-600 transition-colors shrink-0"
-              aria-label="Manage security"
+              aria-label={t('aria_manage_security')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -297,16 +302,16 @@ export default function SettingsClient({ phone, vendor }: Props) {
 
       {/* Business */}
       {vendor && (
-        <Section title="Business">
+        <Section title={t('section_business')}>
           <Row
             icon={Store}
-            label="Business name"
+            label={t('row_business_name')}
             value={vendor.businessName}
             action={
               <Link
                 href="/storefront/about"
                 className="text-gray-400 hover:text-gray-600 transition-colors shrink-0"
-                aria-label="Edit storefront"
+                aria-label={t('aria_edit_storefront')}
               >
                 <ArrowUpRight className="w-4 h-4" />
               </Link>
@@ -314,7 +319,7 @@ export default function SettingsClient({ phone, vendor }: Props) {
           />
           <Row
             icon={Store}
-            label="Category"
+            label={t('row_category')}
             value={CATEGORY_LABEL[vendor.category] ?? vendor.category}
           />
           <div className="flex items-center gap-4 px-6 py-4">
@@ -322,7 +327,7 @@ export default function SettingsClient({ phone, vendor }: Props) {
               <CheckCircle2 className="w-4 h-4 text-gray-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-400 font-medium mb-0.5">Account status</p>
+              <p className="text-xs text-gray-400 font-medium mb-0.5">{t('row_account_status')}</p>
               <StatusBadge status={vendor.onboardingStatus} />
             </div>
           </div>
@@ -337,7 +342,7 @@ export default function SettingsClient({ phone, vendor }: Props) {
           className="flex items-center gap-2 text-sm font-semibold text-red-500 hover:text-red-600 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          Sign out
+          {t('sign_out')}
         </button>
       </div>
     </div>

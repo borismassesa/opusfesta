@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthShell from '@/components/AuthShell'
 import CodeBoxes from '@/components/CodeBoxes'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 // Fully headless sign-up: we own the markup, Clerk owns the auth. We call
 // Clerk's official useSignUp API (create / prepareEmailAddressVerification /
@@ -82,6 +83,7 @@ function GoogleIcon() {
 export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) {
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
+  const t = usePortalT('auth')
 
   const [step, setStep] = useState<Step>('details')
   const [firstName, setFirstName] = useState('')
@@ -131,7 +133,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
       if (clerkErrorCode(err) === 'form_identifier_exists') {
         setExistingAccount(true)
       } else {
-        setError(clerkError(err, "We couldn't create your account. Please check your details and try again."))
+        setError(clerkError(err, t('signup_create_error')))
       }
     } finally {
       setBusy(false)
@@ -149,10 +151,10 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
         await setActive({ session: res.createdSessionId })
         router.push(AFTER_SIGN_UP_URL)
       } else {
-        setError('That code didn’t complete sign-up. Please try again.')
+        setError(t('signup_verify_incomplete_error'))
       }
     } catch (err) {
-      setError(clerkError(err, 'Invalid or expired code.'))
+      setError(clerkError(err, t('reset_invalid_code_error')))
     } finally {
       setBusy(false)
     }
@@ -164,7 +166,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
     } catch (err) {
-      setError(clerkError(err, 'Could not resend the code.'))
+      setError(clerkError(err, t('resend_error')))
     }
   }
 
@@ -179,7 +181,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
         redirectUrlComplete: AFTER_SIGN_UP_URL,
       })
     } catch (err) {
-      setError(clerkError(err, "Couldn't continue with Google."))
+      setError(clerkError(err, t('oauth_google_error')))
       setOauthBusy(null)
     }
   }
@@ -192,16 +194,16 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
 
   const subtitle =
     step === 'verify'
-      ? `Enter the 6-digit code we sent to ${email}.`
-      : 'Apply to do business on OpusFesta — it takes a couple of minutes.'
+      ? t('signup_subtitle_verify', { email })
+      : t('signup_subtitle_default')
 
   return (
     <AuthShell
-      panelTitle="Grow your business with OpusFesta"
-      panelSubtitle="List your services, reach couples planning their big day, and manage every booking — leads, quotes, and payments — from one dashboard."
+      panelTitle={t('signup_panel_title')}
+      panelSubtitle={t('signup_panel_subtitle')}
     >
       <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]">
-        Create your vendor account
+        {t('signup_heading')}
       </h1>
       <p className="mt-2 text-[15px] text-gray-500">{subtitle}</p>
 
@@ -209,23 +211,23 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
             <div className="py-14 text-center">
               {stalled ? (
                 <>
-                  <p className="text-sm font-medium text-[#1A1A1A]">Sign-up is temporarily unavailable</p>
+                  <p className="text-sm font-medium text-[#1A1A1A]">{t('signup_stalled_title')}</p>
                   <p className="mx-auto mt-2 max-w-xs text-sm text-gray-500">
-                    We couldn&rsquo;t reach the authentication service. Please try again.
+                    {t('auth_stalled_desc')}
                   </p>
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
                     className={`mt-5 ${buttonClass}`}
                   >
-                    Retry
+                    {t('retry_button')}
                   </button>
                 </>
               ) : (
                 <div
                   className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#C9A0DC]"
                   role="status"
-                  aria-label="Loading"
+                  aria-label={t('loading_aria')}
                 />
               )}
             </div>
@@ -246,18 +248,16 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                   role="alert"
                 >
                   <p className="font-semibold text-amber-900">
-                    You already have an OpusFesta account
+                    {t('existing_account_title')}
                   </p>
                   <p className="mt-1 text-amber-800">
-                    <strong>{email.trim()}</strong> is already registered. Your
-                    OpusFesta login works across the whole platform, so just sign
-                    in to start your vendor application.
+                    {t('existing_account_desc', { email: email.trim() })}
                   </p>
                   <Link
                     href={signInHref}
                     className={`mt-3 ${buttonClass}`}
                   >
-                    Sign in instead
+                    {t('signin_instead_button')}
                   </Link>
                 </div>
               )}
@@ -271,13 +271,13 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                     className={`w-full ${oauthButtonClass}`}
                   >
                     <GoogleIcon />
-                    {oauthBusy === 'google' ? 'Redirecting…' : 'Continue with Google'}
+                    {oauthBusy === 'google' ? t('oauth_redirecting') : t('oauth_google_button')}
                   </button>
 
                   <div className="my-5 flex items-center gap-3">
                     <span className="h-px flex-1 bg-gray-200" />
                     <span className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                      or
+                      {t('or_divider')}
                     </span>
                     <span className="h-px flex-1 bg-gray-200" />
                   </div>
@@ -286,7 +286,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="firstName" className={labelClass}>
-                          First name
+                          {t('field_first_name_label')}
                         </label>
                         <input
                           id="firstName"
@@ -295,13 +295,13 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                           required
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
-                          placeholder="Amani"
+                          placeholder={t('field_first_name_placeholder')}
                           className={inputClass}
                         />
                       </div>
                       <div>
                         <label htmlFor="lastName" className={labelClass}>
-                          Last name
+                          {t('field_last_name_label')}
                         </label>
                         <input
                           id="lastName"
@@ -310,14 +310,14 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                           required
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
-                          placeholder="Mushi"
+                          placeholder={t('field_last_name_placeholder')}
                           className={inputClass}
                         />
                       </div>
                     </div>
                     <div>
                       <label htmlFor="email" className={labelClass}>
-                        Email address
+                        {t('field_email_label')}
                       </label>
                       <input
                         id="email"
@@ -329,13 +329,13 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                           setEmail(e.target.value)
                           if (existingAccount) setExistingAccount(false)
                         }}
-                        placeholder="you@business.co.tz"
+                        placeholder={t('field_email_placeholder')}
                         className={inputClass}
                       />
                     </div>
                     <div>
                       <label htmlFor="password" className={labelClass}>
-                        Password
+                        {t('field_password_label')}
                       </label>
                       <input
                         id="password"
@@ -344,7 +344,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="At least 8 characters"
+                        placeholder={t('new_password_placeholder')}
                         className={inputClass}
                       />
                     </div>
@@ -355,7 +355,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                     <div id="clerk-captcha" />
 
                     <button type="submit" disabled={busy} className={buttonClass}>
-                      {busy ? 'Creating account…' : 'Create account'}
+                      {busy ? t('creating_account_label') : t('create_account_button')}
                     </button>
                   </form>
                 </>
@@ -364,7 +364,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
               {step === 'verify' && (
                 <form onSubmit={onVerify} className="space-y-5">
                   <div>
-                    <span className={labelClass}>Verification code</span>
+                    <span className={labelClass}>{t('verification_code_label')}</span>
                     <CodeBoxes
                       value={code}
                       onChange={setCode}
@@ -377,7 +377,7 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                     disabled={busy || code.replace(/\D/g, '').length < 6}
                     className={buttonClass}
                   >
-                    {busy ? 'Verifying…' : 'Verify & continue'}
+                    {busy ? t('verifying_label') : t('verify_continue_button')}
                   </button>
                   <div className="flex items-center justify-between text-sm">
                     <button
@@ -385,10 +385,10 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
                       onClick={resetToDetails}
                       className="text-gray-500 hover:text-[#1A1A1A]"
                     >
-                      Use different details
+                      {t('use_different_details_button')}
                     </button>
                     <button type="button" onClick={resendCode} disabled={busy} className={linkClass}>
-                      Resend code
+                      {t('resend_code_button')}
                     </button>
                   </div>
                 </form>
@@ -396,9 +396,9 @@ export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) 
 
               {step === 'details' && (
                 <p className="mt-6 text-center text-sm text-gray-500">
-                  Already have an account?{' '}
+                  {t('already_have_account')}{' '}
                   <Link href="/sign-in" className={linkClass}>
-                    Sign in
+                    {t('signin_link')}
                   </Link>
                 </p>
               )}

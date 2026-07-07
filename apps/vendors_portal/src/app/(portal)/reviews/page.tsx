@@ -2,6 +2,9 @@ import type { Review } from '@/lib/mock-data'
 import { sampleReviews, reviewInviteCandidates } from '@/lib/mock-data'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import ReviewsClient, { type ReviewsSource } from './ReviewsClient'
 
 const PLACEHOLDER_AVATAR =
@@ -114,13 +117,17 @@ export default async function ReviewsPage() {
   // In dev (no-env) we surface the mock candidates so the flow is reviewable.
   const invitesAvailable = source.kind === 'no-env'
   const inviteCandidates = invitesAvailable ? reviewInviteCandidates : []
+  const locale = await getLocale()
+  const reviewsStrings = await loadPortalUiStrings('reviews', locale)
 
   return (
-    <ReviewsClient
-      initialReviews={initialReviews}
-      inviteCandidates={inviteCandidates}
-      invitesAvailable={invitesAvailable}
-      source={source}
-    />
+    <PortalUIStringsProvider bundles={{ reviews: reviewsStrings }}>
+      <ReviewsClient
+        initialReviews={initialReviews}
+        inviteCandidates={inviteCandidates}
+        invitesAvailable={invitesAvailable}
+        source={source}
+      />
+    </PortalUIStringsProvider>
   )
 }
