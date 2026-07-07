@@ -68,6 +68,8 @@ export type OpusPassPackagesContent = {
   note_sw: string
   perGuestLabel: string
   perGuestLabel_sw: string
+  perDesignLabel: string
+  perDesignLabel_sw: string
   cardsCountLabel: string
   cardsCountLabel_sw: string
   minGuestsTemplate: string
@@ -125,6 +127,8 @@ export const OPUS_PASS_PACKAGES_FALLBACK: OpusPassPackagesContent = {
   note_sw: 'Matukio ya wageni zaidi ya 600 yanapata bei ya punguzo (kikomo).',
   perGuestLabel: 'per guest',
   perGuestLabel_sw: 'kwa mgeni',
+  perDesignLabel: 'per design',
+  perDesignLabel_sw: 'kwa muundo',
   cardsCountLabel: 'Number of digital cards & OpusPass tickets',
   cardsCountLabel_sw: 'Idadi ya kadi za kidijitali na tiketi za OpusPass',
   minGuestsTemplate: 'Minimum {count} guests',
