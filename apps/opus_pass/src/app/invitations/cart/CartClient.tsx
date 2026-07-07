@@ -196,11 +196,13 @@ function RecommendCard({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
 }: {
   product: CatalogProduct
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
 }) {
   return (
     <div className="group/rec flex flex-col">
@@ -221,7 +223,7 @@ function RecommendCard({
           <InvitationVisual treatment={product.treatment} palette={product.palettes?.[0]} />
         )}
       </Link>
-      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} />
+      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
     </div>
   )
 }
@@ -233,11 +235,13 @@ function ExploreMore({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
 }: {
   products: CatalogProduct[]
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
 }) {
   const t = useT('cart')
   const { items } = useCart()
@@ -277,7 +281,7 @@ function ExploreMore({
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
         {recommended.map((product) => (
-          <RecommendCard key={product.id} product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} />
+          <RecommendCard key={product.id} product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
         ))}
       </div>
     </section>
@@ -289,11 +293,13 @@ export default function CartClient({
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
+  fromLabel,
 }: {
   products?: CatalogProduct[]
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
+  fromLabel?: string
 }) {
   const t = useT('cart')
   const { items, subtotal, removeItem, setGuests } = useCart()
@@ -505,7 +511,7 @@ export default function CartClient({
           </div>
         </div>
 
-        <ExploreMore products={products} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} />
+        <ExploreMore products={products} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
       </div>
 
       {/* Mobile sticky checkout bar — shows item count + total and keeps the

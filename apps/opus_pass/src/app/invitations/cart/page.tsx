@@ -23,6 +23,7 @@ export default async function CartPage() {
         fromGuestPrice={packageFromPrice(packages)}
         perGuestLabel={packages.perGuestLabel}
         perDesignLabel={packages.perDesignLabel}
+        fromLabel={packages.fromLabel}
       />
     </UIStringsProvider>
   )

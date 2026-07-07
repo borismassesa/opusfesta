@@ -63,6 +63,7 @@ export default async function InvitationsCategoryPage({ params }: { params: Prom
         fromGuestPrice={packageFromPrice(packages)}
         perGuestLabel={packages.perGuestLabel}
         perDesignLabel={packages.perDesignLabel}
+        fromLabel={packages.fromLabel}
         promoBanner={promoBanner}
         styleStrip={styleStripFromCategories(categories)}
       />

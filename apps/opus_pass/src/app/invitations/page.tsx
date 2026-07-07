@@ -80,6 +80,7 @@ export default async function InvitationsLandingPage() {
         fromGuestPrice={fromGuestPrice}
         perGuestLabel={packages.perGuestLabel}
         perDesignLabel={packages.perDesignLabel}
+        fromLabel={packages.fromLabel}
         testimonials={<InvitationShowcase />}
       />
     </>
