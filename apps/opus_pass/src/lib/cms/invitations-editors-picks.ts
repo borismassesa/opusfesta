@@ -28,6 +28,8 @@ export type InvitationsEditorsPicksPick = {
   /** Catalog product ID (p1, p2, …) — used to build the /invitations/p/:id link */
   product_id?: string
   category: string
+  /** Locale-resolved display text for `category` — see Product.categoryLabel. */
+  categoryLabel?: string
   name: string
   price_was?: number
   price_now: number
@@ -53,9 +55,11 @@ export type InvitationsEditorsPicksRow = {
 
 export type InvitationsEditorsPicksContent = {
   rows: InvitationsEditorsPicksRow[]
+  exploreLabel: string
 }
 
 export const INVITATIONS_EDITORS_PICKS_FALLBACK: InvitationsEditorsPicksContent = {
+  exploreLabel: 'Explore designs',
   rows: [
     {
       id: 'row-1', title_line_1: 'Save the dates', title_line_2: 'worth saving', align: 'left',
@@ -109,6 +113,7 @@ function productToPick(product: CatalogProduct): InvitationsEditorsPicksPick {
     id: product.id,
     product_id: product.id,
     category: product.category,
+    categoryLabel: product.categoryLabel,
     name: product.name,
     price_was: product.priceWas,
     price_now: product.priceNow,
@@ -152,7 +157,7 @@ export function editorsPicksRowsFromProducts(
     cursor += PICKS_PER_ROW
   }
 
-  return { rows }
+  return { rows, exploreLabel: template.exploreLabel }
 }
 
 // Stored shape: only each row's two title lines are translatable (they may be a
@@ -168,6 +173,7 @@ type StoredEditorsPicksRow = Omit<InvitationsEditorsPicksRow, 'title_line_1' | '
 
 type StoredEditorsPicksContent = {
   rows?: StoredEditorsPicksRow[]
+  exploreLabel?: MaybeLocalized
 }
 
 export async function loadInvitationsEditorsPicksContent(
@@ -190,6 +196,10 @@ export async function loadInvitationsEditorsPicksContent(
       | undefined
     if (stored?.rows && Array.isArray(stored.rows) && stored.rows.length > 0) {
       return {
+        exploreLabel: resolveLocalized(
+          stored.exploreLabel ?? INVITATIONS_EDITORS_PICKS_FALLBACK.exploreLabel,
+          locale
+        ),
         rows: stored.rows.map((row) => ({
           ...row,
           title_line_1: resolveLocalized(row.title_line_1, locale),

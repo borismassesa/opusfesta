@@ -67,6 +67,7 @@ export type OpusPassEditorsPicksRow = {
 
 export type OpusPassInvitationsEditorsPicksContent = {
   rows: OpusPassEditorsPicksRow[]
+  exploreLabel: MaybeLocalized
 }
 
 export type OpusPassInvitationsEditorsPicksRowSection = {
@@ -81,6 +82,7 @@ export type OpusPassInvitationsEditorsPicksRowSection = {
 
 export const OPUS_PASS_INVITATIONS_EDITORS_PICKS_FALLBACK: OpusPassInvitationsEditorsPicksContent =
   {
+    exploreLabel: 'Explore designs',
     rows: [
       {
         id: 'row-1',

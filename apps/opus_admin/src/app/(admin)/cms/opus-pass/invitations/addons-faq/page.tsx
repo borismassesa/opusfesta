@@ -39,6 +39,8 @@ export default async function OpusPassAddonsFaqEditorPage() {
         readMoreLabel_sw: stored.readMoreLabel_sw ?? fb.readMoreLabel_sw,
         readLessLabel: stored.readLessLabel ?? fb.readLessLabel,
         readLessLabel_sw: stored.readLessLabel_sw ?? fb.readLessLabel_sw,
+        similarDesignsHeading: stored.similarDesignsHeading ?? fb.similarDesignsHeading,
+        similarDesignsHeading_sw: stored.similarDesignsHeading_sw ?? fb.similarDesignsHeading_sw,
         // An empty array is a deliberate choice, not a missing field — only
         // fall back when the key is absent entirely (legacy rows saved
         // before this field existed).

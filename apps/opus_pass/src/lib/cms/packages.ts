@@ -87,6 +87,10 @@ export type PackagesContent = {
   // the renderer substitutes with the actual minimum guest count.
   minGuestsTemplate: string
   minGuestsTemplate_sw: string
+  // "Package includes" suffix shown after the selected tier's name above its
+  // bullet list — shared chrome, not per-tier copy.
+  includesSuffixLabel: string
+  includesSuffixLabel_sw: string
   tiers: PackageTier[]
   addons: PackageAddon[]
 }
@@ -149,6 +153,8 @@ export const PACKAGES_FALLBACK: PackagesContent = {
   cardsCountLabel_sw: 'Idadi ya kadi za kidijitali na tiketi za OpusPass',
   minGuestsTemplate: 'Minimum {count} guests',
   minGuestsTemplate_sw: 'Angalau wageni {count}',
+  includesSuffixLabel: 'Package includes',
+  includesSuffixLabel_sw: 'Kifurushi kinajumuisha',
   tiers: [
     {
       id: 'lite',
@@ -271,6 +277,8 @@ export async function loadPackagesContent(
           cardsCountLabel_sw: stored.cardsCountLabel_sw ?? PACKAGES_FALLBACK.cardsCountLabel_sw,
           minGuestsTemplate: stored.minGuestsTemplate ?? PACKAGES_FALLBACK.minGuestsTemplate,
           minGuestsTemplate_sw: stored.minGuestsTemplate_sw ?? PACKAGES_FALLBACK.minGuestsTemplate_sw,
+          includesSuffixLabel: stored.includesSuffixLabel ?? PACKAGES_FALLBACK.includesSuffixLabel,
+          includesSuffixLabel_sw: stored.includesSuffixLabel_sw ?? PACKAGES_FALLBACK.includesSuffixLabel_sw,
           tiers:
             Array.isArray(stored.tiers) && stored.tiers.length > 0
               ? stored.tiers
@@ -297,6 +305,7 @@ function resolvePackagesLocale(c: PackagesContent, locale: Locale): PackagesCont
     perGuestLabel: pick(c.perGuestLabel, c.perGuestLabel_sw, locale),
     cardsCountLabel: pick(c.cardsCountLabel, c.cardsCountLabel_sw, locale),
     minGuestsTemplate: pick(c.minGuestsTemplate, c.minGuestsTemplate_sw, locale),
+    includesSuffixLabel: pick(c.includesSuffixLabel, c.includesSuffixLabel_sw, locale),
     tiers: c.tiers.map((t) => ({
       ...t,
       name: pick(t.name, t.name_sw, locale),

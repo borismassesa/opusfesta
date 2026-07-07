@@ -79,6 +79,8 @@ export type ProductAddonsFaqContent = {
   readMoreLabel_sw: string
   readLessLabel: string
   readLessLabel_sw: string
+  similarDesignsHeading: string
+  similarDesignsHeading_sw: string
   addons: AddOn[]
   faq: FaqItem[]
 }
@@ -140,6 +142,8 @@ export const OPUS_PASS_PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
   readMoreLabel_sw: 'Soma Zaidi',
   readLessLabel: 'Read Less',
   readLessLabel_sw: 'Soma Kidogo',
+  similarDesignsHeading: 'Explore similar designs',
+  similarDesignsHeading_sw: 'Angalia miundo mingine kama hii',
   addons: [
     {
       ...addOnDefaults(),
