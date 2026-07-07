@@ -8,15 +8,26 @@ import type { InquiryRow } from '@/lib/mock-data'
 import { TZ_REGIONS } from '@/lib/onboarding/regions'
 import { cn } from '@/lib/utils'
 import type { VendorPricingPackage } from '@/lib/vendors'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 
 const TABS = ['Prospects', 'Inquiries', 'Conversations'] as const
 
 // One-line description of what each tab holds, surfaced as a tooltip so the
 // three labels read as a clear funnel: to-do -> in progress -> resolved.
-const TAB_HINT: Record<(typeof TABS)[number], string> = {
-  Prospects: 'New leads awaiting your first reply',
-  Inquiries: 'Active conversations you have replied to',
-  Conversations: 'Booked, declined, and archived leads',
+function buildTabHint(t: Translator): Record<(typeof TABS)[number], string> {
+  return {
+    Prospects: t('tab_prospects_hint'),
+    Inquiries: t('tab_inquiries_hint'),
+    Conversations: t('tab_conversations_hint'),
+  }
+}
+
+function buildTabLabel(t: Translator): Record<(typeof TABS)[number], string> {
+  return {
+    Prospects: t('tab_prospects'),
+    Inquiries: t('tab_inquiries'),
+    Conversations: t('tab_conversations'),
+  }
 }
 
 export type LeadsSource =
@@ -119,16 +130,21 @@ function firstNonEmptyTab(counts: Record<(typeof TABS)[number], number>): (typeo
   return TABS.find((tab) => counts[tab] > 0) ?? 'Prospects'
 }
 
-function getEmptyListMessage(source: LeadsSource['kind'], active: (typeof TABS)[number], searchQuery: string) {
-  if (source === 'no-application') return 'No vendor application yet.'
-  if (source === 'pending-approval') return 'Awaiting verification.'
-  if (source === 'suspended') return 'Account suspended.'
+function getEmptyListMessage(
+  source: LeadsSource['kind'],
+  active: (typeof TABS)[number],
+  searchQuery: string,
+  t: Translator,
+) {
+  if (source === 'no-application') return t('empty_no_application')
+  if (source === 'pending-approval') return t('empty_pending_approval')
+  if (source === 'suspended') return t('empty_suspended')
 
   const q = searchQuery.trim()
-  if (q) return `No ${active.toLowerCase()} found for "${q}".`
-  if (active === 'Prospects') return 'No new prospects right now. Fresh leads land here first.'
-  if (active === 'Conversations') return 'No resolved leads yet. Booked and archived leads appear here.'
-  return 'No active inquiries yet. Reply to a prospect to start a conversation.'
+  if (q) return t('empty_search_results', { tab: buildTabLabel(t)[active].toLowerCase(), query: q })
+  if (active === 'Prospects') return t('empty_prospects_default')
+  if (active === 'Conversations') return t('empty_conversations_default')
+  return t('empty_inquiries_default')
 }
 
 function getReplyButtonClass(isSampleData: boolean, replyOpen: boolean) {
@@ -170,6 +186,7 @@ type ProposalPanelProps = {
 }
 
 function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onToggle, onDraftChange, onCancel, onSend }: Readonly<ProposalPanelProps>) {
+  const t = usePortalT('leads')
   return (
     <div className="rounded-xl border border-gray-100 overflow-hidden">
       <button
@@ -179,7 +196,7 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
       >
         <span className="flex items-center gap-1.5">
           <Receipt className="w-3.5 h-3.5 text-gray-500" />
-          Send proposal (recap + quote)
+          {t('proposal_panel_label')}
         </span>
         {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
       </button>
@@ -187,7 +204,7 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
         <div className="p-4 space-y-3 bg-white border-t border-gray-100">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="proposal-event-date" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Event date</label>
+              <label htmlFor="proposal-event-date" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{t('proposal_field_event_date')}</label>
               <input
                 id="proposal-event-date"
                 type="date"
@@ -197,14 +214,14 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
               />
             </div>
             <div>
-              <label htmlFor="proposal-venue" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Venue</label>
+              <label htmlFor="proposal-venue" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{t('proposal_field_venue')}</label>
               <input
                 id="proposal-venue"
                 type="text"
                 list="proposal-venue-suggestions"
                 value={draft.venue}
                 onChange={(e) => onDraftChange({ ...draft, venue: e.target.value })}
-                placeholder="e.g. Mlimani City Hall"
+                placeholder={t('proposal_field_venue_placeholder')}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
               />
               <datalist id="proposal-venue-suggestions">
@@ -214,19 +231,19 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
               </datalist>
             </div>
             <div>
-              <label htmlFor="proposal-guests" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guests</label>
+              <label htmlFor="proposal-guests" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{t('proposal_field_guests')}</label>
               <input
                 id="proposal-guests"
                 type="text"
                 inputMode="numeric"
                 value={draft.guestCount}
                 onChange={(e) => onDraftChange({ ...draft, guestCount: e.target.value.replaceAll(/\D/g, '') })}
-                placeholder="e.g. 150"
+                placeholder={t('proposal_field_guests_placeholder')}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
               />
             </div>
             <div>
-              <label htmlFor="proposal-package" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Package</label>
+              <label htmlFor="proposal-package" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{t('proposal_field_package')}</label>
               <select
                 id="proposal-package"
                 value={draft.packageName}
@@ -241,7 +258,7 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
                 }}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
               >
-                <option value="">Select a package</option>
+                <option value="">{t('proposal_field_package_select')}</option>
                 {packages.map((pkg) => (
                   <option key={pkg.label} value={pkg.label}>
                     {pkg.label}{pkg.value ? ` · ${pkg.value}` : ''}
@@ -254,14 +271,14 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
             </div>
           </div>
           <div>
-            <label htmlFor="proposal-amount" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Invoice amount (TZS)</label>
+            <label htmlFor="proposal-amount" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{t('proposal_field_amount_label')}</label>
             <input
               id="proposal-amount"
               type="text"
               inputMode="numeric"
               value={draft.invoiceAmount}
               onChange={(e) => onDraftChange({ ...draft, invoiceAmount: e.target.value.replaceAll(/\D/g, '') })}
-              placeholder="e.g. 2500000"
+              placeholder={t('proposal_field_amount_placeholder')}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
             />
             {draft.invoiceAmount && Number(draft.invoiceAmount) > 0 && (
@@ -269,33 +286,33 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
             )}
           </div>
           <div>
-            <label htmlFor="proposal-details" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Invoice details <span className="font-normal text-gray-400">(optional)</span></label>
+            <label htmlFor="proposal-details" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">{t('proposal_field_details_label')} <span className="font-normal text-gray-400">{t('optional_suffix')}</span></label>
             <textarea
               id="proposal-details"
               value={draft.invoiceDetails}
               onChange={(e) => onDraftChange({ ...draft, invoiceDetails: e.target.value })}
-              placeholder="What's included, timeline, any conditions…"
+              placeholder={t('proposal_field_details_placeholder')}
               rows={3}
               className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
             />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Preview</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t('proposal_preview_label')}</p>
             <div className="rounded-2xl border border-[#C9A0DC]/30 bg-[#C9A0DC]/[0.06] p-4 space-y-3">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A0DC]/20 bg-white px-4 py-2.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">{t('proposal_preview_total_label')}</span>
                 <span className="text-lg font-extrabold tracking-tight text-gray-900">
                   {draft.invoiceAmount && Number(draft.invoiceAmount) > 0
                     ? `TZS ${Number(draft.invoiceAmount).toLocaleString('en-GB')}`
-                    : 'TBC'}
+                    : t('proposal_preview_tbc')}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { icon: Calendar, label: 'Date', value: draft.eventDate ? formatProposalDate(draft.eventDate) : 'TBC' },
-                  { icon: MapPin, label: 'Venue', value: draft.venue.trim() || 'TBC' },
-                  { icon: Users, label: 'Guests', value: draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : 'TBC' },
-                  { icon: Package, label: 'Package', value: draft.packageName.trim() || 'TBC' },
+                  { icon: Calendar, label: t('proposal_preview_date_label'), value: draft.eventDate ? formatProposalDate(draft.eventDate, t) : t('proposal_preview_tbc') },
+                  { icon: MapPin, label: t('proposal_field_venue'), value: draft.venue.trim() || t('proposal_preview_tbc') },
+                  { icon: Users, label: t('proposal_field_guests'), value: draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : t('proposal_preview_tbc') },
+                  { icon: Package, label: t('proposal_field_package'), value: draft.packageName.trim() || t('proposal_preview_tbc') },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5">
                     <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
@@ -314,7 +331,7 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-              Cancel
+              {t('proposal_cancel_button')}
             </button>
             <button
               type="button"
@@ -323,7 +340,7 @@ function ProposalPanel({ open, sending, draft, packages, venueSuggestions, onTog
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
-              {sending ? 'Sending…' : 'Send proposal'}
+              {sending ? t('proposal_send_button_sending') : t('proposal_send_button')}
             </button>
           </div>
         </div>
@@ -341,21 +358,22 @@ type DeclinePanelProps = {
 }
 
 function DeclinePanel({ reason, loading, onReasonChange, onCancel, onConfirm }: Readonly<DeclinePanelProps>) {
+  const t = usePortalT('leads')
   return (
     <div className="rounded-xl border border-red-100 bg-red-50/60 p-4 space-y-3">
       <p className="text-xs font-semibold text-red-700 uppercase tracking-wider">
-        Decline — add a reason <span className="font-normal text-red-500">(optional)</span>
+        {t('decline_panel_label')} <span className="font-normal text-red-500">{t('optional_suffix')}</span>
       </p>
       <textarea
         value={reason}
         onChange={(e) => onReasonChange(e.target.value)}
-        placeholder="e.g. Date not available, outside service area…"
+        placeholder={t('decline_textarea_placeholder')}
         rows={2}
         className="w-full resize-none rounded-lg border border-red-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-red-400 transition-colors"
       />
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
-          Cancel
+          {t('decline_cancel_button')}
         </button>
         <button
           type="button"
@@ -364,31 +382,31 @@ function DeclinePanel({ reason, loading, onReasonChange, onCancel, onConfirm }: 
           className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
         >
           <X className="w-3.5 h-3.5" />
-          {loading ? 'Declining…' : 'Confirm decline'}
+          {loading ? t('decline_confirm_button_loading') : t('decline_confirm_button')}
         </button>
       </div>
     </div>
   )
 }
 
-const BANNER_BY_SOURCE: Record<LeadsSource['kind'], string | null> = {
-  live: null,
-  'no-application':
-    "You haven't started a vendor application yet. Apply to do business on OpusFesta to receive leads.",
-  'pending-approval':
-    'Your vendor application is awaiting OpusFesta verification. Leads unlock once your account is approved.',
-  suspended:
-    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
-  'no-env':
-    'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
+function buildBannerBySource(t: Translator): Record<LeadsSource['kind'], string | null> {
+  return {
+    live: null,
+    'no-application': t('banner_no_application'),
+    'pending-approval': t('banner_pending_approval'),
+    suspended: t('banner_suspended'),
+    'no-env': t('banner_no_env'),
+  }
 }
 
-const STATUS_LABEL: Record<InquiryRow['status'], string> = {
-  new: 'New',
-  replied: 'Replied',
-  booked: 'Booked',
-  declined: 'Declined',
-  closed: 'Closed',
+function buildStatusLabel(t: Translator): Record<InquiryRow['status'], string> {
+  return {
+    new: t('status_new'),
+    replied: t('status_replied'),
+    booked: t('status_booked'),
+    declined: t('status_declined'),
+    closed: t('status_closed'),
+  }
 }
 
 const STATUS_STYLE: Record<InquiryRow['status'], string> = {
@@ -416,8 +434,8 @@ function extractDigitsFromPrice(value: string): string {
   return numeric
 }
 
-function formatProposalDate(value: string): string {
-  if (!value) return 'Date TBC'
+function formatProposalDate(value: string, t: Translator): string {
+  if (!value) return t('date_tbc')
   const parsed = new Date(`${value}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return value
   return parsed.toLocaleDateString('en-GB', {
@@ -428,8 +446,8 @@ function formatProposalDate(value: string): string {
   })
 }
 
-function formatProposalMoney(value: number | null): string {
-  if (!value || value <= 0) return 'TBC'
+function formatProposalMoney(value: number | null, t: Translator): string {
+  if (!value || value <= 0) return t('proposal_preview_tbc')
   return `TZS ${value.toLocaleString('en-GB')}`
 }
 
@@ -480,6 +498,7 @@ function ProposalStateCard({
   onDecline: () => void
   acceptingCounter: boolean
 }>) {
+  const t = usePortalT('leads')
   if (!inquiryDetail.proposal_status) return null
   let statusClass = 'bg-blue-100 text-blue-700'
   if (inquiryDetail.proposal_status === 'accepted') {
@@ -492,11 +511,11 @@ function ProposalStateCard({
     <div className="mt-6 rounded-2xl border border-[#C9A0DC]/30 bg-[#C9A0DC]/[0.06] p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#7E5896]">Proposal</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#7E5896]">{t('proposal_state_label')}</p>
           <p className="mt-0.5 text-base font-bold text-gray-900">
-            {inquiryDetail.proposal_status === 'sent' && 'Waiting for client response'}
-            {inquiryDetail.proposal_status === 'countered' && 'Client sent a counter'}
-            {inquiryDetail.proposal_status === 'accepted' && 'Proposal accepted'}
+            {inquiryDetail.proposal_status === 'sent' && t('proposal_state_waiting')}
+            {inquiryDetail.proposal_status === 'countered' && t('proposal_state_countered')}
+            {inquiryDetail.proposal_status === 'accepted' && t('proposal_state_accepted')}
           </p>
         </div>
         <span className={cn('shrink-0 rounded-full px-3 py-1 text-xs font-bold capitalize', statusClass)}>
@@ -506,17 +525,17 @@ function ProposalStateCard({
 
       {/* Headline figure */}
       <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A0DC]/20 bg-white px-4 py-3">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Invoice total</span>
-        <span className="text-xl font-extrabold tracking-tight text-gray-900">{formatProposalMoney(inquiryDetail.proposal_invoice_amount)}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">{t('proposal_invoice_total')}</span>
+        <span className="text-xl font-extrabold tracking-tight text-gray-900">{formatProposalMoney(inquiryDetail.proposal_invoice_amount, t)}</span>
       </div>
 
       {/* Detail tiles */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { icon: Calendar, label: 'Date', value: formatProposalDate(inquiryDetail.proposal_event_date ?? '') },
-          { icon: MapPin, label: 'Venue', value: inquiryDetail.proposal_venue ?? 'TBC' },
-          { icon: Users, label: 'Guests', value: inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : 'TBC' },
-          { icon: Package, label: 'Package', value: inquiryDetail.proposal_package ?? 'TBC' },
+          { icon: Calendar, label: t('proposal_preview_date_label'), value: formatProposalDate(inquiryDetail.proposal_event_date ?? '', t) },
+          { icon: MapPin, label: t('proposal_field_venue'), value: inquiryDetail.proposal_venue ?? t('proposal_preview_tbc') },
+          { icon: Users, label: t('proposal_field_guests'), value: inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : t('proposal_preview_tbc') },
+          { icon: Package, label: t('proposal_field_package'), value: inquiryDetail.proposal_package ?? t('proposal_preview_tbc') },
         ].map(({ icon: Icon, label, value }) => (
           <div key={label} className="rounded-xl border border-[#C9A0DC]/15 bg-white/70 px-3 py-2.5">
             <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
@@ -535,9 +554,9 @@ function ProposalStateCard({
 
       {inquiryDetail.proposal_status === 'countered' && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
-          <p className="text-sm font-semibold text-amber-800">Counter from client</p>
+          <p className="text-sm font-semibold text-amber-800">{t('counter_title')}</p>
           <p className="text-sm text-amber-900">
-            <strong>Counter amount:</strong> {formatProposalMoney(inquiryDetail.proposal_counter_amount)}
+            <strong>{t('counter_amount_label')}</strong> {formatProposalMoney(inquiryDetail.proposal_counter_amount, t)}
           </p>
           {inquiryDetail.proposal_counter_message && (
             <p className="text-sm text-amber-900 whitespace-pre-wrap">{inquiryDetail.proposal_counter_message}</p>
@@ -549,7 +568,7 @@ function ProposalStateCard({
               onClick={onDecline}
               className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
             >
-              Decline
+              {t('counter_decline_button')}
             </button>
             <button
               type="button"
@@ -557,7 +576,7 @@ function ProposalStateCard({
               onClick={onCounterBack}
               className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
-              Counter back
+              {t('counter_back_button')}
             </button>
             <button
               type="button"
@@ -565,11 +584,11 @@ function ProposalStateCard({
               onClick={onAcceptCounter}
               className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
-              {acceptingCounter ? 'Accepting…' : 'Accept counter'}
+              {acceptingCounter ? t('counter_accept_button_loading') : t('counter_accept_button')}
             </button>
           </div>
           <p className="text-[11px] text-amber-700/80">
-            &ldquo;Counter back&rdquo; sends a revised proposal. Use the proposal form below to set new terms.
+            {t('counter_back_hint')}
           </p>
         </div>
       )}
@@ -691,10 +710,12 @@ function filterInquiry(row: InquiryRow, active: (typeof TABS)[number], q: string
 
 type SortOption = 'newest' | 'oldest' | 'event'
 
-const SORT_LABEL: Record<SortOption, string> = {
-  newest: 'Newest first',
-  oldest: 'Oldest first',
-  event: 'Event date soonest',
+function buildSortLabel(t: Translator): Record<SortOption, string> {
+  return {
+    newest: t('sort_newest'),
+    oldest: t('sort_oldest'),
+    event: t('sort_event'),
+  }
 }
 
 // Rows arrive newest-first from the DB query, so 'newest' is the identity order.
@@ -713,15 +734,17 @@ function SortMenu({
   sortBy,
   onChange,
 }: Readonly<{ sortBy: SortOption; onChange: (next: SortOption) => void }>) {
+  const t = usePortalT('leads')
+  const sortLabel = buildSortLabel(t)
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
       <button
         type="button"
-        aria-label="Sort leads"
+        aria-label={t('sort_aria_label')}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={`Sort: ${SORT_LABEL[sortBy]}`}
+        title={t('sort_title', { option: sortLabel[sortBy] })}
         onClick={() => setOpen((o) => !o)}
         className={cn(
           'p-2 rounded-lg border transition-colors',
@@ -743,7 +766,7 @@ function SortMenu({
             role="menu"
             className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-gray-100 bg-white py-1 shadow-lg"
           >
-            {(Object.keys(SORT_LABEL) as SortOption[]).map((option) => (
+            {(Object.keys(sortLabel) as SortOption[]).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -755,7 +778,7 @@ function SortMenu({
                   sortBy === option ? 'font-semibold text-[#7E5896]' : 'text-gray-600',
                 )}
               >
-                {SORT_LABEL[option]}
+                {sortLabel[option]}
                 {sortBy === option && <Check className="w-3.5 h-3.5" />}
               </button>
             ))}
@@ -767,6 +790,7 @@ function SortMenu({
 }
 
 function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
+  const t = usePortalT('leads')
   const [active, setActive] = useState<(typeof TABS)[number]>(() =>
     firstNonEmptyTab(countByTab(initialInquiries)),
   )
@@ -902,10 +926,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       setReplyText('')
       setReplyFiles([])
       setReplyOpen(false)
-      toast.success('Reply sent.')
+      toast.success(t('toast_reply_sent'))
     } catch (err) {
       console.error('[leads] send reply failed', err)
-      toast.error('Could not send reply.')
+      toast.error(t('toast_reply_error'))
     } finally { setSending(false) }
   }
 
@@ -915,10 +939,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     try {
       await patchInquiryRequest(selectedRow.id, { status: 'closed' })
       updateLocalStatus(selectedRow.id, 'closed')
-      toast.success('Lead marked as closed.')
+      toast.success(t('toast_close_success'))
     } catch (err) {
       console.error('[leads] close failed', err)
-      toast.error('Could not close this lead.')
+      toast.error(t('toast_close_error'))
     } finally { setActionLoading(false) }
   }
 
@@ -933,10 +957,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       updateLocalStatus(selectedRow.id, 'declined')
       setDeclineOpen(false)
       setDeclineReason('')
-      toast.success('Lead declined.')
+      toast.success(t('toast_decline_success'))
     } catch (err) {
       console.error('[leads] decline failed', err)
-      toast.error('Could not decline this lead.')
+      toast.error(t('toast_decline_error'))
     } finally { setActionLoading(false) }
   }
 
@@ -981,10 +1005,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
         proposal_accepted_at: null,
       })
       setProposalOpen(false)
-      toast.success('Proposal sent.')
+      toast.success(t('toast_proposal_sent'))
     } catch (err) {
       console.error('[leads] send proposal failed', err)
-      toast.error('Could not send proposal.')
+      toast.error(t('toast_proposal_error'))
     } finally {
       setProposalSending(false)
     }
@@ -1010,10 +1034,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
         proposal_accepted_at: new Date().toISOString(),
       })
       updateLocalStatus(selectedRow.id, 'booked')
-      toast.success('Counter accepted. Lead moved to booked.')
+      toast.success(t('toast_counter_accepted'))
     } catch (err) {
       console.error('[leads] accept counter failed', err)
-      toast.error('Could not accept counter offer.')
+      toast.error(t('toast_counter_error'))
     } finally {
       setProposalActionLoading(false)
     }
@@ -1025,10 +1049,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     try {
       await patchInquiryRequest(selectedRow.id, { status: mapUiStatusToDbStatus(status) })
       updateLocalStatus(selectedRow.id, status)
-      toast.success(`Lead status updated to ${STATUS_LABEL[status].toLowerCase()}.`)
+      toast.success(t('toast_status_changed', { status: buildStatusLabel(t)[status].toLowerCase() }))
     } catch (err) {
       console.error('[leads] status change failed', err)
-      toast.error('Could not update lead status.')
+      toast.error(t('toast_status_error'))
     } finally { setActionLoading(false) }
   }
 
@@ -1064,8 +1088,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
 }
 
 export default function LeadsClient({ inquiries: initialInquiries, source, vendorName, packages }: Readonly<LeadsClientProps>) {
+  const t = usePortalT('leads')
   const isSampleData = source.kind === 'no-env'
-  const banner = BANNER_BY_SOURCE[source.kind]
+  const banner = buildBannerBySource(t)[source.kind]
   const venueSuggestions = useMemo(() => {
     const suggestions = new Set<string>([...VENUE_SUGGESTIONS, ...TZ_REGIONS.map((region) => region.name)])
     initialInquiries.forEach((inquiry) => {
@@ -1101,8 +1126,8 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
     setReplyFiles((prev) => {
       const next = [...prev]
       for (const file of Array.from(selected)) {
-        if (file.size > 25 * 1024 * 1024) { toast.error(`"${file.name}" is larger than 25MB`); continue }
-        if (next.length >= 6) { toast.error('You can attach up to 6 files'); break }
+        if (file.size > 25 * 1024 * 1024) { toast.error(t('reply_error_file_too_large', { filename: file.name })); continue }
+        if (next.length >= 6) { toast.error(t('reply_error_too_many_files')); break }
         next.push(file)
       }
       return next
@@ -1133,15 +1158,15 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
             <aside className="border-r border-gray-100 flex flex-col lg:min-h-0">
               <div className="p-5 border-b border-gray-100">
                 <div className="flex gap-1 border-b border-gray-100 -mx-5 px-5">
-                  {TABS.map((t) => {
-                    const isActive = active === t
-                    const count = tabCounts[t]
+                  {TABS.map((tab) => {
+                    const isActive = active === tab
+                    const count = tabCounts[tab]
                     return (
                       <button
-                        key={t}
+                        key={tab}
                         type="button"
-                        title={TAB_HINT[t]}
-                        onClick={() => setActive(t)}
+                        title={buildTabHint(t)[tab]}
+                        onClick={() => setActive(tab)}
                         className={cn(
                           'pb-3 px-3 text-sm font-semibold transition-colors border-b-2 -mb-px flex items-center gap-1.5',
                           isActive
@@ -1149,7 +1174,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                             : 'border-transparent text-gray-400 hover:text-gray-700',
                         )}
                       >
-                        {t}
+                        {buildTabLabel(t)[tab]}
                         {count > 0 && (
                           <span
                             className={cn(
@@ -1171,7 +1196,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search couples…"
+                      placeholder={t('search_placeholder')}
                       className="pl-9 pr-3 py-2 bg-gray-50 border border-gray-100 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
                     />
                   </div>
@@ -1190,7 +1215,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                       )}
                     </div>
                     <p className="text-sm text-gray-500 max-w-[240px]">
-                      {getEmptyListMessage(source.kind, active, searchQuery)}
+                      {getEmptyListMessage(source.kind, active, searchQuery, t)}
                     </p>
                   </li>
                 ) : (
@@ -1208,10 +1233,10 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <p className="text-sm font-semibold text-gray-900 truncate">
-                              {isSampleData ? `[SAMPLE] ${row.couple}` : row.couple}
+                              {isSampleData ? t('sample_data_prefix', { name: row.couple }) : row.couple}
                             </p>
                             <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', STATUS_STYLE[row.status])}>
-                              {STATUS_LABEL[row.status]}
+                              {buildStatusLabel(t)[row.status]}
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-0.5 truncate">{row.date}</p>
@@ -1233,14 +1258,14 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-xl font-semibold text-gray-900">
-                          {isSampleData ? `[SAMPLE] ${selectedRow.couple}` : selectedRow.couple}
+                          {isSampleData ? t('sample_data_prefix', { name: selectedRow.couple }) : selectedRow.couple}
                         </h2>
                         <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold', STATUS_STYLE[selectedRow.status])}>
-                          {STATUS_LABEL[selectedRow.status]}
+                          {buildStatusLabel(t)[selectedRow.status]}
                         </span>
                       </div>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        Wedding date · {selectedRow.date}
+                        {t('lead_date_label', { date: selectedRow.date })}
                       </p>
                       {(selectedRow.email || selectedRow.phone) && (
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -1269,7 +1294,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                       )}
                     >
                       <MessageSquare className="w-4 h-4" />
-                      Reply
+                      {t('reply_button_label')}
                     </button>
                   </div>
 
@@ -1298,15 +1323,15 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                   {/* Message thread */}
                   <div className="mt-6 rounded-xl border border-gray-100 overflow-hidden">
                     <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Conversation</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('conversation_section_label')}</p>
                       {threadLoading && (
-                        <span className="text-[10px] text-gray-400 animate-pulse">Loading…</span>
+                        <span className="text-[10px] text-gray-400 animate-pulse">{t('conversation_loading')}</span>
                       )}
                     </div>
                     <div className="p-4 space-y-4 bg-white">
                       {thread.length === 0 && !threadLoading ? (
                         <p className="text-xs text-gray-400 text-center py-4">
-                          No messages yet. Use &ldquo;Reply&rdquo; to start the conversation.
+                          {t('conversation_empty')}
                         </p>
                       ) : (
                         thread.map((msg) => (
@@ -1330,10 +1355,10 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                               type="button"
                               onClick={() => setReplyMenuOpen((o) => !o)}
                               disabled={sending || replyFiles.length >= 6}
-                              aria-label="Add attachment"
+                              aria-label={t('reply_menu_attach_aria')}
                               aria-haspopup="menu"
                               aria-expanded={replyMenuOpen}
-                              title="Attach"
+                              title={t('reply_menu_attach_label')}
                               className="flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                               <Plus className="w-5 h-5" />
@@ -1344,11 +1369,11 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                                 <div role="menu" className="absolute bottom-full left-0 z-20 mb-2 w-56 overflow-hidden rounded-2xl border border-gray-100 bg-white py-1.5 shadow-lg">
                                   <button type="button" role="menuitem" onClick={() => openReplyPicker('photo')} className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50">
                                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F0DFF6] text-[#7E5896]"><ImageIcon className="w-4 h-4" /></span>
-                                    Photos &amp; videos
+                                    {t('reply_file_photos_videos')}
                                   </button>
                                   <button type="button" role="menuitem" onClick={() => openReplyPicker('doc')} className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50">
                                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600"><FileText className="w-4 h-4" /></span>
-                                    Document
+                                    {t('reply_file_document')}
                                   </button>
                                 </div>
                               </>
@@ -1357,7 +1382,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           <textarea
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Write a personalised reply…"
+                            placeholder={t('reply_composer_placeholder')}
                             rows={3}
                             className="flex-1 resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC] transition-colors"
                           />
@@ -1368,7 +1393,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                               <span key={`${file.name}-${i}`} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700 max-w-[14rem]">
                                 <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span className="truncate">{file.name}</span>
-                                <button type="button" onClick={() => setReplyFiles((prev) => prev.filter((_, idx) => idx !== i))} aria-label={`Remove ${file.name}`} className="text-gray-400 hover:text-gray-700 shrink-0">
+                                <button type="button" onClick={() => setReplyFiles((prev) => prev.filter((_, idx) => idx !== i))} aria-label={t('reply_file_remove_label', { filename: file.name })} className="text-gray-400 hover:text-gray-700 shrink-0">
                                   <X className="w-3.5 h-3.5" />
                                 </button>
                               </span>
@@ -1381,7 +1406,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                             onClick={() => { setReplyOpen(false); setReplyText(''); setReplyFiles([]) }}
                             className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                           >
-                            Cancel
+                            {t('reply_cancel_button')}
                           </button>
                           <button
                             type="button"
@@ -1390,7 +1415,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                             className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             <Send className="w-3.5 h-3.5" />
-                            {sending ? 'Sending…' : 'Send reply'}
+                            {sending ? t('reply_sending_button') : t('reply_send_button')}
                           </button>
                         </div>
                       </div>
@@ -1426,7 +1451,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          Mark as booked
+                          {t('action_mark_booked')}
                         </button>
 
                         {selectedRow.status !== 'declined' && (
@@ -1442,7 +1467,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                             )}
                           >
                             <X className="w-3.5 h-3.5" />
-                            Decline
+                            {t('action_decline')}
                           </button>
                         )}
 
@@ -1453,7 +1478,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
                         >
                           <Archive className="w-3.5 h-3.5" />
-                          Archive
+                          {t('action_archive')}
                         </button>
                       </div>
 
@@ -1473,7 +1498,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
-                  Select an inquiry to view details.
+                  {t('empty_detail_message')}
                 </div>
               )}
             </section>

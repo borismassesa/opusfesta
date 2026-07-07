@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { LocaleToggle } from '@/components/LocaleToggle'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 import { cn } from '@/lib/utils'
 import {
   signVendorAgreement,
@@ -127,6 +128,7 @@ export default function VerifyClient({
   agreementDocs,
   agreementBusinessDefaults,
 }: Props) {
+  const t = usePortalT('verify')
   const isCorrection = status === 'needs_corrections'
   // Everything is submitted and the vendor is waiting on admin. The timeline
   // shows every step done with "Under review" as the active step.
@@ -237,30 +239,28 @@ export default function VerifyClient({
   const journey: JourneyStep[] = [
     {
       icon: ClipboardCheck,
-      title: 'Application',
-      description:
-        'Business profile, services, packages, and portfolio captured during onboarding.',
+      title: t('step_application_title'),
+      description: t('step_application_description'),
       mode: 'done',
-      doneLabel: 'Submitted',
+      doneLabel: t('step_application_done_label'),
     },
     {
       icon: Wallet,
-      title: 'Payout setup',
-      description:
-        'Payout method recorded during onboarding. The final name match happens during admin review.',
+      title: t('step_payout_title'),
+      description: t('step_payout_description'),
       mode: 'done',
-      doneLabel: 'Submitted',
+      doneLabel: t('step_payout_done_label'),
     },
     {
       icon: IdCard,
-      title: 'Identity verification',
+      title: t('step_identity_title'),
       mode: idMode,
       description:
         idMode === 'done'
-          ? 'National ID (front + back) and liveness selfie captured. Awaiting admin review.'
-          : 'Take a photo of the front and back of your Tanzania National ID (NIDA), then a quick selfie to confirm it’s you.',
-      doneLabel: 'Awaiting review',
-      activeLabel: 'In progress',
+          ? t('step_identity_done_description')
+          : t('step_identity_active_description'),
+      doneLabel: t('step_identity_done_label'),
+      activeLabel: t('step_identity_active_label'),
       activeTone: 'purple',
       tone: 'blue',
       action:
@@ -274,34 +274,34 @@ export default function VerifyClient({
     },
     {
       icon: FileText,
-      title: 'Optional documents',
+      title: t('step_optional_title'),
       mode: optionalMode,
       tone: 'blue',
       description:
         optionalMode === 'done'
           ? tinDone || licenseDone
-            ? 'Optional documents added. Thanks, this helps speed up review.'
-            : 'Skipped for now. Your National ID alone is enough to get approved.'
+            ? t('step_optional_done_added_description')
+            : t('step_optional_done_skipped_description')
           : optionalMode === 'active'
-            ? 'Not required to get approved. Your National ID is enough. Adding your TIN or business license builds trust and can speed up review.'
-            : 'Unlocks once your identity is verified.',
-      doneLabel: tinDone || licenseDone ? 'Added' : 'Skipped',
-      activeLabel: 'Optional',
+            ? t('step_optional_active_description')
+            : t('step_optional_locked_description'),
+      doneLabel: tinDone || licenseDone ? t('step_optional_done_added_label') : t('step_optional_done_skipped_label'),
+      activeLabel: t('step_optional_active_label'),
       activeTone: 'purple',
       action:
         optionalMode === 'active' ? (
           <div className="mt-3 space-y-3">
             <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
               <OptionalDoc
-                title="TRA TIN certificate"
-                description="Your tax ID certificate from the Tanzania Revenue Authority."
+                title={t('optional_doc_tin_title')}
+                description={t('optional_doc_tin_description')}
                 slot={tinSlot}
                 done={tinDone}
                 isCorrection={isCorrection}
               />
               <OptionalDoc
-                title="Business license"
-                description="BRELA registration, council license, or a sole-proprietor declaration."
+                title={t('optional_doc_license_title')}
+                description={t('optional_doc_license_description')}
                 slot={licenseSlot}
                 done={licenseDone}
                 isCorrection={isCorrection}
@@ -313,8 +313,8 @@ export default function VerifyClient({
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-600 transition-colors hover:text-gray-900"
             >
               {tinDone || licenseDone
-                ? 'Continue to agreement'
-                : 'Skip to agreement'}
+                ? t('continue_to_agreement')
+                : t('skip_to_agreement')}
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -322,19 +322,21 @@ export default function VerifyClient({
     },
     {
       icon: FileSignature,
-      title: 'Vendor agreement',
+      title: t('step_agreement_title'),
       mode: agreementMode,
       description:
         agreementMode === 'done'
-          ? `All ${agreementDocs.length} documents signed. Separate from the Vendor Vows you accepted during onboarding.`
+          ? t('step_agreement_done_description', { count: agreementDocs.length })
           : agreementMode === 'active'
-            ? `Read and e-sign each part of the OpusFesta Mkataba wa Watoa Huduma (OF-LGL-AGR-002): the main contract and its two schedules. Each is signed separately. This is the legally binding agreement, distinct from the Vendor Vows pledge.`
+            ? t('step_agreement_active_description')
             : !idComplete
-              ? 'Unlocks once your identity is verified.'
-              : 'Add the optional documents above, or skip, to continue.',
-      doneLabel: 'Signed',
+              ? t('step_agreement_locked_id_description')
+              : t('step_agreement_locked_optional_description'),
+      doneLabel: t('step_agreement_done_label'),
       activeLabel:
-        signedCount > 0 ? `${signedCount}/${agreementDocs.length} signed` : 'In progress',
+        signedCount > 0
+          ? t('step_agreement_signed_of', { done: signedCount, total: agreementDocs.length })
+          : t('step_agreement_active_default_label'),
       activeTone: 'purple',
       tone: 'purple',
       action:
@@ -347,14 +349,14 @@ export default function VerifyClient({
     },
     {
       icon: ShieldCheck,
-      title: 'Under review',
+      title: t('step_review_title'),
       mode: isUnderReview ? 'active' : 'locked',
       tone: 'amber',
-      activeLabel: 'In progress',
+      activeLabel: t('step_review_active_label'),
       activeTone: 'amber',
       description: isUnderReview
-        ? "Everything's in. Our team is verifying your details, documents, payout, and portfolio, and we'll email you the moment your dashboard unlocks. Usually 2 to 3 business days."
-        : 'Once the steps above are complete, our team verifies your details and approves your storefront. Usually 2 to 3 business days.',
+        ? t('step_review_active_description')
+        : t('step_review_locked_description'),
     },
   ]
 
@@ -376,7 +378,7 @@ export default function VerifyClient({
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 px-3 py-1.5 rounded-md hover:bg-rose-50 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign out
+              {t('sign_out')}
             </button>
           </SignOutButton>
         </div>
@@ -393,7 +395,7 @@ export default function VerifyClient({
             {isCorrection && (
               <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
                 <AlertCircle className="w-3 h-3" />
-                Action required
+                {t('action_required_pill')}
               </span>
             )}
             <h1
@@ -403,17 +405,17 @@ export default function VerifyClient({
               )}
             >
               {isUnderReview
-                ? "We're reviewing your application"
+                ? t('heading_under_review')
                 : isCorrection
-                  ? 'Re-upload the documents we flagged'
-                  : 'Verify your business'}
+                  ? t('heading_corrections')
+                  : t('heading_default')}
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-xl mx-auto">
               {isUnderReview
-                ? "Thanks for submitting everything, you're all done. Here's the full picture of your verification while our team reviews it."
+                ? t('subtitle_under_review')
                 : isCorrection
-                  ? 'Pick up the flagged item below and re-submit. Re-reviews are typically completed within 1 business day.'
-                  : "Three steps to admin review. Most vendors hear back within 2 to 3 business days once they've finished."}
+                  ? t('subtitle_corrections')
+                  : t('subtitle_default')}
             </p>
             {/* Compact affordance for editing the application details. Replaces
                 the verbose "Already on file" panel that used to sit at the
@@ -423,12 +425,12 @@ export default function VerifyClient({
                 locked while admin verifies it. */}
             {!isUnderReview && (
               <p className="mt-2 text-xs text-gray-500">
-                Need to update your business details?{' '}
+                {t('edit_application_prompt')}{' '}
                 <Link
                   href="/onboard/review"
                   className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
                 >
-                  Edit application
+                  {t('edit_application_link')}
                 </Link>
               </p>
             )}
@@ -443,15 +445,17 @@ export default function VerifyClient({
           <section id="documents" className="scroll-mt-24 mt-10 sm:mt-12 bg-white rounded-3xl border border-gray-100 shadow-[0_2px_24px_-8px_rgba(98,52,128,0.08)] p-6 sm:p-8">
             <div className="flex items-baseline justify-between gap-3 mb-6">
               <h2 className="text-base font-semibold text-gray-900">
-                Your verification journey
+                {t('journey_title')}
               </h2>
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                {journey.filter((s) => s.mode === 'done').length}/
-                {journey.length} complete
+                {t('journey_complete_of', {
+                  done: journey.filter((s) => s.mode === 'done').length,
+                  total: journey.length,
+                })}
               </span>
             </div>
 
-            <ol className="relative" aria-label="Verification progress">
+            <ol className="relative" aria-label={t('journey_aria_label')}>
               {journey.map((step, idx) => {
                 const isLast = idx === journey.length - 1
                 const nextMode = journey[idx + 1]?.mode
@@ -567,12 +571,12 @@ export default function VerifyClient({
           </section>
 
           <footer className="mt-12 pt-6 border-t border-gray-100 text-center text-xs text-gray-500">
-            Need help?{' '}
+            {t('need_help_prompt')}{' '}
             <a
-              href="mailto:vendors@opusfesta.com"
+              href={`mailto:${t('contact_email_label')}`}
               className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
             >
-              vendors@opusfesta.com
+              {t('contact_email_label')}
             </a>
           </footer>
         </div>
@@ -599,6 +603,7 @@ function OptionalDoc({
   done: boolean
   isCorrection: boolean
 }) {
+  const t = usePortalT('verify')
   return (
     <div className="py-4">
       <div className="flex items-start gap-3">
@@ -619,11 +624,11 @@ function OptionalDoc({
             <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
             {done ? (
               <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-emerald-700">
-                Awaiting review
+                {t('optional_doc_awaiting_review')}
               </span>
             ) : (
               <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">
-                Optional
+                {t('optional_doc_optional_pill')}
               </span>
             )}
           </div>
@@ -653,6 +658,7 @@ function DocumentUploadActions({
   slot: VerifyDocSlot
   isCorrection: boolean
 }) {
+  const t = usePortalT('verify')
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -702,7 +708,7 @@ function DocumentUploadActions({
                 : 'text-gray-600 hover:text-gray-900',
             )}
           >
-            Business license
+            {t('upload_business_license_tab')}
           </button>
           <button
             type="button"
@@ -715,7 +721,7 @@ function DocumentUploadActions({
                 : 'text-gray-600 hover:text-gray-900',
             )}
           >
-            Sole-proprietor declaration
+            {t('upload_sole_proprietor_tab')}
           </button>
         </div>
       )}
@@ -725,7 +731,7 @@ function DocumentUploadActions({
           <span className="font-semibold text-gray-700">
             {current.filename ?? 'Uploaded file'}
           </span>{' '}
-          · uploaded {formatRelative(current.uploadedAt)}
+          · {t('upload_uploaded_prefix', { relative: formatRelative(current.uploadedAt, t) })}
         </p>
       )}
 
@@ -733,7 +739,7 @@ function DocumentUploadActions({
         <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
           <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
           <p className="text-xs text-rose-800 leading-relaxed">
-            <span className="font-semibold">Admin notes:</span>{' '}
+            <span className="font-semibold">{t('upload_admin_notes_prefix')}</span>{' '}
             {current.rejectionReason}
           </p>
         </div>
@@ -773,22 +779,22 @@ function DocumentUploadActions({
           {pending ? (
             <>
               <Clock className="w-3.5 h-3.5 animate-pulse" />
-              Uploading…
+              {t('upload_uploading')}
             </>
           ) : current ? (
             <>
               <Upload className="w-3.5 h-3.5" />
-              Replace file
+              {t('upload_replace_file')}
             </>
           ) : (
             <>
               <Upload className="w-3.5 h-3.5" />
-              Upload {isCorrection ? 'corrected ' : ''}document
+              {isCorrection ? t('upload_corrected_document') : t('upload_document')}
             </>
           )}
         </button>
         <span className="text-[11px] text-gray-400">
-          JPG · PNG · WEBP · PDF · up to 10MB
+          {t('upload_file_types_hint')}
         </span>
       </div>
     </div>
@@ -809,6 +815,7 @@ function AgreementDocsList({
   docs: AgreementDocView[]
   businessDefaults: AgreementBusinessDefaults
 }) {
+  const t = usePortalT('verify')
   const firstUnsigned = docs.find((d) => !d.signedAt)?.id ?? null
   const [openId, setOpenId] = useState<AgreementDocView['id'] | null>(
     firstUnsigned,
@@ -817,9 +824,7 @@ function AgreementDocsList({
   return (
     <div className="mt-4 space-y-3">
       <p className="text-[11px] text-gray-500 leading-relaxed">
-        The agreement comes in {docs.length} parts: the main contract and its
-        two schedules. Read and e-sign each one separately. They&rsquo;re all
-        part of the same binding contract (OF-LGL-AGR-002).
+        {t('agreement_intro', { count: docs.length })}
       </p>
       {docs.map((doc) => (
         <AgreementDocCard
@@ -854,6 +859,7 @@ function AgreementDocCard({
   open: boolean
   onToggle: () => void
 }) {
+  const t = usePortalT('verify')
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -891,31 +897,31 @@ function AgreementDocCard({
   const onSubmit = () => {
     setError(null)
     if (!acknowledged) {
-      setError('Tick the acknowledgement box before signing.')
+      setError(t('validation_ack_required'))
       return
     }
     if (name.trim().length < 2) {
-      setError('Type your full legal name to sign.')
+      setError(t('validation_name_required'))
       return
     }
     const required: [string, string][] = isFull
       ? [
-          ['Jina la Biashara', businessName],
-          ['TIN', tin],
-          ['Anwani ya Biashara', businessAddress],
-          ['Mtu wa Mawasiliano', contactPerson],
-          ['Barua Pepe', email],
-          ['WhatsApp/Simu', phone],
-          ['Aina ya Huduma', serviceType],
+          [t('field_business_name_label'), businessName],
+          [t('field_tin_label'), tin],
+          [t('field_business_address_label'), businessAddress],
+          [t('field_contact_person_label'), contactPerson],
+          [t('field_email_label'), email],
+          [t('field_phone_label'), phone],
+          [t('field_service_type_label'), serviceType],
         ]
       : [
-          ['Jina la Biashara', businessName],
-          ['Cheo', position],
-          ['Kitambulisho (NIDA)', nida],
+          [t('field_business_name_label'), businessName],
+          [t('field_position_label'), position],
+          [t('field_nida_label'), nida],
         ]
     for (const [label, value] of required) {
       if (!value.trim()) {
-        setError(`Fill in ${label} before signing.`)
+        setError(t('validation_fill_before_signing', { label }))
         return
       }
     }
@@ -948,7 +954,7 @@ function AgreementDocCard({
         }
         router.refresh()
       } catch {
-        setError('Something went wrong while submitting your signature. Please try again.')
+        setError(t('submit_generic_error'))
       }
     })
   }
@@ -1004,11 +1010,11 @@ function AgreementDocCard({
         <span className="shrink-0 self-center">
           {signed ? (
             <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-emerald-700">
-              Signed{doc.signedAt ? ` · ${formatRelative(doc.signedAt)}` : ''}
+              {t('agreement_signed_label')}{doc.signedAt ? ` · ${formatRelative(doc.signedAt, t)}` : ''}
             </span>
           ) : (
             <span className="text-[11px] font-semibold text-[#7E5896]">
-              {open ? 'Hide' : 'Sign'}
+              {open ? t('agreement_hide_button') : t('agreement_sign_button')}
             </span>
           )}
         </span>
@@ -1022,7 +1028,7 @@ function AgreementDocCard({
               download={doc.downloadName}
               className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900"
             >
-              Download PDF
+              {t('agreement_download_pdf')}
             </a>
           </div>
 
@@ -1037,16 +1043,16 @@ function AgreementDocCard({
               className="w-full h-[560px]"
             >
               <div className="p-6 text-center text-xs text-gray-600 leading-relaxed">
-                Your browser can&rsquo;t display the PDF inline.{' '}
+                {t('agreement_pdf_unavailable')}{' '}
                 <a
                   href={doc.pdfUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-[#7E5896] hover:text-[#5e3f72] underline underline-offset-2"
                 >
-                  Open the document in a new tab
+                  {t('agreement_open_new_tab')}
                 </a>{' '}
-                to read it in full before signing.
+                {t('agreement_pdf_unavailable_suffix')}
               </div>
             </object>
           </div>
@@ -1060,40 +1066,38 @@ function AgreementDocCard({
                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#7E5896] focus:ring-[#7E5896] focus:ring-offset-0"
               />
               <span className="text-xs text-gray-700 leading-relaxed">
-                I have read {doc.title} ({doc.code}) and agree to its terms on
-                behalf of my business.
+                {t('agreement_ack_prefix', { title: doc.title, code: doc.code })}
               </span>
             </label>
 
             {/* SEHEMU B identification block, mirroring the printed signature
-                page. Labels are Swahili (to match the document) with English
-                sub-labels as a reading aid. Pre-filled from onboarding where
-                we have the data. */}
+                page. Labels/hints are CMS-editable and locale-aware — by
+                default (no CMS content yet) they show the same Swahili-primary
+                text as the printed document, matching the signature page. */}
             <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
               <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-gray-700">
-                {isFull ? 'Taarifa za Biashara' : 'Taarifa za Mtoa Huduma'}{' '}
+                {isFull ? t('agreement_business_info_full_title') : t('agreement_business_info_schedule_title')}{' '}
                 <span className="text-gray-400 font-semibold normal-case tracking-normal">
-                  (SEHEMU B)
+                  ({t('agreement_sehemu_b')})
                 </span>
               </h4>
               <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">
-                Confirm the details that appear on the signature page. Edit
-                anything that&rsquo;s out of date.
+                {t('agreement_confirm_hint')}
               </p>
 
               {isFull ? (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <AgreementField
-                    label="Jina la Biashara"
-                    hint="Business name"
+                    label={t('field_business_name_label')}
+                    hint={t('field_business_name_hint')}
                     value={businessName}
                     onChange={setBusinessName}
                     autoComplete="organization"
                     disabled={pending}
                   />
                   <AgreementField
-                    label="TIN"
-                    hint="Tax Identification Number"
+                    label={t('field_tin_label')}
+                    hint={t('field_tin_hint')}
                     value={tin}
                     onChange={setTin}
                     placeholder="123-456-789"
@@ -1101,8 +1105,8 @@ function AgreementDocCard({
                     disabled={pending}
                   />
                   <AgreementField
-                    label="Anwani ya Biashara"
-                    hint="Business address"
+                    label={t('field_business_address_label')}
+                    hint={t('field_business_address_hint')}
                     value={businessAddress}
                     onChange={setBusinessAddress}
                     autoComplete="street-address"
@@ -1110,16 +1114,16 @@ function AgreementDocCard({
                     disabled={pending}
                   />
                   <AgreementField
-                    label="Mtu wa Mawasiliano"
-                    hint="Contact person"
+                    label={t('field_contact_person_label')}
+                    hint={t('field_contact_person_hint')}
                     value={contactPerson}
                     onChange={setContactPerson}
                     autoComplete="name"
                     disabled={pending}
                   />
                   <AgreementField
-                    label="Barua Pepe"
-                    hint="Email"
+                    label={t('field_email_label')}
+                    hint={t('field_email_hint')}
                     value={email}
                     onChange={setEmail}
                     type="email"
@@ -1127,8 +1131,8 @@ function AgreementDocCard({
                     disabled={pending}
                   />
                   <AgreementField
-                    label="WhatsApp / Simu"
-                    hint="WhatsApp / phone"
+                    label={t('field_phone_label')}
+                    hint={t('field_phone_hint')}
                     value={phone}
                     onChange={setPhone}
                     type="tel"
@@ -1136,8 +1140,8 @@ function AgreementDocCard({
                     disabled={pending}
                   />
                   <AgreementField
-                    label="Aina ya Huduma"
-                    hint="Type of service"
+                    label={t('field_service_type_label')}
+                    hint={t('field_service_type_hint')}
                     value={serviceType}
                     onChange={setServiceType}
                     disabled={pending}
@@ -1146,8 +1150,8 @@ function AgreementDocCard({
               ) : (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <AgreementField
-                    label="Jina la Biashara"
-                    hint="Business name"
+                    label={t('field_business_name_label')}
+                    hint={t('field_business_name_hint')}
                     value={businessName}
                     onChange={setBusinessName}
                     autoComplete="organization"
@@ -1155,16 +1159,16 @@ function AgreementDocCard({
                     disabled={pending}
                   />
                   <AgreementField
-                    label="Cheo"
-                    hint="Position / title"
+                    label={t('field_position_label')}
+                    hint={t('field_position_hint')}
                     value={position}
                     onChange={setPosition}
                     placeholder="e.g. Mmiliki"
                     disabled={pending}
                   />
                   <AgreementField
-                    label="Kitambulisho (NIDA)"
-                    hint="National ID number"
+                    label={t('field_nida_label')}
+                    hint={t('field_nida_hint')}
                     value={nida}
                     onChange={setNida}
                     inputMode="numeric"
@@ -1176,7 +1180,7 @@ function AgreementDocCard({
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Type your full legal name to sign
+                {t('agreement_name_label')}
               </label>
               <input
                 type="text"
@@ -1187,14 +1191,13 @@ function AgreementDocCard({
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7E5896] focus:border-transparent"
               />
               <p className="mt-1 text-[11px] text-gray-500">
-                Must match the name on your National ID. Your IP and timestamp
-                are recorded for the signature audit trail.
+                {t('agreement_name_hint')}
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Or draw your signature
+                {t('agreement_signature_label')}
               </label>
               <SignaturePad onChange={setSignatureDataUrl} disabled={pending} />
             </div>
@@ -1219,12 +1222,12 @@ function AgreementDocCard({
               {pending ? (
                 <>
                   <Clock className="w-3.5 h-3.5 animate-pulse" />
-                  Signing…
+                  {t('agreement_signing_button')}
                 </>
               ) : (
                 <>
                   <PenLine className="w-3.5 h-3.5" />
-                  Sign and submit
+                  {t('agreement_submit_button')}
                 </>
               )}
             </button>
@@ -1284,17 +1287,17 @@ function AgreementField({
   )
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, t: Translator): string {
   const d = new Date(iso)
   const now = Date.now()
   const diffMs = now - d.getTime()
   const diffMin = Math.floor(diffMs / 60_000)
-  if (diffMin < 1) return 'just now'
-  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffMin < 1) return t('relative_just_now')
+  if (diffMin < 60) return t('relative_minutes_ago', { n: diffMin })
   const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
+  if (diffHr < 24) return t('relative_hours_ago', { n: diffHr })
   const diffDay = Math.floor(diffHr / 24)
-  if (diffDay < 7) return `${diffDay}d ago`
+  if (diffDay < 7) return t('relative_days_ago', { n: diffDay })
   return d.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',

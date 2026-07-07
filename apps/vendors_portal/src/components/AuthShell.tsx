@@ -1,5 +1,8 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import Logo from '@/components/ui/Logo'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 // Two-pane auth layout shared by sign-in and sign-up — mirrors the OpusFesta
 // Admin sign-in (form left on white, dark feature panel right). Layout only:
@@ -19,6 +22,7 @@ export default function AuthShell({
   panelSubtitle: string
   children: ReactNode
 }) {
+  const t = usePortalT('auth')
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* ── Left: Clerk form on white ── */}
@@ -32,19 +36,19 @@ export default function AuthShell({
 
         <div className="px-8 pb-6 sm:px-12 lg:px-20">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-400">
-            <span>© OpusFesta. All rights reserved.</span>
+            <span>{t('footer_copyright')}</span>
             <span className="flex items-center gap-5">
               <a
                 href="https://opusfesta.com/privacy-policy"
                 className="hover:text-gray-600"
               >
-                Privacy Policy
+                {t('footer_privacy_policy')}
               </a>
               <a
                 href="https://opusfesta.com/terms-of-use"
                 className="hover:text-gray-600"
               >
-                Terms &amp; Conditions
+                {t('footer_terms')}
               </a>
             </span>
           </div>

@@ -204,10 +204,10 @@ function computeLeadStats(rows: InquiryRowFromDb[], now: Date): LeadStat[] {
   }
 
   return [
-    { label: 'New inquiries', value: String(newThisWeek), trend: '', sub: 'This week', isPositive: true },
-    { label: 'Conversion rate', value: conversionRate, trend: '', sub: 'This month', isPositive: true },
-    { label: 'Avg response time', value: avgResponse, trend: '', sub: 'Last 30 days', isPositive: true },
-    { label: 'Booked leads', value: String(bookedThisMonth), trend: '', sub: 'This month', isPositive: true },
+    { key: 'new_inquiries', label: 'New inquiries', value: String(newThisWeek), trend: '', sub: 'This week', isPositive: true },
+    { key: 'conversion_rate', label: 'Conversion rate', value: conversionRate, trend: '', sub: 'This month', isPositive: true },
+    { key: 'avg_response_time', label: 'Avg response time', value: avgResponse, trend: '', sub: 'Last 30 days', isPositive: true },
+    { key: 'booked_leads', label: 'Booked leads', value: String(bookedThisMonth), trend: '', sub: 'This month', isPositive: true },
   ]
 }
 
@@ -331,6 +331,7 @@ function computePerformance(
 
   return [
     {
+      key: 'profile_views',
       label: 'Profile views',
       value: viewsLast30.toLocaleString('en-GB'),
       trend: viewsDelta.trend,
@@ -338,6 +339,7 @@ function computePerformance(
       sub: 'vs last month',
     },
     {
+      key: 'inquiry_rate',
       label: 'Inquiry rate',
       value: viewsLast30 === 0 ? '—' : `${inquiryRate.toFixed(1)}%`,
       trend: inquiryRateDelta.trend,
@@ -345,6 +347,7 @@ function computePerformance(
       sub: 'vs last month',
     },
     {
+      key: 'response_time',
       label: 'Response time',
       value: responded.length === 0 ? '—' : formatDuration(avg),
       trend: responseDeltaPct,

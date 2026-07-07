@@ -15,6 +15,9 @@ import {
 } from '@/lib/mock-data'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import DashboardClient, { type DashboardSource } from './DashboardClient'
 
 async function loadDashboard(): Promise<{
@@ -70,5 +73,11 @@ async function loadDashboard(): Promise<{
 
 export default async function DashboardPage() {
   const { source, data } = await loadDashboard()
-  return <DashboardClient source={source} data={data} />
+  const locale = await getLocale()
+  const dashboardStrings = await loadPortalUiStrings('dashboard', locale)
+  return (
+    <PortalUIStringsProvider bundles={{ dashboard: dashboardStrings }}>
+      <DashboardClient source={source} data={data} />
+    </PortalUIStringsProvider>
+  )
 }

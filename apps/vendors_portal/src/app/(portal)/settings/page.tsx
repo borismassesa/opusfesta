@@ -2,6 +2,9 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import SettingsClient from './SettingsClient'
 
 export const dynamic = 'force-dynamic'
@@ -16,12 +19,16 @@ export default async function SettingsPage() {
   ])
 
   const vendor = state.kind === 'live' ? state.vendor : null
+  const locale = await getLocale()
+  const settingsStrings = await loadPortalUiStrings('settings', locale)
 
   return (
-    <SettingsClient
-      phone={userRow?.phone ?? null}
-      vendor={vendor}
-    />
+    <PortalUIStringsProvider bundles={{ settings: settingsStrings }}>
+      <SettingsClient
+        phone={userRow?.phone ?? null}
+        vendor={vendor}
+      />
+    </PortalUIStringsProvider>
   )
 }
 

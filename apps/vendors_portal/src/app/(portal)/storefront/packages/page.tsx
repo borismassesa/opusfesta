@@ -1,6 +1,9 @@
 import { createClerkSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import type { PackageDraft } from '@/lib/onboarding/packages'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import { dbPackagesToUi } from './mapping'
 import { ensurePackageIds } from './actions'
 import PackagesEditor, {
@@ -121,6 +124,11 @@ async function loadPackages(): Promise<{
 }
 
 export default async function StorefrontPackagesPage() {
-  const props = await loadPackages()
-  return <PackagesEditor {...props} />
+  const [props, locale] = await Promise.all([loadPackages(), getLocale()])
+  const packagesStrings = await loadPortalUiStrings('storefront-packages', locale)
+  return (
+    <PortalUIStringsProvider bundles={{ 'storefront-packages': packagesStrings }}>
+      <PackagesEditor {...props} />
+    </PortalUIStringsProvider>
+  )
 }

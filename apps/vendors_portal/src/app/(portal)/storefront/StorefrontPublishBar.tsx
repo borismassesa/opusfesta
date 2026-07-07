@@ -8,6 +8,7 @@ import {
   discardStorefrontDraft,
   hasStorefrontDraft,
 } from './actions'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 /**
  * Sticky banner that surfaces draft state on every storefront editor page.
@@ -21,6 +22,7 @@ import {
  */
 export function StorefrontPublishBar() {
   const router = useRouter()
+  const t = usePortalT('storefront-chrome')
   const [hasDraft, setHasDraft] = useState<boolean | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +49,7 @@ export function StorefrontPublishBar() {
     start(async () => {
       const result = await publishStorefront()
       if (result.ok) {
-        setMessage('Storefront published. Couples on opusfesta.com see your latest now.')
+        setMessage(t('publish_success'))
         setHasDraft(false)
         router.refresh()
       } else {
@@ -62,7 +64,7 @@ export function StorefrontPublishBar() {
     start(async () => {
       const result = await discardStorefrontDraft()
       if (result.ok) {
-        setMessage('Draft discarded.')
+        setMessage(t('discard_success'))
         setHasDraft(false)
         router.refresh()
       } else {
@@ -80,10 +82,10 @@ export function StorefrontPublishBar() {
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-amber-900 leading-tight">
-              You have unpublished storefront changes
+              {t('banner_title')}
             </p>
             <p className="text-xs text-amber-800/80 mt-0.5">
-              Couples on opusfesta.com still see your last published storefront. Publish to push your edits live.
+              {t('banner_desc')}
             </p>
           </div>
         </div>
@@ -103,7 +105,7 @@ export function StorefrontPublishBar() {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             <Trash2 className="w-4 h-4" />
-            Discard
+            {t('discard_button')}
           </button>
           <button
             type="button"
@@ -112,7 +114,7 @@ export function StorefrontPublishBar() {
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-[#7E5896] hover:bg-[#6b4a82] px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            Publish
+            {t('publish_button')}
           </button>
         </div>
       </div>

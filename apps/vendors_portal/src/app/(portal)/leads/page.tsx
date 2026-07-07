@@ -3,6 +3,9 @@ import { recentInquiries } from '@/lib/mock-data'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import type { VendorPricingPackage } from '@/lib/vendors'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import LeadsClient, { type LeadsSource } from './LeadsClient'
 
 type DbInquiryStatus =
@@ -41,12 +44,12 @@ type VendorPackagesRow = {
   packages: unknown
 }
 
-function formatEventDate(date: string | null): string {
-  if (!date) return 'Date TBC'
+function formatEventDate(date: string | null, dateTbcLabel: string): string {
+  if (!date) return dateTbcLabel
   const parsed = new Date(date)
   if (Number.isNaN(parsed.getTime())) {
     console.warn('[leads] invalid event_date in DB:', date)
-    return 'Date TBC'
+    return dateTbcLabel
   }
   return parsed.toLocaleDateString('en-GB', {
     weekday: 'short',
@@ -66,11 +69,11 @@ function mapStatus(status: DbInquiryStatus | null): InquiryRow['status'] {
   return mapped
 }
 
-function mapRow(row: InquiryRowFromDb): InquiryRow {
+function mapRow(row: InquiryRowFromDb, dateTbcLabel: string, anonymousLeadLabel: string): InquiryRow {
   return {
     id: row.id,
-    couple: row.name ?? 'Anonymous lead',
-    date: formatEventDate(row.event_date),
+    couple: row.name ?? anonymousLeadLabel,
+    date: formatEventDate(row.event_date, dateTbcLabel),
     eventDateIso: row.event_date ?? undefined,
     budget: row.budget ?? '—',
     location: row.location ?? '—',
@@ -85,7 +88,7 @@ function mapRow(row: InquiryRowFromDb): InquiryRow {
   }
 }
 
-async function loadInquiries(): Promise<{
+async function loadInquiries(dateTbcLabel: string, defaultVendorName: string, anonymousLeadLabel: string): Promise<{
   inquiries: InquiryRow[]
   source: LeadsSource
   vendorName: string
@@ -96,7 +99,7 @@ async function loadInquiries(): Promise<{
     return {
       inquiries: recentInquiries,
       source: { kind: 'no-env' },
-      vendorName: 'Your Business',
+      vendorName: defaultVendorName,
       packages: [],
     }
   }
@@ -175,7 +178,7 @@ async function loadInquiries(): Promise<{
   }
 
   return {
-    inquiries: (inquiries.data ?? []).map(mapRow),
+    inquiries: (inquiries.data ?? []).map((row) => mapRow(row, dateTbcLabel, anonymousLeadLabel)),
     source: { kind: 'live' },
     vendorName: state.vendor.businessName,
     packages,
@@ -183,6 +186,16 @@ async function loadInquiries(): Promise<{
 }
 
 export default async function LeadsPage() {
-  const { inquiries, source, vendorName, packages } = await loadInquiries()
-  return <LeadsClient inquiries={inquiries} source={source} vendorName={vendorName} packages={packages} />
+  const locale = await getLocale()
+  const leadsStrings = await loadPortalUiStrings('leads', locale)
+  const { inquiries, source, vendorName, packages } = await loadInquiries(
+    leadsStrings.date_tbc,
+    leadsStrings.dev_default_vendor_name,
+    leadsStrings.anonymous_lead,
+  )
+  return (
+    <PortalUIStringsProvider bundles={{ leads: leadsStrings }}>
+      <LeadsClient inquiries={inquiries} source={source} vendorName={vendorName} packages={packages} />
+    </PortalUIStringsProvider>
+  )
 }

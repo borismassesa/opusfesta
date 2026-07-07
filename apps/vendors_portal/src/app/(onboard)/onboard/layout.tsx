@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 
 // Gate the onboarding wizard. It is only for users who have NOT yet submitted
 // an application — a vendor who already applied must never be dropped back into
@@ -33,5 +36,12 @@ export default async function OnboardRouteLayout({
     redirect('/verify')
   }
 
-  return <>{children}</>
+  const locale = await getLocale()
+  const onboardingStrings = await loadPortalUiStrings('onboarding', locale)
+
+  return (
+    <PortalUIStringsProvider bundles={{ onboarding: onboardingStrings }}>
+      {children}
+    </PortalUIStringsProvider>
+  )
 }

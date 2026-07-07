@@ -12,6 +12,10 @@ export type CompletionSection = {
 }
 
 export type LeadStat = {
+  // Stable identifier for CMS-driven label translation (see
+  // portal-ui-fallback.ts DashboardStrings `stat_<key>`). `label` remains the
+  // English default rendered when the key has no CMS-area match.
+  key: string
   label: string
   value: string
   trend: string
@@ -182,16 +186,16 @@ export const completion: CompletionSection[] = [
 ]
 
 export const leadStats: LeadStat[] = [
-  { label: 'New inquiries', value: '12', trend: '+18%', isPositive: true, sub: 'This week' },
-  { label: 'Conversion rate', value: '11.3%', trend: '+1.2pp', isPositive: true, sub: 'vs last month' },
-  { label: 'Avg response time', value: '2h 14m', trend: '−22m', isPositive: true, sub: 'vs last month' },
-  { label: 'Booked leads', value: '2', trend: '+1', isPositive: true, sub: 'This month' },
+  { key: 'new_inquiries', label: 'New inquiries', value: '12', trend: '+18%', isPositive: true, sub: 'This week' },
+  { key: 'conversion_rate', label: 'Conversion rate', value: '11.3%', trend: '+1.2pp', isPositive: true, sub: 'vs last month' },
+  { key: 'avg_response_time', label: 'Avg response time', value: '2h 14m', trend: '−22m', isPositive: true, sub: 'vs last month' },
+  { key: 'booked_leads', label: 'Booked leads', value: '2', trend: '+1', isPositive: true, sub: 'This month' },
 ]
 
 export const performanceStats: LeadStat[] = [
-  { label: 'Profile views', value: '1,284', trend: '+18%', isPositive: true, sub: 'vs last month' },
-  { label: 'Inquiry rate', value: '3.4%', trend: '+0.6%', isPositive: true, sub: 'vs last month' },
-  { label: 'Response time', value: '2h 14m', trend: '-22m', isPositive: true, sub: 'vs last month' },
+  { key: 'profile_views', label: 'Profile views', value: '1,284', trend: '+18%', isPositive: true, sub: 'vs last month' },
+  { key: 'inquiry_rate', label: 'Inquiry rate', value: '3.4%', trend: '+0.6%', isPositive: true, sub: 'vs last month' },
+  { key: 'response_time', label: 'Response time', value: '2h 14m', trend: '-22m', isPositive: true, sub: 'vs last month' },
 ]
 
 export const insights: InsightPoint[] = [

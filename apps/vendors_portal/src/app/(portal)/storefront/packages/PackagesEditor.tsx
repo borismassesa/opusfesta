@@ -30,6 +30,7 @@ import {
   packageBadgeToneClass,
 } from '@/lib/storefront/package-badge'
 import { cn } from '@/lib/utils'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 import { saveBadge } from './actions'
 import { saveProfileFields } from '../sections/actions'
 
@@ -49,6 +50,8 @@ export type PayoutSummary = {
 
 // DB `method_type` enum → human label. Mirrors PAYOUT_OPTIONS but keyed by the
 // stored enum value (halopesa collapses into lipa_namba at write time).
+// These payment-network brand names (M-Pesa, Airtel Money, Mixx by Yas) are
+// proper nouns — not localized, same as elsewhere PAYOUT_OPTIONS is used.
 const PAYOUT_DB_LABEL: Record<string, string> = {
   mpesa: 'M-Pesa',
   airtel: 'Airtel Money',
@@ -74,16 +77,14 @@ export type PackagesSource =
   | { kind: 'suspended' }
   | { kind: 'no-env' }
 
-const BANNER_BY_SOURCE: Record<PackagesSource['kind'], string | null> = {
-  live: null,
-  'no-application':
-    "You haven't started a vendor application yet. Apply to do business on OpusFesta to edit your packages.",
-  'pending-approval':
-    'Your vendor application is awaiting OpusFesta verification. Editing unlocks once your account is approved.',
-  suspended:
-    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
-  'no-env':
-    'DEV: Vendor backend not connected — Save is disabled. Check Supabase env vars and that migrations are applied to your Supabase project.',
+function buildBannerBySource(t: Translator): Record<PackagesSource['kind'], string | null> {
+  return {
+    live: null,
+    'no-application': t('banner_no_application'),
+    'pending-approval': t('banner_pending_approval'),
+    suspended: t('banner_suspended'),
+    'no-env': t('banner_no_env'),
+  }
 }
 
 function formatTZS(raw: string) {
@@ -119,6 +120,7 @@ export default function PackagesEditor({
   // are saved from this page. Payout lives in the secure vendor_payout_methods
   // table, edited via the onboarding payout step — shown here read-only.
   const router = useRouter()
+  const t = usePortalT('storefront-packages')
   const { draft, update, hydrated } = useOnboardingDraft()
   const [packages, setPackages] = useState<PackageDraft[]>(initialPackages)
   const [editingBadgeId, setEditingBadgeId] = useState<string | null>(null)
@@ -212,12 +214,12 @@ export default function PackagesEditor({
         cancellationLevel: draft.cancellationLevel,
         reschedulePolicy: draft.reschedulePolicy,
       })
-      if (res.ok) setSaveMsg({ kind: 'success', text: 'Booking policies saved.' })
+      if (res.ok) setSaveMsg({ kind: 'success', text: t('policies_saved_success') })
       else setSaveMsg({ kind: 'error', text: res.error })
     })
   }
 
-  const banner = BANNER_BY_SOURCE[source.kind]
+  const banner = buildBannerBySource(t)[source.kind]
 
   const nextHref = useMemo(() => {
     const sections = getStorefrontSections(draft)
@@ -299,7 +301,7 @@ export default function PackagesEditor({
         badge: next ?? null,
       })
       if (result.ok) {
-        setFeedback({ kind: 'success', message: 'Badge saved.' })
+        setFeedback({ kind: 'success', message: t('badge_saved_success') })
       } else {
         // Roll back the optimistic update so the UI reflects DB state.
         setPackages(previous)
@@ -326,12 +328,12 @@ export default function PackagesEditor({
           )}
 
           <Card
-            title="Packages"
+            title={t('card_packages_title')}
             right={
               <div className="flex items-center gap-4">
                 {startingPrice ? (
                   <span className="text-sm text-gray-600">
-                    Starting from{' '}
+                    {t('starting_from_prefix')}{' '}
                     <span className="text-gray-900 font-semibold tabular-nums">
                       TSh {startingPrice}
                     </span>
@@ -342,18 +344,16 @@ export default function PackagesEditor({
             }
           >
             <p className="text-xs text-gray-500 mb-5">
-              {canEdit
-                ? 'Click the pill on any card to set your own label, icon, and colour — e.g.'
-                : 'Read-only — owner or manager role can edit. Examples:'}{' '}
-              <span className="font-medium text-gray-700">Platinum</span>,{' '}
-              <span className="font-medium text-gray-700">Best Value</span>,{' '}
-              <span className="font-medium text-gray-700">Most Booked</span>.
+              {canEdit ? t('hint_editable') : t('hint_readonly')}{' '}
+              <span className="font-medium text-gray-700">{t('example_badge_1')}</span>,{' '}
+              <span className="font-medium text-gray-700">{t('example_badge_2')}</span>,{' '}
+              <span className="font-medium text-gray-700">{t('example_badge_3')}</span>.
             </p>
             {packages.length === 0 ? (
               <p className="text-sm text-gray-500 py-2">
-                No packages yet. Add them on the{' '}
+                {t('empty_packages_prefix')}{' '}
                 <Link href="/onboard/pricing" className="underline">
-                  pricing page
+                  {t('pricing_page_link_text')}
                 </Link>
                 .
               </p>
@@ -389,63 +389,63 @@ export default function PackagesEditor({
 
           {/* Booking policies — saved to vendors.{deposit_percent,cancellation_level,reschedule_policy} via the Save bar below */}
           <Card
-            title="Booking policies"
+            title={t('card_policies_title')}
             right={<EditLink href="/onboard/pricing/policies" />}
           >
             <dl className="divide-y divide-gray-100">
-              <Row label="Deposit">
+              <Row label={t('label_deposit')}>
                 {hydrated && draft.depositPercent
-                  ? `${draft.depositPercent}% to confirm`
+                  ? t('deposit_confirm_suffix', { percent: draft.depositPercent })
                   : '—'}
               </Row>
-              <Row label="Cancellation">{(hydrated && cancellationLabel) || '—'}</Row>
-              <Row label="Reschedule">{(hydrated && rescheduleLabel) || '—'}</Row>
+              <Row label={t('label_cancellation')}>{(hydrated && cancellationLabel) || '—'}</Row>
+              <Row label={t('label_reschedule')}>{(hydrated && rescheduleLabel) || '—'}</Row>
             </dl>
           </Card>
 
           {/* Payout — read-only summary of the secure vendor_payout_methods table */}
           <Card
-            title="Payout"
+            title={t('card_payout_title')}
             icon={Lock}
-            hint="Saved securely from your onboarding payout step. Use Edit to change your bank or mobile-money details."
+            hint={t('payout_hint')}
             right={<EditLink href="/onboard/pricing/payout" />}
           >
             {payoutView ? (
               <dl className="divide-y divide-gray-100">
-                <Row label={payoutView.count > 1 ? 'Primary method' : 'Method'}>
+                <Row label={payoutView.count > 1 ? t('label_primary_method') : t('label_method')}>
                   {payoutView.methodLabel}
                 </Row>
                 {payoutView.isBank && payoutView.provider ? (
-                  <Row label="Bank">{payoutView.provider}</Row>
+                  <Row label={t('label_bank')}>{payoutView.provider}</Row>
                 ) : null}
                 {payoutView.isLipa && payoutView.provider ? (
-                  <Row label="Network">{payoutView.provider}</Row>
+                  <Row label={t('label_network')}>{payoutView.provider}</Row>
                 ) : null}
                 <Row
                   label={
                     payoutView.isBank
-                      ? 'Account number'
+                      ? t('label_account_number')
                       : payoutView.isLipa
-                        ? 'Lipa Namba'
-                        : 'Number'
+                        ? t('label_lipa_namba')
+                        : t('label_number')
                   }
                 >
                   {payoutView.number
                     ? payoutView.isBank || payoutView.isLipa
                       ? payoutView.number
-                      : `+255 ${payoutView.number}`
+                      : t('phone_prefix', { number: payoutView.number })
                     : '—'}
                 </Row>
-                <Row label="Account holder">{payoutView.accountHolder || '—'}</Row>
+                <Row label={t('label_account_holder')}>{payoutView.accountHolder || '—'}</Row>
                 {payoutView.count > 1 ? (
-                  <Row label="Other methods">{payoutView.count - 1} more on file</Row>
+                  <Row label={t('label_other_methods')}>{t('other_methods_suffix', { count: payoutView.count - 1 })}</Row>
                 ) : null}
               </dl>
             ) : (
               <p className="text-sm text-gray-500 py-2">
-                No payout method on file yet. Add one on the{' '}
+                {t('empty_payout_prefix')}{' '}
                 <Link href="/onboard/pricing/payout" className="underline">
-                  payout step
+                  {t('payout_step_link_text')}
                 </Link>
                 .
               </p>
@@ -461,11 +461,11 @@ export default function PackagesEditor({
               <span className="font-semibold text-gray-900 tabular-nums">
                 {packages.length}
               </span>{' '}
-              package{packages.length === 1 ? '' : 's'} ·{' '}
+              {packages.length === 1 ? t('footer_package_singular') : t('footer_package_plural')} ·{' '}
               <span className="font-semibold text-gray-900 tabular-nums">
                 {packages.filter((p) => p.badge).length}
               </span>{' '}
-              with custom badges
+              {t('footer_with_badges_suffix')}
             </span>
             {saveMsg ? (
               <span
@@ -489,7 +489,7 @@ export default function PackagesEditor({
                 className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 <Save className="w-3.5 h-3.5" />
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('saving_label') : t('save_button')}
               </button>
             ) : null}
             {nextHref ? (
@@ -498,7 +498,7 @@ export default function PackagesEditor({
                 onClick={onNext}
                 className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
               >
-                Next
+                {t('next_button')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : null}
@@ -524,6 +524,7 @@ function PackageCard({
   onCloseEditor: () => void
   onSaveBadge: (badge: PackageBadge | undefined) => void
 }) {
+  const t = usePortalT('storefront-packages')
   const Icon = pkg.badge ? packageBadgeIcon(pkg.badge.icon) : null
   const includes = pkg.includes.filter(Boolean)
   const isEmphasised = Boolean(pkg.badge)
@@ -547,7 +548,7 @@ function PackageCard({
               'inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70 transition-opacity',
               packageBadgeToneClass(pkg.badge.tone),
             )}
-            title={canEdit ? 'Edit badge' : 'Read-only'}
+            title={canEdit ? t('edit_badge_title') : t('readonly_title')}
           >
             <Icon className="w-2.5 h-2.5" />
             {pkg.badge.label}
@@ -558,15 +559,15 @@ function PackageCard({
             type="button"
             onClick={onOpenEditor}
             className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap bg-white border border-dashed border-gray-300 text-gray-500 hover:border-gray-500 hover:text-gray-900 transition-colors"
-            title="Add a badge"
+            title={t('add_badge_title')}
           >
             <Plus className="w-2.5 h-2.5" />
-            Add badge
+            {t('add_badge_button')}
           </button>
         ) : null}
       </div>
 
-      <p className="text-sm font-semibold text-gray-900 mt-2">{pkg.name || 'Untitled package'}</p>
+      <p className="text-sm font-semibold text-gray-900 mt-2">{pkg.name || t('untitled_package')}</p>
       <p className="text-lg font-semibold text-gray-900 tabular-nums tracking-tight mt-1">
         {pkg.price ? `TSh ${pkg.price}` : '—'}
       </p>
@@ -614,6 +615,7 @@ function BadgeEditor({
   onSave: (badge: PackageBadge) => void
   onRemove: () => void
 }) {
+  const t = usePortalT('storefront-packages')
   const [label, setLabel] = useState(initial.label)
   const [icon, setIcon] = useState<PackageBadgeIcon>(initial.icon)
   const [tone, setTone] = useState<PackageBadgeTone>(initial.tone)
@@ -638,28 +640,28 @@ function BadgeEditor({
       className="absolute inset-x-0 top-full mt-2 z-30 bg-white rounded-xl border border-gray-200 shadow-[0_8px_28px_-12px_rgba(0,0,0,0.25)] p-4 w-full"
     >
       <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Customise badge</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{t('customise_badge_header')}</p>
         <button
           type="button"
           onClick={onClose}
           className="p-1 -mr-1 -mt-1 text-gray-400 hover:text-gray-700 rounded-md transition-colors"
-          aria-label="Close"
+          aria-label={t('close_aria')}
         >
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <label className="block text-[11px] font-semibold text-gray-700 mb-1">Label</label>
+      <label className="block text-[11px] font-semibold text-gray-700 mb-1">{t('field_label_label')}</label>
       <input
         type="text"
         value={label}
         onChange={(e) => setLabel(e.target.value.slice(0, 24))}
-        placeholder="e.g. Platinum, Best Value"
+        placeholder={t('label_field_placeholder')}
         maxLength={24}
         className="w-full bg-white rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none mb-3"
       />
 
-      <p className="text-[11px] font-semibold text-gray-700 mb-1.5">Icon</p>
+      <p className="text-[11px] font-semibold text-gray-700 mb-1.5">{t('icon_section_label')}</p>
       <div className="grid grid-cols-5 gap-1.5 mb-3">
         {PACKAGE_BADGE_ICONS.map(({ id, label: iconLabel, Icon }) => (
           <button
@@ -681,7 +683,7 @@ function BadgeEditor({
         ))}
       </div>
 
-      <p className="text-[11px] font-semibold text-gray-700 mb-1.5">Colour</p>
+      <p className="text-[11px] font-semibold text-gray-700 mb-1.5">{t('colour_section_label')}</p>
       <div className="grid grid-cols-5 gap-1.5 mb-4">
         {PACKAGE_BADGE_TONES.map((t) => (
           <button
@@ -711,7 +713,7 @@ function BadgeEditor({
           )}
         >
           <PreviewIcon className="w-2.5 h-2.5" />
-          {trimmed || 'Preview'}
+          {trimmed || t('preview_fallback')}
         </span>
       </div>
 
@@ -722,7 +724,7 @@ function BadgeEditor({
             onClick={onRemove}
             className="text-xs font-semibold text-rose-600 hover:text-rose-700"
           >
-            Remove badge
+            {t('remove_badge_button')}
           </button>
         ) : (
           <span />
@@ -733,7 +735,7 @@ function BadgeEditor({
             onClick={onClose}
             className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md"
           >
-            Cancel
+            {t('cancel_button')}
           </button>
           <button
             type="button"
@@ -741,7 +743,7 @@ function BadgeEditor({
             onClick={() => onSave({ label: trimmed, icon, tone })}
             className="inline-flex items-center gap-1 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
           >
-            Save
+            {t('save_badge_button')}
           </button>
         </div>
       </div>
@@ -786,13 +788,14 @@ function Card({
 }
 
 function EditLink({ href }: { href: string }) {
+  const t = usePortalT('storefront-packages')
   return (
     <Link
       href={href}
       className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
     >
       <Pencil className="w-3.5 h-3.5" />
-      Edit
+      {t('edit_link_text')}
     </Link>
   )
 }

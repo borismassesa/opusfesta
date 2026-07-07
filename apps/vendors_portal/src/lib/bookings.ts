@@ -1,4 +1,5 @@
 import type { Booking, BookingStage } from './mock-data'
+import type { Translator } from '@/components/providers/PortalUIStringsProvider'
 
 export const STAGE_META: Record<
   BookingStage,
@@ -39,6 +40,18 @@ export const STAGE_META: Record<
     dotClass: 'bg-rose-400',
     order: 4,
   },
+}
+
+// Translated stage labels, keyed the same as STAGE_META — callers use this for
+// the rendered label and STAGE_META[stage] for the styling (pillClass/dotClass).
+export function buildStageLabel(t: Translator): Record<BookingStage, string> {
+  return {
+    quoted: t('stage_quoted'),
+    reserved: t('stage_reserved'),
+    confirmed: t('booking_status_confirmed'),
+    completed: t('booking_status_completed'),
+    cancelled: t('stage_cancelled'),
+  }
 }
 
 // "TZS 4.2M" / "TZS 850K" / "TZS 4,200,000" depending on context.
@@ -144,7 +157,13 @@ const ms = (h: number) => h * 60 * 60 * 1000
 
 // Order bookings by descending urgency. Each rule may produce one item per
 // booking; we cap the strip at 3 callouts to avoid overwhelming the vendor.
-export function deriveAttention(bookings: Booking[], now: Date = new Date()): AttentionItem[] {
+//
+// `ctaLabel` is translated via `t`. `title`/`detail` are NOT fully localized —
+// they interpolate other still-English-only helpers in this file
+// (relativeDays, timeAgo, durationUntil) alongside a few fixed connector
+// words. Fully localizing them means localizing those helpers too; flagged
+// as a follow-up rather than done here.
+export function deriveAttention(bookings: Booking[], now: Date, t: Translator): AttentionItem[] {
   const items: AttentionItem[] = []
   const today = startOfToday()
   for (const b of bookings) {
@@ -159,7 +178,7 @@ export function deriveAttention(bookings: Booking[], now: Date = new Date()): At
           bookingId: b.id,
           title: `${b.couple} — slot expires in ${durationUntil(b.slotHeldUntil, now)}`,
           detail: `${b.packageName} · ${formatTZS(b.totalValue, { compact: true })}`,
-          ctaLabel: 'Send reminder',
+          ctaLabel: t('cta_send_reminder'),
         })
         continue
       }
@@ -177,7 +196,7 @@ export function deriveAttention(bookings: Booking[], now: Date = new Date()): At
             Math.round((b.totalValue * b.depositPercent) / 100),
             { compact: true },
           )} due`,
-          ctaLabel: 'Send reminder',
+          ctaLabel: t('cta_send_reminder'),
         })
         continue
       }
@@ -193,7 +212,7 @@ export function deriveAttention(bookings: Booking[], now: Date = new Date()): At
           bookingId: b.id,
           title: `${b.couple} — wedding ${relativeDays(b.date, now).toLowerCase()}`,
           detail: 'Contract not yet signed',
-          ctaLabel: 'Open contract',
+          ctaLabel: t('cta_open_contract'),
         })
         continue
       }
@@ -209,7 +228,7 @@ export function deriveAttention(bookings: Booking[], now: Date = new Date()): At
           bookingId: b.id,
           title: `${b.couple} — event done ${relativeDays(b.date, now).toLowerCase()}`,
           detail: 'Ask for a review while the day is fresh',
-          ctaLabel: 'Send request',
+          ctaLabel: t('cta_send_review_request'),
         })
         continue
       }
@@ -225,7 +244,7 @@ export function deriveAttention(bookings: Booking[], now: Date = new Date()): At
           bookingId: b.id,
           title: `${b.couple} — ${relativeDays(b.date, now).toLowerCase()}`,
           detail: `${b.location} · ${b.startTime}`,
-          ctaLabel: 'Open brief',
+          ctaLabel: t('cta_open_brief'),
         })
       }
     }

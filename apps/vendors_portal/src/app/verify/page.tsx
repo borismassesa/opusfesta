@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import { AGREEMENT_DOCS } from '@/lib/onboarding/vendor-agreement'
 import VerifyClient, {
   type AgreementBusinessDefaults,
@@ -73,8 +76,15 @@ export default async function VerifyPage() {
   if (state.kind === 'live') redirect('/dashboard')
   if (state.kind === 'no-application') redirect('/onboard')
   if (state.kind === 'no-env') redirect('/onboard')
+  const locale = await getLocale()
+  const verifyStrings = await loadPortalUiStrings('verify', locale)
+
   if (state.kind === 'suspended') {
-    return <VerifyStatusScreen variant="suspended" />
+    return (
+      <PortalUIStringsProvider bundles={{ verify: verifyStrings }}>
+        <VerifyStatusScreen variant="suspended" />
+      </PortalUIStringsProvider>
+    )
   }
   if (state.status === 'application_in_progress') redirect('/onboard')
   // Remaining: `verification_pending`, `needs_corrections`, and `admin_review`.
@@ -256,13 +266,15 @@ export default async function VerifyPage() {
   }))
 
   return (
-    <VerifyClient
-      status={state.status}
-      vendorId={state.vendorId}
-      slots={slots}
-      nationalId={nationalId}
-      agreementDocs={agreementDocs}
-      agreementBusinessDefaults={businessDefaults}
-    />
+    <PortalUIStringsProvider bundles={{ verify: verifyStrings }}>
+      <VerifyClient
+        status={state.status}
+        vendorId={state.vendorId}
+        slots={slots}
+        nationalId={nationalId}
+        agreementDocs={agreementDocs}
+        agreementBusinessDefaults={businessDefaults}
+      />
+    </PortalUIStringsProvider>
   )
 }

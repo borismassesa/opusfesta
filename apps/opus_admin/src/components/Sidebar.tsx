@@ -131,6 +131,7 @@ const sections: NavSection[] = [
     requiredPermission: "cms.read",
     items: [
       { icon: Home, label: "Homepage", href: "/cms/vendors-portal", requiredPermission: "cms.read" },
+      { icon: PanelTop, label: "Site UI", href: "/cms/vendors-portal/site-ui/portal-chrome", requiredPermission: "cms.read" },
     ],
   },
   {

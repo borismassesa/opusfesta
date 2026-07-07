@@ -8,6 +8,7 @@ import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { findCategory } from '@/lib/onboarding/categories'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { getStorefrontSections } from '@/lib/storefront/completion'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 import { saveServices } from './actions'
 
 const MAX_CUSTOM_LABEL = 60
@@ -19,16 +20,14 @@ export type ServicesSource =
   | { kind: 'suspended' }
   | { kind: 'no-env' }
 
-const BANNER_BY_SOURCE: Record<ServicesSource['kind'], string | null> = {
-  live: null,
-  'no-application':
-    "You haven't started a vendor application yet. Apply to do business on OpusFesta to edit your services.",
-  'pending-approval':
-    'Your vendor application is awaiting OpusFesta verification. Editing unlocks once your account is approved.',
-  suspended:
-    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
-  'no-env':
-    'DEV: Vendor backend not connected — Save is disabled. Check Supabase env vars and that migrations are applied to your Supabase project.',
+function buildBannerBySource(t: Translator): Record<ServicesSource['kind'], string | null> {
+  return {
+    live: null,
+    'no-application': t('banner_no_application'),
+    'pending-approval': t('banner_pending_approval'),
+    suspended: t('banner_suspended'),
+    'no-env': t('banner_no_env'),
+  }
 }
 
 type ServicesEditorProps = {
@@ -49,6 +48,7 @@ export default function ServicesEditor({
   category,
 }: ServicesEditorProps) {
   const router = useRouter()
+  const t = usePortalT('storefront-services')
   const { draft, update } = useOnboardingDraft()
   const [specialServices, setSpecial] = useState<string[]>(initialPresetIds)
   const [customServices, setCustom] = useState<string[]>(initialCustomServices)
@@ -76,7 +76,7 @@ export default function ServicesEditor({
     { kind: 'success' | 'error'; message: string } | null
   >(null)
 
-  const banner = BANNER_BY_SOURCE[source.kind]
+  const banner = buildBannerBySource(t)[source.kind]
   const categoryMeta = findCategory(category)
 
   const nextHref = useMemo(() => {
@@ -127,8 +127,8 @@ export default function ServicesEditor({
       setFeedback({
         kind: 'error',
         message: inPresets
-          ? `"${label}" is already selected as a preset.`
-          : `"${label}" is already in your list.`,
+          ? t('duplicate_preset_error', { label })
+          : t('duplicate_custom_error', { label }),
       })
       return
     }
@@ -150,7 +150,7 @@ export default function ServicesEditor({
     startTransition(async () => {
       const result = await saveServices({ specialServices, customServices })
       if (result.ok) {
-        setFeedback({ kind: 'success', message: 'Services saved.' })
+        setFeedback({ kind: 'success', message: t('success_saved') })
       } else {
         setFeedback({ kind: 'error', message: result.error })
       }
@@ -173,10 +173,10 @@ export default function ServicesEditor({
             <div className="flex items-start justify-between gap-4 mb-5">
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-gray-900 tracking-tight">
-                  {categoryMeta?.profileLabel ?? 'Vendor'} services
+                  {t('services_header', { category: categoryMeta?.profileLabel ?? t('fallback_category_label') })}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Pick what couples can book you for. These power search filters too.
+                  {t('services_hint')}
                 </p>
               </div>
               <span className="shrink-0 text-xs font-semibold text-gray-700 tabular-nums">
@@ -201,14 +201,14 @@ export default function ServicesEditor({
             <div className="flex items-start justify-between gap-4 mb-5">
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-gray-900 tracking-tight">
-                  Your own services
+                  {t('custom_header')}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Add anything specific to your business that isn&rsquo;t in the list above.
+                  {t('custom_hint')}
                 </p>
               </div>
               <span className="shrink-0 text-xs font-semibold text-gray-700 tabular-nums">
-                {customSelected} added
+                {t('custom_count_suffix', { count: customSelected })}
               </span>
             </div>
 
@@ -226,7 +226,7 @@ export default function ServicesEditor({
                       onClick={() => removeCustom(label)}
                       disabled={!canEdit}
                       className="w-5 h-5 rounded-full flex items-center justify-center text-[#7E5896] hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-                      aria-label={`Remove ${label}`}
+                      aria-label={t('remove_custom_aria', { label })}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -236,20 +236,18 @@ export default function ServicesEditor({
             ) : (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-5 text-center mb-5">
                 <p className="text-sm text-gray-500">
-                  No custom services yet. Add one below — e.g.{' '}
-                  <span className="font-medium text-gray-700">&ldquo;Polaroid guest book&rdquo;</span> or{' '}
-                  <span className="font-medium text-gray-700">&ldquo;Drone aerial portraits&rdquo;</span>.
+                  {t('custom_empty')}
                 </p>
               </div>
             )}
 
             <form onSubmit={addCustom} className="grid sm:grid-cols-[1fr_auto] gap-3 items-end">
               <div>
-                <FieldLabel>Add a custom service</FieldLabel>
+                <FieldLabel>{t('custom_field_label')}</FieldLabel>
                 <TextInput
                   value={customDraft}
                   onChange={(e) => setCustomDraft(e.target.value.slice(0, MAX_CUSTOM_LABEL))}
-                  placeholder="e.g. Bridal henna sessions"
+                  placeholder={t('custom_placeholder')}
                   maxLength={MAX_CUSTOM_LABEL}
                   disabled={!canEdit}
                 />
@@ -260,7 +258,7 @@ export default function ServicesEditor({
                 className="inline-flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Add service
+                {t('add_service_button')}
               </button>
             </form>
           </section>
@@ -271,11 +269,11 @@ export default function ServicesEditor({
         <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4">
           <div className="text-xs text-gray-500 flex items-center gap-3">
             <span>
-              <span className="font-semibold text-gray-900 tabular-nums">{total}</span> service
-              {total === 1 ? '' : 's'} selected
+              <span className="font-semibold text-gray-900 tabular-nums">{total}</span>{' '}
+              {total === 1 ? t('total_label_singular') : t('total_label_plural')}
               {total < 3 ? (
                 <span className="text-amber-700 ml-1.5">
-                  — pick at least 3 so couples can find you in filters
+                  {t('min_services_hint')}
                 </span>
               ) : null}
             </span>
@@ -293,7 +291,7 @@ export default function ServicesEditor({
             ) : null}
             {!canEdit && source.kind === 'live' ? (
               <span className="text-gray-400">
-                Read-only — owner or manager role can edit.
+                {t('readonly_notice')}
               </span>
             ) : null}
           </div>
@@ -305,7 +303,7 @@ export default function ServicesEditor({
               className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               <Save className="w-4 h-4" />
-              {pending ? 'Saving…' : 'Save changes'}
+              {pending ? t('saving_label') : t('save_button')}
             </button>
             {nextHref ? (
               <button
@@ -313,7 +311,7 @@ export default function ServicesEditor({
                 onClick={onNext}
                 className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
               >
-                Next
+                {t('next_button')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : null}
