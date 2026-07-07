@@ -216,6 +216,14 @@ export default function PackagesEditor({ initial, hasDraft: initialHasDraft }: P
             <Field label="(SW)"><input className={inputCls} value={draft.perGuestLabel_sw} onChange={(e) => setField('perGuestLabel_sw', e.target.value)} /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <Field label="'per design' price suffix (EN)"><input className={inputCls} value={draft.perDesignLabel} onChange={(e) => setField('perDesignLabel', e.target.value)} /></Field>
+            <Field label="(SW)"><input className={inputCls} value={draft.perDesignLabel_sw} onChange={(e) => setField('perDesignLabel_sw', e.target.value)} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="'From' price-anchor prefix (EN)"><input className={inputCls} value={draft.fromLabel} onChange={(e) => setField('fromLabel', e.target.value)} /></Field>
+            <Field label="(SW)"><input className={inputCls} value={draft.fromLabel_sw} onChange={(e) => setField('fromLabel_sw', e.target.value)} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Card-count stepper label (EN)"><input className={inputCls} value={draft.cardsCountLabel} onChange={(e) => setField('cardsCountLabel', e.target.value)} /></Field>
             <Field label="(SW)"><input className={inputCls} value={draft.cardsCountLabel_sw} onChange={(e) => setField('cardsCountLabel_sw', e.target.value)} /></Field>
           </div>

@@ -191,7 +191,19 @@ function GuestStepper({ value, onChange }: { value: number; onChange: (n: number
 }
 
 // Compact cross-sell card — mirrors the catalog ProductCard look (5:7, hover lift).
-function RecommendCard({ product, fromGuestPrice }: { product: CatalogProduct; fromGuestPrice?: number }) {
+function RecommendCard({
+  product,
+  fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
+  fromLabel,
+}: {
+  product: CatalogProduct
+  fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
+  fromLabel?: string
+}) {
   return (
     <div className="group/rec flex flex-col">
       <Link
@@ -211,14 +223,26 @@ function RecommendCard({ product, fromGuestPrice }: { product: CatalogProduct; f
           <InvitationVisual treatment={product.treatment} palette={product.palettes?.[0]} />
         )}
       </Link>
-      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} />
+      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
     </div>
   )
 }
 
 // "You might also like" — leads with designs in the same categories as the cart,
 // then pads with other designs; falls back to a general selection when empty.
-function ExploreMore({ products, fromGuestPrice }: { products: CatalogProduct[]; fromGuestPrice?: number }) {
+function ExploreMore({
+  products,
+  fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
+  fromLabel,
+}: {
+  products: CatalogProduct[]
+  fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
+  fromLabel?: string
+}) {
   const t = useT('cart')
   const { items } = useCart()
 
@@ -257,14 +281,26 @@ function ExploreMore({ products, fromGuestPrice }: { products: CatalogProduct[];
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
         {recommended.map((product) => (
-          <RecommendCard key={product.id} product={product} fromGuestPrice={fromGuestPrice} />
+          <RecommendCard key={product.id} product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
         ))}
       </div>
     </section>
   )
 }
 
-export default function CartClient({ products = [], fromGuestPrice }: { products?: CatalogProduct[]; fromGuestPrice?: number }) {
+export default function CartClient({
+  products = [],
+  fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
+  fromLabel,
+}: {
+  products?: CatalogProduct[]
+  fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
+  fromLabel?: string
+}) {
   const t = useT('cart')
   const { items, subtotal, removeItem, setGuests } = useCart()
   // Digital product — prices are final (VAT-inclusive) and delivery is free.
@@ -475,7 +511,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
           </div>
         </div>
 
-        <ExploreMore products={products} fromGuestPrice={fromGuestPrice} />
+        <ExploreMore products={products} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
       </div>
 
       {/* Mobile sticky checkout bar — shows item count + total and keeps the

@@ -35,6 +35,9 @@ export default async function InvitationsCatalogPage() {
       <InvitationsCatalogClient
         products={products}
         fromGuestPrice={packageFromPrice(packages)}
+        perGuestLabel={packages.perGuestLabel}
+        perDesignLabel={packages.perDesignLabel}
+        fromLabel={packages.fromLabel}
         promoBanner={promoBanner}
         styleStrip={styleStripFromCategories(categories)}
       />

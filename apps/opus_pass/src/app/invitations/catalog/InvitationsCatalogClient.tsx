@@ -49,6 +49,9 @@ const AUTO_LOAD_BATCHES = 2
 export default function InvitationsCatalogClient({
   products = [],
   fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
+  fromLabel,
   title = 'Wedding Invitations',
   subtitle = 'A handpicked edit of digital invitation designs, browse by style.',
   promoBanner,
@@ -57,6 +60,9 @@ export default function InvitationsCatalogClient({
   products?: Product[]
   /** Lowest per-guest package price — the "From TZS X per guest" card anchor. */
   fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
+  fromLabel?: string
   title?: string
   subtitle?: string
   promoBanner: InvitationsPromoBannerContent
@@ -241,6 +247,9 @@ export default function InvitationsCatalogClient({
             <ProductGrid
               products={visibleProducts}
               fromGuestPrice={fromGuestPrice}
+              perGuestLabel={perGuestLabel}
+              perDesignLabel={perDesignLabel}
+              fromLabel={fromLabel}
               favourites={favourites}
               onToggleFavourite={toggleFavourite}
             />
@@ -468,11 +477,17 @@ function CategoryStrip({ items }: { items: StyleStripItem[] }) {
 function ProductGrid({
   products,
   fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
+  fromLabel,
   favourites,
   onToggleFavourite,
 }: {
   products: Product[]
   fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
+  fromLabel?: string
   favourites: Set<string>
   onToggleFavourite: (id: string) => void
 }) {
@@ -483,6 +498,9 @@ function ProductGrid({
           key={product.id}
           product={product}
           fromGuestPrice={fromGuestPrice}
+          perGuestLabel={perGuestLabel}
+          perDesignLabel={perDesignLabel}
+          fromLabel={fromLabel}
           favourited={favourites.has(product.id)}
           onToggleFavourite={() => onToggleFavourite(product.id)}
         />
@@ -494,11 +512,17 @@ function ProductGrid({
 function ProductCard({
   product,
   fromGuestPrice,
+  perGuestLabel,
+  perDesignLabel,
+  fromLabel,
   favourited,
   onToggleFavourite,
 }: {
   product: Product
   fromGuestPrice?: number
+  perGuestLabel?: string
+  perDesignLabel?: string
+  fromLabel?: string
   favourited: boolean
   onToggleFavourite: () => void
 }) {
@@ -542,7 +566,7 @@ function ProductCard({
         </button>
 
       </Link>
-      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} />
+      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} perGuestLabel={perGuestLabel} perDesignLabel={perDesignLabel} fromLabel={fromLabel} />
     </div>
   )
 }

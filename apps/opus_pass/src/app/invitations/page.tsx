@@ -78,6 +78,9 @@ export default async function InvitationsLandingPage() {
         faqs={faqs}
         editorsPicks={editorsPicks}
         fromGuestPrice={fromGuestPrice}
+        perGuestLabel={packages.perGuestLabel}
+        perDesignLabel={packages.perDesignLabel}
+        fromLabel={packages.fromLabel}
         testimonials={<InvitationShowcase />}
       />
     </>

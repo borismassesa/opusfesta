@@ -12,13 +12,19 @@ export const revalidate = 60
 export default async function CartPage() {
   const locale = await getLocale()
   const [products, packages, cart] = await Promise.all([
-    loadInvitationProducts(),
-    loadPackagesContent(),
+    loadInvitationProducts(locale),
+    loadPackagesContent(locale),
     loadUiStrings('cart', locale),
   ])
   return (
     <UIStringsProvider bundles={{ cart }}>
-      <CartClient products={products} fromGuestPrice={packageFromPrice(packages)} />
+      <CartClient
+        products={products}
+        fromGuestPrice={packageFromPrice(packages)}
+        perGuestLabel={packages.perGuestLabel}
+        perDesignLabel={packages.perDesignLabel}
+        fromLabel={packages.fromLabel}
+      />
     </UIStringsProvider>
   )
 }
