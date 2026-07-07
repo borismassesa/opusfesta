@@ -979,6 +979,7 @@ export interface DashboardSendStrings {
   targeted_desc: string
   targeted_best_for: string
   remind_awaiting: string // {n}
+  send_entrance_passes: string // {n}
   dryrun_pill: string
   dryrun_note: string
   // Guest table
@@ -990,10 +991,13 @@ export interface DashboardSendStrings {
   filter_all: string
   filter_notsent: string
   filter_awaiting: string
+  filter_attending: string
   send_to_selected: string
+  send_entrance_to_selected: string
   empty_search: string
   empty_notsent: string
   empty_awaiting: string
+  empty_attending: string
   empty_none: string
   th_guest: string
   th_contact: string
@@ -1034,6 +1038,7 @@ export interface DashboardSendStrings {
   test_failed: string
   // Bulk-send confirm dialog
   confirm_title: string
+  confirm_entrance_title: string
   confirm_recipients: string // {n}
   confirm_credits: string // {n} {m}
   confirm_cancel: string
@@ -1889,6 +1894,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
       'Send each named guest their own card with Attend / Decline / View location buttons they tap right in WhatsApp, or as an SMS link, no app needed. Every send is tracked below.',
     targeted_best_for: 'Your real guest list. Accurate counts and per-guest status.',
     remind_awaiting: 'Remind {n} awaiting',
+    send_entrance_passes: 'Send Entrance Pass to {n} attending',
     dryrun_pill: 'Dry run',
     dryrun_note:
       'WhatsApp Business isn’t connected. Sends are logged only until the Meta account and template are approved.',
@@ -1900,10 +1906,13 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     filter_all: 'All',
     filter_notsent: 'Not sent',
     filter_awaiting: 'Awaiting',
+    filter_attending: 'Attending',
     send_to_selected: 'Send to selected',
+    send_entrance_to_selected: 'Send Entrance Pass',
     empty_search: 'No guests match your search.',
     empty_notsent: 'Everyone has been sent an invite.',
     empty_awaiting: 'No one is awaiting a reply.',
+    empty_attending: 'No one has confirmed attending yet.',
     empty_none: 'No guests yet.',
     th_guest: 'Guest',
     th_contact: 'Contact',
@@ -1941,6 +1950,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     test_sent: 'Test sent. Check your WhatsApp.',
     test_failed: 'Test could not be sent',
     confirm_title: 'Ready to send?',
+    confirm_entrance_title: 'Send entrance passes?',
     confirm_recipients: '{n} guests will receive your invitation card on WhatsApp.',
     confirm_credits: 'This uses {n} of your {m} remaining invites. Re-sends to already-invited guests are free.',
     confirm_cancel: 'Not yet',

@@ -762,6 +762,105 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
   }
 }
 
+export interface EntrancePassData {
+  guestName: string
+  invitationId: string
+  guestContactId: string
+  coupleName: string
+  eventName: string
+  venue: string | null
+  dateLabel: string | null
+  /** e.g. "5:00 PM" — starts_at's time component, for templates that show
+   *  date and time as separate lines. Null when starts_at has no time set. */
+  timeLabel: string | null
+  /** Package tier id (lite/classic/elegant/signature) — selects which
+   *  entrance-pass ticket template to composite. */
+  cardTierId: string | null
+}
+
+/**
+ * Data for the guest-facing entrance-pass ticket image
+ * (/entrance-pass/[token]/image). Returns null unless the guest is confirmed
+ * ATTENDING the given event — a ticket only exists for guests who said yes,
+ * so a guest_contacts token guessed for the wrong event or a not-yet-attending
+ * guest gets nothing rather than a leaked venue/QR.
+ */
+export async function getEntrancePassData(token: string, eventId: string): Promise<EntrancePassData | null> {
+  const supabase = createDashboardClient()
+
+  const { data: guest } = await supabase
+    .from('guest_contacts')
+    .select('id, user_id, full_name')
+    .eq('public_token', token)
+    .maybeSingle<{ id: string; user_id: string; full_name: string }>()
+  if (!guest) return null
+
+  const { data: invitation } = await supabase
+    .from('guest_invitations')
+    .select('id, rsvp_status')
+    .eq('guest_contact_id', guest.id)
+    .eq('event_id', eventId)
+    .maybeSingle<{ id: string; rsvp_status: string }>()
+  if (!invitation || invitation.rsvp_status !== 'attending') return null
+
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('name, event_type, venue_name, address, city, starts_at')
+    .eq('id', eventId)
+    .eq('user_id', guest.user_id)
+    .maybeSingle<{
+      name: string
+      event_type: string
+      venue_name: string | null
+      address: string | null
+      city: string | null
+      starts_at: string | null
+    }>()
+  if (!event) return null
+
+  const [{ data: profile }, { data: order }] = await Promise.all([
+    supabase
+      .from('couple_profiles')
+      .select('partner1_name, partner2_name, invite_host_name')
+      .eq('user_id', guest.user_id)
+      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>(),
+    supabase
+      .from('invitation_orders')
+      .select('items')
+      .eq('user_id', guest.user_id)
+      .eq('event_id', eventId)
+      .eq('status', 'paid')
+      .order('paid_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ items: PaidOrderItem[] | null }>(),
+  ])
+
+  // Same precedence as getWhatsAppEntitlement: the couple's explicitly
+  // confirmed template host name wins over their profile's partner names.
+  const hostOverride = profile?.invite_host_name?.trim() || null
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+
+  // A bare date (no time picked) parses to local midnight — treat that as
+  // "no time set" rather than printing a misleading "12:00 AM".
+  const startsAt = event.starts_at ? new Date(event.starts_at) : null
+  const hasTime = startsAt && !Number.isNaN(startsAt.getTime()) && (startsAt.getHours() !== 0 || startsAt.getMinutes() !== 0)
+  const timeLabel = hasTime ? startsAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null
+
+  return {
+    guestName: guest.full_name,
+    invitationId: invitation.id,
+    guestContactId: guest.id,
+    coupleName: hostOverride ?? (names.length ? names.join(' & ') : event.name),
+    eventName: event.name,
+    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
+    dateLabel: formatLongDate(event.starts_at) || null,
+    timeLabel,
+    cardTierId: withImage?.tierId ?? items[0]?.tierId ?? null,
+  }
+}
+
 // ──────────────────────────── Public invitation hub ────────────────────────────
 
 /** A non-PII projection of an event for the public /i/<slug> hub + OG card. */
@@ -987,6 +1086,9 @@ interface PaidOrderItem {
   guests?: number
   image?: string
   tier?: string
+  /** Package tier id (lite/classic/elegant/signature) — drives which
+   *  entrance-pass ticket template to composite (see entrance-pass route). */
+  tierId?: string
   addOns?: string[]
 }
 
