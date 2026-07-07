@@ -1,9 +1,13 @@
 'use client'
 
+'use client'
+
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { LeadSource } from '@/lib/mock-data'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 export function LeadSourceChart({ data }: { data: LeadSource[] }) {
+  const t = usePortalT('dashboard')
   const total = data.reduce((sum, d) => sum + d.value, 0)
   const top = [...data].sort((a, b) => b.value - a.value)[0]
   const topPct = Math.round((top.value / total) * 100)
@@ -11,8 +15,8 @@ export function LeadSourceChart({ data }: { data: LeadSource[] }) {
   return (
     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] w-full h-full flex flex-col">
       <div className="mb-4">
-        <h3 className="text-[15px] font-medium text-gray-900">Where leads come from</h3>
-        <p className="text-xs text-gray-500 mt-1">Share of inquiries by source — last 90 days</p>
+        <h3 className="text-[15px] font-medium text-gray-900">{t('lead_sources_header')}</h3>
+        <p className="text-xs text-gray-500 mt-1">{t('lead_sources_subtitle')}</p>
       </div>
 
       <div className="flex-1 flex items-center gap-6">
@@ -41,7 +45,7 @@ export function LeadSourceChart({ data }: { data: LeadSource[] }) {
                     '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                   fontSize: 12,
                 }}
-                formatter={(value) => [`${value}%`, 'Share']}
+                formatter={(value) => [`${value}%`, t('lead_sources_share_label')]}
               />
             </PieChart>
           </ResponsiveContainer>

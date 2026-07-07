@@ -211,7 +211,24 @@ function computeLeadStats(rows: InquiryRowFromDb[], now: Date): LeadStat[] {
   ]
 }
 
-function computeFunnel(rows: InquiryRowFromDb[], now: Date): FunnelStage[] {
+// Labels come pre-resolved from the caller (the CMS `DashboardStrings`
+// bundle loaded server-side in page.tsx) — these functions run outside
+// React, so they can't call usePortalT() themselves.
+export type FunnelStageLabels = {
+  inquiries: string
+  replied: string
+  quoted: string
+  booked: string
+}
+
+export type LeadSourceLabels = {
+  search: string
+  featured: string
+  direct: string
+  referral: string
+}
+
+function computeFunnel(rows: InquiryRowFromDb[], now: Date, labels: FunnelStageLabels): FunnelStage[] {
   const ninetyDaysAgo = daysAgo(now, 90)
   const window = rows.filter((r) => new Date(r.created_at) >= ninetyDaysAgo)
 
@@ -229,29 +246,28 @@ function computeFunnel(rows: InquiryRowFromDb[], now: Date): FunnelStage[] {
   const booked = window.filter((r) => r.status === 'accepted').length
 
   return [
-    { name: 'Inquiries', value: inquiries, color: '#7E5896' },
-    { name: 'Replied', value: replied, color: '#C9A0DC' },
-    { name: 'Quoted', value: quoted, color: '#F5C77E' },
-    { name: 'Booked', value: booked, color: '#9FE870' },
+    { name: labels.inquiries, value: inquiries, color: '#7E5896' },
+    { name: labels.replied, value: replied, color: '#C9A0DC' },
+    { name: labels.quoted, value: quoted, color: '#F5C77E' },
+    { name: labels.booked, value: booked, color: '#9FE870' },
   ]
 }
 
-const SOURCE_LABEL: Record<string, { label: string; color: string }> = {
-  search: { label: 'Search', color: '#7E5896' },
-  listing: { label: 'Search', color: '#7E5896' },
-  recommendation: { label: 'Featured', color: '#9FE870' },
-  featured: { label: 'Featured', color: '#9FE870' },
-  saved: { label: 'Direct', color: '#F5C77E' },
-  direct: { label: 'Direct', color: '#F5C77E' },
-  referral: { label: 'Referral', color: '#7BA7BC' },
-}
-
-function computeLeadSources(views: VendorViewRow[]): LeadSource[] {
+function computeLeadSources(views: VendorViewRow[], labels: LeadSourceLabels): LeadSource[] {
   if (views.length === 0) return []
+  const SOURCE_LABEL: Record<string, { label: string; color: string }> = {
+    search: { label: labels.search, color: '#7E5896' },
+    listing: { label: labels.search, color: '#7E5896' },
+    recommendation: { label: labels.featured, color: '#9FE870' },
+    featured: { label: labels.featured, color: '#9FE870' },
+    saved: { label: labels.direct, color: '#F5C77E' },
+    direct: { label: labels.direct, color: '#F5C77E' },
+    referral: { label: labels.referral, color: '#7BA7BC' },
+  }
   const tally = new Map<string, { label: string; color: string; count: number }>()
   for (const v of views) {
     const raw = (v.source ?? 'direct').toLowerCase()
-    const meta = SOURCE_LABEL[raw] ?? { label: 'Direct', color: '#F5C77E' }
+    const meta = SOURCE_LABEL[raw] ?? { label: labels.direct, color: '#F5C77E' }
     const prev = tally.get(meta.label)
     if (prev) {
       prev.count += 1
@@ -527,6 +543,7 @@ export function deriveCompletion(vendor: CurrentVendor): CompletionSection[] {
 export async function loadDashboardData(
   supabase: SupabaseClient,
   vendor: CurrentVendor,
+  labels: { funnelStages: FunnelStageLabels; leadSources: LeadSourceLabels },
   now: Date = new Date(),
 ): Promise<DashboardData> {
   const ninetyDaysAgo = daysAgo(now, 90)
@@ -582,8 +599,8 @@ export async function loadDashboardData(
     leadStats: computeLeadStats(rows, now),
     recentInquiries: rows.slice(0, 6).map(mapInquiryRow),
     upcoming: computeUpcoming(rows, invoices, now),
-    funnel: computeFunnel(rows, now),
-    leadSources: computeLeadSources(last90Views),
+    funnel: computeFunnel(rows, now, labels.funnelStages),
+    leadSources: computeLeadSources(last90Views, labels.leadSources),
     performanceStats: computePerformance(views, rows, now),
     profileViews: computeProfileViewsSeries(views, now),
     bookingsRevenue: computeBookingsRevenue(rows, invoices, now),

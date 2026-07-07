@@ -258,7 +258,7 @@ function FilterBar({
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={t('search_placeholder')}
-            aria-label={t('sort_aria_label') /* reused label for the search field context */}
+            aria-label={t('search_aria_label')}
             className="pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm w-56 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
           />
         </div>

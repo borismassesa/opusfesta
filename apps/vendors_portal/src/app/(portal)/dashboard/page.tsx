@@ -2,6 +2,8 @@ import {
   loadDashboardData,
   emptyDashboardData,
   type DashboardData,
+  type FunnelStageLabels,
+  type LeadSourceLabels,
 } from '@/lib/dashboard'
 import {
   completion as mockCompletion,
@@ -20,7 +22,9 @@ import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
 import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import DashboardClient, { type DashboardSource } from './DashboardClient'
 
-async function loadDashboard(): Promise<{
+async function loadDashboard(
+  labels: { funnelStages: FunnelStageLabels; leadSources: LeadSourceLabels },
+): Promise<{
   source: DashboardSource
   data: DashboardData
 }> {
@@ -64,7 +68,7 @@ async function loadDashboard(): Promise<{
   }
 
   const supabase = await createClerkSupabaseServerClient()
-  const data = await loadDashboardData(supabase, state.vendor)
+  const data = await loadDashboardData(supabase, state.vendor, labels)
   return {
     source: { kind: 'live', vendorName: state.vendor.businessName },
     data,
@@ -72,9 +76,23 @@ async function loadDashboard(): Promise<{
 }
 
 export default async function DashboardPage() {
-  const { source, data } = await loadDashboard()
   const locale = await getLocale()
   const dashboardStrings = await loadPortalUiStrings('dashboard', locale)
+  const labels = {
+    funnelStages: {
+      inquiries: dashboardStrings.funnel_stage_inquiries,
+      replied: dashboardStrings.funnel_stage_replied,
+      quoted: dashboardStrings.funnel_stage_quoted,
+      booked: dashboardStrings.funnel_stage_booked,
+    },
+    leadSources: {
+      search: dashboardStrings.source_search,
+      featured: dashboardStrings.source_featured,
+      direct: dashboardStrings.source_direct,
+      referral: dashboardStrings.source_referral,
+    },
+  }
+  const { source, data } = await loadDashboard(labels)
   return (
     <PortalUIStringsProvider bundles={{ dashboard: dashboardStrings }}>
       <DashboardClient source={source} data={data} />

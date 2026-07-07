@@ -1,12 +1,17 @@
 'use client'
 
+'use client'
+
 import Link from 'next/link'
 import { ArrowRight, MapPin } from 'lucide-react'
 import type { UpcomingBookingItem } from '@/lib/dashboard'
-import { STAGE_META, formatTZS, relativeDays, shortEventDate } from '@/lib/bookings'
+import { STAGE_META, buildStageLabel, formatTZS, relativeDays, shortEventDate } from '@/lib/bookings'
 import { cn } from '@/lib/utils'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 export function UpcomingBookings({ items }: { items: UpcomingBookingItem[] }) {
+  const t = usePortalT('dashboard')
+  const stageLabel = buildStageLabel(t)
   const next = items.slice(0, 4)
 
   return (
@@ -14,14 +19,14 @@ export function UpcomingBookings({ items }: { items: UpcomingBookingItem[] }) {
       <div className="flex items-center justify-between gap-3 mb-4">
         <h3 className="text-base font-semibold text-gray-900">
           {next[0]
-            ? `Next event ${relativeDays(next[0].date).toLowerCase()} — ${next[0].couple}`
-            : 'No upcoming events'}
+            ? t('upcoming_next_event', { relative: relativeDays(next[0].date).toLowerCase(), couple: next[0].couple })
+            : t('upcoming_no_events')}
         </h3>
         <Link
           href="/bookings"
           className="text-xs font-semibold text-gray-700 hover:text-gray-900 inline-flex items-center gap-1 shrink-0"
         >
-          Open bookings
+          {t('upcoming_open_link')}
           <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
@@ -29,7 +34,7 @@ export function UpcomingBookings({ items }: { items: UpcomingBookingItem[] }) {
       {next.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center">
           <p className="text-sm text-gray-500">
-            Nothing on the horizon yet. Quoted couples will appear here once they reserve.
+            {t('upcoming_empty_desc')}
           </p>
         </div>
       ) : (
@@ -71,7 +76,7 @@ export function UpcomingBookings({ items }: { items: UpcomingBookingItem[] }) {
                       stage.pillClass,
                     )}
                   >
-                    {stage.label}
+                    {stageLabel[b.stage]}
                   </span>
                 </Link>
               </li>

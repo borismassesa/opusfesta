@@ -315,6 +315,37 @@ export interface DashboardStrings {
   empty_views_hint: string
   empty_bookings_revenue_title: string
   empty_bookings_revenue_hint: string
+  // Upcoming bookings card
+  upcoming_next_event: string // "Next event {relative} — {couple}"
+  upcoming_no_events: string
+  upcoming_open_link: string
+  upcoming_empty_desc: string
+  // Recent inquiries card
+  recent_inquiries_header: string
+  recent_inquiries_subtitle: string
+  recent_inquiries_view_all: string
+  inquiry_status_new: string
+  inquiry_status_replied: string
+  inquiry_status_booked: string
+  inquiry_status_declined: string
+  inquiry_status_closed: string
+  // Conversion funnel card
+  funnel_header: string
+  funnel_subtitle: string
+  funnel_end_to_end_suffix: string // "{pct}% end-to-end"
+  funnel_baseline_label: string
+  funnel_stage_inquiries: string
+  funnel_stage_replied: string
+  funnel_stage_quoted: string
+  funnel_stage_booked: string
+  // Lead sources card
+  lead_sources_header: string
+  lead_sources_subtitle: string
+  lead_sources_share_label: string
+  source_search: string
+  source_featured: string
+  source_direct: string
+  source_referral: string
 }
 
 export interface SettingsStrings {
@@ -523,6 +554,8 @@ export interface BookingsStrings {
   attention_just_done: string
   filter_all: string
   search_placeholder: string
+  search_aria_label: string
+  sort_aria_label: string
   sort_soonest: string
   sort_highest_value: string
   sort_recent_activity: string
@@ -1564,6 +1597,33 @@ export const PORTAL_UI_STRINGS_FALLBACKS: PortalUiStringsByArea = {
     empty_views_hint: "Your storefront hasn't been viewed yet. Track activity will show here as visits roll in.",
     empty_bookings_revenue_title: 'Bookings & revenue',
     empty_bookings_revenue_hint: 'No confirmed bookings yet. This trend chart unlocks once you accept and invoice your first event.',
+    upcoming_next_event: 'Next event {relative} — {couple}',
+    upcoming_no_events: 'No upcoming events',
+    upcoming_open_link: 'Open bookings',
+    upcoming_empty_desc: 'Nothing on the horizon yet. Quoted couples will appear here once they reserve.',
+    recent_inquiries_header: 'Recent inquiries',
+    recent_inquiries_subtitle: 'Couples who reached out recently.',
+    recent_inquiries_view_all: 'View all',
+    inquiry_status_new: 'New',
+    inquiry_status_replied: 'Replied',
+    inquiry_status_booked: 'Booked',
+    inquiry_status_declined: 'Declined',
+    inquiry_status_closed: 'Closed',
+    funnel_header: 'Conversion funnel',
+    funnel_subtitle: 'How leads move from inquiry to booked — last 90 days',
+    funnel_end_to_end_suffix: '{pct}% end-to-end',
+    funnel_baseline_label: 'baseline',
+    funnel_stage_inquiries: 'Inquiries',
+    funnel_stage_replied: 'Replied',
+    funnel_stage_quoted: 'Quoted',
+    funnel_stage_booked: 'Booked',
+    lead_sources_header: 'Where leads come from',
+    lead_sources_subtitle: 'Share of inquiries by source — last 90 days',
+    lead_sources_share_label: 'Share',
+    source_search: 'Search',
+    source_featured: 'Featured',
+    source_direct: 'Direct',
+    source_referral: 'Referral',
   },
   verify: {
     heading_under_review: "We're reviewing your application",
@@ -1914,6 +1974,8 @@ export const PORTAL_UI_STRINGS_FALLBACKS: PortalUiStringsByArea = {
     attention_just_done: 'Just done',
     filter_all: 'All',
     search_placeholder: 'Search couple, venue…',
+    search_aria_label: 'Search bookings',
+    sort_aria_label: 'Sort bookings',
     sort_soonest: 'Soonest event',
     sort_highest_value: 'Highest value',
     sort_recent_activity: 'Recent activity',
