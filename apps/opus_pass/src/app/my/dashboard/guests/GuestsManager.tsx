@@ -1486,7 +1486,7 @@ function GuestInfoTab({
               className={inputClass}
               value={form.phone ?? ''}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+255 7XX XXX XXX or +1 236 591 4791"
+              placeholder="+255 7XX XXX XXX"
             />
           </Field>
         </div>
@@ -1496,7 +1496,7 @@ function GuestInfoTab({
               className={inputClass}
               value={form.whatsapp_phone ?? ''}
               onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
-              placeholder="+255 7XX XXX XXX or +1 236 591 4791"
+              placeholder="+255 7XX XXX XXX"
             />
           </Field>
           <Field label="Group">
