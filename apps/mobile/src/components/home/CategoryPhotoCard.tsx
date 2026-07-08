@@ -1,5 +1,5 @@
 import { View, Text, Pressable, Image } from 'react-native';
-import { shadowSoft } from '@/constants/theme';
+import { shadowSoft, purpleTints } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 interface CategoryPhotoCardProps {
@@ -29,6 +29,12 @@ export function CategoryPhotoCard({ label, image, onPress }: CategoryPhotoCardPr
         ]}
       >
         <Image source={{ uri: image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        {/* Uniform lavender wash — the source photos are vendor cover images with
+            mismatched color temperatures; this gives the row one consistent tone.
+            Fixed tone (does not flip in dark), like CategoryTile's palette usage. */}
+        <View
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: purpleTints[500], opacity: 0.12 }}
+        />
       </View>
       <Text
         numberOfLines={1}

@@ -7,9 +7,11 @@ interface StatCardProps {
   value: string | number;
   label: string;
   onPress: () => void;
+  /** Renders the value in muted grey (same size) — for unset placeholder values like "--". */
+  muted?: boolean;
 }
 
-export function StatCard({ icon, value, label, onPress }: StatCardProps) {
+export function StatCard({ icon, value, label, onPress, muted = false }: StatCardProps) {
   const { editorial } = useTheme();
   return (
     <Pressable
@@ -23,14 +25,34 @@ export function StatCard({ icon, value, label, onPress }: StatCardProps) {
         alignItems: 'flex-start',
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Ionicons name={icon} size={16} color={editorial.tertiaryContainer} />
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 17, color: editorial.onSurface }} numberOfLines={1}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        {/* Tinted icon chip — mirrors the checklist goal-card treatment so the stat
+            cards read as part of the same system rather than bare dashboard widgets. */}
+        <View
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: editorial.tertiaryFixed,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name={icon} size={15} color={editorial.tertiaryContainer} />
+        </View>
+        <Text
+          style={{
+            fontFamily: 'SpaceGrotesk-Bold',
+            fontSize: 17,
+            color: muted ? editorial.onSurfaceVariant : editorial.onSurface,
+          }}
+          numberOfLines={1}
+        >
           {value}
         </Text>
       </View>
       <Text
-        style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginTop: 4 }}
+        style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginTop: 6 }}
         numberOfLines={1}
       >
         {label}

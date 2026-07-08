@@ -21,6 +21,7 @@ import { useAdviceIdeas } from '@/hooks/useAdviceIdeas';
 import { getFeaturedVendors } from '@/lib/api/vendors';
 import { BROWSE_CATEGORIES } from '@/constants/vendorCategories';
 import { BUDGET_RANGES, CITIES } from '@/constants/onboarding';
+import { purpleTints } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 // Which checklist phase should be highlighted by default, based on how close
@@ -73,67 +74,81 @@ export default function HomeScreen() {
       ? '--'
       : BUDGET_RANGES.find((r) => r.key === profile.budget_range)?.label ?? '--';
 
+  const stickyHeader = (
+    <View
+      style={{
+        backgroundColor: editorial.headerTint,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 20,
+        paddingTop: 8,
+        paddingBottom: 12,
+      }}
+    >
+      <Pressable onPress={() => router.push('/profile-settings')} style={{ padding: 4 }}>
+        <Ionicons name="settings-outline" size={22} color={editorial.onSurface} />
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.push('/search')}
+        style={{
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          backgroundColor: editorial.surfaceContainerLowest,
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: purpleTints[100],
+          paddingHorizontal: 14,
+          height: 40,
+        }}
+      >
+        <Ionicons name="sparkles" size={16} color={editorial.tertiaryContainer} />
+        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+          Ask anything
+        </Text>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/saved-vendors')} style={{ padding: 4 }}>
+        <Ionicons name="heart-outline" size={22} color={editorial.onSurface} />
+      </Pressable>
+      <Pressable onPress={() => router.push('/notifications')} style={{ position: 'relative', padding: 4 }}>
+        <Ionicons name="notifications-outline" size={22} color={editorial.onSurface} />
+        {unreadCount > 0 && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: editorial.error,
+            }}
+          />
+        )}
+      </Pressable>
+    </View>
+  );
+
   return (
-    <ScreenWrapper>
-      {/* Warm header zone — settings/search/heart, couple block, stat cards */}
+    <ScreenWrapper backgroundColor={editorial.headerTint} stickyHeader={stickyHeader}>
+      {/* Warm header zone — couple block, stat cards (icon row is now the sticky header above) */}
       <View
         style={{
           backgroundColor: editorial.headerTint,
           marginHorizontal: -20,
           marginTop: -8,
           paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingTop: 8,
           paddingBottom: 20,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           marginBottom: 24,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <Pressable onPress={() => router.push('/profile-settings')} style={{ padding: 4 }}>
-            <Ionicons name="settings-outline" size={22} color={editorial.onSurface} />
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/search')}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              backgroundColor: editorial.surfaceContainerLowest,
-              borderRadius: 24,
-              paddingHorizontal: 14,
-              height: 40,
-            }}
-          >
-            <Ionicons name="sparkles" size={16} color={editorial.tertiaryContainer} />
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
-              Ask anything
-            </Text>
-          </Pressable>
-
-          <Pressable onPress={() => router.push('/saved-vendors')} style={{ padding: 4 }}>
-            <Ionicons name="heart-outline" size={22} color={editorial.onSurface} />
-          </Pressable>
-          <Pressable onPress={() => router.push('/notifications')} style={{ position: 'relative', padding: 4 }}>
-            <Ionicons name="notifications-outline" size={22} color={editorial.onSurface} />
-            {unreadCount > 0 && (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: editorial.error,
-                }}
-              />
-            )}
-          </Pressable>
-        </View>
-
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 }}>
           <CoupleAvatar imageUrl={profile?.avatar_url} name={profile?.partner1_name} />
           <View style={{ flex: 1 }}>
@@ -179,6 +194,7 @@ export default function HomeScreen() {
             icon="wallet-outline"
             value={budgetLabel}
             label="Goal budget"
+            muted={budgetLabel === '--'}
             onPress={() => router.push('/planning/budget')}
           />
           <StatCard
