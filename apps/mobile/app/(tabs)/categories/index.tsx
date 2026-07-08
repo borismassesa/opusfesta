@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, FlatList, Image, ScrollView, TextInput } from 'react-native';
+import { View, Text, Pressable, FlatList, Image, ScrollView, TextInput, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -7,32 +7,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getVendorsByCategory, searchVendors } from '@/lib/api/vendors';
 import { formatCompactCurrencyRange } from '@opusfesta/lib';
-import { shadowSoft, shadowSoftSm, purpleTints, VENDOR_CATEGORIES } from '@/constants/theme';
+import { shadowSoft, shadowSoftSm, purpleTints } from '@/constants/theme';
+import { BROWSE_CATEGORIES } from '@/constants/vendorCategories';
 import { useTheme } from '@/theme/useTheme';
 
-type IonIcon = keyof typeof Ionicons.glyphMap;
-
-// Extended categories with colors from purple tint scale.
-// Keys are the actual `vendors.category` DB values — see VENDOR_CATEGORIES in constants/theme.ts.
-const BROWSE_CATEGORIES: {
-  key: string;
-  label: string;
-  icon: IonIcon;
-  bg: string;
-  iconColor: string;
-  emoji: string;
-}[] = [
-  { key: 'Venues', label: 'Venues', icon: 'business-outline', bg: purpleTints[100], iconColor: purpleTints[700], emoji: '🏛️' },
-  { key: 'Photographers', label: 'Photo', icon: 'camera-outline', bg: purpleTints[50], iconColor: purpleTints[500], emoji: '📸' },
-  { key: 'Caterers', label: 'Catering', icon: 'restaurant-outline', bg: purpleTints[150], iconColor: purpleTints[800], emoji: '🍽️' },
-  { key: 'Decorators', label: 'Decor', icon: 'sparkles-outline', bg: purpleTints[50], iconColor: purpleTints[700], emoji: '✨' },
-  { key: 'DJs & Music', label: 'Music', icon: 'musical-notes-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '🎵' },
-  { key: 'Bridal Salons', label: 'Bridal', icon: 'shirt-outline', bg: purpleTints[150], iconColor: purpleTints[800], emoji: '👗' },
-  { key: 'Cake & Desserts', label: 'Cakes', icon: 'cafe-outline', bg: purpleTints[50], iconColor: purpleTints[700], emoji: '🎂' },
-  { key: 'Wedding Planners', label: 'Planning', icon: 'clipboard-outline', bg: purpleTints[100], iconColor: purpleTints[500], emoji: '📋' },
-];
-
 const EMOJI_MAP: Record<string, string> = {};
+
+// Fixed pixel tiles instead of percentage widths — percentage + gap/border
+// rounding was overflowing the row on some screen widths and wrapping the
+// grid to 3 columns instead of 4.
+const GRID_PADDING = 20;
+const GRID_GAP = 10;
+const GRID_COLUMNS = 4;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CATEGORY_TILE_SIZE =
+  (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
 export default function CategoriesScreen() {
   const { editorial } = useTheme();
@@ -170,7 +159,7 @@ export default function CategoriesScreen() {
               >
                 Browse by Category
               </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }}>
                 {BROWSE_CATEGORIES.map((cat) => {
                   const isActive = selectedCategory === cat.key;
                   return (
@@ -182,12 +171,12 @@ export default function CategoriesScreen() {
                       }}
                       style={[
                         {
-                          width: '23%',
+                          width: CATEGORY_TILE_SIZE,
                           aspectRatio: 1,
                           borderRadius: 12,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: isActive ? editorial.primaryContainer : cat.bg,
+                          backgroundColor: isActive ? purpleTints[300] : editorial.surfaceContainerLowest,
                           borderWidth: isActive ? 0 : 2,
                           borderColor: editorial.outlineVariant,
                         },
@@ -197,16 +186,16 @@ export default function CategoriesScreen() {
                       <Ionicons
                         name={cat.icon as any}
                         size={24}
-                        color={isActive ? '#fff' : cat.iconColor}
+                        color={isActive ? purpleTints[900] : cat.iconColor}
                       />
                       <Text
                         style={{
                           fontFamily: 'WorkSans-Bold',
                           fontSize: 10,
                           letterSpacing: 0.5,
-                          // cat.bg is a fixed purpleTints tint that never flips in dark
-                          // mode, so its label must stay fixed too (matches cat.iconColor).
-                          color: isActive ? '#fff' : purpleTints[900],
+                          // Fixed purpleTints tone (not theme-driven) so the label
+                          // reads correctly on both the plain and lavender tiles.
+                          color: purpleTints[900],
                           marginTop: 6,
                           textAlign: 'center',
                         }}
