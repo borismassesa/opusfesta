@@ -1,31 +1,36 @@
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { useCoupleProfile } from '@/hooks/useCoupleProfile';
-import { useChecklistCompletion } from '@/hooks/useChecklist';
-import { CHECKLIST_SECTIONS, CHECKLIST_TOTAL_TASKS, isWidgetTaskComplete, type ChecklistTask } from '@/constants/checklist';
+import { useChecklistProgress } from '@/hooks/useChecklistProgress';
+import { CHECKLIST_SECTIONS } from '@/constants/checklist';
 import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 export default function ChecklistScreen() {
   const { editorial } = useTheme();
   const router = useRouter();
-  const { data: profile, isLoading: profileLoading } = useCoupleProfile();
-  const { completed, toggle, loaded } = useChecklistCompletion();
+  const { section: targetSection } = useLocalSearchParams<{ section?: string }>();
+  const { loading: isLoading, doneCount, totalCount, progressPct, isTaskDone, toggle } = useChecklistProgress();
 
-  const isLoading = profileLoading || !loaded;
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionOffsets = useRef<Record<string, number>>({});
+  const [hasScrolledToTarget, setHasScrolledToTarget] = useState(false);
 
-  const isTaskDone = (task: ChecklistTask) =>
-    task.widget ? isWidgetTaskComplete(task.widget, profile) : completed.has(task.id);
+  useEffect(() => {
+    setHasScrolledToTarget(false);
+  }, [targetSection]);
 
-  const doneCount = CHECKLIST_SECTIONS.reduce(
-    (sum, section) => sum + section.tasks.filter(isTaskDone).length,
-    0,
-  );
-  const progress = CHECKLIST_TOTAL_TASKS > 0 ? (doneCount / CHECKLIST_TOTAL_TASKS) * 100 : 0;
+  useEffect(() => {
+    if (isLoading || !targetSection || hasScrolledToTarget) return;
+    const offset = sectionOffsets.current[targetSection];
+    if (offset == null) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, offset - 12), animated: true });
+    setHasScrolledToTarget(true);
+  }, [isLoading, targetSection, hasScrolledToTarget]);
 
   return (
     <ScreenWrapper scrollable={false}>
@@ -40,18 +45,24 @@ export default function ChecklistScreen() {
           <View style={{ marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
-                {doneCount} of {CHECKLIST_TOTAL_TASKS} complete
+                {doneCount} of {totalCount} complete
               </Text>
               <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer }}>
-                {Math.round(progress)}%
+                {Math.round(progressPct)}%
               </Text>
             </View>
-            <ProgressBar progress={progress} />
+            <ProgressBar progress={progressPct} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+          <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
             {CHECKLIST_SECTIONS.map((section) => (
-              <View key={section.id} style={{ marginBottom: 24 }}>
+              <View
+                key={section.id}
+                style={{ marginBottom: 24 }}
+                onLayout={(e) => {
+                  sectionOffsets.current[section.id] = e.nativeEvent.layout.y;
+                }}
+              >
                 <Text
                   style={{
                     fontFamily: 'SpaceGrotesk-Bold',

@@ -13,9 +13,12 @@ export type ChecklistTask = {
   cta?: { label: string; route: string; params?: Record<string, string> };
 };
 
+// Ionicons name — kept as a plain string (not `keyof typeof Ionicons.glyphMap`) to
+// avoid importing @expo/vector-icons into a constants file with no other RN deps.
 export type ChecklistSection = {
   id: string;
   title: string;
+  icon: string;
   tasks: ChecklistTask[];
 };
 
@@ -23,6 +26,7 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: 's12',
     title: '12+ Months Before',
+    icon: 'compass-outline',
     tasks: [
       { id: 's12_1', text: 'Set your wedding date', widget: 'date' },
       {
@@ -50,6 +54,7 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: 's9',
     title: '9-12 Months Before',
+    icon: 'camera-outline',
     tasks: [
       {
         id: 's9_1',
@@ -83,6 +88,7 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: 's6',
     title: '6-9 Months Before',
+    icon: 'mail-outline',
     tasks: [
       {
         id: 's6_1',
@@ -112,6 +118,7 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: 's3',
     title: '3-6 Months Before',
+    icon: 'restaurant-outline',
     tasks: [
       { id: 's3_1', text: 'Finalise the catering menu and details' },
       {
@@ -133,6 +140,7 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: 's1',
     title: '1-3 Months Before',
+    icon: 'people-outline',
     tasks: [
       {
         id: 's1_1',
@@ -158,6 +166,7 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: 'sf',
     title: 'Final Month',
+    icon: 'sparkles-outline',
     tasks: [
       { id: 'sf_1', text: 'Final dress and suit fittings' },
       {
