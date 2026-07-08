@@ -11,7 +11,7 @@ import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 export default function BudgetScreen() {
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const { data: profile, isLoading } = useCoupleProfile();
   const updateProfile = useUpdateCoupleProfile();
   const [selected, setSelected] = useState<string | null>(null);
@@ -66,9 +66,9 @@ export default function BudgetScreen() {
                       justifyContent: 'space-between',
                       padding: 16,
                       borderRadius: 14,
-                      backgroundColor: isSelected ? editorial.primaryContainer : editorial.surfaceContainerLowest,
+                      backgroundColor: isSelected ? colors.light : editorial.surfaceContainerLowest,
                       borderWidth: 1,
-                      borderColor: isSelected ? editorial.primaryContainer : editorial.outlineVariant,
+                      borderColor: isSelected ? colors.light : editorial.outlineVariant,
                     },
                     shadowSoftSm,
                   ]}
@@ -77,12 +77,12 @@ export default function BudgetScreen() {
                     style={{
                       fontFamily: 'SpaceGrotesk-Bold',
                       fontSize: 15,
-                      color: isSelected ? '#fff' : editorial.onSurface,
+                      color: editorial.onSurface,
                     }}
                   >
                     {range.label}
                   </Text>
-                  {isSelected && <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                  {isSelected && <Ionicons name="checkmark-circle" size={20} color={editorial.onSurface} />}
                 </Pressable>
               );
             })}

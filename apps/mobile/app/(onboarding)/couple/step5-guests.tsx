@@ -11,7 +11,7 @@ import { useCoupleOnboarding } from './_layout';
 export default function GuestsStep() {
   const router = useRouter();
   const { data, setGuests } = useCoupleOnboarding();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const [selected, setSelected] = useState(data.guests?.guestCountKey ?? '');
 
   const handleNext = () => {
@@ -46,7 +46,7 @@ export default function GuestsStep() {
                   borderRadius: 12,
                   backgroundColor: isSelected ? editorial.secondaryContainer : editorial.surfaceContainerLow,
                   borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? editorial.primaryContainer : 'transparent',
+                  borderColor: isSelected ? colors.light : 'transparent',
                 },
                 isSelected ? shadowSoftPrimary : shadowSoft,
               ]}
@@ -60,7 +60,7 @@ export default function GuestsStep() {
                 </Text>
               </View>
               {isSelected ? (
-                <Ionicons name="checkmark-circle" size={24} color={editorial.primaryContainer} />
+                <Ionicons name="checkmark-circle" size={24} color={colors.light} />
               ) : (
                 <Ionicons name="person-outline" size={20} color={editorial.onSurfaceVariant} />
               )}

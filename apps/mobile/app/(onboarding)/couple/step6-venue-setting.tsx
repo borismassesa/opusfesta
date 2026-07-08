@@ -11,7 +11,7 @@ import { useCoupleOnboarding } from './_layout';
 export default function VenueSettingStep() {
   const router = useRouter();
   const { data, setVenueSetting } = useCoupleOnboarding();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.venueSetting?.venueSettings ?? []);
 
   const toggle = (key: string) => {
@@ -52,7 +52,7 @@ export default function VenueSettingStep() {
                     overflow: 'hidden',
                     backgroundColor: editorial.surfaceContainerHighest,
                     borderWidth: isSelected ? 2 : 0,
-                    borderColor: isSelected ? editorial.primaryContainer : 'transparent',
+                    borderColor: isSelected ? colors.light : 'transparent',
                     alignItems: 'center',
                     justifyContent: 'center',
                   },
@@ -73,7 +73,7 @@ export default function VenueSettingStep() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name="checkmark-circle" size={40} color={editorial.primaryContainer} />
+                    <Ionicons name="checkmark-circle" size={40} color={colors.light} />
                   </View>
                 )}
               </View>
@@ -81,7 +81,7 @@ export default function VenueSettingStep() {
                 style={{
                   fontFamily: 'SpaceGrotesk-Bold',
                   fontSize: 15,
-                  color: isSelected ? editorial.primaryContainer : editorial.onSurface,
+                  color: editorial.onSurface,
                   marginTop: 8,
                 }}
               >

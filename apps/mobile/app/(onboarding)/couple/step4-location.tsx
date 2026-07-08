@@ -13,7 +13,7 @@ const POPULAR_CITIES = CITIES.filter((c) => ['dar_es_salaam', 'zanzibar', 'arush
 export default function LocationStep() {
   const router = useRouter();
   const { data, setLocation } = useCoupleOnboarding();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const [selected, setSelected] = useState(data.location?.city ?? '');
   const [searchText, setSearchText] = useState('');
   const [deciding, setDeciding] = useState(false);
@@ -121,7 +121,7 @@ export default function LocationStep() {
                             overflow: 'hidden',
                             backgroundColor: editorial.surfaceContainerHighest,
                             borderWidth: selected === city.key ? 2 : 1,
-                            borderColor: selected === city.key ? editorial.primaryContainer : 'rgba(30,27,23,0.15)',
+                            borderColor: selected === city.key ? colors.light : 'rgba(30,27,23,0.15)',
                           },
                           shadowSoftSm,
                         ]}

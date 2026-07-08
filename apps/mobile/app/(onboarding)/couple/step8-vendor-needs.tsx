@@ -11,7 +11,7 @@ import { useCoupleOnboarding } from './_layout';
 export default function VendorNeedsStep() {
   const router = useRouter();
   const { data, setVendorNeeds } = useCoupleOnboarding();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.vendorNeeds?.vendorNeeds ?? []);
 
   const toggle = (key: string) => {
@@ -50,7 +50,7 @@ export default function VendorNeedsStep() {
                   borderRadius: 12,
                   backgroundColor: isSelected ? editorial.tertiaryFixed : editorial.surfaceContainerLow,
                   borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? editorial.primaryContainer : 'transparent',
+                  borderColor: isSelected ? colors.light : 'transparent',
                 },
                 shadowSoft,
               ]}
@@ -64,12 +64,12 @@ export default function VendorNeedsStep() {
                     width: 22,
                     height: 22,
                     borderRadius: 11,
-                    backgroundColor: editorial.primaryContainer,
+                    backgroundColor: colors.light,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="checkmark" size={14} color="#fff" />
+                  <Ionicons name="checkmark" size={14} color={editorial.onSurface} />
                 </View>
               )}
               <View style={{ marginBottom: 10 }}>

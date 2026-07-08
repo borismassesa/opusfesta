@@ -23,7 +23,7 @@ const parseStored = (value: string | null | undefined): Date | null => {
 export default function WeddingDetailsScreen() {
   const { data: profile } = useCoupleProfile();
   const updateProfile = useUpdateCoupleProfile();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
 
   const [partner1Name, setPartner1Name] = useState(profile?.partner1_name ?? '');
   const [partner2Name, setPartner2Name] = useState(profile?.partner2_name ?? '');
@@ -126,7 +126,9 @@ export default function WeddingDetailsScreen() {
                         paddingHorizontal: 14,
                         paddingVertical: 10,
                         borderRadius: radii.input,
-                        backgroundColor: isSelected ? editorial.secondaryContainer : editorial.surfaceContainerLowest,
+                        backgroundColor: isSelected ? colors.light : editorial.surfaceContainerLowest,
+                        borderWidth: 1,
+                        borderColor: isSelected ? colors.light : editorial.outlineVariant,
                       },
                       shadowSoftSm,
                     ]}
@@ -136,7 +138,7 @@ export default function WeddingDetailsScreen() {
                       style={{
                         fontFamily: 'WorkSans-Medium',
                         fontSize: 13,
-                        color: isSelected ? editorial.onSecondaryContainer : editorial.onSurface,
+                        color: editorial.onSurface,
                       }}
                     >
                       {c.label}
