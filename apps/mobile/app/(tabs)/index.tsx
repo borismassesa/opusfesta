@@ -5,38 +5,46 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { CoupleNames } from '@/components/ui/CoupleNames';
-import { PlanProgressCard } from '@/components/home/PlanProgressCard';
-import { CategoryTile } from '@/components/home/CategoryTile';
+import { CoupleAvatar } from '@/components/home/CoupleAvatar';
+import { StatCard } from '@/components/home/StatCard';
+import { CategoryPhotoCard } from '@/components/home/CategoryPhotoCard';
 import { PhaseStepper } from '@/components/home/PhaseStepper';
 import { ChecklistSectionCard } from '@/components/home/ChecklistSectionCard';
+import { AdviceCard } from '@/components/home/AdviceCard';
 import { VendorCard } from '@/components/vendors/VendorCard';
 import { useCoupleProfile } from '@/hooks/useCoupleProfile';
 import { useChecklistProgress } from '@/hooks/useChecklistProgress';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
+import { useSavedVendorIds } from '@/hooks/useSavedVendors';
+import { useWeddingEvent, useGuestList } from '@/hooks/useGuestList';
+import { useAdviceIdeas } from '@/hooks/useAdviceIdeas';
 import { getFeaturedVendors } from '@/lib/api/vendors';
 import { BROWSE_CATEGORIES } from '@/constants/vendorCategories';
+import { BUDGET_RANGES, CITIES } from '@/constants/onboarding';
 import { useTheme } from '@/theme/useTheme';
 
 // Which checklist phase should be highlighted by default, based on how close
 // the wedding date is — purely a starting point, the stepper stays tappable.
-function defaultSectionId(daysLeft: number | null): string {
-  if (daysLeft == null) return 's12';
+function defaultPhaseId(daysLeft: number | null): string {
+  if (daysLeft == null) return 'p1';
   const monthsLeft = daysLeft / 30.44;
-  if (monthsLeft >= 12) return 's12';
-  if (monthsLeft >= 9) return 's9';
-  if (monthsLeft >= 6) return 's6';
-  if (monthsLeft >= 3) return 's3';
-  if (monthsLeft >= 1) return 's1';
-  return 'sf';
+  if (monthsLeft >= 12) return 'p1';
+  if (monthsLeft >= 5) return 'p2';
+  if (monthsLeft >= 3) return 'p3';
+  return 'p4';
 }
 
 export default function HomeScreen() {
   const { editorial } = useTheme();
   const router = useRouter();
   const { data: profile } = useCoupleProfile();
-  const { doneCount, totalCount, perSection } = useChecklistProgress();
+  const { doneGoalCount, totalGoalCount, perPhase } = useChecklistProgress();
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const { data: savedVendorIds = [] } = useSavedVendorIds();
+  const { data: weddingEvent } = useWeddingEvent();
+  const { data: guests = [] } = useGuestList(weddingEvent?.id);
+  const { data: adviceIdeas = [] } = useAdviceIdeas();
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
 
   const { data: featuredVendors = [] } = useQuery({
     queryKey: ['vendors', 'featured'],
@@ -47,59 +55,64 @@ export default function HomeScreen() {
     ? Math.max(0, Math.ceil((new Date(profile.wedding_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
-  const heroPhotos = featuredVendors
-    .map((vendor: any) => vendor.cover_image)
-    .filter((uri: string | null | undefined): uri is string => !!uri)
-    .slice(0, 3);
-
   const missingDate = !profile?.wedding_date && !profile?.date_undecided;
   const missingCity = !profile?.city;
+  const cityLabel = CITIES.find((c) => c.key === profile?.city)?.label ?? null;
+  const dateText = daysLeft != null ? `${daysLeft} days to go!` : profile?.date_undecided ? 'Date TBD' : null;
 
-  const activeSectionId = selectedSectionId ?? defaultSectionId(daysLeft);
-  const activeSection = perSection.find((s) => s.id === activeSectionId) ?? perSection[0];
+  const activePhaseId = selectedPhaseId ?? defaultPhaseId(daysLeft);
+  const activePhase = perPhase.find((p) => p.id === activePhaseId) ?? perPhase[0];
+
+  const attendingCount = guests
+    .filter((g: any) => g.rsvp_status === 'attending')
+    .reduce((sum: number, g: any) => sum + (g.party_size ?? 1), 0);
+
+  // "undisclosed" ("Prefer not to say") reads as unset for a goal-budget stat — show "--" like the other empty stats.
+  const budgetLabel =
+    !profile?.budget_range || profile.budget_range === 'undisclosed'
+      ? '--'
+      : BUDGET_RANGES.find((r) => r.key === profile.budget_range)?.label ?? '--';
 
   return (
     <ScreenWrapper>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 }}>
-        <Pressable onPress={() => router.push('/profile-settings')} style={{ padding: 4 }}>
-          <Ionicons name="settings-outline" size={22} color={editorial.onSurface} />
-        </Pressable>
+      {/* Warm header zone — settings/search/heart, couple block, stat cards */}
+      <View
+        style={{
+          backgroundColor: editorial.headerTint,
+          marginHorizontal: -20,
+          marginTop: -8,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 20,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          marginBottom: 24,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <Pressable onPress={() => router.push('/profile-settings')} style={{ padding: 4 }}>
+            <Ionicons name="settings-outline" size={22} color={editorial.onSurface} />
+          </Pressable>
 
-        <View style={{ flex: 1, marginHorizontal: 12 }}>
-          {profile?.partner1_name || profile?.partner2_name ? (
-            <CoupleNames partner1={profile?.partner1_name} partner2={profile?.partner2_name} size="sm" align="left" />
-          ) : (
-            <Text style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 22, color: editorial.onSurface }}>
-              Welcome
+          <Pressable
+            onPress={() => router.push('/search')}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              backgroundColor: editorial.surfaceContainerLowest,
+              borderRadius: 24,
+              paddingHorizontal: 14,
+              height: 40,
+            }}
+          >
+            <Ionicons name="sparkles" size={16} color={editorial.tertiaryContainer} />
+            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+              Ask anything
             </Text>
-          )}
-          {(missingDate || missingCity) && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              {missingDate && (
-                <Text
-                  onPress={() => router.push('/wedding-details')}
-                  style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, textDecorationLine: 'underline' }}
-                >
-                  Add wedding date
-                </Text>
-              )}
-              {missingDate && missingCity && (
-                <Text style={{ fontSize: 12, color: editorial.onSurfaceVariant, marginHorizontal: 6 }}>•</Text>
-              )}
-              {missingCity && (
-                <Text
-                  onPress={() => router.push('/wedding-details')}
-                  style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, textDecorationLine: 'underline' }}
-                >
-                  Add city
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
+          </Pressable>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Pressable onPress={() => router.push('/saved-vendors')} style={{ padding: 4 }}>
             <Ionicons name="heart-outline" size={22} color={editorial.onSurface} />
           </Pressable>
@@ -120,10 +133,68 @@ export default function HomeScreen() {
             )}
           </Pressable>
         </View>
-      </View>
 
-      {/* Progress hero */}
-      <PlanProgressCard daysLeft={daysLeft} photos={heroPhotos} onPress={() => router.push('/planning/checklist')} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+          <CoupleAvatar imageUrl={profile?.avatar_url} name={profile?.partner1_name} />
+          <View style={{ flex: 1 }}>
+            {profile?.partner1_name || profile?.partner2_name ? (
+              <CoupleNames partner1={profile?.partner1_name} partner2={profile?.partner2_name} size="sm" align="left" />
+            ) : (
+              <Text style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 22, color: editorial.onSurface }}>
+                Welcome
+              </Text>
+            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              {missingCity ? (
+                <Text
+                  onPress={() => router.push('/wedding-details')}
+                  style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, textDecorationLine: 'underline' }}
+                >
+                  Add city
+                </Text>
+              ) : (
+                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                  {cityLabel}
+                </Text>
+              )}
+              <Text style={{ fontSize: 12, color: editorial.onSurfaceVariant, marginHorizontal: 6 }}>•</Text>
+              {missingDate ? (
+                <Text
+                  onPress={() => router.push('/wedding-details')}
+                  style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, textDecorationLine: 'underline' }}
+                >
+                  Add date
+                </Text>
+              ) : (
+                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                  {dateText}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <StatCard
+            icon="wallet-outline"
+            value={budgetLabel}
+            label="Goal budget"
+            onPress={() => router.push('/planning/budget')}
+          />
+          <StatCard
+            icon="storefront-outline"
+            value={savedVendorIds.length}
+            label="Saved vendors"
+            onPress={() => router.push('/saved-vendors')}
+          />
+          <StatCard
+            icon="people-outline"
+            value={attendingCount}
+            label="Attending"
+            onPress={() => router.push('/planning/guests')}
+          />
+        </View>
+      </View>
 
       {/* Jump right in */}
       <Text
@@ -141,15 +212,13 @@ export default function HomeScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{ marginBottom: 28 }}
-        contentContainerStyle={{ gap: 4 }}
+        contentContainerStyle={{ gap: 12 }}
       >
         {BROWSE_CATEGORIES.map((cat) => (
-          <CategoryTile
+          <CategoryPhotoCard
             key={cat.key}
             label={cat.label}
-            icon={cat.icon}
-            bg={cat.bg}
-            iconColor={cat.iconColor}
+            image={cat.image}
             onPress={() => router.push({ pathname: '/(tabs)/categories', params: { category: cat.key } })}
           />
         ))}
@@ -161,25 +230,34 @@ export default function HomeScreen() {
           Your plan
         </Text>
         <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
-          {doneCount}/{totalCount} goals
+          {doneGoalCount}/{totalGoalCount} goals
         </Text>
       </View>
 
-      <View style={{ marginBottom: 14 }}>
-        <PhaseStepper sections={perSection} selectedId={activeSectionId} onSelect={setSelectedSectionId} />
+      <View style={{ marginBottom: 18 }}>
+        <PhaseStepper
+          sections={perPhase.map((p) => ({ id: p.id, title: p.label }))}
+          selectedId={activePhaseId}
+          onSelect={setSelectedPhaseId}
+        />
       </View>
 
-      {activeSection && (
-        <ChecklistSectionCard
-          icon={activeSection.icon}
-          title={activeSection.title}
-          doneCount={activeSection.doneCount}
-          totalCount={activeSection.totalCount}
-          onPress={() => router.push({ pathname: '/planning/checklist', params: { section: activeSection.id } })}
-        />
+      {activePhase && (
+        <View style={{ gap: 10, marginBottom: 12 }}>
+          {activePhase.goals.map((goal) => (
+            <ChecklistSectionCard
+              key={goal.id}
+              icon={goal.icon}
+              title={goal.title}
+              doneCount={goal.doneCount}
+              totalCount={goal.totalCount}
+              onPress={() => router.push({ pathname: '/planning/checklist', params: { goal: goal.id } })}
+            />
+          ))}
+        </View>
       )}
 
-      <Pressable onPress={() => router.push('/planning/checklist')} style={{ marginTop: 12, marginBottom: 28 }}>
+      <Pressable onPress={() => router.push('/planning/checklist')} style={{ marginBottom: 28 }}>
         <Text
           style={{
             fontFamily: 'WorkSans-Bold',
@@ -191,6 +269,39 @@ export default function HomeScreen() {
           View full checklist
         </Text>
       </Pressable>
+
+      {/* Ideas & advice */}
+      {adviceIdeas.length > 0 && (
+        <>
+          <Text
+            style={{
+              fontFamily: 'SpaceGrotesk-Bold',
+              fontSize: 18,
+              letterSpacing: -0.3,
+              color: editorial.onSurface,
+              marginBottom: 14,
+            }}
+          >
+            Ideas & advice
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 28 }}
+            contentContainerStyle={{ gap: 14 }}
+          >
+            {adviceIdeas.map((post: any) => (
+              <AdviceCard
+                key={post.id}
+                slug={post.slug}
+                title={post.title}
+                category={post.category}
+                imageSrc={post.hero_media_src}
+              />
+            ))}
+          </ScrollView>
+        </>
+      )}
 
       {/* Featured vendors */}
       <Text

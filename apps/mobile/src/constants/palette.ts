@@ -67,6 +67,9 @@ const lightEditorial = {
 
   /* Status */
   error: '#ba1a1a',
+
+  /* Home screen header zone — warm peach tint behind the couple/stats block */
+  headerTint: '#FCEEE6',
 } as const;
 
 export type EditorialTokens = Record<keyof typeof lightEditorial, string>;
@@ -112,6 +115,9 @@ const darkEditorial: EditorialTokens = {
 
   /* Status — Material dark uses a lighter error red */
   error: '#FFB4AB',
+
+  /* Home screen header zone — warm muted rose, dark-mode equivalent of the light peach tint */
+  headerTint: '#2B1D2A',
 };
 
 const lightColors = {
