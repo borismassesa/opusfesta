@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getVendorById, getVendorReviews, getVendorPackages } from '@/lib/api/vendors';
-import { useSavedVendorIds, useToggleSavedVendor } from '@/hooks/useSavedVendors';
+import { useSavedVendorIds, useToggleSavedVendor, useSavedVendorStatus, useMarkVendorBooked } from '@/hooks/useSavedVendors';
 import { useAddInspirationItem } from '@/hooks/useInspiration';
 import { formatCurrency } from '@opusfesta/lib';
 import { useTheme } from '@/theme/useTheme';
@@ -103,6 +103,9 @@ export default function VendorProfileScreen() {
   const toggleSaved = useToggleSavedVendor();
   const isSaved = savedVendorIds.includes(id!);
   const addInspirationItem = useAddInspirationItem();
+  const bookedStatus = useSavedVendorStatus(id);
+  const isBooked = bookedStatus === 'booked';
+  const markBooked = useMarkVendorBooked();
 
   if (isLoading) {
     return (
@@ -238,6 +241,21 @@ export default function VendorProfileScreen() {
                   <Ionicons name="share-social-outline" size={20} color="#fff" />
                 </Pressable>
               )}
+              <Pressable
+                onPress={() => id && !isBooked && markBooked.mutate(id)}
+                disabled={markBooked.isPending || isBooked}
+                style={{
+                  width: 40, height: 40, borderRadius: 20,
+                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Ionicons
+                  name={isBooked ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                  size={22}
+                  color={isBooked ? '#2D8E5B' : '#fff'}
+                />
+              </Pressable>
               <Pressable
                 onPress={() => id && toggleSaved.mutate({ vendorId: id, isSaved })}
                 disabled={toggleSaved.isPending}

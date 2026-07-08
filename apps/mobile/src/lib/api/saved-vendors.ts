@@ -33,3 +33,14 @@ export async function unsaveVendor(client: SupabaseClient, vendorId: string) {
 
   if (error) throw error;
 }
+
+export async function markVendorBooked(client: SupabaseClient, vendorId: string, userId: string) {
+  const { data, error } = await client
+    .from('saved_vendors')
+    .upsert({ user_id: userId, vendor_id: vendorId, status: 'booked' }, { onConflict: 'user_id,vendor_id' })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
