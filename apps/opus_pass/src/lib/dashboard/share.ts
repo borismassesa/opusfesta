@@ -16,16 +16,34 @@ const NAME_TITLES = new Set([
   'mzee', 'bwana', 'bi', 'bibi', 'ndugu',
 ])
 
+/** Index of the first word that isn't a leading title, or -1 if every word
+ *  is a title (name is nothing but titles) or the input is empty. */
+function skipTitles(words: string[]): number {
+  let i = 0
+  while (i < words.length - 1 && NAME_TITLES.has(words[i].replace(/\.$/, '').toLowerCase())) i++
+  const word = words[i]
+  if (!word || NAME_TITLES.has(word.replace(/\.$/, '').toLowerCase())) return -1
+  return i
+}
+
 /** First given name from a full name, for greetings — skips leading titles
  *  (Mr/Mrs/Dr/Mzee/Bwana/...) and falls back to the full name if nothing
  *  usable remains (e.g. the name is nothing but titles). */
 export function firstNameOf(name: string): string {
   const words = name.trim().split(/\s+/)
-  let i = 0
-  while (i < words.length - 1 && NAME_TITLES.has(words[i].replace(/\.$/, '').toLowerCase())) i++
-  const word = words[i]
-  if (!word || NAME_TITLES.has(word.replace(/\.$/, '').toLowerCase())) return name
-  return word
+  const i = skipTitles(words)
+  return i === -1 ? name : words[i]
+}
+
+/** Full name with any leading title stripped ("Mr Boris Massesa" ->
+ *  "Boris Massesa"), for contexts that want the whole name but not the
+ *  honorific — e.g. an entrance-pass ticket greeting. Falls back to the
+ *  full input if nothing usable remains after stripping. */
+export function fullNameOf(name: string): string {
+  const trimmed = name.trim()
+  const words = trimmed.split(/\s+/)
+  const i = skipTitles(words)
+  return i === -1 ? trimmed : words.slice(i).join(' ')
 }
 
 /** Slugify free text for a URL handle: lowercase, ASCII, dash-separated. */

@@ -47,6 +47,7 @@ import {
   inviteMessage,
   reminderMessage,
   firstNameOf,
+  fullNameOf,
 } from '@/lib/dashboard/share'
 import { INVITE_TEMPLATE, ENTRANCE_PASS_TEMPLATE } from '@/lib/whatsapp/types'
 import { EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
@@ -240,7 +241,7 @@ export default function SendInvitesView({
   // be an actual guest, not a made-up sample name.
   const entrancePreviewGuest = guests.find((g) => g.status === 'attending') ?? null
   const entrancePreviewBody = ENTRANCE_PASS_TEMPLATE.body
-    .replace('{{1}}', entrancePreviewGuest ? firstNameOf(entrancePreviewGuest.name) : 'Amina')
+    .replace('{{1}}', entrancePreviewGuest ? fullNameOf(entrancePreviewGuest.name) : 'Amina')
     .replace('{{2}}', event.eventCategorySw)
     .replace('{{3}}', event.coupleName)
     .replace('{{4}}', event.entranceDateLabel)
