@@ -27,9 +27,11 @@ export default async function RsvpsPage({
 
   // Multi-event couples choose a scope up front (a single event, or the
   // combined view); the tracker filter then starts on that choice.
-  const events = await getEvents()
+  const [events, scopeStrings] = await Promise.all([
+    getEvents(),
+    loadUiStrings('dashboard-event-scope', locale),
+  ])
   const scope = await resolveEventScope(events, eventParam, { allowAll: true })
-  const scopeStrings = await loadUiStrings('dashboard-event-scope', locale)
   if (scope.needsChooser) {
     return (
       <div className="space-y-6">

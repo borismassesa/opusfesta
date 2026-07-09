@@ -27,9 +27,11 @@ export default async function GuestsPage({
 
   // Multi-event couples choose a scope up front: one event's roster, or the
   // full list (guests are shared across events and linked per event).
-  const events = await getEvents()
+  const [events, scopeStrings] = await Promise.all([
+    getEvents(),
+    loadUiStrings('dashboard-event-scope', locale),
+  ])
   const scope = await resolveEventScope(events, eventParam, { allowAll: true })
-  const scopeStrings = await loadUiStrings('dashboard-event-scope', locale)
   if (scope.needsChooser) {
     return (
       <div className="space-y-6">

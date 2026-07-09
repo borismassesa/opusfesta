@@ -485,7 +485,13 @@ export async function getPledges(scope: PledgeScope = {}): Promise<PledgeWithCon
 }
 
 export async function getPledgeStats(scope: PledgeScope = {}): Promise<PledgeStats> {
-  const pledges = await getPledges(scope)
+  return pledgeStatsFrom(await getPledges(scope))
+}
+
+/** Pure aggregation over an already-fetched pledge list — use this instead of
+ *  getPledgeStats when the caller already has the pledges, to avoid a second
+ *  identical query. */
+export function pledgeStatsFrom(pledges: PledgeWithContact[]): PledgeStats {
   let totalPledged = 0
   let totalReceived = 0
   let paidCount = 0
@@ -1440,14 +1446,17 @@ export interface SendInvitesData {
  * sort order) when not given, so single-event couples never see a switcher
  * and nothing changes for them.
  */
-export async function getSendInvitesData(eventId?: string): Promise<SendInvitesData> {
+export async function getSendInvitesData(
+  eventId?: string,
+  preloadedEvents?: WeddingEvent[],
+): Promise<SendInvitesData> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const origin = publicOrigin()
 
   const [publicInvite, events, profile, guests] = await Promise.all([
     getMyPublicInvite(),
-    getEvents(),
+    preloadedEvents ? Promise.resolve(preloadedEvents) : getEvents(),
     getCoupleProfile(),
     getGuestsWithInvitations(),
   ])

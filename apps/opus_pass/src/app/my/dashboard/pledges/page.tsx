@@ -1,7 +1,7 @@
 import {
   getEvents,
   getPledges,
-  getPledgeStats,
+  pledgeStatsFrom,
   getGuestsWithInvitations,
   getCoupleProfile,
   coupleDisplayName,
@@ -50,14 +50,14 @@ export default async function PledgesPage({
     ? { eventId: selectedEventId, includeUnassigned: selectedEventId === events[0]?.id }
     : {}
 
-  const [pledges, stats, guests, profile, pledgeToken, copy] = await Promise.all([
+  const [pledges, guests, profile, pledgeToken, copy] = await Promise.all([
     getPledges(pledgeScope),
-    getPledgeStats(pledgeScope),
     getGuestsWithInvitations(),
     getCoupleProfile(),
     getMyPledgeToken(),
     loadDashboardCopy('pledges', locale),
   ])
+  const stats = pledgeStatsFrom(pledges)
   return (
     <PledgesManager
       initialPledges={pledges}

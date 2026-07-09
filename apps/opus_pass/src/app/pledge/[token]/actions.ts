@@ -49,18 +49,19 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
   const email = input.email?.trim() || null
 
   // Resolve which event this pledge lands on: the link's event when it really
-  // belongs to this couple, else their default (first) event, else NULL.
-  let eventId: string | null = null
-  if (input.event_id) {
-    const { data: ev } = await supabase
-      .from('wedding_events')
-      .select('id')
-      .eq('id', input.event_id)
-      .eq('user_id', owner.id)
-      .maybeSingle<{ id: string }>()
-    eventId = ev?.id ?? null
-  }
-  if (!eventId) {
+  // belongs to this couple, else their default (first) event, else NULL. This
+  // doesn't depend on (and isn't depended on by) the contact insert below, so
+  // the two run concurrently.
+  const resolveEventId = async (): Promise<string | null> => {
+    if (input.event_id) {
+      const { data: ev } = await supabase
+        .from('wedding_events')
+        .select('id')
+        .eq('id', input.event_id)
+        .eq('user_id', owner.id)
+        .maybeSingle<{ id: string }>()
+      if (ev?.id) return ev.id
+    }
     const { data: ev } = await supabase
       .from('wedding_events')
       .select('id')
@@ -69,22 +70,26 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
       .order('starts_at', { ascending: true, nullsFirst: false })
       .limit(1)
       .maybeSingle<{ id: string }>()
-    eventId = ev?.id ?? null
+    return ev?.id ?? null
   }
 
-  const { data: contact, error: contactErr } = await supabase
-    .from('guest_contacts')
-    .insert({
-      user_id: owner.id,
-      full_name: cleanName,
-      phone,
-      whatsapp_phone: phone,
-      email,
-      group_tag: 'From Pledge link',
-      notes: 'Self-submitted via /pledge link',
-    })
-    .select('id')
-    .single<{ id: string }>()
+  const [eventId, contactResult] = await Promise.all([
+    resolveEventId(),
+    supabase
+      .from('guest_contacts')
+      .insert({
+        user_id: owner.id,
+        full_name: cleanName,
+        phone,
+        whatsapp_phone: phone,
+        email,
+        group_tag: 'From Pledge link',
+        notes: 'Self-submitted via /pledge link',
+      })
+      .select('id')
+      .single<{ id: string }>(),
+  ])
+  const { data: contact, error: contactErr } = contactResult
   if (contactErr || !contact) throw new Error(contactErr?.message ?? 'Could not save your pledge')
 
   const { error: pledgeErr } = await supabase.from('event_pledges').insert({
