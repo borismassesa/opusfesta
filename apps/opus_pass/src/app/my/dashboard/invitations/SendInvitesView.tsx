@@ -550,15 +550,22 @@ export default function SendInvitesView({
     const { name, phone } = newGuest
     startTransition(async () => {
       try {
-        await createGuest({
+        const res = await createGuest({
           full_name: name.replace(/\s+/g, ' ').trim(),
           phone: phone.trim() || null,
           whatsapp_phone: phone.trim() || null,
         })
+        if (!res.ok) {
+          toast.error(res.error ?? strings.toast_send_failed)
+          return
+        }
         toast.success(strings.toast_guest_saved)
         setNewGuest(null)
         router.refresh()
       } catch (err) {
+        // Safety net for failures createGuest still throws (auth, invitation
+        // sync) rather than returns — the duplicate-phone/insert-failure
+        // cases above are the only ones it returns a message for.
         toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
       }
     })
