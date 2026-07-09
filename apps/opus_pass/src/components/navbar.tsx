@@ -54,8 +54,7 @@ export default function Navbar() {
     {
       label: t('nav_invitations'),
       card: {
-        image:
-          'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=800&q=80',
+        image: t('mega_inv_image'),
         title: t('mega_inv_title'),
         description: t('mega_inv_desc'),
         linkText: t('mega_inv_cta'),
@@ -82,16 +81,16 @@ export default function Navbar() {
       ],
       photoGridTitle: t('inv_grid_title'),
       photoGrid: [
-        { label: t('inv_grid_guest_list'), image: '/assets/images/mauzo_crew.jpg', href: '/invitations' },
-        { label: t('inv_grid_rsvp_tracking'), image: '/assets/images/churchcouples.jpg', href: '/invitations' },
-        { label: t('inv_grid_invitations'), image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
-        { label: t('inv_grid_seating_plan'), image: '/assets/images/couples_together.jpg', href: '/invitations' },
+        { label: t('inv_grid_guest_list'), image: t('inv_grid_guest_list_image'), href: '/invitations' },
+        { label: t('inv_grid_rsvp_tracking'), image: t('inv_grid_rsvp_tracking_image'), href: '/invitations' },
+        { label: t('inv_grid_invitations'), image: t('inv_grid_invitations_image'), href: '/invitations' },
+        { label: t('inv_grid_seating_plan'), image: t('inv_grid_seating_plan_image'), href: '/invitations' },
       ],
     },
     {
       label: t('nav_guests'),
       card: {
-        image: '/assets/images/mauzo_crew.jpg',
+        image: t('mega_guests_image'),
         title: t('mega_guests_title'),
         description: t('mega_guests_desc'),
         linkText: t('mega_guests_cta'),
@@ -117,17 +116,16 @@ export default function Navbar() {
       ],
       photoGridTitle: t('guests_grid_title'),
       photoGrid: [
-        { label: t('guests_grid_guest_list'), image: '/assets/images/mauzo_crew.jpg', href: '/guests-and-rsvp' },
-        { label: t('guests_grid_rsvp_tracking'), image: '/assets/images/churchcouples.jpg', href: '/guests-and-rsvp' },
-        { label: t('guests_grid_invitations'), image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
-        { label: t('guests_grid_seating_plan'), image: '/assets/images/couples_together.jpg', href: '/guests-and-rsvp' },
+        { label: t('guests_grid_guest_list'), image: t('guests_grid_guest_list_image'), href: '/guests-and-rsvp' },
+        { label: t('guests_grid_rsvp_tracking'), image: t('guests_grid_rsvp_tracking_image'), href: '/guests-and-rsvp' },
+        { label: t('guests_grid_invitations'), image: t('guests_grid_invitations_image'), href: '/invitations' },
+        { label: t('guests_grid_seating_plan'), image: t('guests_grid_seating_plan_image'), href: '/guests-and-rsvp' },
       ],
     },
     {
       label: t('nav_website'),
       card: {
-        image:
-          'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
+        image: t('mega_website_image'),
         title: t('mega_website_title'),
         description: t('mega_website_desc'),
         linkText: t('mega_website_cta'),
@@ -155,10 +153,10 @@ export default function Navbar() {
       ],
       photoGridTitle: t('website_grid_title'),
       photoGrid: [
-        { label: t('website_grid_templates'), image: '/assets/images/coupleswithpiano.jpg', href: '/websites' },
-        { label: t('website_grid_photo_gallery'), image: '/assets/images/beautiful_bride.jpg', href: '/websites' },
-        { label: t('website_grid_rsvps'), image: '/assets/images/authentic_couple.jpg', href: '/websites' },
-        { label: t('website_grid_travel_info'), image: '/assets/images/bride_umbrella.jpg', href: '/websites' },
+        { label: t('website_grid_templates'), image: t('website_grid_templates_image'), href: '/websites' },
+        { label: t('website_grid_photo_gallery'), image: t('website_grid_photo_gallery_image'), href: '/websites' },
+        { label: t('website_grid_rsvps'), image: t('website_grid_rsvps_image'), href: '/websites' },
+        { label: t('website_grid_travel_info'), image: t('website_grid_travel_info_image'), href: '/websites' },
       ],
     },
   ]

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { useBodyLock } from '@/hooks/useBodyLock'
+import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import {
   MessageCircle,
   Smartphone,
@@ -22,6 +23,7 @@ import {
   Trash2,
   Check,
   Ticket,
+  ChevronDown,
 } from 'lucide-react'
 import {
   enablePublicSharing,
@@ -53,6 +55,7 @@ import { INVITE_TEMPLATE, ENTRANCE_PASS_TEMPLATE } from '@/lib/whatsapp/types'
 import { EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
+import { setActiveEventCookie } from '@/components/dashboard/EventScope'
 
 const STATUS_CLASS: Record<SendGuestRow['status'], string> = {
   none: 's-none',
@@ -161,6 +164,9 @@ export default function SendInvitesView({
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendingRow, setSendingRow] = useState<string | null>(null)
+  /** Guests sent an entrance pass this session — not persisted, resets on reload
+   *  (the backend doesn't track per-guest entrance-pass sends yet). */
+  const [entranceSentIds, setEntranceSentIds] = useState<Set<string>>(new Set())
   const [confirmSend, setConfirmSend] = useState<PendingSend | null>(null)
   const [report, setReport] = useState<WhatsAppSendSummary | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -224,12 +230,13 @@ export default function SendInvitesView({
   }, [router, pending, sendingRow])
 
   // Heading name comes from the event itself (falls back to the couple profile
-  // only when no events exist), suffixed with the event type when it adds info.
+  // only when no events exist). The event type renders separately as a pill
+  // (in the package facts row when paid, alongside date/venue otherwise) —
+  // skip it entirely when it's redundant with the heading itself.
   const headingName = event.eventName ?? event.coupleName
-  const heading =
-    event.eventTypeLabel && event.eventTypeLabel.toLowerCase() !== headingName.toLowerCase()
-      ? `${headingName}, ${event.eventTypeLabel}`
-      : headingName
+  const showCategoryPill = Boolean(
+    event.eventTypeLabel && event.eventTypeLabel.toLowerCase() !== headingName.toLowerCase(),
+  )
 
   const previewBody = INVITE_TEMPLATE.body
     .replace('{{1}}', sampleGuest.trim() || 'Amina')
@@ -252,6 +259,7 @@ export default function SendInvitesView({
    *  design/quota/guest-statuses for that event (not client-side filtering,
    *  since entitlement itself is scoped server-side). */
   function switchEvent(id: string) {
+    setActiveEventCookie(id)
     router.push(`${pathname}?event=${id}`)
   }
 
@@ -424,6 +432,7 @@ export default function SendInvitesView({
     startTransition(async () => {
       try {
         const res = await sendEntrancePasses([g.id], eventId)
+        if (res.sent > 0) setEntranceSentIds((prev) => new Set(prev).add(g.id))
         if (res.sent > 0 && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
         else if (res.sent > 0) toast.success(fmt(strings.toast_pass_sent, { name: first }))
         else if (res.skipped > 0) toast.error(fmt(strings.send_no_phone, { n: res.skipped }))
@@ -640,29 +649,55 @@ export default function SendInvitesView({
       <div className="head">
         <div>
           <h1>{strings.heading}</h1>
-          <p className="sub">{strings.subheading}</p>
+          <p className="sub">{event.hasPaidOrder ? strings.subheading : strings.no_design_subheading}</p>
         </div>
         <div className="headacts">
-          {events.length > 1 ? (
-            <label className="evswitch">
-              <span>{strings.event_switcher_label}</span>
-              <select value={selectedEventId ?? ''} onChange={(e) => switchEvent(e.target.value)} disabled={pending}>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>{e.name} · {e.eventTypeLabel}</option>
-                ))}
-              </select>
-            </label>
-          ) : null}
           <button className="btn ghost" onClick={() => setPreviewOpen(true)}>
             <Eye size={15} /> {strings.preview_button}
           </button>
         </div>
       </div>
 
+      {/* Digital Cards (invite sends: Targeted + Broadcast) vs. Pass Ticket
+          (post-RSVP entrance passes) — kept as separate tabs so the two
+          distinct WhatsApp sends are never visually confused. */}
+      <div className="sendtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={sendTab === 'cards'}
+          className={`stb ${sendTab === 'cards' ? 'on' : ''}`}
+          onClick={() => { setSendTab('cards'); setSelected(new Set()) }}
+        >
+          <MessageCircle size={14} /> {strings.tab_digital_cards}
+        </button>
+        <button
+          role="tab"
+          aria-selected={sendTab === 'ticket'}
+          className={`stb amber ${sendTab === 'ticket' ? 'on' : ''}`}
+          onClick={() => { setSendTab('ticket'); setSelected(new Set()) }}
+        >
+          <Ticket size={14} /> {strings.tab_pass_ticket}
+          {attendingCount > 0 ? <span className="stbcnt">{attendingCount}</span> : null}
+        </button>
+        {events.length > 1 ? (
+          <label className="evswitch">
+            <span>{strings.event_switcher_label}</span>
+            <span className="selwrap">
+              <select value={selectedEventId ?? ''} onChange={(e) => switchEvent(e.target.value)} disabled={pending}>
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="selchev" aria-hidden="true" />
+            </span>
+          </label>
+        ) : null}
+      </div>
+
       {/* Paid designs bought before this event existed, or before the couple
           had picked which event they're for — nudge them to assign one. */}
       {unassignedOrders.length > 0 ? (
-        <div className="unassigned">
+        <div className="unassigned" id="unassigned-orders">
           <div className="uhead">
             <span className="dp">{strings.unassigned_pill}</span>
             <span>{fmt(strings.unassigned_note, { n: unassignedOrders.length })}</span>
@@ -672,6 +707,8 @@ export default function SendInvitesView({
               <div key={o.id} className="urow">
                 {o.cardImageUrl ? (
                   <span className="uimg"><Image src={o.cardImageUrl} alt="" fill sizes="36px" className="object-cover" unoptimized /></span>
+                ) : o.cardTreatment ? (
+                  <span className="uimg"><InvitationVisual treatment={o.cardTreatment} /></span>
                 ) : null}
                 <span className="uname">{o.cardName ?? strings.card_fallback_label}</span>
                 <span className="uguests">{fmt(strings.unassigned_guests, { n: o.purchasedGuests })}</span>
@@ -690,29 +727,33 @@ export default function SendInvitesView({
 
       {/* Event context */}
       <div className="ctx">
-        <div className="ccard">
+        <div className={`ccard${event.cardImageUrl || event.cardTreatment ? '' : ' noDesign'}`}>
           {event.cardImageUrl ? (
             <Image
               src={event.cardImageUrl}
               alt={`${event.coupleName} invitation card`}
               fill
-              sizes="92px"
+              sizes="132px"
+              quality={90}
               className="object-cover"
-              unoptimized
             />
+          ) : event.cardTreatment ? (
+            <InvitationVisual treatment={event.cardTreatment} />
           ) : (
-            <div className="ci">
-              <span>{event.eventTypeLabel ? event.eventTypeLabel.toUpperCase() : strings.card_fallback_label}</span>
-              <b>{headingName}</b>
-              {event.dateLabel ? <span>{event.dateLabel.toUpperCase()}</span> : null}
-            </div>
+            <a href={unassignedOrders.length > 0 ? '#unassigned-orders' : '/invitations/catalog'} className="ci noDesign">
+              <span>{strings.card_fallback_label}</span>
+              <b>{unassignedOrders.length > 0 ? strings.no_design_pick_cta : strings.no_design_cta}</b>
+            </a>
           )}
         </div>
         <div className="cinfo">
-          <h3>{heading}</h3>
+          <h3>{headingName}</h3>
           <div className="row">
             {event.dateLabel ? <span>📅 {event.dateLabel}</span> : null}
             {event.venue ? <span>📍 {event.venue}</span> : null}
+            {!event.hasPaidOrder && showCategoryPill ? (
+              <span className="catpill">{event.eventTypeLabel}</span>
+            ) : null}
             {event.hasPaidOrder ? (
               <span className="badge">✓ {event.cardTier ? fmt(strings.card_purchased_tier, { tier: event.cardTier }) : strings.card_purchased}</span>
             ) : null}
@@ -721,6 +762,9 @@ export default function SendInvitesView({
           {event.hasPaidOrder ? (
             <>
               <div className="pmeta">
+                {showCategoryPill ? (
+                  <span className="catpill">{event.eventTypeLabel}</span>
+                ) : null}
                 {event.cardTier ? (
                   <span className="fact"><i>{strings.fact_package}</i>{event.cardTier}</span>
                 ) : null}
@@ -758,30 +802,6 @@ export default function SendInvitesView({
           <div className="bar"><i style={{ width: `${pct}%` }} /></div>
           <div className="ft">{fmt(strings.quota_remaining, { n: quota.remaining })} · <Link href="/invitations/catalog">{strings.quota_topup}</Link></div>
         </div>
-      </div>
-      <div className="livehint"><span className="pulse" />{strings.live_hint}</div>
-
-      {/* Digital Cards (invite sends: Targeted + Broadcast) vs. Pass Ticket
-          (post-RSVP entrance passes) — kept as separate tabs so the two
-          distinct WhatsApp sends are never visually confused. */}
-      <div className="sendtabs" role="tablist">
-        <button
-          role="tab"
-          aria-selected={sendTab === 'cards'}
-          className={`stb ${sendTab === 'cards' ? 'on' : ''}`}
-          onClick={() => { setSendTab('cards'); setSelected(new Set()) }}
-        >
-          <MessageCircle size={14} /> {strings.tab_digital_cards}
-        </button>
-        <button
-          role="tab"
-          aria-selected={sendTab === 'ticket'}
-          className={`stb amber ${sendTab === 'ticket' ? 'on' : ''}`}
-          onClick={() => { setSendTab('ticket'); setSelected(new Set()) }}
-        >
-          <Ticket size={14} /> {strings.tab_pass_ticket}
-          {attendingCount > 0 ? <span className="stbcnt">{attendingCount}</span> : null}
-        </button>
       </div>
 
       {/* Two modes: Targeted is the product's core, Broadcast is secondary */}
@@ -1101,7 +1121,15 @@ export default function SendInvitesView({
                     <td>
                       <span className={`mini ${g.channel}`}>{g.channel === 'whatsapp' ? <MessageCircle size={13} /> : <Smartphone size={13} />}{g.channel === 'whatsapp' ? strings.channel_whatsapp : strings.channel_sms}</span>
                     </td>
-                    <td><span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span></td>
+                    <td>
+                      {sendTab === 'ticket' ? (
+                        <span className={`status ${entranceSentIds.has(g.id) ? 's-yes' : 's-none'}`}>
+                          {entranceSentIds.has(g.id) ? strings.entrance_status_sent : strings.entrance_status_notsent}
+                        </span>
+                      ) : (
+                        <span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span>
+                      )}
+                    </td>
                     <td>
                       <div className="ra">
                         {effectiveFilter === 'attending' ? (
@@ -1393,10 +1421,12 @@ const css = `
 .si h1{ font-weight:600; font-size:30px; letter-spacing:-.3px; }
 .si .head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .si .headacts{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.si .evswitch{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--muted); }
-.si .evswitch select{ border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:13px;
-  font-weight:600; color:var(--ink); background:#fff; max-width:240px; }
+.si .evswitch{ display:flex; align-items:center; gap:8px; margin-left:auto; font-size:12px; font-weight:600; color:var(--muted); }
+.si .selwrap{ position:relative; display:inline-flex; align-items:center; }
+.si .evswitch select{ appearance:none; border:1px solid var(--line); border-radius:10px; padding:8px 34px 8px 12px;
+  font-size:13px; font-weight:600; color:var(--ink); background:#fff; max-width:240px; }
 .si .evswitch select:focus{ outline:none; border-color:var(--lav); }
+.si .selchev{ position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--faint); pointer-events:none; }
 .si .unassigned{ margin-top:18px; padding:14px 16px; border:1px solid var(--amber-bd); background:var(--amber-bg);
   border-radius:var(--radius); }
 .si .uhead{ display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--amber-tx); flex-wrap:wrap; }
@@ -1424,21 +1454,29 @@ const css = `
 @keyframes si-spin{ to{ transform:rotate(360deg); } }
 .si .ctx{ display:flex; gap:20px; align-items:center; background:#fff; border:1px solid var(--line);
   border-radius:var(--radius); padding:18px; margin:22px 0 18px; box-shadow:var(--soft); }
-.si .ccard{ width:92px; height:124px; flex:none; border-radius:12px; position:relative; overflow:hidden;
+.si .ccard{ width:132px; height:178px; flex:none; border-radius:12px; position:relative; overflow:hidden;
   background:linear-gradient(155deg,var(--purple),var(--lav)); }
+.si .ccard.noDesign{ background:var(--line); }
 .si .ccard .ci{ position:absolute; inset:9px; border:1px solid rgba(255,255,255,.55); border-radius:7px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; color:#fff; }
 .si .ccard .ci b{ font-size:14px; }
 .si .ccard .ci span{ font-size:7px; letter-spacing:1.2px; opacity:.85; }
+.si .ccard .ci.noDesign{ text-decoration:none; cursor:pointer; border:1px dashed var(--muted); border-radius:7px;
+  transition:background .12s; padding:8px; color:var(--muted); }
+.si .ccard .ci.noDesign:hover{ background:#fff; }
+.si .ccard .ci.noDesign span{ opacity:.7; }
+.si .ccard .ci.noDesign b{ font-size:12px; line-height:1.3; text-decoration:underline; color:var(--ink); }
 .si .ctx h3{ font-size:20px; font-weight:600; }
 .si .ctx .row{ display:flex; gap:16px; color:var(--muted); font-size:13px; margin-top:8px; flex-wrap:wrap; align-items:center; }
 .si .badge{ display:inline-flex; align-items:center; gap:6px; background:var(--ok-bg); color:var(--ok-tx);
   font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
 .si .ctx .chg{ margin-left:auto; align-self:flex-start; font-size:13px; color:var(--purple); font-weight:600; text-decoration:none; }
 .si .cinfo{ min-width:0; }
-.si .pmeta{ display:flex; flex-wrap:wrap; gap:10px 26px; margin-top:14px; }
+.si .pmeta{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 26px; margin-top:14px; }
 .si .pmeta .fact{ display:inline-flex; flex-direction:column; gap:2px; font-size:14px; font-weight:600; color:var(--ink); }
 .si .pmeta .fact i{ font-style:normal; font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
+.si .catpill{ display:inline-flex; align-items:center; background:rgba(159,232,112,.28); color:#3f6b1f;
+  font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; }
 .si .addons{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:14px; }
 .si .addons .al{ font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
 .si .addons .ao{ display:inline-flex; align-items:center; background:var(--lav-soft); color:var(--purple-d);
@@ -1454,16 +1492,19 @@ const css = `
 .si .bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--purple),var(--lav)); }
 .si .quota .ft{ font-size:11px; color:var(--muted); margin-top:9px; }
 .si .quota .ft a{ color:var(--purple); font-weight:600; text-decoration:none; }
-.si .livehint{ display:flex; align-items:center; gap:7px; color:var(--faint); font-size:11px; margin:8px 2px 22px; }
-.si .pulse{ width:7px; height:7px; border-radius:50%; background:var(--ok-tx); animation:si-pulse 2.4s ease-in-out infinite; }
-@keyframes si-pulse{ 0%,100%{ opacity:.35 } 50%{ opacity:1 } }
-.si .sendtabs{ display:flex; gap:8px; margin-bottom:16px; }
-.si .stb{ display:inline-flex; align-items:center; gap:7px; background:#fff; border:1px solid var(--line); border-radius:10px;
-  padding:9px 16px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; }
-.si .stb.on{ background:var(--lav-soft); border-color:var(--lav); color:var(--purple-d); }
-.si .stb.amber.on{ background:var(--amber-bg); border-color:var(--amber-bd); color:var(--amber-tx); }
-.si .stbcnt{ background:var(--amber-bd); color:var(--amber-tx); font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; }
-.si .modes{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+.si .sendtabs{ display:flex; flex-wrap:wrap; align-items:center; gap:24px; margin-top:22px;
+  padding-bottom:8px; border-bottom:1px solid var(--line); }
+.si .stb{ display:inline-flex; align-items:center; gap:7px; margin-bottom:-9px; background:none; border:none;
+  border-bottom:2px solid transparent; padding:0 0 10px; font-size:14px; font-weight:500; color:var(--muted);
+  cursor:pointer; transition:color .12s, border-color .12s; }
+.si .stb:hover{ color:var(--ink); }
+.si .stb.on{ border-bottom-color:var(--ink); color:var(--ink); font-weight:600; }
+.si .stb.amber.on{ border-bottom-color:var(--amber-tx); color:var(--amber-tx); }
+.si .stbcnt{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px;
+  padding:0 6px; background:rgba(0,0,0,.06); color:var(--muted); font-size:10.5px; font-weight:700; border-radius:999px; }
+.si .stb.on .stbcnt{ background:var(--ink); color:#fff; }
+.si .stb.amber.on .stbcnt{ background:var(--amber-tx); color:#fff; }
+.si .modes{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-top:16px; }
 .si .mode{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:var(--soft);
   display:flex; flex-direction:column; }
 .si .mode.primary{ border-color:var(--lav); box-shadow:0 2px 10px rgba(107,63,160,.08); }

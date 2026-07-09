@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { Download } from 'lucide-react'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { Tabs } from '@/components/dashboard/controls'
+import { EventSwitcher } from '@/components/dashboard/EventScope'
 import RsvpSetupPanel from './RsvpSetupPanel'
 import RsvpTracker from './RsvpTracker'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { RsvpsDashboardCopy } from '@/lib/cms/dashboard-copy'
+import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import type { MyPublicInvite, RsvpEventSummary, RsvpAnswerSummary } from '@/lib/dashboard/queries'
 import {
   RSVP_STATUS_LABELS,
@@ -30,6 +32,8 @@ function csvCell(value: string | number | null): string {
 export default function RsvpsClient({
   guests,
   events,
+  eventFilter,
+  scopeStrings,
   lastSend,
   hero,
   copy,
@@ -40,6 +44,9 @@ export default function RsvpsClient({
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
+  /** Event id chosen on the event chooser, or 'all' for the combined view. */
+  eventFilter: string
+  scopeStrings: DashboardEventScopeStrings
   lastSend: Record<string, LastSend>
   hero: DashboardHeroContent
   copy: RsvpsDashboardCopy
@@ -55,7 +62,7 @@ export default function RsvpsClient({
     [guests],
   )
 
-  function exportCsv() {
+  function downloadReport() {
     const eventName = (id: string) => events.find((e) => e.id === id)?.name ?? 'Event'
     const header = ['Guest', 'Group', 'Event', 'Status', 'Party size', 'Meal', 'Dietary notes', 'Message', 'Review']
     const lines: string[] = []
@@ -63,6 +70,9 @@ export default function RsvpsClient({
       if (g.invitations.length === 0) continue
       const needsReview = g.review_status === 'unconfirmed'
       for (const inv of g.invitations) {
+        // Match the on-screen tracker: when scoped to one event, only that
+        // event's rows go in the report.
+        if (eventFilter !== 'all' && inv.event_id !== eventFilter) continue
         lines.push(
           [
             g.full_name,
@@ -96,35 +106,40 @@ export default function RsvpsClient({
         content={hero}
         divider={false}
         actions={
-          <Link
-            href="/my/dashboard/rsvps/setup"
-            className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-          >
-            Guided setup
-          </Link>
+          <>
+            {hasResponses ? (
+              <button
+                type="button"
+                onClick={downloadReport}
+                className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </button>
+            ) : null}
+            <Link
+              href="/my/dashboard/rsvps/setup"
+              className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+            >
+              Guided setup
+            </Link>
+          </>
         }
       />
 
       <div>
-        {/* Tabs + export share one row */}
-        <div className="relative">
-          <Tabs<Tab>
-            value={tab}
-            onChange={setTab}
-            tabs={[
-              { id: 'setup', label: 'Setup & questions' },
-              { id: 'responses', label: 'Responses' },
-            ]}
-          />
-          {hasResponses ? (
-            <button
-              onClick={exportCsv}
-              className="absolute right-0 top-0 inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-1.5 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-            >
-              <Download className="h-3.5 w-3.5" /> Export CSV
-            </button>
-          ) : null}
-        </div>
+        <Tabs<Tab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'setup', label: 'Setup & questions' },
+            { id: 'responses', label: 'Responses' },
+          ]}
+          trailing={
+            tab === 'responses' && events.length > 1 ? (
+              <EventSwitcher events={events} selectedId={eventFilter} strings={scopeStrings} allowAll />
+            ) : undefined
+          }
+        />
         {tab === 'setup' ? (
           <RsvpSetupPanel
             events={events}
@@ -134,7 +149,13 @@ export default function RsvpsClient({
             publicInvite={publicInvite}
           />
         ) : (
-          <RsvpTracker guests={guests} events={events} lastSend={lastSend} copy={copy} />
+          <RsvpTracker
+            guests={guests}
+            events={events}
+            eventFilter={eventFilter}
+            lastSend={lastSend}
+            copy={copy}
+          />
         )}
       </div>
     </div>

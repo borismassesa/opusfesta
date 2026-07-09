@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { createNotification } from '@/lib/dashboard/notifications'
+import { resolveEventIdOrDefault } from '@/lib/dashboard/queries'
 
 export interface PublicPledgeInput {
   full_name: string
@@ -11,6 +12,13 @@ export interface PublicPledgeInput {
   amount: number
   promised_date: string | null
   message: string | null
+  /**
+   * Event the pledge is for, carried on the share link as ?event=<id>. It is
+   * verified against the owner; missing or foreign ids fall back to the
+   * owner's first event (links sent through the WhatsApp template carry no
+   * event).
+   */
+  event_id?: string | null
 }
 
 /**
@@ -41,24 +49,33 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
   const phone = input.phone?.trim() || null
   const email = input.email?.trim() || null
 
-  const { data: contact, error: contactErr } = await supabase
-    .from('guest_contacts')
-    .insert({
-      user_id: owner.id,
-      full_name: cleanName,
-      phone,
-      whatsapp_phone: phone,
-      email,
-      group_tag: 'From Pledge link',
-      notes: 'Self-submitted via /pledge link',
-    })
-    .select('id')
-    .single<{ id: string }>()
+  // Resolve which event this pledge lands on: the link's event when it really
+  // belongs to this couple, else their default (first) event, else NULL. This
+  // doesn't depend on (and isn't depended on by) the contact insert below, so
+  // the two run concurrently.
+  const [eventId, contactResult] = await Promise.all([
+    resolveEventIdOrDefault(owner.id, input.event_id),
+    supabase
+      .from('guest_contacts')
+      .insert({
+        user_id: owner.id,
+        full_name: cleanName,
+        phone,
+        whatsapp_phone: phone,
+        email,
+        group_tag: 'From Pledge link',
+        notes: 'Self-submitted via /pledge link',
+      })
+      .select('id')
+      .single<{ id: string }>(),
+  ])
+  const { data: contact, error: contactErr } = contactResult
   if (contactErr || !contact) throw new Error(contactErr?.message ?? 'Could not save your pledge')
 
   const { error: pledgeErr } = await supabase.from('event_pledges').insert({
     user_id: owner.id,
     guest_contact_id: contact.id,
+    event_id: eventId,
     pledged_amount: amount,
     currency: 'TZS',
     promised_date: input.promised_date || null,

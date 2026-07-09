@@ -169,16 +169,15 @@ function formatStartsAt(iso: string | null): string | null {
   })
 }
 
-function formatWhen(date: string, time: string): string | null {
-  const iso = combineLocal(date, time)
-  if (!iso) return null
-  return new Date(iso).toLocaleString('en-GB', {
+function formatWhen(date: string): string | null {
+  if (!date) return null
+  const local = new Date(`${date}T00:00`)
+  if (Number.isNaN(local.getTime())) return null
+  return local.toLocaleDateString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
@@ -386,40 +385,14 @@ export default function EventsManager({
               <CounterRow value={form.name.length} max={NAME_MAX} hint={strings.hint_max_100} />
             </Field>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={strings.field_start_date} required>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={form.startDate}
-                  onChange={(e) => set('startDate', e.target.value)}
-                />
-              </Field>
-              <Field label={strings.field_start_time} required>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={form.startTime}
-                  onChange={(e) => set('startTime', e.target.value)}
-                />
-              </Field>
-              <Field label={strings.field_end_date}>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={form.endDate}
-                  onChange={(e) => set('endDate', e.target.value)}
-                />
-              </Field>
-              <Field label={strings.field_end_time}>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={form.endTime}
-                  onChange={(e) => set('endTime', e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field label={strings.field_start_date}>
+              <input
+                type="date"
+                className={inputClass}
+                value={form.startDate}
+                onChange={(e) => set('startDate', e.target.value)}
+              />
+            </Field>
           </div>
 
           {/* Event location */}
@@ -498,25 +471,13 @@ export default function EventsManager({
                 onChange={(e) => set('description', e.target.value)}
                 placeholder={strings.placeholder_note}
               />
-              <CounterRow value={form.description.length} max={NOTE_MAX} />
+              <CounterRow
+                value={form.description.length}
+                max={NOTE_MAX}
+                hint={strings.hint_note_suggestions}
+              />
             </Field>
           </div>
-
-          {/* Meal preferences */}
-          <Section title={strings.section_meal_preferences}>
-            <Toggle
-              label={strings.toggle_collect_meal}
-              checked={form.collect_meal_choice}
-              onChange={(v) => set('collect_meal_choice', v)}
-            />
-            {form.collect_meal_choice ? (
-              <MealOptionsEditor
-                options={form.meal_options}
-                onChange={(next) => set('meal_options', next)}
-                strings={strings}
-              />
-            ) : null}
-          </Section>
 
           {/* Footer */}
           <div className="flex items-center gap-3 border-t border-black/[0.06] pt-5">
@@ -604,7 +565,7 @@ function ViewTabs({
     <nav
       role="tablist"
       aria-label={strings.tabs_aria}
-      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
+      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto overflow-y-hidden border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
     >
       {tabs.map(({ id, label, icon: Icon, badge, active, onClick }) => (
         <button
@@ -786,73 +747,6 @@ function Toggle({
   )
 }
 
-function MealOptionsEditor({
-  options,
-  onChange,
-  strings,
-}: {
-  options: string[]
-  onChange: (next: string[]) => void
-  strings: DashboardEventsStrings
-}) {
-  const [draft, setDraft] = useState('')
-
-  function add() {
-    const v = draft.trim()
-    if (!v) return
-    if (options.includes(v)) {
-      setDraft('')
-      return
-    }
-    onChange([...options, v])
-    setDraft('')
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <span
-            key={opt}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#F0DFF6] px-3 py-1 text-xs font-medium text-[#5d3a78]"
-          >
-            {opt}
-            <button
-              type="button"
-              onClick={() => onChange(options.filter((o) => o !== opt))}
-              className="text-[#5d3a78]/60 hover:text-[#5d3a78]"
-              aria-label={fmt(strings.aria_remove_meal, { option: opt })}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          className={inputClass}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              add()
-            }
-          }}
-          placeholder={strings.placeholder_meal_option}
-        />
-        <button
-          type="button"
-          onClick={add}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-black/[0.12] bg-white px-3 py-2 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.03]"
-        >
-          <Plus className="h-3.5 w-3.5" /> {strings.add_meal_option}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 function PreviewCard({
   form,
   editing,
@@ -862,7 +756,7 @@ function PreviewCard({
   editing: WeddingEvent | null
   strings: DashboardEventsStrings
 }) {
-  const when = formatWhen(form.startDate, form.startTime)
+  const when = formatWhen(form.startDate)
   const whereParts = [form.venue_name, form.city].filter(Boolean)
   return (
     <Card className="overflow-hidden p-0">

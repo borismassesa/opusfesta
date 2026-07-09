@@ -193,14 +193,15 @@ export function collectorShareMessage(coupleNames: string, link: string): string
   )
 }
 
-/** Path to the couple's public self-pledge page. */
-export function pledgePath(token: string): string {
-  return `/pledge/${token}`
+/** Path to the couple's public self-pledge page. The optional eventId routes
+ *  public pledges to a specific event for multi-event couples. */
+export function pledgePath(token: string, eventId?: string | null): string {
+  return `/pledge/${token}${eventId ? `?event=${eventId}` : ''}`
 }
 
 /** Absolute self-pledge URL given a browser/runtime origin. */
-export function pledgeUrl(origin: string, token: string): string {
-  return `${origin.replace(/\/$/, '')}${pledgePath(token)}`
+export function pledgeUrl(origin: string, token: string, eventId?: string | null): string {
+  return `${origin.replace(/\/$/, '')}${pledgePath(token, eventId)}`
 }
 
 /** Bilingual (SW/EN) initial ask sent to invite someone to pledge. */

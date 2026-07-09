@@ -238,13 +238,17 @@ export function Tabs<T extends string>({
   value,
   onChange,
   tabs,
+  trailing,
 }: {
   value: T
   onChange: (v: T) => void
   tabs: { id: T; label: string }[]
+  /** Optional content (e.g. a scoped-event switcher) rendered at the end of
+   *  the same bordered row, so it shares the tabs' baseline and underline. */
+  trailing?: ReactNode
 }) {
   return (
-    <div className="-mx-6 mb-5 flex gap-6 border-b border-black/[0.06] px-6" role="tablist">
+    <div className="-mx-6 mb-5 flex items-center gap-6 border-b border-black/[0.06] px-6" role="tablist">
       {tabs.map((t) => {
         const active = t.id === value
         return (
@@ -265,6 +269,7 @@ export function Tabs<T extends string>({
           </button>
         )
       })}
+      {trailing ? <div className="-mb-px ml-auto flex items-center pb-3">{trailing}</div> : null}
     </div>
   )
 }

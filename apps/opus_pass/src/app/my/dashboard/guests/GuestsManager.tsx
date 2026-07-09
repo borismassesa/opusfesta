@@ -44,6 +44,8 @@ import { emailShareUrl, firstNameOf, inviteMessage, rsvpUrl, smsShareUrl, whatsa
 import { fileToImportLines, SpreadsheetError } from '@/lib/dashboard/import-spreadsheet'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { GuestsDashboardCopy } from '@/lib/cms/dashboard-copy'
+import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
+import { EventSwitcher } from '@/components/dashboard/EventScope'
 import type {
   ChildEntry,
   GuestWithInvitations,
@@ -116,6 +118,8 @@ function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
 export default function GuestsManager({
   initialGuests,
   events,
+  eventFilter,
+  scopeStrings,
   coupleName,
   hero,
   collectorToken,
@@ -124,6 +128,9 @@ export default function GuestsManager({
 }: {
   initialGuests: GuestWithInvitations[]
   events: WeddingEvent[]
+  /** Event id the roster view is scoped to, or 'all' for the full roster. */
+  eventFilter: string
+  scopeStrings: DashboardEventScopeStrings
   coupleName: string
   hero: DashboardHeroContent
   collectorToken: string | null
@@ -159,6 +166,11 @@ export default function GuestsManager({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matched = initialGuests.filter((g) => {
+      // Event scope: show only guests invited to the selected event ('all'
+      // keeps the unified roster, where invitations are managed per guest).
+      if (eventFilter !== 'all' && !g.invitations.some((i) => i.event_id === eventFilter)) {
+        return false
+      }
       if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
       if (view === 'invite' && g.invite_count > 0) return false
       if (view === 'address' && guestHasFullAddress(g)) return false
@@ -182,7 +194,7 @@ export default function GuestsManager({
         ? a.full_name.localeCompare(b.full_name)
         : b.full_name.localeCompare(a.full_name),
     )
-  }, [initialGuests, query, groupFilter, sortDir, view, rsvpFilter])
+  }, [initialGuests, query, groupFilter, sortDir, view, rsvpFilter, eventFilter])
 
   // Close the Filter popover when the user clicks outside it.
   useEffect(() => {
@@ -497,18 +509,19 @@ export default function GuestsManager({
     // RSVP buttons), same pipeline as Send Invites. The wa.me prefill remains
     // for pre-go-live and for couples without a paid card (the template needs one).
     //
-    // This page has no event switcher — with 2+ events, a templated send has
-    // no way to know WHICH event's design/quota to use (it would silently
-    // fall back to the couple's first event, which may not even be the event
-    // this guest is invited to). Fall back to the manual wa.me share instead,
-    // which carries no event-specific card and can't charge the wrong quota.
-    if (!whatsappLive || events.length > 1) {
+    // With 2+ events, a templated send needs to know WHICH event's design and
+    // quota to use, so it's only available while the page is scoped to one
+    // event via the switcher; the 'all' roster view falls back to the manual
+    // wa.me share, which carries no event-specific card and can't charge the
+    // wrong quota.
+    const scopedEventId = events.length > 1 ? eventFilter : undefined
+    if (!whatsappLive || scopedEventId === 'all') {
       openManualWhatsApp(g)
       return
     }
     startTransition(async () => {
       try {
-        const r = await sendWhatsAppInvites([g.id])
+        const r = await sendWhatsAppInvites([g.id], scopedEventId)
         const nothingHappened = r.sent === 0 && r.failed === 0 && r.blocked === 0 && r.skipped === 0
         if (!r.hasPaidOrder || nothingHappened) {
           openManualWhatsApp(g)
@@ -583,10 +596,21 @@ export default function GuestsManager({
 
   const eventName = (id: string) => events.find((e) => e.id === id)?.name ?? 'Event'
 
+  // Reflect the event picked in the EventSwitcher (tab row) in the page
+  // title, so it's obvious at a glance which event's guest list is showing.
+  const selectedEventName = events.length > 1 && eventFilter !== 'all' ? eventName(eventFilter) : undefined
+
   return (
     <div className="space-y-6">
       <DashboardHero
         content={hero}
+        titleBadge={
+          selectedEventName ? (
+            <span className="inline-flex items-center rounded-full bg-[#9FE870]/25 px-3 py-1 text-sm font-semibold text-[#3f6b1f]">
+              {selectedEventName}
+            </span>
+          ) : undefined
+        }
         actions={
           <>
             <button
@@ -606,6 +630,10 @@ export default function GuestsManager({
         notInvitedCount={viewCounts.notInvited}
         onOpenCollector={collectorToken ? () => setCollectorOpen(true) : undefined}
         copy={copy}
+        events={events}
+        eventFilter={eventFilter}
+        scopeStrings={scopeStrings}
+        pending={pending}
       />
 
       {initialGuests.length > 0 ? (
@@ -1268,6 +1296,10 @@ function GuestSubNav({
   notInvitedCount,
   onOpenCollector,
   copy,
+  events,
+  eventFilter,
+  scopeStrings,
+  pending,
 }: {
   view: GuestView
   onChange: (v: GuestView) => void
@@ -1275,6 +1307,10 @@ function GuestSubNav({
   /** Opens the Contact Collector slideover. Omit to hide the tab (no token yet). */
   onOpenCollector?: () => void
   copy: GuestsDashboardCopy
+  events: { id: string; name: string }[]
+  eventFilter: string
+  scopeStrings: DashboardEventScopeStrings
+  pending: boolean
 }) {
   const items: { id: GuestView; label: string; badge?: number }[] = [
     { id: 'manage', label: copy.nav_manage },
@@ -1283,7 +1319,7 @@ function GuestSubNav({
     <nav
       role="tablist"
       aria-label="Guest list views"
-      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
+      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto overflow-y-hidden border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
     >
       {items.map((item) => {
         const active = item.id === view
@@ -1337,6 +1373,16 @@ function GuestSubNav({
       >
         {copy.nav_rsvps} <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
       </Link>
+      {events.length > 1 ? (
+        <EventSwitcher
+          events={events}
+          selectedId={eventFilter}
+          strings={scopeStrings}
+          allowAll
+          disabled={pending}
+          className="ml-auto"
+        />
+      ) : null}
     </nav>
   )
 }

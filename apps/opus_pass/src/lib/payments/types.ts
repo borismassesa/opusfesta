@@ -1,3 +1,5 @@
+import type { Treatment } from '@/components/guests/InvitationVisual'
+
 // Shared payment types — safe to import from both client and server (no
 // 'server-only' or node deps here). Mirrors the DB enum in the
 // 20260613000001_invitation_orders migration.
@@ -30,6 +32,8 @@ export type InitiateItem = {
   name: string
   /** Selected card's hero image — persisted so admin/email/dashboard can render it. */
   image?: string
+  /** Visual treatment — fallback thumbnail when the card has no hero image. */
+  treatment?: Treatment
   summary?: string
   tier?: string
   tierId?: string

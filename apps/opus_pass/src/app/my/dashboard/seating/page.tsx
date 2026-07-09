@@ -3,6 +3,8 @@ import { CalendarPlus } from 'lucide-react'
 import { EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { getEvents, getSeatingData } from '@/lib/dashboard/queries'
+import { resolveEventScope } from '@/lib/dashboard/event-scope'
+import { EventChooser } from '@/components/dashboard/EventScope'
 import { getLocale } from '@/lib/cms/locale'
 import { loadUiStrings } from '@/lib/cms/ui-strings'
 import type { DashboardSeatingStrings } from '@/lib/cms/ui-strings-fallback'
@@ -40,8 +42,20 @@ export default async function SeatingPage({
     )
   }
 
-  // Pick the requested event, falling back to the first one.
-  const selectedId = events.find((e) => e.id === eventParam)?.id ?? events[0].id
+  // Multi-event couples explicitly choose an event before planning seats;
+  // the selection then follows them across sections via ?event= + cookie.
+  const scope = await resolveEventScope(events, eventParam)
+  if (scope.needsChooser) {
+    const scopeStrings = await loadUiStrings('dashboard-event-scope', locale)
+    return (
+      <div className="space-y-6">
+        <Header strings={strings} />
+        <EventChooser events={events} strings={scopeStrings} />
+      </div>
+    )
+  }
+
+  const selectedId = scope.selected?.id ?? events[0].id
   const seating = await getSeatingData(selectedId)
 
   return (

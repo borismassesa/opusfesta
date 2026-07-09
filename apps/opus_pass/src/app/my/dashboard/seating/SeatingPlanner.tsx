@@ -27,6 +27,7 @@ import {
 } from '@/lib/dashboard/actions'
 import type { SeatableGuest, SeatingData, SeatingTable } from '@/lib/dashboard/types'
 import type { DashboardSeatingStrings } from '@/lib/cms/ui-strings-fallback'
+import { setActiveEventCookie } from '@/components/dashboard/EventScope'
 
 type EventLite = { id: string; name: string }
 
@@ -264,7 +265,10 @@ export default function SeatingPlanner({
             </span>
             <select
               value={eventId}
-              onChange={(e) => router.push(`/my/dashboard/seating?event=${e.target.value}`)}
+              onChange={(e) => {
+                setActiveEventCookie(e.target.value)
+                router.push(`/my/dashboard/seating?event=${e.target.value}`)
+              }}
               className="appearance-none rounded-xl border border-black/[0.12] bg-white py-2.5 pl-[68px] pr-9 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/30"
             >
               {events.map((ev) => (
