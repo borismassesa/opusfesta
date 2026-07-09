@@ -415,6 +415,32 @@ export default function SendInvitesView({
     runBulkSend(ids)
   }
 
+  /** Per-row send on the Pass Ticket tab — the guest's entrance-pass ticket,
+   *  NOT the invite template the same button position sends on invite tabs. */
+  function sendPassRow(g: SendGuestRow) {
+    const first = firstNameOf(g.name)
+    setSendingRow(g.id)
+    startTransition(async () => {
+      try {
+        const res = await sendEntrancePasses([g.id], eventId)
+        if (res.sent > 0 && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
+        else if (res.sent > 0) toast.success(fmt(strings.toast_pass_sent, { name: first }))
+        else if (res.skipped > 0) toast.error(fmt(strings.send_no_phone, { n: res.skipped }))
+        else {
+          const detail = res.results[0]?.error
+          toast.error(
+            detail
+              ? `${fmt(strings.toast_send_failed, { name: first })} (${detail})`
+              : fmt(strings.toast_send_failed, { name: first }),
+          )
+        }
+        router.refresh()
+      } finally {
+        setSendingRow(null)
+      }
+    })
+  }
+
   function rowShare(g: SendGuestRow, channel: 'whatsapp' | 'sms' | 'copy') {
     if (channel === 'copy') {
       navigator.clipboard.writeText(g.rsvpUrl)
@@ -1075,15 +1101,27 @@ export default function SendInvitesView({
                     <td><span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span></td>
                     <td>
                       <div className="ra">
-                        <button
-                          className="ia send"
-                          disabled={pending || !hasPhone(g)}
-                          title={strings.row_whatsapp}
-                          onClick={() => rowShare(g, 'whatsapp')}
-                        >
-                          {sendingRow === g.id ? <Loader2 size={14} className="spin" /> : <MessageCircle size={14} />}
-                          {g.status === 'none' ? strings.row_send : strings.row_resend}
-                        </button>
+                        {filter === 'attending' ? (
+                          <button
+                            className="ia send pass"
+                            disabled={pending || !hasPhone(g)}
+                            title={strings.row_send_pass}
+                            onClick={() => sendPassRow(g)}
+                          >
+                            {sendingRow === g.id ? <Loader2 size={14} className="spin" /> : <Ticket size={14} />}
+                            {strings.row_send_pass}
+                          </button>
+                        ) : (
+                          <button
+                            className="ia send"
+                            disabled={pending || !hasPhone(g)}
+                            title={strings.row_whatsapp}
+                            onClick={() => rowShare(g, 'whatsapp')}
+                          >
+                            {sendingRow === g.id ? <Loader2 size={14} className="spin" /> : <MessageCircle size={14} />}
+                            {g.status === 'none' ? strings.row_send : strings.row_resend}
+                          </button>
+                        )}
                         <button className="ia" disabled={pending || !hasPhone(g)} title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Smartphone size={15} /></button>
                         <button className="ia" disabled={pending} title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
                         <button
@@ -1512,6 +1550,8 @@ const css = `
 .si .ia:disabled{ opacity:.45; cursor:not-allowed; }
 .si .ia.send{ background:var(--purple); border-color:var(--purple); color:#fff; padding:0 12px; }
 .si .ia.send:hover{ filter:brightness(1.06); background:var(--purple); }
+.si .ia.send.pass{ background:var(--amber-bd); border-color:var(--amber-bd); color:var(--amber-tx); }
+.si .ia.send.pass:hover{ filter:brightness(1.03); background:var(--amber-bd); }
 .si .ia.danger{ color:var(--bad-tx); }
 .si .ia.danger:hover{ border-color:var(--bad-tx); background:var(--bad-bg); }
 .si .einp{ width:100%; max-width:220px; border:1px solid var(--lav); border-radius:8px; padding:6px 9px; font-size:13px; background:#fff; }
