@@ -1,7 +1,7 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
-import { formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
+import { firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
@@ -647,6 +647,15 @@ export function coupleDisplayName(profile: CoupleProfileLite | null): string {
   const names = [profile.partner1_name, profile.partner2_name].filter(Boolean)
   if (names.length === 0) return 'The Couple'
   return names.join(' & ')
+}
+
+/** Just the couple's given names (e.g. "Jonathan & Jenifer") — for greetings
+ *  where the full "Jonathan David & Jenifer Kasala" reads too long. */
+export function coupleFirstNames(profile: CoupleProfileLite | null): string {
+  if (!profile) return 'The Couple'
+  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean) as string[]
+  if (names.length === 0) return 'The Couple'
+  return names.map(firstNameOf).join(' & ')
 }
 
 /** The signed-in couple's Contact Collector token (shareable via WhatsApp). */
