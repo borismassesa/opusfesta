@@ -1030,6 +1030,7 @@ export interface DashboardSendStrings {
   toast_personal_copied: string
   toast_reminder_ready: string // {name}
   toast_sent_one: string // {name}
+  toast_pass_sent: string // {name}
   toast_reminded_one: string // {name}
   toast_send_failed: string // {name}
   toast_nothing_sent: string
@@ -1079,6 +1080,7 @@ export interface DashboardSendStrings {
   save_number: string
   row_send: string
   row_resend: string
+  row_send_pass: string
   row_edit: string
   add_guest: string
   row_delete: string
@@ -1956,6 +1958,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_personal_copied: 'Personal link copied',
     toast_reminder_ready: 'Reminder ready for {name}',
     toast_sent_one: 'Invitation sent to {name}',
+    toast_pass_sent: 'Entrance Pass sent to {name}',
     toast_reminded_one: 'Reminder sent to {name}',
     toast_send_failed: 'Could not send to {name}. Please try again.',
     toast_nothing_sent: 'Nothing was sent. Only confirmed guests with a phone number can receive invites.',
@@ -2000,6 +2003,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     save_number: 'Save',
     row_send: 'Send',
     row_resend: 'Resend',
+    row_send_pass: 'Send Pass',
     row_edit: 'Edit guest',
     add_guest: 'Add guest',
     row_delete: 'Remove guest',
