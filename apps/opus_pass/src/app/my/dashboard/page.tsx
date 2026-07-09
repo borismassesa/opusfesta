@@ -69,7 +69,7 @@ export default async function DashboardOverviewPage() {
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
         <div className="max-w-2xl">
           <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-            {coupleFirstName === 'The Couple' ? hero.title : `Welcome, ${coupleFirstName}`}
+            {coupleFirstName === 'The Couple' ? hero.title : `Welcome back, ${coupleFirstName}`}
           </h1>
           {hero.subtitle ? (
             <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{hero.subtitle}</p>
