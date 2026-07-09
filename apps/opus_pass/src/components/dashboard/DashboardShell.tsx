@@ -186,6 +186,9 @@ export default function DashboardShell({
             )}
           </button>
         </div>
+        {!collapsed && coupleName && coupleName !== 'The Couple' ? (
+          <p className="mt-1 px-2 text-xs text-[#1A1A1A]/45">{coupleName}</p>
+        ) : null}
         {!collapsed ? <div className="mt-5 px-1"><DashboardSearch navItems={navPages} /></div> : null}
         <div className={cn('flex-1', collapsed ? 'mt-8' : 'mt-4')}>
           <NavLinks collapsed={collapsed} />
