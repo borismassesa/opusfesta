@@ -435,6 +435,8 @@ export default function SendInvitesView({
           )
         }
         router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : fmt(strings.toast_send_failed, { name: first }))
       } finally {
         setSendingRow(null)
       }
