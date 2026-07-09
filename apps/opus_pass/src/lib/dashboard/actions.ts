@@ -1617,7 +1617,10 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
 
     const result = await provider.sendEntrancePass({
       to,
-      guestName: fullNameOf(g.full_name),
+      // Meta rejects/limits overlong template params — a full name is
+      // unbounded (unlike firstNameOf's realistically-short single word),
+      // so cap it the same way the test-send flow already does.
+      guestName: templateParam(fullNameOf(g.full_name), g.full_name, 60),
       eventCategory,
       coupleName,
       dateLabel,
