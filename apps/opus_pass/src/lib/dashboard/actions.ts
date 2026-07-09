@@ -6,7 +6,7 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, firstNameOf, normalizePhone, publicOrigin } from './share'
+import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, publicOrigin } from './share'
 import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, computeEntrancePassVars } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
@@ -1617,7 +1617,7 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
 
     const result = await provider.sendEntrancePass({
       to,
-      guestName: firstNameOf(g.full_name),
+      guestName: fullNameOf(g.full_name),
       eventCategory,
       coupleName,
       dateLabel,
