@@ -1103,7 +1103,7 @@ export default function SendInvitesView({
                     <td><span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span></td>
                     <td>
                       <div className="ra">
-                        {filter === 'attending' ? (
+                        {effectiveFilter === 'attending' ? (
                           <button
                             className="ia send pass"
                             disabled={pending || !hasPhone(g)}
