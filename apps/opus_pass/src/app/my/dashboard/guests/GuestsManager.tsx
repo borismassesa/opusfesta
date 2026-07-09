@@ -444,7 +444,11 @@ export default function GuestsManager({
           await updateGuest(editing.id, form)
           toast.success(copy.toast_updated)
         } else {
-          await createGuest(form)
+          const res = await createGuest(form)
+          if (!res.ok) {
+            toast.error(res.error ?? 'Something went wrong')
+            return
+          }
           toast.success(copy.toast_added)
         }
         setOpen(false)

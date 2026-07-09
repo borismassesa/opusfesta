@@ -386,7 +386,18 @@ async function ensureInvitationsForAllEvents(userId: string, guestId: string): P
   }
 }
 
-export async function createGuest(input: GuestInput): Promise<string> {
+export interface CreateGuestResult {
+  ok: boolean
+  id?: string
+  /** User-facing validation/failure reason. Returned rather than thrown —
+   *  Next.js strips thrown Server Action error messages in production
+   *  builds down to a generic "Server Components render" message with no
+   *  detail, which makes an expected outcome like a duplicate phone number
+   *  look like a crash. Returning it keeps the real message intact. */
+  error?: string
+}
+
+export async function createGuest(input: GuestInput): Promise<CreateGuestResult> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
@@ -402,7 +413,7 @@ export async function createGuest(input: GuestInput): Promise<string> {
         (c.whatsapp_phone ?? '').replace(/\D/g, '') === digits ||
         (c.phone ?? '').replace(/\D/g, '') === digits,
     )
-    if (clash) throw new Error(`This number is already on your list (${clash.full_name})`)
+    if (clash) return { ok: false, error: `This number is already on your list (${clash.full_name})` }
   }
 
   const { data, error } = await supabase
@@ -410,7 +421,7 @@ export async function createGuest(input: GuestInput): Promise<string> {
     .insert({ user_id: user.id, ...guestColumnsFromInput(input) })
     .select('id')
     .single<{ id: string }>()
-  if (error || !data) throw new Error(error?.message ?? 'Failed to create guest')
+  if (error || !data) return { ok: false, error: error?.message ?? 'Failed to create guest' }
 
   // Unified roster: a non-empty eventIds list (Guests form selection) narrows
   // deliberately; ANYTHING else — undefined (quick-add) or [] (form saved with
@@ -422,7 +433,7 @@ export async function createGuest(input: GuestInput): Promise<string> {
     await ensureInvitationsForAllEvents(user.id, data.id)
   }
   revalidateDashboard()
-  return data.id
+  return { ok: true, id: data.id }
 }
 
 export async function updateGuest(id: string, input: GuestInput): Promise<void> {

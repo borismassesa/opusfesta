@@ -549,18 +549,18 @@ export default function SendInvitesView({
     if (!newGuest || !newGuest.name.trim()) return
     const { name, phone } = newGuest
     startTransition(async () => {
-      try {
-        await createGuest({
-          full_name: name.replace(/\s+/g, ' ').trim(),
-          phone: phone.trim() || null,
-          whatsapp_phone: phone.trim() || null,
-        })
-        toast.success(strings.toast_guest_saved)
-        setNewGuest(null)
-        router.refresh()
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : strings.toast_send_failed)
+      const res = await createGuest({
+        full_name: name.replace(/\s+/g, ' ').trim(),
+        phone: phone.trim() || null,
+        whatsapp_phone: phone.trim() || null,
+      })
+      if (!res.ok) {
+        toast.error(res.error ?? strings.toast_send_failed)
+        return
       }
+      toast.success(strings.toast_guest_saved)
+      setNewGuest(null)
+      router.refresh()
     })
   }
 
