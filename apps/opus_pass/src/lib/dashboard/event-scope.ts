@@ -8,11 +8,9 @@
 
 import { cookies } from 'next/headers'
 import type { WeddingEvent } from './types'
+import { ACTIVE_EVENT_COOKIE, ALL_EVENTS } from './event-scope-constants'
 
-export const ACTIVE_EVENT_COOKIE = 'op-active-event'
-
-/** Sentinel for the roster-style pages that support a cross-event view. */
-export const ALL_EVENTS = 'all'
+export { ACTIVE_EVENT_COOKIE, ALL_EVENTS }
 
 export interface EventScope {
   /** The event the page should scope to, when exactly one is selected. */

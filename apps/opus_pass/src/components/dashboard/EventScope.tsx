@@ -15,9 +15,9 @@ import { inputClass } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
 import { formatLongDate } from '@/lib/dashboard/share'
 import { eventTypeLabel, type WeddingEvent } from '@/lib/dashboard/types'
+import { ACTIVE_EVENT_COOKIE } from '@/lib/dashboard/event-scope-constants'
 import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 
-const ACTIVE_EVENT_COOKIE = 'op-active-event'
 const YEAR = 60 * 60 * 24 * 365
 
 export function setActiveEventCookie(id: string) {

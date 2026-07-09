@@ -108,6 +108,32 @@ export async function resolveOwnedEventId(
   }
 }
 
+/**
+ * Resolve which event a new row (a pledge, etc.) belongs to: the explicit id
+ * when it's owned by userId, else the couple's default (first) event — same
+ * ordering used everywhere else for "the default event" (sort_order, then
+ * start date). Returns null only for a couple with no events yet.
+ */
+export async function resolveEventIdOrDefault(
+  userId: string,
+  explicitEventId?: string | null,
+): Promise<string | null> {
+  if (explicitEventId) {
+    const owned = await resolveOwnedEventId(userId, explicitEventId)
+    if (owned) return owned
+  }
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
+    .order('starts_at', { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>()
+  return data?.id ?? null
+}
+
 /** All RSVP questions the couple has configured (per-event + general). */
 export async function getRsvpQuestions(): Promise<RsvpQuestion[]> {
   const user = await requireDashboardUser()

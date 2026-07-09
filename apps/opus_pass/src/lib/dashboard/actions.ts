@@ -7,7 +7,7 @@ import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
 import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, computeEntrancePassVars } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
@@ -661,26 +661,12 @@ function pledgeColumnsFromInput(input: PledgeInput): Record<string, unknown> {
  * events yet.
  */
 async function resolvePledgeEventId(userId: string, explicit?: string): Promise<string | null> {
-  const supabase = createDashboardClient()
   if (explicit) {
-    const { data } = await supabase
-      .from('wedding_events')
-      .select('id')
-      .eq('id', explicit)
-      .eq('user_id', userId)
-      .maybeSingle<{ id: string }>()
-    if (!data) throw new Error('Event not found')
-    return data.id
+    const owned = await resolveOwnedEventId(userId, explicit)
+    if (!owned) throw new Error('Event not found')
+    return owned
   }
-  const { data } = await supabase
-    .from('wedding_events')
-    .select('id')
-    .eq('user_id', userId)
-    .order('sort_order', { ascending: true })
-    .order('starts_at', { ascending: true, nullsFirst: false })
-    .limit(1)
-    .maybeSingle<{ id: string }>()
-  return data?.id ?? null
+  return resolveEventIdOrDefault(userId)
 }
 
 /** Resolve the contributor's contact row, creating one when a new name is given. */

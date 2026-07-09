@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { createNotification } from '@/lib/dashboard/notifications'
+import { resolveEventIdOrDefault } from '@/lib/dashboard/queries'
 
 export interface PublicPledgeInput {
   full_name: string
@@ -52,29 +53,8 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
   // belongs to this couple, else their default (first) event, else NULL. This
   // doesn't depend on (and isn't depended on by) the contact insert below, so
   // the two run concurrently.
-  const resolveEventId = async (): Promise<string | null> => {
-    if (input.event_id) {
-      const { data: ev } = await supabase
-        .from('wedding_events')
-        .select('id')
-        .eq('id', input.event_id)
-        .eq('user_id', owner.id)
-        .maybeSingle<{ id: string }>()
-      if (ev?.id) return ev.id
-    }
-    const { data: ev } = await supabase
-      .from('wedding_events')
-      .select('id')
-      .eq('user_id', owner.id)
-      .order('sort_order', { ascending: true })
-      .order('starts_at', { ascending: true, nullsFirst: false })
-      .limit(1)
-      .maybeSingle<{ id: string }>()
-    return ev?.id ?? null
-  }
-
   const [eventId, contactResult] = await Promise.all([
-    resolveEventId(),
+    resolveEventIdOrDefault(owner.id, input.event_id),
     supabase
       .from('guest_contacts')
       .insert({

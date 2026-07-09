@@ -55,7 +55,8 @@ export default async function RsvpsPage({
     <RsvpsClient
       guests={guests}
       events={events}
-      initialEventFilter={scope.isAll ? ALL_EVENTS : (scope.selected?.id ?? ALL_EVENTS)}
+      eventFilter={scope.isAll ? ALL_EVENTS : (scope.selected?.id ?? ALL_EVENTS)}
+      scopeStrings={scopeStrings}
       lastSend={lastSend}
       hero={hero}
       copy={copy}

@@ -2,15 +2,15 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
-import { Tabs, inputClass } from '@/components/dashboard/controls'
-import { setActiveEventCookie } from '@/components/dashboard/EventScope'
-import { cn } from '@/lib/utils'
+import { Tabs } from '@/components/dashboard/controls'
+import { EventSwitcher } from '@/components/dashboard/EventScope'
 import RsvpSetupPanel from './RsvpSetupPanel'
 import RsvpTracker from './RsvpTracker'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { RsvpsDashboardCopy } from '@/lib/cms/dashboard-copy'
+import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import type { MyPublicInvite, RsvpEventSummary, RsvpAnswerSummary } from '@/lib/dashboard/queries'
 import {
   RSVP_STATUS_LABELS,
@@ -32,7 +32,8 @@ function csvCell(value: string | number | null): string {
 export default function RsvpsClient({
   guests,
   events,
-  initialEventFilter,
+  eventFilter,
+  scopeStrings,
   lastSend,
   hero,
   copy,
@@ -44,7 +45,8 @@ export default function RsvpsClient({
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
   /** Event id chosen on the event chooser, or 'all' for the combined view. */
-  initialEventFilter: string
+  eventFilter: string
+  scopeStrings: DashboardEventScopeStrings
   lastSend: Record<string, LastSend>
   hero: DashboardHeroContent
   copy: RsvpsDashboardCopy
@@ -54,14 +56,6 @@ export default function RsvpsClient({
   publicInvite: MyPublicInvite
 }) {
   const [tab, setTab] = useState<Tab>('setup')
-  const [eventFilter, setEventFilter] = useState(initialEventFilter)
-
-  function handleEventFilterChange(id: string) {
-    // Filtering is client-side; the cookie keeps the choice consistent
-    // with the other event-scoped sections.
-    setActiveEventCookie(id)
-    setEventFilter(id)
-  }
 
   const hasResponses = useMemo(
     () => guests.some((g) => g.invitations.length > 0),
@@ -76,6 +70,9 @@ export default function RsvpsClient({
       if (g.invitations.length === 0) continue
       const needsReview = g.review_status === 'unconfirmed'
       for (const inv of g.invitations) {
+        // Match the on-screen tracker: when scoped to one event, only that
+        // event's rows go in the report.
+        if (eventFilter !== 'all' && inv.event_id !== eventFilter) continue
         lines.push(
           [
             g.full_name,
@@ -139,27 +136,7 @@ export default function RsvpsClient({
           ]}
           trailing={
             tab === 'responses' && events.length > 1 ? (
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-[#1A1A1A]/60" htmlFor="rsvp-event">
-                  Event
-                </label>
-                <span className="relative inline-flex items-center">
-                  <select
-                    id="rsvp-event"
-                    className={cn(inputClass, 'w-auto appearance-none pr-9')}
-                    value={eventFilter}
-                    onChange={(e) => handleEventFilterChange(e.target.value)}
-                  >
-                    <option value="all">{copy.filter_all_events}</option>
-                    {events.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1A1A1A]/45" />
-                </span>
-              </div>
+              <EventSwitcher events={events} selectedId={eventFilter} strings={scopeStrings} allowAll />
             ) : undefined
           }
         />
