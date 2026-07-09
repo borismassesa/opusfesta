@@ -6,6 +6,7 @@ import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import type { SiteDoc } from '@/lib/builder/types'
+import type { Treatment } from '@/components/guests/InvitationVisual'
 import type {
   DashboardStats,
   EventPledge,
@@ -427,16 +428,34 @@ interface PledgeContactRow {
   public_token: string
 }
 
-export async function getPledges(): Promise<PledgeWithContact[]> {
+export interface PledgeScope {
+  /** Scope to one event. Omit for every pledge across events. */
+  eventId?: string
+  /**
+   * Also include legacy rows with no event_id (pledges recorded before the
+   * couple had events). Pass true when eventId is the couple's default
+   * (first) event so those rows stay visible somewhere.
+   */
+  includeUnassigned?: boolean
+}
+
+export async function getPledges(scope: PledgeScope = {}): Promise<PledgeWithContact[]> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
+  let pledgeQuery = supabase
+    .from('event_pledges')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+  if (scope.eventId) {
+    pledgeQuery = scope.includeUnassigned
+      ? pledgeQuery.or(`event_id.eq.${scope.eventId},event_id.is.null`)
+      : pledgeQuery.eq('event_id', scope.eventId)
+  }
+
   const [{ data: pledges, error: pErr }, { data: contacts, error: cErr }] = await Promise.all([
-    supabase
-      .from('event_pledges')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
+    pledgeQuery,
     supabase
       .from('guest_contacts')
       .select('id, full_name, email, phone, whatsapp_phone, group_tag, public_token')
@@ -465,8 +484,8 @@ export async function getPledges(): Promise<PledgeWithContact[]> {
   })
 }
 
-export async function getPledgeStats(): Promise<PledgeStats> {
-  const pledges = await getPledges()
+export async function getPledgeStats(scope: PledgeScope = {}): Promise<PledgeStats> {
+  const pledges = await getPledges(scope)
   let totalPledged = 0
   let totalReceived = 0
   let paidCount = 0
@@ -1089,6 +1108,8 @@ export interface WhatsAppEntitlement {
   hasPaidOrder: boolean
   /** The paid invitation card's hero image — used as the WhatsApp header. */
   cardImageUrl: string | null
+  /** Visual treatment — fallback thumbnail when the card has no hero image. */
+  cardTreatment: Treatment | null
   /** The paid card's tier (e.g. "Signature"), for the "card purchased" badge. */
   cardTier: string | null
   /** The paid card/product name (e.g. "The Couple"). */
@@ -1114,6 +1135,8 @@ interface PaidOrderItem {
   name?: string
   guests?: number
   image?: string
+  /** Visual treatment — fallback thumbnail when the card has no hero image. */
+  treatment?: Treatment
   tier?: string
   /** Package tier id (lite/classic/elegant/signature) — drives which
    *  entrance-pass ticket template to composite (see entrance-pass route). */
@@ -1160,12 +1183,15 @@ export interface PaidOrderSummary {
   id: string
   cardName: string | null
   cardImageUrl: string | null
+  /** Visual treatment — fallback thumbnail when the card has no hero image. */
+  cardTreatment: Treatment | null
   purchasedGuests: number
 }
 
 function orderSummaryFrom(o: PaidOrderRow): PaidOrderSummary {
   const items = o.items ?? []
   const withImage = items.find((it) => it.image)
+  const withTreatment = items.find((it) => it.treatment)
   const purchasedGuests = items.reduce(
     (sum, it) => sum + (typeof it.guests === 'number' && it.guests > 0 ? Math.floor(it.guests) : 0),
     0,
@@ -1174,6 +1200,7 @@ function orderSummaryFrom(o: PaidOrderRow): PaidOrderSummary {
     id: o.id,
     cardName: withImage?.name ?? items[0]?.name ?? null,
     cardImageUrl: withImage?.image ?? null,
+    cardTreatment: withTreatment?.treatment ?? null,
     purchasedGuests,
   }
 }
@@ -1257,14 +1284,16 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
 
   let purchased = 0
   let cardImageUrl: string | null = null
+  let cardTreatment: Treatment | null = null
   let cardTier: string | null = null
   let cardName: string | null = null
   const addOnSet = new Set<string>()
   for (const o of orders) {
     for (const item of o.items ?? []) {
       if (typeof item.guests === 'number' && item.guests > 0) purchased += Math.floor(item.guests)
-      // The card they paid for: first hero image/tier/name found (orders are newest-first).
+      // The card they paid for: first hero image/treatment/tier/name found (orders are newest-first).
       if (!cardImageUrl && item.image) cardImageUrl = item.image
+      if (!cardTreatment && item.treatment) cardTreatment = item.treatment
       if (!cardTier && item.tier) cardTier = item.tier
       if (!cardName && item.name) cardName = item.name
       for (const a of item.addOns ?? []) {
@@ -1311,6 +1340,7 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
     remaining: Math.max(0, purchased - alreadySentIds.length),
     hasPaidOrder: orders.length > 0,
     cardImageUrl,
+    cardTreatment,
     cardTier,
     cardName,
     addOns,
@@ -1367,6 +1397,8 @@ export interface SendInvitesData {
     cardName: string | null
     /** The paid card's hero artwork — rendered in the event-context preview. */
     cardImageUrl: string | null
+    /** Visual treatment — fallback thumbnail when the card has no hero image. */
+    cardTreatment: Treatment | null
     /** Distinct add-ons purchased across paid orders (prints, swag, etc.). */
     addOns: string[]
     hasPaidOrder: boolean
@@ -1439,6 +1471,7 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
         cardTier: null,
         cardName: null,
         cardImageUrl: null,
+        cardTreatment: null,
         addOns: [],
         hasPaidOrder: false,
       },
@@ -1548,6 +1581,7 @@ export async function getSendInvitesData(eventId?: string): Promise<SendInvitesD
       cardTier: entitlement.cardTier,
       cardName: entitlement.cardName,
       cardImageUrl: entitlement.cardImageUrl,
+      cardTreatment: entitlement.cardTreatment,
       addOns: entitlement.addOns,
       hasPaidOrder: entitlement.hasPaidOrder,
     },

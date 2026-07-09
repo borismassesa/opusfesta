@@ -46,6 +46,7 @@ export {
   type DashboardEventsStrings,
   type DashboardSeatingStrings,
   type DashboardSendStrings,
+  type DashboardEventScopeStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'
 

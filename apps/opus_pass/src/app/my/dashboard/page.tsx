@@ -63,14 +63,23 @@ export default async function DashboardOverviewPage() {
   const empty = stats.totalGuests === 0 && events.length === 0
 
   const coupleName = coupleDisplayName(profile)
-  const headerTitle = coupleName === 'The Couple' ? hero.title : `Welcome back, ${coupleName}`
 
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
         <div className="max-w-2xl">
           <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-            {headerTitle}
+            {coupleName === 'The Couple' ? (
+              hero.title
+            ) : (
+              <>
+                Welcome back,
+                <br />
+                <span style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>
+                  {coupleName}
+                </span>
+              </>
+            )}
           </h1>
           {hero.subtitle ? (
             <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{hero.subtitle}</p>

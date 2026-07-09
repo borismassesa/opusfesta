@@ -14,10 +14,12 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ token: string }>
+  searchParams: Promise<{ event?: string }>
 }
 
-export default async function PledgePage({ params }: PageProps) {
+export default async function PledgePage({ params, searchParams }: PageProps) {
   const { token } = await params
+  const { event: eventId } = await searchParams
   const couple = await getPublicPledgeCouple(token)
   if (!couple) notFound()
   const locale = await getLocale()
@@ -26,6 +28,7 @@ export default async function PledgePage({ params }: PageProps) {
     <UIStringsProvider bundles={{ 'forms-pledge': formsPledge }}>
       <PledgeForm
         token={token}
+        eventId={eventId ?? null}
         coupleName={couple.coupleName}
         weddingDate={couple.weddingDate}
         city={couple.city}

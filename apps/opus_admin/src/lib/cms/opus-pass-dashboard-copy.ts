@@ -222,7 +222,7 @@ export function isDashboardCopySlug(value: string): value is DashboardCopySlug {
 
 // ── Field schema that drives the generic editor ──────────────────────────────
 
-export type CopyFieldKind = 'text' | 'textarea' | 'list'
+export type CopyFieldKind = 'text' | 'textarea' | 'list' | 'image'
 
 export type CopyField = {
   key: string
@@ -230,6 +230,8 @@ export type CopyField = {
   kind: CopyFieldKind
   max?: number
   hint?: string
+  /** Storage path prefix for `kind: 'image'` fields — e.g. 'opus-pass/navbar/invitations'. */
+  pathPrefix?: string
 }
 
 export type CopyFieldGroup = {

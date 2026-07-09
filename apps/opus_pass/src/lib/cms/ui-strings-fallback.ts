@@ -30,6 +30,7 @@ export type UiArea =
   | 'dashboard-events'
   | 'dashboard-seating'
   | 'dashboard-send'
+  | 'dashboard-event-scope'
 
 // One CMS page row per area; section_key is always 'copy'.
 //
@@ -59,6 +60,7 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'dashboard-events': 'opus-pass-ui-dashboard-events',
   'dashboard-seating': 'opus-pass-ui-dashboard-seating',
   'dashboard-send': 'opus-pass-ui-dashboard-send',
+  'dashboard-event-scope': 'opus-pass-ui-dashboard-event-scope',
 }
 
 // The public navbar reads ONE merged 'navbar' namespace, but its keys are now
@@ -85,6 +87,7 @@ export interface NavbarStrings {
   mega_inv_title: string
   mega_inv_desc: string
   mega_inv_cta: string
+  mega_inv_image: string
   // Invitations mega-menu — column headings
   inv_col_browse: string
   inv_col_resources: string
@@ -100,13 +103,18 @@ export interface NavbarStrings {
   // Invitations mega-menu — photo grid
   inv_grid_title: string
   inv_grid_guest_list: string
+  inv_grid_guest_list_image: string
   inv_grid_rsvp_tracking: string
+  inv_grid_rsvp_tracking_image: string
   inv_grid_invitations: string
+  inv_grid_invitations_image: string
   inv_grid_seating_plan: string
+  inv_grid_seating_plan_image: string
   // Guests mega-menu — featured card
   mega_guests_title: string
   mega_guests_desc: string
   mega_guests_cta: string
+  mega_guests_image: string
   // Guests mega-menu — column headings
   guests_col_manage: string
   guests_col_resources: string
@@ -121,13 +129,18 @@ export interface NavbarStrings {
   // Guests mega-menu — photo grid
   guests_grid_title: string
   guests_grid_guest_list: string
+  guests_grid_guest_list_image: string
   guests_grid_rsvp_tracking: string
+  guests_grid_rsvp_tracking_image: string
   guests_grid_invitations: string
+  guests_grid_invitations_image: string
   guests_grid_seating_plan: string
+  guests_grid_seating_plan_image: string
   // Website mega-menu — featured card
   mega_website_title: string
   mega_website_desc: string
   mega_website_cta: string
+  mega_website_image: string
   // Website mega-menu — column headings
   website_col_features: string
   website_col_resources: string
@@ -144,9 +157,13 @@ export interface NavbarStrings {
   // Website mega-menu — photo grid
   website_grid_title: string
   website_grid_templates: string
+  website_grid_templates_image: string
   website_grid_photo_gallery: string
+  website_grid_photo_gallery_image: string
   website_grid_rsvps: string
+  website_grid_rsvps_image: string
   website_grid_travel_info: string
+  website_grid_travel_info_image: string
   // Auth buttons
   auth_login: string
   auth_signup: string
@@ -816,6 +833,7 @@ export interface DashboardEventsStrings {
   hint_max_400: string
   field_note: string
   placeholder_note: string
+  hint_note_suggestions: string
   // Meal preferences section
   section_meal_preferences: string
   toggle_collect_meal: string
@@ -941,6 +959,9 @@ export interface DashboardSendStrings {
   // Card context
   manage_events: string
   card_fallback_label: string
+  no_design_subheading: string
+  no_design_cta: string
+  no_design_pick_cta: string
   card_purchased: string
   card_purchased_tier: string // {tier}
   fact_package: string
@@ -1081,6 +1102,8 @@ export interface DashboardSendStrings {
   row_send: string
   row_resend: string
   row_send_pass: string
+  entrance_status_sent: string
+  entrance_status_notsent: string
   row_edit: string
   add_guest: string
   row_delete: string
@@ -1093,7 +1116,6 @@ export interface DashboardSendStrings {
   bulk_delete_confirm: string
   toast_guests_removed: string // {n}
   selected_count: string // {n}
-  live_hint: string
   send_all_notsent: string // {n}
   // Event switcher + unassigned-order assignment
   event_switcher_label: string
@@ -1102,6 +1124,22 @@ export interface DashboardSendStrings {
   unassigned_guests: string // {n}
   unassigned_assign: string // {event}
   toast_order_assigned: string
+}
+
+// Shared "which event are you working on?" chooser + switcher used by the
+// event-scoped dashboard pages (Pledges, Send invites, Guest list, RSVPs,
+// Seat collection) — see @/components/dashboard/EventScope.
+export interface DashboardEventScopeStrings {
+  // Full-page chooser (multi-event couples with no selection yet)
+  chooser_title: string
+  chooser_description: string
+  chooser_no_date: string
+  chooser_all_option: string
+  chooser_all_hint: string
+  chooser_manage: string
+  // Compact header switcher
+  switcher_label: string
+  switcher_all: string
 }
 
 export type UiStringsByArea = {
@@ -1124,6 +1162,7 @@ export type UiStringsByArea = {
   'dashboard-events': DashboardEventsStrings
   'dashboard-seating': DashboardSeatingStrings
   'dashboard-send': DashboardSendStrings
+  'dashboard-event-scope': DashboardEventScopeStrings
 }
 
 export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
@@ -1135,6 +1174,8 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     mega_inv_desc:
       'Designer-worthy digital invitations for every wedding moment, sent by WhatsApp or SMS.',
     mega_inv_cta: 'Browse all designs',
+    mega_inv_image:
+      'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=800&q=80',
     inv_col_browse: 'Browse',
     inv_col_resources: 'Resources',
     inv_link_all_designs: 'All Designs',
@@ -1146,13 +1187,18 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     inv_link_rsvp_wording: 'RSVP Wording Ideas',
     inv_grid_title: 'Wedding Paper',
     inv_grid_guest_list: 'Guest List',
+    inv_grid_guest_list_image: '/assets/images/mauzo_crew.jpg',
     inv_grid_rsvp_tracking: 'RSVP Tracking',
+    inv_grid_rsvp_tracking_image: '/assets/images/churchcouples.jpg',
     inv_grid_invitations: 'Invitations',
+    inv_grid_invitations_image: '/assets/images/cutesy_couple.jpg',
     inv_grid_seating_plan: 'Seating Plan',
+    inv_grid_seating_plan_image: '/assets/images/couples_together.jpg',
     mega_guests_title: 'GUESTS & RSVPS',
     mega_guests_desc:
       'Send digital invites by WhatsApp or SMS and watch RSVPs roll in live.',
     mega_guests_cta: 'Manage your guests',
+    mega_guests_image: '/assets/images/mauzo_crew.jpg',
     guests_col_manage: 'Manage',
     guests_col_resources: 'Resources',
     guests_link_list_manager: 'Guest List Manager',
@@ -1163,13 +1209,19 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     guests_link_etiquette: 'Guest Etiquette Tips',
     guests_grid_title: 'Guest Tools',
     guests_grid_guest_list: 'Guest List',
+    guests_grid_guest_list_image: '/assets/images/mauzo_crew.jpg',
     guests_grid_rsvp_tracking: 'RSVP Tracking',
+    guests_grid_rsvp_tracking_image: '/assets/images/churchcouples.jpg',
     guests_grid_invitations: 'Invitations',
+    guests_grid_invitations_image: '/assets/images/cutesy_couple.jpg',
     guests_grid_seating_plan: 'Seating Plan',
+    guests_grid_seating_plan_image: '/assets/images/couples_together.jpg',
     mega_website_title: 'WEDDING WEBSITE',
     mega_website_desc:
       'Build a beautiful wedding website in minutes and share it with your guests.',
     mega_website_cta: 'Create your website',
+    mega_website_image:
+      'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
     website_col_features: 'Features',
     website_col_resources: 'Resources',
     website_link_free_site: 'Free Wedding Website',
@@ -1182,9 +1234,13 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     website_link_sharing: 'Sharing with Guests',
     website_grid_title: 'Website Ideas',
     website_grid_templates: 'Templates',
+    website_grid_templates_image: '/assets/images/coupleswithpiano.jpg',
     website_grid_photo_gallery: 'Photo Gallery',
+    website_grid_photo_gallery_image: '/assets/images/beautiful_bride.jpg',
     website_grid_rsvps: 'RSVPs',
+    website_grid_rsvps_image: '/assets/images/authentic_couple.jpg',
     website_grid_travel_info: 'Travel Info',
+    website_grid_travel_info_image: '/assets/images/bride_umbrella.jpg',
     auth_login: 'Log in',
     auth_signup: 'Sign up',
     auth_dashboard: 'Dashboard',
@@ -1743,7 +1799,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     field_event_name: 'Event name',
     placeholder_event_name: 'Our ceremony',
     hint_max_100: 'Maximum 100 characters',
-    field_start_date: 'Start date',
+    field_start_date: 'Event date',
     field_start_time: 'Start time',
     field_end_date: 'End date',
     field_end_time: 'End time',
@@ -1757,13 +1813,14 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     section_website_settings: 'Event settings on website',
     toggle_public: 'Make event public to all guests',
     toggle_allow_rsvp: 'Let guests RSVP on website',
-    field_attire: 'Attire suggestions',
+    field_attire: 'Dress code',
     placeholder_attire:
       'This event is black-tie optional. The grass can be soft, so maybe rethink stilettos.',
     hint_max_400: 'Maximum 400 characters',
     field_note: 'Note to guests',
     placeholder_note:
       "There will be a few light bites in addition to cocktails. Can't wait to see you!",
+    hint_note_suggestions: 'e.g. parking info, weather tips, or a warm welcome message',
     section_meal_preferences: 'Ask for meal preferences',
     toggle_collect_meal: 'Collect meal choices for this event',
     aria_remove_meal: 'Remove {option}',
@@ -1776,8 +1833,8 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     preview_label: 'Preview',
     preview_visible: 'Visible to guests',
     preview_name_placeholder: 'Your event name',
-    preview_add_date: 'Add a start date and time',
-    preview_attire_label: 'Attire',
+    preview_add_date: 'Add an event date',
+    preview_attire_label: 'Dress code',
     preview_note_label: 'Note to guests',
     preview_meal_label: 'Meal choices',
     promo_label: 'Sharing',
@@ -1872,6 +1929,10 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
       'Your card is paid for. Now get it into your guests’ hands. Share a public link, or send each guest a personal invite.',
     manage_events: 'Manage events',
     card_fallback_label: 'INVITATION',
+    no_design_subheading:
+      "You haven't picked a card design for this event yet. Buy one, or use a design you've already paid for, to start sending invites.",
+    no_design_cta: 'Browse card designs',
+    no_design_pick_cta: 'Pick your paid design',
     card_purchased: 'Card purchased',
     card_purchased_tier: '{tier} card purchased',
     fact_package: 'Package',
@@ -1904,7 +1965,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     chip_copy_link: 'Copy link',
     chip_open: 'Open',
     tab_digital_cards: 'Digital Cards',
-    tab_pass_ticket: 'Pass Ticket',
+    tab_pass_ticket: 'Entrance Pass Ticket',
     targeted_tag: 'Targeted',
     targeted_title: 'Personal invites',
     targeted_desc:
@@ -2004,6 +2065,8 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     row_send: 'Send',
     row_resend: 'Resend',
     row_send_pass: 'Send Pass',
+    entrance_status_sent: 'Sent',
+    entrance_status_notsent: 'Not sent',
     row_edit: 'Edit guest',
     add_guest: 'Add guest',
     row_delete: 'Remove guest',
@@ -2016,7 +2079,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     bulk_delete_confirm: 'Remove',
     toast_guests_removed: '{n} removed',
     selected_count: '{n} selected',
-    live_hint: 'Statuses update automatically',
     send_all_notsent: 'Send to all not sent ({n})',
     event_switcher_label: 'Sending for',
     unassigned_pill: 'Action needed',
@@ -2024,5 +2086,16 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     unassigned_guests: '{n} invites',
     unassigned_assign: 'Use for {event}',
     toast_order_assigned: 'Design assigned to this event',
+  },
+  'dashboard-event-scope': {
+    chooser_title: 'Choose an event',
+    chooser_description:
+      'You have more than one event. Pick the one you want to work on. You can switch at any time from the top of the page.',
+    chooser_no_date: 'Date not set',
+    chooser_all_option: 'All events',
+    chooser_all_hint: 'View everything across all your events',
+    chooser_manage: 'Manage events',
+    switcher_label: 'Event',
+    switcher_all: 'All events',
   },
 }

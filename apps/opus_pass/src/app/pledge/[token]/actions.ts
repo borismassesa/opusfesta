@@ -11,6 +11,13 @@ export interface PublicPledgeInput {
   amount: number
   promised_date: string | null
   message: string | null
+  /**
+   * Event the pledge is for, carried on the share link as ?event=<id>. It is
+   * verified against the owner; missing or foreign ids fall back to the
+   * owner's first event (links sent through the WhatsApp template carry no
+   * event).
+   */
+  event_id?: string | null
 }
 
 /**
@@ -41,6 +48,30 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
   const phone = input.phone?.trim() || null
   const email = input.email?.trim() || null
 
+  // Resolve which event this pledge lands on: the link's event when it really
+  // belongs to this couple, else their default (first) event, else NULL.
+  let eventId: string | null = null
+  if (input.event_id) {
+    const { data: ev } = await supabase
+      .from('wedding_events')
+      .select('id')
+      .eq('id', input.event_id)
+      .eq('user_id', owner.id)
+      .maybeSingle<{ id: string }>()
+    eventId = ev?.id ?? null
+  }
+  if (!eventId) {
+    const { data: ev } = await supabase
+      .from('wedding_events')
+      .select('id')
+      .eq('user_id', owner.id)
+      .order('sort_order', { ascending: true })
+      .order('starts_at', { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>()
+    eventId = ev?.id ?? null
+  }
+
   const { data: contact, error: contactErr } = await supabase
     .from('guest_contacts')
     .insert({
@@ -59,6 +90,7 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
   const { error: pledgeErr } = await supabase.from('event_pledges').insert({
     user_id: owner.id,
     guest_contact_id: contact.id,
+    event_id: eventId,
     pledged_amount: amount,
     currency: 'TZS',
     promised_date: input.promised_date || null,

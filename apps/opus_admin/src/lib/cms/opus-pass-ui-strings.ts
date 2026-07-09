@@ -42,6 +42,7 @@ export type UiArea =
   | 'dashboard-events'
   | 'dashboard-seating'
   | 'dashboard-send'
+  | 'dashboard-event-scope'
 
 // Each field is translatable: stored as a localized { en, sw } object (or a
 // legacy plain string). The editor reads/writes this shape via <BilingualField>.
@@ -77,6 +78,7 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'dashboard-events': 'opus-pass-ui-dashboard-events',
   'dashboard-seating': 'opus-pass-ui-dashboard-seating',
   'dashboard-send': 'opus-pass-ui-dashboard-send',
+  'dashboard-event-scope': 'opus-pass-ui-dashboard-event-scope',
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
@@ -99,6 +101,7 @@ export const UI_STRINGS_LABEL: Record<UiArea, string> = {
   'dashboard-events': 'Dashboard — Events',
   'dashboard-seating': 'Dashboard — Seating',
   'dashboard-send': 'Dashboard — Send invites',
+  'dashboard-event-scope': 'Dashboard — Event chooser',
 }
 
 // Navbar + footer appear on every public page; the home page ('/') is the
@@ -125,6 +128,7 @@ export const UI_STRINGS_PUBLIC_PATH: Record<UiArea, string> = {
   'dashboard-events': '/my/dashboard/events',
   'dashboard-seating': '/my/dashboard/seating',
   'dashboard-send': '/my/dashboard/invitations',
+  'dashboard-event-scope': '/my/dashboard/pledges',
 }
 
 export const UI_STRINGS_AREAS: readonly UiArea[] = [
@@ -147,6 +151,7 @@ export const UI_STRINGS_AREAS: readonly UiArea[] = [
   'dashboard-events',
   'dashboard-seating',
   'dashboard-send',
+  'dashboard-event-scope',
 ] as const
 
 export function isUiArea(value: string): value is UiArea {
@@ -717,7 +722,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     field_event_name: 'Event name',
     placeholder_event_name: 'Our ceremony',
     hint_max_100: 'Maximum 100 characters',
-    field_start_date: 'Start date',
+    field_start_date: 'Event date',
     field_start_time: 'Start time',
     field_end_date: 'End date',
     field_end_time: 'End time',
@@ -731,13 +736,14 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     section_website_settings: 'Event settings on website',
     toggle_public: 'Make event public to all guests',
     toggle_allow_rsvp: 'Let guests RSVP on website',
-    field_attire: 'Attire suggestions',
+    field_attire: 'Dress code',
     placeholder_attire:
       'This event is black-tie optional. The grass can be soft, so maybe rethink stilettos.',
     hint_max_400: 'Maximum 400 characters',
     field_note: 'Note to guests',
     placeholder_note:
       "There will be a few light bites in addition to cocktails. Can't wait to see you!",
+    hint_note_suggestions: 'e.g. parking info, weather tips, or a warm welcome message',
     section_meal_preferences: 'Ask for meal preferences',
     toggle_collect_meal: 'Collect meal choices for this event',
     aria_remove_meal: 'Remove {option}',
@@ -750,8 +756,8 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     preview_label: 'Preview',
     preview_visible: 'Visible to guests',
     preview_name_placeholder: 'Your event name',
-    preview_add_date: 'Add a start date and time',
-    preview_attire_label: 'Attire',
+    preview_add_date: 'Add an event date',
+    preview_attire_label: 'Dress code',
     preview_note_label: 'Note to guests',
     preview_meal_label: 'Meal choices',
     promo_label: 'Sharing',
@@ -846,6 +852,10 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
       'Your card is paid for. Now get it into your guests’ hands. Share a public link, or send each guest a personal invite.',
     manage_events: 'Manage events',
     card_fallback_label: 'INVITATION',
+    no_design_subheading:
+      "You haven't picked a card design for this event yet. Buy one, or use a design you've already paid for, to start sending invites.",
+    no_design_cta: 'Browse card designs',
+    no_design_pick_cta: 'Pick your paid design',
     card_purchased: 'Card purchased',
     card_purchased_tier: '{tier} card purchased',
     fact_package: 'Package',
@@ -878,7 +888,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     chip_copy_link: 'Copy link',
     chip_open: 'Open',
     tab_digital_cards: 'Digital Cards',
-    tab_pass_ticket: 'Pass Ticket',
+    tab_pass_ticket: 'Entrance Pass Ticket',
     targeted_tag: 'Targeted',
     targeted_title: 'Personal invites',
     targeted_desc:
@@ -978,6 +988,8 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     row_send: 'Send',
     row_resend: 'Resend',
     row_send_pass: 'Send Pass',
+    entrance_status_sent: 'Sent',
+    entrance_status_notsent: 'Not sent',
     row_edit: 'Edit guest',
     add_guest: 'Add guest',
     row_delete: 'Remove guest',
@@ -990,7 +1002,6 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     bulk_delete_confirm: 'Remove',
     toast_guests_removed: '{n} removed',
     selected_count: '{n} selected',
-    live_hint: 'Statuses update automatically',
     send_all_notsent: 'Send to all not sent ({n})',
     event_switcher_label: 'Sending for',
     unassigned_pill: 'Action needed',
@@ -998,6 +1009,17 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     unassigned_guests: '{n} invites',
     unassigned_assign: 'Use for {event}',
     toast_order_assigned: 'Design assigned to this event',
+  },
+  'dashboard-event-scope': {
+    chooser_title: 'Choose an event',
+    chooser_description:
+      'You have more than one event. Pick the one you want to work on. You can switch at any time from the top of the page.',
+    chooser_no_date: 'Date not set',
+    chooser_all_option: 'All events',
+    chooser_all_hint: 'View everything across all your events',
+    chooser_manage: 'Manage events',
+    switcher_label: 'Event',
+    switcher_all: 'All events',
   },
 }
 
@@ -2011,7 +2033,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
     {
       legend: 'Date & time fields',
       fields: [
-        { key: 'field_start_date', label: 'Field: start date', kind: 'text', max: 40 },
+        { key: 'field_start_date', label: 'Field: event date', kind: 'text', max: 40 },
         { key: 'field_start_time', label: 'Field: start time', kind: 'text', max: 40 },
         { key: 'field_end_date', label: 'Field: end date', kind: 'text', max: 40 },
         { key: 'field_end_time', label: 'Field: end time', kind: 'text', max: 40 },
@@ -2040,11 +2062,12 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
     {
       legend: 'Attire & note',
       fields: [
-        { key: 'field_attire', label: 'Field: attire', kind: 'text', max: 40 },
-        { key: 'placeholder_attire', label: 'Attire placeholder', kind: 'textarea', max: 200 },
+        { key: 'field_attire', label: 'Field: dress code', kind: 'text', max: 40 },
+        { key: 'placeholder_attire', label: 'Dress code placeholder', kind: 'textarea', max: 200 },
         { key: 'hint_max_400', label: 'Hint: max 400 chars', kind: 'text', max: 40 },
         { key: 'field_note', label: 'Field: note to guests', kind: 'text', max: 40 },
         { key: 'placeholder_note', label: 'Note placeholder', kind: 'textarea', max: 200 },
+        { key: 'hint_note_suggestions', label: 'Note: topic suggestions hint', kind: 'text', max: 100 },
       ],
     },
     {
@@ -2073,7 +2096,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'preview_visible', label: 'Visible-to-guests badge', kind: 'text', max: 40 },
         { key: 'preview_name_placeholder', label: 'Name placeholder', kind: 'text', max: 40 },
         { key: 'preview_add_date', label: 'Add date prompt', kind: 'text', max: 60 },
-        { key: 'preview_attire_label', label: 'Attire label', kind: 'text', max: 24 },
+        { key: 'preview_attire_label', label: 'Dress code label', kind: 'text', max: 24 },
         { key: 'preview_note_label', label: 'Note label', kind: 'text', max: 40 },
         { key: 'preview_meal_label', label: 'Meal choices label', kind: 'text', max: 40 },
       ],
@@ -2251,6 +2274,9 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       fields: [
         { key: 'manage_events', label: 'Manage events link', kind: 'text', max: 30 },
         { key: 'card_fallback_label', label: 'Card fallback label', kind: 'text', max: 24 },
+        { key: 'no_design_subheading', label: 'No-design subheading', kind: 'textarea', max: 220 },
+        { key: 'no_design_cta', label: 'No-design: buy CTA', kind: 'text', max: 30 },
+        { key: 'no_design_pick_cta', label: 'No-design: pick paid design CTA', kind: 'text', max: 30 },
         { key: 'card_purchased', label: 'Purchased badge (no tier)', kind: 'text', max: 40 },
         { key: 'card_purchased_tier', label: 'Purchased badge (with tier)', kind: 'text', max: 40, hint: 'Use {tier}' },
         { key: 'fact_package', label: 'Package label', kind: 'text', max: 24 },
@@ -2297,7 +2323,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       legend: 'Send-invites tabs',
       fields: [
         { key: 'tab_digital_cards', label: 'Tab: Digital Cards', kind: 'text', max: 24 },
-        { key: 'tab_pass_ticket', label: 'Tab: Pass Ticket', kind: 'text', max: 24 },
+        { key: 'tab_pass_ticket', label: 'Tab: Entrance Pass Ticket', kind: 'text', max: 24 },
       ],
     },
     {
@@ -2434,6 +2460,8 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'row_resend', label: 'Row resend button', kind: 'text', max: 16 },
         { key: 'row_send_pass', label: 'Row send-pass button (Pass Ticket tab)', kind: 'text', max: 20 },
         { key: 'toast_pass_sent', label: 'Pass sent toast', kind: 'text', max: 60, hint: 'Use {name}' },
+        { key: 'entrance_status_sent', label: 'Entrance status: sent', kind: 'text', max: 16 },
+        { key: 'entrance_status_notsent', label: 'Entrance status: not sent', kind: 'text', max: 16 },
         { key: 'row_edit', label: 'Row edit tooltip', kind: 'text', max: 24 },
         { key: 'add_guest', label: 'Add guest button', kind: 'text', max: 24 },
         { key: 'row_delete', label: 'Remove guest tooltip', kind: 'text', max: 24 },
@@ -2446,7 +2474,6 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'bulk_delete_confirm', label: 'Remove confirm button', kind: 'text', max: 20 },
         { key: 'toast_guests_removed', label: 'Guests removed toast', kind: 'text', max: 30, hint: 'Use {n}' },
         { key: 'selected_count', label: 'Selected count', kind: 'text', max: 24, hint: 'Use {n}' },
-        { key: 'live_hint', label: 'Live update hint', kind: 'text', max: 40 },
         { key: 'send_all_notsent', label: 'Send all not sent', kind: 'text', max: 40, hint: 'Use {n}' },
       ],
     },
@@ -2459,6 +2486,26 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'unassigned_guests', label: 'Unassigned order guest count', kind: 'text', max: 24, hint: 'Use {n}' },
         { key: 'unassigned_assign', label: 'Assign order button', kind: 'text', max: 30, hint: 'Use {event}' },
         { key: 'toast_order_assigned', label: 'Order assigned toast', kind: 'text', max: 40 },
+      ],
+    },
+  ],
+  'dashboard-event-scope': [
+    {
+      legend: 'Event chooser (multi-event couples)',
+      fields: [
+        { key: 'chooser_title', label: 'Title', kind: 'text', max: 60 },
+        { key: 'chooser_description', label: 'Description', kind: 'textarea', max: 220 },
+        { key: 'chooser_no_date', label: 'Missing date label', kind: 'text', max: 30 },
+        { key: 'chooser_all_option', label: 'All-events option', kind: 'text', max: 30 },
+        { key: 'chooser_all_hint', label: 'All-events hint', kind: 'text', max: 80 },
+        { key: 'chooser_manage', label: 'Manage events link', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Header switcher',
+      fields: [
+        { key: 'switcher_label', label: 'Selector label', kind: 'text', max: 20 },
+        { key: 'switcher_all', label: 'All-events option', kind: 'text', max: 30 },
       ],
     },
   ],

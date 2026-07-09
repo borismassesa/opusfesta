@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
     // fast-loading remote images. Serve images raw in dev (fast enough — these are
     // already-sized uploads) and let Vercel's robust optimizer handle production.
     unoptimized: process.env.NODE_ENV !== 'production',
+    // Next 16 rejects any <Image quality> value not explicitly allowlisted
+    // (default is just [75]). 90 is used on the invitation card preview
+    // (SendInvitesView), 100 on the checkout design preview (CheckoutClient).
+    qualities: [75, 90, 100],
     remotePatterns: [
       {
         protocol: 'https',

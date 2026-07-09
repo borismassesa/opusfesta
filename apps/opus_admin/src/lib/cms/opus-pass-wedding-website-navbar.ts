@@ -36,6 +36,12 @@ export const WEBSITE_NAVBAR_FALLBACK: Record<string, MaybeLocalized> = {
   website_grid_photo_gallery: 'Photo Gallery',
   website_grid_rsvps: 'RSVPs',
   website_grid_travel_info: 'Travel Info',
+  mega_website_image:
+    'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
+  website_grid_templates_image: '/assets/images/coupleswithpiano.jpg',
+  website_grid_photo_gallery_image: '/assets/images/beautiful_bride.jpg',
+  website_grid_rsvps_image: '/assets/images/authentic_couple.jpg',
+  website_grid_travel_info_image: '/assets/images/bride_umbrella.jpg',
 }
 
 export const WEBSITE_NAVBAR_SCHEMA: CopyFieldGroup[] = [
@@ -49,6 +55,12 @@ export const WEBSITE_NAVBAR_SCHEMA: CopyFieldGroup[] = [
       { key: 'mega_website_title', label: 'Card title', kind: 'text', max: 40 },
       { key: 'mega_website_desc', label: 'Card description', kind: 'textarea', max: 160 },
       { key: 'mega_website_cta', label: 'Card link', kind: 'text', max: 40 },
+      {
+        key: 'mega_website_image',
+        label: 'Card image',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/website',
+      },
     ],
   },
   {
@@ -71,9 +83,33 @@ export const WEBSITE_NAVBAR_SCHEMA: CopyFieldGroup[] = [
     fields: [
       { key: 'website_grid_title', label: 'Photo grid heading', kind: 'text', max: 30 },
       { key: 'website_grid_templates', label: 'Photo — Templates', kind: 'text', max: 30 },
+      {
+        key: 'website_grid_templates_image',
+        label: 'Photo image — Templates',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/website',
+      },
       { key: 'website_grid_photo_gallery', label: 'Photo — Photo Gallery', kind: 'text', max: 30 },
+      {
+        key: 'website_grid_photo_gallery_image',
+        label: 'Photo image — Photo Gallery',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/website',
+      },
       { key: 'website_grid_rsvps', label: 'Photo — RSVPs', kind: 'text', max: 30 },
+      {
+        key: 'website_grid_rsvps_image',
+        label: 'Photo image — RSVPs',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/website',
+      },
       { key: 'website_grid_travel_info', label: 'Photo — Travel Info', kind: 'text', max: 30 },
+      {
+        key: 'website_grid_travel_info_image',
+        label: 'Photo image — Travel Info',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/website',
+      },
     ],
   },
 ]

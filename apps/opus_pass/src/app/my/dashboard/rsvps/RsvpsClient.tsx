@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Download } from 'lucide-react'
+import { ChevronDown, Download } from 'lucide-react'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
-import { Tabs } from '@/components/dashboard/controls'
+import { Tabs, inputClass } from '@/components/dashboard/controls'
+import { setActiveEventCookie } from '@/components/dashboard/EventScope'
+import { cn } from '@/lib/utils'
 import RsvpSetupPanel from './RsvpSetupPanel'
 import RsvpTracker from './RsvpTracker'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
@@ -30,6 +32,7 @@ function csvCell(value: string | number | null): string {
 export default function RsvpsClient({
   guests,
   events,
+  initialEventFilter,
   lastSend,
   hero,
   copy,
@@ -40,6 +43,8 @@ export default function RsvpsClient({
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
+  /** Event id chosen on the event chooser, or 'all' for the combined view. */
+  initialEventFilter: string
   lastSend: Record<string, LastSend>
   hero: DashboardHeroContent
   copy: RsvpsDashboardCopy
@@ -49,13 +54,21 @@ export default function RsvpsClient({
   publicInvite: MyPublicInvite
 }) {
   const [tab, setTab] = useState<Tab>('setup')
+  const [eventFilter, setEventFilter] = useState(initialEventFilter)
+
+  function handleEventFilterChange(id: string) {
+    // Filtering is client-side; the cookie keeps the choice consistent
+    // with the other event-scoped sections.
+    setActiveEventCookie(id)
+    setEventFilter(id)
+  }
 
   const hasResponses = useMemo(
     () => guests.some((g) => g.invitations.length > 0),
     [guests],
   )
 
-  function exportCsv() {
+  function downloadReport() {
     const eventName = (id: string) => events.find((e) => e.id === id)?.name ?? 'Event'
     const header = ['Guest', 'Group', 'Event', 'Status', 'Party size', 'Meal', 'Dietary notes', 'Message', 'Review']
     const lines: string[] = []
@@ -96,35 +109,60 @@ export default function RsvpsClient({
         content={hero}
         divider={false}
         actions={
-          <Link
-            href="/my/dashboard/rsvps/setup"
-            className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-          >
-            Guided setup
-          </Link>
+          <>
+            {hasResponses ? (
+              <button
+                type="button"
+                onClick={downloadReport}
+                className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </button>
+            ) : null}
+            <Link
+              href="/my/dashboard/rsvps/setup"
+              className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+            >
+              Guided setup
+            </Link>
+          </>
         }
       />
 
       <div>
-        {/* Tabs + export share one row */}
-        <div className="relative">
-          <Tabs<Tab>
-            value={tab}
-            onChange={setTab}
-            tabs={[
-              { id: 'setup', label: 'Setup & questions' },
-              { id: 'responses', label: 'Responses' },
-            ]}
-          />
-          {hasResponses ? (
-            <button
-              onClick={exportCsv}
-              className="absolute right-0 top-0 inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-1.5 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-            >
-              <Download className="h-3.5 w-3.5" /> Export CSV
-            </button>
-          ) : null}
-        </div>
+        <Tabs<Tab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'setup', label: 'Setup & questions' },
+            { id: 'responses', label: 'Responses' },
+          ]}
+          trailing={
+            tab === 'responses' && events.length > 1 ? (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-[#1A1A1A]/60" htmlFor="rsvp-event">
+                  Event
+                </label>
+                <span className="relative inline-flex items-center">
+                  <select
+                    id="rsvp-event"
+                    className={cn(inputClass, 'w-auto appearance-none pr-9')}
+                    value={eventFilter}
+                    onChange={(e) => handleEventFilterChange(e.target.value)}
+                  >
+                    <option value="all">{copy.filter_all_events}</option>
+                    {events.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1A1A1A]/45" />
+                </span>
+              </div>
+            ) : undefined
+          }
+        />
         {tab === 'setup' ? (
           <RsvpSetupPanel
             events={events}
@@ -134,7 +172,13 @@ export default function RsvpsClient({
             publicInvite={publicInvite}
           />
         ) : (
-          <RsvpTracker guests={guests} events={events} lastSend={lastSend} copy={copy} />
+          <RsvpTracker
+            guests={guests}
+            events={events}
+            eventFilter={eventFilter}
+            lastSend={lastSend}
+            copy={copy}
+          />
         )}
       </div>
     </div>

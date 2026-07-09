@@ -52,6 +52,8 @@ import {
 } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { PledgesDashboardCopy } from '@/lib/cms/dashboard-copy'
+import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
+import { EventSwitcher } from '@/components/dashboard/EventScope'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -217,6 +219,9 @@ type Section = 'manage' | 'invite' | 'collection' | 'followups' | 'reports'
 export default function PledgesManager({
   initialPledges,
   stats,
+  events,
+  selectedEventId,
+  scopeStrings,
   contacts,
   coupleName,
   paymentInstructions,
@@ -230,6 +235,10 @@ export default function PledgesManager({
 }: {
   initialPledges: PledgeWithContact[]
   stats: PledgeStats
+  events: { id: string; name: string }[]
+  /** Event this pledge book is scoped to (null only when the couple has no events). */
+  selectedEventId: string | null
+  scopeStrings: DashboardEventScopeStrings
   contacts: ContactLite[]
   coupleName: string
   paymentInstructions: string | null
@@ -278,7 +287,10 @@ export default function PledgesManager({
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
-  const shareLink = pledgeToken && origin ? pledgeUrl(origin, pledgeToken) : null
+  // Multi-event couples share an event-tagged link so public pledges land on
+  // the event they're collecting for; single-event links stay clean.
+  const shareEventId = events.length > 1 ? selectedEventId : null
+  const shareLink = pledgeToken && origin ? pledgeUrl(origin, pledgeToken, shareEventId) : null
 
   // Close the filter popover on an outside click.
   useEffect(() => {
@@ -339,6 +351,7 @@ export default function PledgesManager({
 
   function buildInput(f: FormState): PledgeInput {
     const base: PledgeInput = {
+      eventId: selectedEventId ?? undefined,
       pledged_amount: Number(f.pledged_amount) || 0,
       amount_received: Number(f.amount_received) || 0,
       currency: f.currency || 'TZS',
@@ -641,10 +654,22 @@ export default function PledgesManager({
   }
   const viewLabel = (id: PledgeView): string => viewLabels[id] ?? copy.view_all
 
+  // Reflect the event picked in the EventSwitcher (tab row) in the page
+  // title, so it's obvious at a glance which event's pledges are showing.
+  const selectedEventName =
+    events.length > 1 ? events.find((e) => e.id === selectedEventId)?.name : undefined
+
   return (
     <div className="space-y-6">
       <DashboardHero
         content={hero}
+        titleBadge={
+          selectedEventName ? (
+            <span className="inline-flex items-center rounded-full bg-[#9FE870]/25 px-3 py-1 text-sm font-semibold text-[#3f6b1f]">
+              {selectedEventName}
+            </span>
+          ) : undefined
+        }
         actions={
           <button
             type="button"
@@ -661,6 +686,10 @@ export default function PledgesManager({
         onChange={setSection}
         dueCount={remindersDue.length}
         copy={copy}
+        events={events}
+        selectedEventId={selectedEventId}
+        scopeStrings={scopeStrings}
+        pending={pending}
       />
 
       {section === 'manage' || section === 'followups' ? (
@@ -1150,11 +1179,19 @@ function PledgeSubNav({
   onChange,
   dueCount,
   copy,
+  events,
+  selectedEventId,
+  scopeStrings,
+  pending,
 }: {
   section: Section
   onChange: (s: Section) => void
   dueCount: number
   copy: PledgesDashboardCopy
+  events: { id: string; name: string }[]
+  selectedEventId: string | null
+  scopeStrings: DashboardEventScopeStrings
+  pending: boolean
 }) {
   const tabs: { id: Section; label: string; icon: typeof HandCoins; badge?: number }[] = [
     { id: 'manage', label: copy.nav_manage, icon: HandCoins },
@@ -1167,7 +1204,7 @@ function PledgeSubNav({
     <nav
       role="tablist"
       aria-label="Pledge views"
-      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
+      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto overflow-y-hidden border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
     >
       {tabs.map(({ id, label, icon: Icon, badge }) => {
         const active = id === section
@@ -1200,6 +1237,15 @@ function PledgeSubNav({
           </button>
         )
       })}
+      {events.length > 1 ? (
+        <EventSwitcher
+          events={events}
+          selectedId={selectedEventId ?? ''}
+          strings={scopeStrings}
+          disabled={pending}
+          className="ml-auto"
+        />
+      ) : null}
     </nav>
   )
 }

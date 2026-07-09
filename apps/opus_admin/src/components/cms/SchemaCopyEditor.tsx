@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { BilingualField } from '@/components/cms/BilingualField'
-import type { LocalizedText, MaybeLocalized } from '@/lib/cms/localized'
+import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import type { MaybeLocalized } from '@/lib/cms/localized'
 import type { CopyFieldGroup } from '@/lib/cms/opus-pass-dashboard-copy'
 
 // Generic, schema-driven bilingual copy editor. Extracted from the Site UI
@@ -67,7 +68,7 @@ export default function SchemaCopyEditor({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const set = (key: string, value: LocalizedText) => setDraft((d) => ({ ...d, [key]: value }))
+  const set = (key: string, value: MaybeLocalized) => setDraft((d) => ({ ...d, [key]: value }))
 
   const runAction = (job: () => Promise<void>) =>
     startTransition(async () => {
@@ -125,6 +126,22 @@ export default function SchemaCopyEditor({
       {groups.map((group) => (
         <FieldGroup key={group.legend} legend={group.legend}>
           {group.fields.map((field) => {
+            if (field.kind === 'image') {
+              const raw = draft[field.key]
+              const value = typeof raw === 'string' ? raw : ''
+              return (
+                <div key={field.key} className="space-y-1">
+                  <ImageUploadField
+                    label={field.label}
+                    value={value}
+                    onChange={(v) => set(field.key, v)}
+                    pathPrefix={field.pathPrefix ?? 'opus-pass/cms'}
+                    previewAspect="aspect-[4/3]"
+                  />
+                  {field.hint && <p className="text-[11px] text-gray-400">{field.hint}</p>}
+                </div>
+              )
+            }
             const multiline = field.kind === 'textarea' || field.kind === 'list'
             return (
               <div key={field.key} className="space-y-1">

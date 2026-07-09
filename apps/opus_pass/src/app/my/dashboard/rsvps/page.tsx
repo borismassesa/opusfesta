@@ -10,16 +10,37 @@ import {
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import { getLocale } from '@/lib/cms/locale'
+import { loadUiStrings } from '@/lib/cms/ui-strings'
+import { resolveEventScope, ALL_EVENTS } from '@/lib/dashboard/event-scope'
+import { EventChooser } from '@/components/dashboard/EventScope'
 import RsvpsClient from './RsvpsClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function RsvpsPage() {
+export default async function RsvpsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>
+}) {
+  const { event: eventParam } = await searchParams
   const locale = await getLocale()
-  const [guests, events, lastSend, questions, summaries, answerSummaries, publicInvite, hero, copy] =
+
+  // Multi-event couples choose a scope up front (a single event, or the
+  // combined view); the tracker filter then starts on that choice.
+  const events = await getEvents()
+  const scope = await resolveEventScope(events, eventParam, { allowAll: true })
+  const scopeStrings = await loadUiStrings('dashboard-event-scope', locale)
+  if (scope.needsChooser) {
+    return (
+      <div className="space-y-6">
+        <EventChooser events={events} strings={scopeStrings} allowAll />
+      </div>
+    )
+  }
+
+  const [guests, lastSend, questions, summaries, answerSummaries, publicInvite, hero, copy] =
     await Promise.all([
       getGuestsWithInvitations(),
-      getEvents(),
       getLastSendByGuest(),
       getRsvpQuestions(),
       getRsvpEventSummaries(),
@@ -32,6 +53,7 @@ export default async function RsvpsPage() {
     <RsvpsClient
       guests={guests}
       events={events}
+      initialEventFilter={scope.isAll ? ALL_EVENTS : (scope.selected?.id ?? ALL_EVENTS)}
       lastSend={lastSend}
       hero={hero}
       copy={copy}
