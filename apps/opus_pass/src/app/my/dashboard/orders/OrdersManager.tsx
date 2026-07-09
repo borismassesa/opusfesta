@@ -97,7 +97,7 @@ function OrderTracker({ activeIndex }: { activeIndex: number }) {
               <span
                 className={cn(
                   'flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ring-1 ring-inset',
-                  done && 'bg-[#1A1A1A] text-white ring-[#1A1A1A]',
+                  done && 'bg-[#9FE870] text-[#1A1A1A] ring-[#9FE870]',
                   current && 'bg-[#1A1A1A]/10 text-[#1A1A1A] ring-[#1A1A1A]/30',
                   !done && !current && 'bg-black/[0.04] text-[#1A1A1A]/40 ring-black/10',
                 )}

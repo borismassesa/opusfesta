@@ -17,6 +17,8 @@ import {
 
 interface Props {
   token: string
+  /** Event carried on the share link (?event=), verified server-side. */
+  eventId?: string | null
   coupleName: string
   weddingDate: string | null
   city: string | null
@@ -38,6 +40,7 @@ const fieldClass =
 
 export default function PledgeForm({
   token,
+  eventId,
   coupleName,
   weddingDate,
   city,
@@ -113,6 +116,7 @@ export default function PledgeForm({
           amount: Number(amount),
           promised_date: promisedDate || null,
           message: message.trim() || null,
+          event_id: eventId ?? null,
         })
         setDone(true)
       } catch (err) {

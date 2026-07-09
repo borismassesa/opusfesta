@@ -37,6 +37,12 @@ export const INVITATIONS_NAVBAR_FALLBACK: Record<string, MaybeLocalized> = {
   inv_grid_rsvp_tracking: 'RSVP Tracking',
   inv_grid_invitations: 'Invitations',
   inv_grid_seating_plan: 'Seating Plan',
+  mega_inv_image:
+    'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=800&q=80',
+  inv_grid_guest_list_image: '/assets/images/mauzo_crew.jpg',
+  inv_grid_rsvp_tracking_image: '/assets/images/churchcouples.jpg',
+  inv_grid_invitations_image: '/assets/images/cutesy_couple.jpg',
+  inv_grid_seating_plan_image: '/assets/images/couples_together.jpg',
 }
 
 export const INVITATIONS_NAVBAR_SCHEMA: CopyFieldGroup[] = [
@@ -50,6 +56,12 @@ export const INVITATIONS_NAVBAR_SCHEMA: CopyFieldGroup[] = [
       { key: 'mega_inv_title', label: 'Card title', kind: 'text', max: 40 },
       { key: 'mega_inv_desc', label: 'Card description', kind: 'textarea', max: 160 },
       { key: 'mega_inv_cta', label: 'Card link', kind: 'text', max: 40 },
+      {
+        key: 'mega_inv_image',
+        label: 'Card image',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/invitations',
+      },
     ],
   },
   {
@@ -71,9 +83,33 @@ export const INVITATIONS_NAVBAR_SCHEMA: CopyFieldGroup[] = [
     fields: [
       { key: 'inv_grid_title', label: 'Photo grid heading', kind: 'text', max: 30 },
       { key: 'inv_grid_guest_list', label: 'Photo — Guest List', kind: 'text', max: 30 },
+      {
+        key: 'inv_grid_guest_list_image',
+        label: 'Photo image — Guest List',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/invitations',
+      },
       { key: 'inv_grid_rsvp_tracking', label: 'Photo — RSVP Tracking', kind: 'text', max: 30 },
+      {
+        key: 'inv_grid_rsvp_tracking_image',
+        label: 'Photo image — RSVP Tracking',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/invitations',
+      },
       { key: 'inv_grid_invitations', label: 'Photo — Invitations', kind: 'text', max: 30 },
+      {
+        key: 'inv_grid_invitations_image',
+        label: 'Photo image — Invitations',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/invitations',
+      },
       { key: 'inv_grid_seating_plan', label: 'Photo — Seating Plan', kind: 'text', max: 30 },
+      {
+        key: 'inv_grid_seating_plan_image',
+        label: 'Photo image — Seating Plan',
+        kind: 'image',
+        pathPrefix: 'opus-pass/navbar/invitations',
+      },
     ],
   },
 ]

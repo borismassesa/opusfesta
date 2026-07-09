@@ -7,7 +7,7 @@ import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
 import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, computeEntrancePassVars } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import type {
@@ -586,6 +586,8 @@ export async function recordSend(guestId: string, channel: SendChannel): Promise
 // ---------------------------------------------------------------- Pledges ("michango")
 
 export interface PledgeInput {
+  /** Which wedding_event the pledge is for. Must belong to the signed-in couple. */
+  eventId?: string
   /** Link to an existing contributor. When omitted, a new guest_contacts row is created. */
   guestContactId?: string
   /** New contributor details (used only when guestContactId is omitted). */
@@ -653,6 +655,20 @@ function pledgeColumnsFromInput(input: PledgeInput): Record<string, unknown> {
   }
 }
 
+/**
+ * Resolve the event a pledge belongs to: a verified-owned explicit choice,
+ * else the couple's default (first) event, else null for couples with no
+ * events yet.
+ */
+async function resolvePledgeEventId(userId: string, explicit?: string): Promise<string | null> {
+  if (explicit) {
+    const owned = await resolveOwnedEventId(userId, explicit)
+    if (!owned) throw new Error('Event not found')
+    return owned
+  }
+  return resolveEventIdOrDefault(userId)
+}
+
 /** Resolve the contributor's contact row, creating one when a new name is given. */
 async function resolvePledgeContact(userId: string, input: PledgeInput): Promise<string> {
   const supabase = createDashboardClient()
@@ -687,13 +703,17 @@ async function resolvePledgeContact(userId: string, input: PledgeInput): Promise
 export async function createPledge(input: PledgeInput): Promise<string> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
-  const guestContactId = await resolvePledgeContact(user.id, input)
+  const [guestContactId, eventId] = await Promise.all([
+    resolvePledgeContact(user.id, input),
+    resolvePledgeEventId(user.id, input.eventId),
+  ])
 
   const { data, error } = await supabase
     .from('event_pledges')
     .insert({
       user_id: user.id,
       guest_contact_id: guestContactId,
+      event_id: eventId,
       ...pledgeColumnsFromInput(input),
     })
     .select('id')
@@ -711,6 +731,10 @@ export async function updatePledge(id: string, input: PledgeInput): Promise<void
   if (input.guestContactId) {
     const contactId = await resolvePledgeContact(user.id, { guestContactId: input.guestContactId })
     ;(patch as Record<string, unknown>).guest_contact_id = contactId
+  }
+  // Same for the event: an explicit choice is verified, absence means "keep".
+  if (input.eventId) {
+    patch.event_id = await resolvePledgeEventId(user.id, input.eventId)
   }
   const { error } = await supabase
     .from('event_pledges')

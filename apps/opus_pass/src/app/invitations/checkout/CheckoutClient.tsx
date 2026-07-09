@@ -289,6 +289,7 @@ export default function CheckoutClient({ events }: { events: CheckoutEvent[] }) 
       id: i.id,
       name: i.name,
       image: i.image,
+      treatment: i.treatment,
       summary: i.summary,
       tier: i.tier,
       tierId: i.tierId,

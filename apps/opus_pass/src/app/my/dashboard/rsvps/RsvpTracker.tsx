@@ -101,15 +101,17 @@ function relTime(iso: string | null): string {
 export default function RsvpTracker({
   guests,
   events,
+  eventFilter,
   lastSend,
   copy,
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
+  /** Event id chosen in the tab row's EventSwitcher, or 'all' for the combined view. */
+  eventFilter: string
   lastSend: Record<string, LastSend>
   copy: RsvpsDashboardCopy
 }) {
-  const [eventFilter, setEventFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [query, setQuery] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -303,28 +305,6 @@ export default function RsvpTracker({
         />
       ) : (
         <>
-          {/* Event scope */}
-          {events.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-sm font-medium text-[#1A1A1A]/60" htmlFor="rsvp-event">
-                Event
-              </label>
-              <select
-                id="rsvp-event"
-                className={`${inputClass} w-auto`}
-                value={eventFilter}
-                onChange={(e) => setEventFilter(e.target.value)}
-              >
-                <option value="all">{copy.filter_all_events}</option>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-
           {/* Self-RSVP review banner */}
           {reviewRows.length > 0 ? (
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#C9A0DC]/60 bg-[#F0DFF6]/70 px-4 py-3.5 sm:px-5">

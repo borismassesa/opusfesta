@@ -275,6 +275,8 @@ export type PaymentMethod =
 export interface EventPledge {
   id: string
   guest_contact_id: string
+  /** Which wedding_event this pledge is for. NULL only on legacy rows created before the couple had any events. */
+  event_id: string | null
   pledged_amount: number
   amount_received: number
   currency: string

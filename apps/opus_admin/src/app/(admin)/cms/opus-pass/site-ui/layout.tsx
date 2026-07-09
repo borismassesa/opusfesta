@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2, ListFilter } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -176,6 +176,15 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Couple dashboard Send invites page — heading, card context, send funnel, public-link and personal-invite modes, guest table and all toasts — bilingual.',
+  },
+  {
+    key: 'dashboard-event-scope',
+    label: 'Dashboard — Event chooser',
+    icon: ListFilter,
+    href: '/cms/opus-pass/site-ui/dashboard-event-scope',
+    status: 'live',
+    description:
+      'Shared "choose an event" screen and header switcher used by the event-scoped dashboard pages (Pledges, Send invites, Guest list, RSVPs, Seat collection) — bilingual.',
   },
 ]
 

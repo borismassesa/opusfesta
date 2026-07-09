@@ -517,7 +517,7 @@ export function InvoicePdf({ order }: { order: StoredOrder }) {
         <Text style={s.supportNote} wrap={false}>
           <Text style={{ fontFamily: 'Helvetica-Bold', color: BRAND }}>Need changes? </Text>
           Message us on WhatsApp at{' '}
-          <Text style={{ fontFamily: 'Helvetica-Bold', color: '#1a1a1a' }}>+255 799 242 475</Text> within
+          <Text style={{ fontFamily: 'Helvetica-Bold', color: '#1a1a1a' }}>+255 799 202 171</Text> within
           24 hours of delivery — one free round of revisions is included.
         </Text>
 
@@ -530,7 +530,7 @@ export function InvoicePdf({ order }: { order: StoredOrder }) {
             </View>
             <View style={[s.lhBlock, { alignItems: 'center' }]}>
               <Text style={s.lhName}>www.opusfesta.com</Text>
-              <Text>info@opusfesta.com  |  +255 799 242 475</Text>
+              <Text>info@opusfesta.com  |  +255 799 202 171</Text>
             </View>
             <View style={s.lhSocial}>
               <Text style={s.lhSocialLabel}>Follow us</Text>

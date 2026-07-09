@@ -8,12 +8,21 @@ interface DashboardHeroProps {
   className?: string
   /** Show the thin underline below the header. Defaults to true. */
   divider?: boolean
+  /** Optional pill/badge rendered inline next to the title — e.g. the
+   *  currently-scoped event name. Keeps the title itself CMS-plain text. */
+  titleBadge?: ReactNode
 }
 
 // Plain page header — same shape as the overview dashboard. Renders the
 // CMS-loaded title + subtitle on the left with the page's primary actions
 // on the right, separated by a thin underline. No media, no rounded card.
-export function DashboardHero({ content, actions, className, divider = true }: DashboardHeroProps) {
+export function DashboardHero({
+  content,
+  actions,
+  className,
+  divider = true,
+  titleBadge,
+}: DashboardHeroProps) {
   return (
     <header
       className={cn(
@@ -23,9 +32,12 @@ export function DashboardHero({ content, actions, className, divider = true }: D
       )}
     >
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-          {content.title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
+            {content.title}
+          </h1>
+          {titleBadge}
+        </div>
         {content.subtitle ? (
           <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{content.subtitle}</p>
         ) : null}

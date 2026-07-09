@@ -40,7 +40,7 @@ export async function downloadInvoice(order: StoredOrder): Promise<void> {
         // POST goes via the browser's own navigation stack, which can succeed
         // where fetch is blocked.)
         toast.error('Could not download the invoice', {
-          description: 'Please try again, or contact us on WhatsApp at +255 799 242 475.',
+          description: 'Please try again, or contact us on WhatsApp at +255 799 202 171.',
         })
         return
       }
@@ -91,7 +91,7 @@ function submitDownloadForm(order: StoredOrder): void {
     form.submit()
   } catch {
     toast.error('Could not download the invoice', {
-      description: 'Please try again, or contact us on WhatsApp at +255 799 242 475.',
+      description: 'Please try again, or contact us on WhatsApp at +255 799 202 171.',
     })
   } finally {
     form.remove()
