@@ -168,7 +168,7 @@ export default function ReviewPage() {
 
         <main className="flex-1 px-4 sm:px-6 pt-10 sm:pt-14 pb-16">
           <div className="max-w-xl w-full mx-auto text-center">
-            <span className="text-6xl sm:text-7xl leading-none" role="img" aria-label="Celebration">
+            <span className="text-6xl sm:text-7xl leading-none" role="img" aria-label={t('review.done.celebration_aria')}>
               🎉
             </span>
             <h1 className="mt-6 text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">

@@ -1,18 +1,17 @@
-'use client'
-
 import { AuthenticateWithRedirectCallback } from '@clerk/nextjs'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import SSOCallbackClient from './SSOCallbackClient'
 
 // Landing route for headless OAuth (Google). Clerk redirects the provider
 // hand-off back here; this component finishes the transfer and then lets
 // Clerk use the redirectUrlComplete value from the initiating auth request.
-export default function SSOCallbackPage() {
+export default async function SSOCallbackPage() {
+  const locale = await getLocale()
+  const authStrings = await loadPortalUiStrings('auth', locale)
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
-      <div
-        className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#C9A0DC]"
-        role="status"
-        aria-label="Finishing sign-in"
-      />
+      <SSOCallbackClient finishingLabel={authStrings.sso_finishing_label} />
       <AuthenticateWithRedirectCallback
         signUpFallbackRedirectUrl="/onboard"
         signInFallbackRedirectUrl="/dashboard"

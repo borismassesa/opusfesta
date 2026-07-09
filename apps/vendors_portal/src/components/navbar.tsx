@@ -7,13 +7,7 @@ import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import Logo from '@/components/ui/Logo'
 import { LocaleToggle } from '@/components/LocaleToggle'
 
-const navLinks: Array<{ label: string; href: string }> = [
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'Features', href: '#features' },
-  { label: 'Plans', href: '#plans' },
-  { label: 'Success stories', href: '#testimonials' },
-  { label: 'Help', href: '#faq' },
-]
+const navLinks: Array<{ label: string; href: string }> = []
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)

@@ -1,9 +1,13 @@
 'use client'
 
+'use client'
+
 import { TrendingDown } from 'lucide-react'
 import type { FunnelStage } from '@/lib/mock-data'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 
 export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
+  const t = usePortalT('dashboard')
   if (stages.length === 0) return null
   const top = stages[0].value
 
@@ -11,13 +15,13 @@ export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] w-full h-full flex flex-col">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-[15px] font-medium text-gray-900">Conversion funnel</h3>
+          <h3 className="text-[15px] font-medium text-gray-900">{t('funnel_header')}</h3>
           <p className="text-xs text-gray-500 mt-1">
-            How leads move from inquiry to booked — last 90 days
+            {t('funnel_subtitle')}
           </p>
         </div>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">
-          {Math.round((stages[stages.length - 1].value / top) * 100)}% end-to-end
+          {t('funnel_end_to_end_suffix', { pct: Math.round((stages[stages.length - 1].value / top) * 100) })}
         </span>
       </div>
 
@@ -54,7 +58,7 @@ export function ConversionFunnel({ stages }: { stages: FunnelStage[] }) {
                     <TrendingDown className="w-3 h-3" />−{dropoff} ({dropPct}%)
                   </span>
                 ) : (
-                  <span className="text-[11px] text-gray-400 font-medium">baseline</span>
+                  <span className="text-[11px] text-gray-400 font-medium">{t('funnel_baseline_label')}</span>
                 )}
               </span>
             </div>

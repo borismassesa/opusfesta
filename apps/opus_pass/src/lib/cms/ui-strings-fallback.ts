@@ -973,6 +973,9 @@ export interface DashboardSendStrings {
   chip_sms: string
   chip_copy_link: string
   chip_open: string
+  // Send-invites sub-tabs
+  tab_digital_cards: string
+  tab_pass_ticket: string
   // Personal invites (Targeted) mode
   targeted_tag: string
   targeted_title: string
@@ -982,6 +985,11 @@ export interface DashboardSendStrings {
   send_entrance_passes: string // {n}
   dryrun_pill: string
   dryrun_note: string
+  // Entrance Passes mode — only shown once guests start confirming attendance
+  entrance_tag: string
+  entrance_title: string
+  entrance_desc: string
+  entrance_best_for: string
   // Guest table
   guest_list: string
   guest_count: string // {n}
@@ -1025,12 +1033,16 @@ export interface DashboardSendStrings {
   toast_reminded_one: string // {name}
   toast_send_failed: string // {name}
   toast_nothing_sent: string
+  toast_entrance_excluded_notattending: string // {n}
   send_failed_n: string // {n}
   // Invite preview + test send
   preview_button: string
   preview_title: string
   preview_note: string
   preview_close: string
+  entrance_preview_button: string
+  entrance_preview_title: string
+  entrance_preview_note: string
   test_label: string
   test_placeholder: string
   test_send: string
@@ -1040,6 +1052,7 @@ export interface DashboardSendStrings {
   confirm_title: string
   confirm_entrance_title: string
   confirm_recipients: string // {n}
+  confirm_entrance_body: string // {n}
   confirm_credits: string // {n} {m}
   confirm_cancel: string
   confirm_confirm: string
@@ -1888,6 +1901,8 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     chip_sms: 'SMS',
     chip_copy_link: 'Copy link',
     chip_open: 'Open',
+    tab_digital_cards: 'Digital Cards',
+    tab_pass_ticket: 'Pass Ticket',
     targeted_tag: 'Targeted',
     targeted_title: 'Personal invites',
     targeted_desc:
@@ -1898,6 +1913,11 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     dryrun_pill: 'Dry run',
     dryrun_note:
       'WhatsApp Business isn’t connected. Sends are logged only until the Meta account and template are approved.',
+    entrance_tag: 'Entrance Passes',
+    entrance_title: 'Send tickets to confirmed guests',
+    entrance_desc:
+      'Guests who confirmed attending get a personal ticket image with their own scannable QR code, sent free over WhatsApp — separate from invites, and only once they’ve said yes.',
+    entrance_best_for: 'Guests who already RSVP’d yes. Real check-in QR codes.',
     guest_list: 'Guest list',
     guest_count: '{n} guests',
     search_placeholder: 'Search name or number…',
@@ -1937,13 +1957,17 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_reminder_ready: 'Reminder ready for {name}',
     toast_sent_one: 'Invitation sent to {name}',
     toast_reminded_one: 'Reminder sent to {name}',
-    toast_send_failed: 'Could not send to {name}. Check the number and try again.',
+    toast_send_failed: 'Could not send to {name}. Please try again.',
     toast_nothing_sent: 'Nothing was sent. Only confirmed guests with a phone number can receive invites.',
+    toast_entrance_excluded_notattending: '{n} selected guests were skipped — only guests who confirmed attending can receive an Entrance Pass.',
     send_failed_n: '{n} failed',
     preview_button: 'Preview invite',
     preview_title: 'What your guests receive',
     preview_note: 'The exact WhatsApp message, built from your card and event details. Buttons work right inside WhatsApp.',
     preview_close: 'Close',
+    entrance_preview_button: 'Preview ticket',
+    entrance_preview_title: 'What your attending guests receive',
+    entrance_preview_note: 'The exact ticket image and WhatsApp message a confirmed guest gets, with a real scannable QR code.',
     test_label: 'Send a test to your own WhatsApp',
     test_placeholder: 'e.g. 0712 345 678',
     test_send: 'Send test',
@@ -1952,6 +1976,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     confirm_title: 'Ready to send?',
     confirm_entrance_title: 'Send entrance passes?',
     confirm_recipients: '{n} guests will receive your invitation card on WhatsApp.',
+    confirm_entrance_body: '{n} guests will receive their OpusPass Entrance Pass ticket on WhatsApp.',
     confirm_credits: 'This uses {n} of your {m} remaining invites. Re-sends to already-invited guests are free.',
     confirm_cancel: 'Not yet',
     confirm_confirm: 'Send now',

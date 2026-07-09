@@ -1,5 +1,8 @@
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import {
   dbVendorToProfile,
   type DbProfile,
@@ -122,6 +125,11 @@ async function loadProfile(): Promise<{
 }
 
 export default async function StorefrontAboutPage() {
-  const aboutProps = await loadProfile()
-  return <AboutEditor {...aboutProps} />
+  const [aboutProps, locale] = await Promise.all([loadProfile(), getLocale()])
+  const aboutStrings = await loadPortalUiStrings('storefront-about', locale)
+  return (
+    <PortalUIStringsProvider bundles={{ 'storefront-about': aboutStrings }}>
+      <AboutEditor {...aboutProps} />
+    </PortalUIStringsProvider>
+  )
 }

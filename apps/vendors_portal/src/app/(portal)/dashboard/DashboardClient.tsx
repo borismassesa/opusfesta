@@ -8,6 +8,7 @@ import { ConversionFunnel } from '@/components/ConversionFunnel'
 import { UpcomingBookings } from '@/components/UpcomingBookings'
 import { formatTZS } from '@/lib/bookings'
 import type { DashboardData } from '@/lib/dashboard'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 
 const LeadsChart = dynamic(
   () => import('@/components/LeadsChart').then((m) => m.LeadsChart),
@@ -52,16 +53,30 @@ export type DashboardSource =
   | { kind: 'suspended' }
   | { kind: 'no-env' }
 
-const BANNER_BY_SOURCE: Record<DashboardSource['kind'], string | null> = {
-  live: null,
-  'no-application':
-    "You haven't started a vendor application yet. Apply to do business on OpusFesta to access the dashboard.",
-  'pending-approval':
-    'Your vendor application is awaiting OpusFesta verification. The dashboard unlocks once your account is approved.',
-  suspended:
-    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
-  'no-env':
-    'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
+// Sub-label text -> CMS key. A small fixed set repeats across the computed
+// lead/performance stats, so we translate by matching the literal English
+// text rather than threading a key through lib/dashboard.ts for every sub.
+const SUB_KEY_BY_TEXT: Record<string, string> = {
+  'This week': 'sub_this_week',
+  'This month': 'sub_this_month',
+  'Last 30 days': 'sub_last_30_days',
+  'vs last month': 'sub_vs_last_month',
+}
+
+function translateSub(sub: string | undefined, t: Translator): string | undefined {
+  if (!sub) return sub
+  const key = SUB_KEY_BY_TEXT[sub]
+  return key ? t(key) : sub
+}
+
+function buildBannerBySource(t: Translator): Record<DashboardSource['kind'], string | null> {
+  return {
+    live: null,
+    'no-application': t('banner_no_application'),
+    'pending-approval': t('banner_pending_approval'),
+    suspended: t('banner_suspended'),
+    'no-env': t('banner_no_env'),
+  }
 }
 
 export default function DashboardClient({
@@ -71,7 +86,8 @@ export default function DashboardClient({
   source: DashboardSource
   data: DashboardData
 }) {
-  const banner = BANNER_BY_SOURCE[source.kind]
+  const t = usePortalT('dashboard')
+  const banner = buildBannerBySource(t)[source.kind]
 
   if (
     source.kind === 'no-application' ||
@@ -89,14 +105,13 @@ export default function DashboardClient({
           <div className="mt-8 rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-16 text-center">
             <p className="text-sm font-semibold text-gray-700">
               {source.kind === 'pending-approval'
-                ? 'Your dashboard will appear here once OpusFesta approves your vendor profile.'
+                ? t('empty_title_pending')
                 : source.kind === 'suspended'
-                  ? 'Your vendor account is suspended.'
-                  : "Your dashboard will appear here once you've applied and been approved."}
+                  ? t('empty_title_suspended')
+                  : t('empty_title_default')}
             </p>
             <p className="mt-1 text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
-              You&rsquo;ll see leads, upcoming events, and storefront performance once
-              your account is active.
+              {t('empty_subtitle')}
             </p>
           </div>
         </div>
@@ -129,48 +144,48 @@ export default function DashboardClient({
             </div>
           )}
 
-          <SectionHeader label="Up next" hint="Upcoming events and reservations" />
+          <SectionHeader label={t('section_up_next')} hint={t('section_up_next_hint')} />
           <div className="lg:col-span-4">
             <StatCard
-              title="This week"
+              title={t('stat_this_week')}
               value={String(upcoming.thisWeek)}
               trend=""
-              sub="events scheduled"
+              sub={t('stat_this_week_sub')}
             />
           </div>
           <div className="lg:col-span-4">
             <StatCard
-              title="This month"
+              title={t('stat_this_month')}
               value={String(upcoming.thisMonth)}
               trend=""
-              sub="upcoming bookings"
+              sub={t('stat_this_month_sub')}
             />
           </div>
           <div className="lg:col-span-4">
             <StatCard
-              title="Confirmed value"
+              title={t('stat_confirmed_value')}
               value={
                 upcoming.confirmedValue > 0
                   ? formatTZS(upcoming.confirmedValue, { compact: true })
                   : '—'
               }
               trend=""
-              sub="across all confirmed events"
+              sub={t('stat_confirmed_value_sub')}
             />
           </div>
           <div className="lg:col-span-12 flex">
             <UpcomingBookings items={upcoming.items} />
           </div>
 
-          <SectionHeader label="Leads" hint="Inquiries, conversion, sources" />
+          <SectionHeader label={t('section_leads')} hint={t('section_leads_hint')} />
           {leadStats.map((s) => (
-            <div key={s.label} className="lg:col-span-3">
+            <div key={s.key} className="lg:col-span-3">
               <StatCard
-                title={s.label}
+                title={t(`stat_${s.key}`)}
                 value={s.value}
                 trend={s.trend}
                 isPositive={s.isPositive}
-                sub={s.sub}
+                sub={translateSub(s.sub, t)}
               />
             </div>
           ))}
@@ -179,8 +194,8 @@ export default function DashboardClient({
               <ConversionFunnel stages={funnel} />
             ) : (
               <EmptyChartCard
-                title="Conversion funnel"
-                hint="No inquiries in the last 90 days yet. Your funnel will appear once couples start reaching out."
+                title={t('empty_funnel_title')}
+                hint={t('empty_funnel_hint')}
               />
             )}
           </div>
@@ -189,8 +204,8 @@ export default function DashboardClient({
               <LeadSourceChart data={leadSources} />
             ) : (
               <EmptyChartCard
-                title="Where leads come from"
-                hint="Once couples discover your storefront, you'll see the breakdown here."
+                title={t('empty_sources_title')}
+                hint={t('empty_sources_hint')}
               />
             )}
           </div>
@@ -198,15 +213,15 @@ export default function DashboardClient({
             <RecentInquiries rows={recentInquiries} />
           </div>
 
-          <SectionHeader label="Performance" hint="How your storefront is doing" />
+          <SectionHeader label={t('section_performance')} hint={t('section_performance_hint')} />
           {performanceStats.map((s) => (
-            <div key={s.label} className="lg:col-span-4">
+            <div key={s.key} className="lg:col-span-4">
               <StatCard
-                title={s.label}
+                title={t(`stat_${s.key}`)}
                 value={s.value}
                 trend={s.trend}
                 isPositive={s.isPositive}
-                sub={s.sub}
+                sub={translateSub(s.sub, t)}
               />
             </div>
           ))}
@@ -215,20 +230,20 @@ export default function DashboardClient({
               <LeadsChart data={profileViews} />
             ) : (
               <EmptyChartCard
-                title="Profile views"
-                hint="Your storefront hasn't been viewed yet. Track activity will show here as visits roll in."
+                title={t('empty_views_title')}
+                hint={t('empty_views_hint')}
               />
             )}
           </div>
 
-          <SectionHeader label="Insights" hint="Bookings and revenue trends" />
+          <SectionHeader label={t('section_insights')} hint={t('section_insights_hint')} />
           <div className="lg:col-span-12 flex min-h-[380px]">
             {hasBookingsRevenue ? (
               <BookingsChart data={bookingsRevenue} />
             ) : (
               <EmptyChartCard
-                title="Bookings & revenue"
-                hint="No confirmed bookings yet. This trend chart unlocks once you accept and invoice your first event."
+                title={t('empty_bookings_revenue_title')}
+                hint={t('empty_bookings_revenue_hint')}
               />
             )}
           </div>

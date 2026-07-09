@@ -35,6 +35,7 @@ import { saveProfile } from './actions'
 import { saveProfileFields, uploadStorefrontPhoto } from '../sections/actions'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { profilesEqual, type DbProfile } from './mapping'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 
 const MIN_BIO = 80
 
@@ -45,16 +46,14 @@ export type AboutSource =
   | { kind: 'suspended' }
   | { kind: 'no-env' }
 
-const BANNER_BY_SOURCE: Record<AboutSource['kind'], string | null> = {
-  live: null,
-  'no-application':
-    "You haven't started a vendor application yet. Apply to do business on OpusFesta to edit your storefront.",
-  'pending-approval':
-    'Your vendor application is awaiting OpusFesta verification. Editing unlocks once your account is approved.',
-  suspended:
-    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
-  'no-env':
-    'DEV: Vendor backend not connected — Save is disabled. Check Supabase env vars and that migrations are applied to your Supabase project.',
+function buildBannerBySource(t: Translator): Record<AboutSource['kind'], string | null> {
+  return {
+    live: null,
+    'no-application': t('banner_no_application'),
+    'pending-approval': t('banner_pending_approval'),
+    suspended: t('banner_suspended'),
+    'no-env': t('banner_no_env'),
+  }
 }
 
 type AboutEditorProps = {
@@ -69,6 +68,7 @@ export default function AboutEditor({
   canEdit,
 }: AboutEditorProps) {
   const router = useRouter()
+  const t = usePortalT('storefront-about')
   // Wireable fields: hydrated from vendors row, edited in local React state,
   // persisted via the saveProfile server action.
   const [profile, setProfile] = useState<DbProfile>(initialProfile)
@@ -139,7 +139,7 @@ export default function AboutEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, profile])
 
-  const banner = BANNER_BY_SOURCE[source.kind]
+  const banner = buildBannerBySource(t)[source.kind]
   const styles = getStylesForCategory(draft.categoryId)
   const homeMarket = homeMarketForRegion(profile.region)
   const homeMarketName = SERVICE_MARKETS.find((m) => m.id === homeMarket)?.name
@@ -179,10 +179,13 @@ export default function AboutEditor({
   const bioLength = profile.bio.trim().length
   const bioHint =
     bioLength === 0
-      ? `Min ${MIN_BIO} characters.`
+      ? t('bio_hint_empty', { min: MIN_BIO })
       : bioLength < MIN_BIO
-        ? `${MIN_BIO - bioLength} more character${MIN_BIO - bioLength === 1 ? '' : 's'} to go (min ${MIN_BIO}).`
-        : `${bioLength} characters — looking good.`
+        ? t(MIN_BIO - bioLength === 1 ? 'bio_hint_remaining_singular' : 'bio_hint_remaining_plural', {
+            remaining: MIN_BIO - bioLength,
+            min: MIN_BIO,
+          })
+        : t('bio_hint_good', { count: bioLength })
 
   const setField = <K extends keyof DbProfile>(key: K, value: DbProfile[K]) => {
     setProfile((p) => ({ ...p, [key]: value }))
@@ -263,7 +266,7 @@ export default function AboutEditor({
           whatsapp: profile.socialWhatsapp,
         },
       })
-      setFeedback({ kind: 'success', message: 'Profile saved.' })
+      setFeedback({ kind: 'success', message: t('success_saved') })
     })
   }
 
@@ -280,13 +283,13 @@ export default function AboutEditor({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Owner & business */}
           <Section
-            title="Owner & business"
-            hint="Who runs the storefront and how the business is registered."
+            title={t('section_owner_title')}
+            hint={t('section_owner_hint')}
             className="lg:col-span-2"
           >
             <div className="space-y-4">
               <div>
-                <FieldLabel>Logo or profile picture</FieldLabel>
+                <FieldLabel>{t('field_logo_label')}</FieldLabel>
                 <div className="mt-1">
                   <LogoUpload
                     value={profile.logo}
@@ -301,23 +304,23 @@ export default function AboutEditor({
                         ? { ok: true, url: res.url }
                         : { ok: false, error: res.error }
                     }}
-                    hint="Square works best. Shown on your public storefront."
+                    hint={t('field_logo_hint')}
                   />
                 </div>
               </div>
               <div data-field="businessName">
-                <FieldLabel required>Business name</FieldLabel>
+                <FieldLabel required>{t('field_business_name_label')}</FieldLabel>
                 <TextInput
                   value={profile.businessName}
                   onChange={(e) => setField('businessName', e.target.value)}
                   autoComplete="organization"
-                  placeholder="e.g. Festa Films"
+                  placeholder={t('field_business_name_placeholder')}
                   disabled={!canEdit}
                 />
               </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <FieldLabel>First name</FieldLabel>
+                  <FieldLabel>{t('field_first_name_label')}</FieldLabel>
                   <TextInput
                     value={profile.firstName}
                     onChange={(e) => setField('firstName', e.target.value)}
@@ -326,7 +329,7 @@ export default function AboutEditor({
                   />
                 </div>
                 <div>
-                  <FieldLabel>Last name</FieldLabel>
+                  <FieldLabel>{t('field_last_name_label')}</FieldLabel>
                   <TextInput
                     value={profile.lastName}
                     onChange={(e) => setField('lastName', e.target.value)}
@@ -335,7 +338,7 @@ export default function AboutEditor({
                   />
                 </div>
                 <div>
-                  <FieldLabel>Years in business</FieldLabel>
+                  <FieldLabel>{t('field_years_in_business_label')}</FieldLabel>
                   <TextInput
                     inputMode="numeric"
                     value={profile.yearsInBusiness}
@@ -345,7 +348,7 @@ export default function AboutEditor({
                         e.target.value.replace(/[^\d]/g, '').slice(0, 3),
                       )
                     }
-                    placeholder="e.g. 5"
+                    placeholder={t('field_years_in_business_placeholder')}
                     disabled={!canEdit}
                   />
                 </div>
@@ -355,16 +358,16 @@ export default function AboutEditor({
 
           {/* Business address (all wireable via location JSONB) */}
           <Section
-            title="Business address"
-            hint="Only your city and region appear publicly. Full address stays private."
+            title={t('section_address_title')}
+            hint={t('section_address_hint')}
             className="lg:col-span-2"
           >
             <div className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <FieldLabel required>Building / Plot number</FieldLabel>
+                  <FieldLabel required>{t('field_house_number_label')}</FieldLabel>
                   <TextInput
-                    placeholder="e.g. Plot 24, Building 12B"
+                    placeholder={t('field_house_number_placeholder')}
                     value={profile.houseNumber}
                     onChange={(e) => setField('houseNumber', e.target.value)}
                     autoComplete="address-line1"
@@ -372,9 +375,9 @@ export default function AboutEditor({
                   />
                 </div>
                 <div>
-                  <FieldLabel required>Street / Village</FieldLabel>
+                  <FieldLabel required>{t('field_street_label')}</FieldLabel>
                   <TextInput
-                    placeholder="e.g. Mwenge"
+                    placeholder={t('field_street_placeholder')}
                     value={profile.street}
                     onChange={(e) => setField('street', e.target.value)}
                     autoComplete="address-line2"
@@ -384,18 +387,18 @@ export default function AboutEditor({
               </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <FieldLabel required>Ward</FieldLabel>
+                  <FieldLabel required>{t('field_ward_label')}</FieldLabel>
                   <TextInput
-                    placeholder="e.g. Kinondoni"
+                    placeholder={t('field_ward_placeholder')}
                     value={profile.ward}
                     onChange={(e) => setField('ward', e.target.value)}
                     disabled={!canEdit}
                   />
                 </div>
                 <div>
-                  <FieldLabel required>District</FieldLabel>
+                  <FieldLabel required>{t('field_district_label')}</FieldLabel>
                   <TextInput
-                    placeholder="e.g. Kinondoni"
+                    placeholder={t('field_district_placeholder')}
                     value={profile.district}
                     onChange={(e) => setField('district', e.target.value)}
                     autoComplete="address-level2"
@@ -403,9 +406,9 @@ export default function AboutEditor({
                   />
                 </div>
                 <div>
-                  <FieldLabel required>Region</FieldLabel>
+                  <FieldLabel required>{t('field_region_label')}</FieldLabel>
                   <SelectInput
-                    placeholder="Select region"
+                    placeholder={t('field_region_placeholder')}
                     value={profile.region}
                     onChange={(e) => setField('region', e.target.value)}
                     disabled={!canEdit}
@@ -420,18 +423,18 @@ export default function AboutEditor({
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <FieldLabel>Landmark / directions (optional)</FieldLabel>
+                  <FieldLabel>{t('field_landmark_label')}</FieldLabel>
                   <TextInput
-                    placeholder="e.g. Near Mlimani City, opposite the mosque"
+                    placeholder={t('field_landmark_placeholder')}
                     value={profile.landmark}
                     onChange={(e) => setField('landmark', e.target.value)}
                     disabled={!canEdit}
                   />
                 </div>
                 <div>
-                  <FieldLabel>P.O. Box / Postal code (optional)</FieldLabel>
+                  <FieldLabel>{t('field_postal_label')}</FieldLabel>
                   <TextInput
-                    placeholder="e.g. P.O. Box 1234 or 11101"
+                    placeholder={t('field_postal_placeholder')}
                     value={profile.postalCode}
                     onChange={(e) => setField('postalCode', e.target.value)}
                     autoComplete="postal-code"
@@ -445,13 +448,13 @@ export default function AboutEditor({
           {/* Contact details — onboarding "Contact" step.
               Wireable via contact_info JSONB. */}
           <Section
-            title="Contact details"
-            hint="Shared with couples after booking, not on your public storefront."
+            title={t('section_contact_title')}
+            hint={t('section_contact_hint')}
             className="lg:col-span-2"
           >
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
-                <FieldLabel>Business phone</FieldLabel>
+                <FieldLabel>{t('field_phone_label')}</FieldLabel>
                 <TextInput
                   prefix="+255"
                   inputMode="tel"
@@ -463,7 +466,7 @@ export default function AboutEditor({
                 />
               </div>
               <div>
-                <FieldLabel>WhatsApp number</FieldLabel>
+                <FieldLabel>{t('field_whatsapp_label')}</FieldLabel>
                 <TextInput
                   prefix="+255"
                   inputMode="tel"
@@ -475,11 +478,11 @@ export default function AboutEditor({
                 />
               </div>
               <div>
-                <FieldLabel>Business email</FieldLabel>
+                <FieldLabel>{t('field_email_label')}</FieldLabel>
                 <TextInput
                   type="email"
                   inputMode="email"
-                  placeholder="hello@yourbusiness.co.tz"
+                  placeholder={t('field_email_placeholder')}
                   value={profile.email}
                   onChange={(e) => setField('email', e.target.value)}
                   disabled={!canEdit}
@@ -491,47 +494,47 @@ export default function AboutEditor({
           {/* Socials — onboarding "Socials" step.
               Wireable via social_links JSONB. */}
           <Section
-            title="Social media & website"
-            hint="Optional. Helps couples explore your work."
+            title={t('section_socials_title')}
+            hint={t('section_socials_hint')}
             className="lg:col-span-2"
           >
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
               <SocialRow
                 icon={<Globe className="w-4 h-4" />}
-                label="Website"
-                placeholder="https://yourstudio.co.tz"
+                label={t('social_website_label')}
+                placeholder={t('social_website_placeholder')}
                 value={profile.socialWebsite}
                 onChange={(v) => setField('socialWebsite', v)}
                 disabled={!canEdit}
               />
               <SocialRow
                 icon={<MessageCircle className="w-4 h-4" />}
-                label="WhatsApp Business"
-                placeholder="+255 754 123 456"
+                label={t('social_whatsapp_label')}
+                placeholder={t('social_whatsapp_placeholder')}
                 value={profile.socialWhatsapp}
                 onChange={(v) => setField('socialWhatsapp', v)}
                 disabled={!canEdit}
               />
               <SocialRow
                 icon={<Instagram className="w-4 h-4" />}
-                label="Instagram"
-                placeholder="@yourstudio"
+                label={t('social_instagram_label')}
+                placeholder={t('social_instagram_placeholder')}
                 value={profile.socialInstagram}
                 onChange={(v) => setField('socialInstagram', v)}
                 disabled={!canEdit}
               />
               <SocialRow
                 icon={<Facebook className="w-4 h-4" />}
-                label="Facebook"
-                placeholder="facebook.com/yourstudio"
+                label={t('social_facebook_label')}
+                placeholder={t('social_facebook_placeholder')}
                 value={profile.socialFacebook}
                 onChange={(v) => setField('socialFacebook', v)}
                 disabled={!canEdit}
               />
               <SocialRow
                 icon={<Music className="w-4 h-4" />}
-                label="TikTok"
-                placeholder="@yourstudio"
+                label={t('social_tiktok_label')}
+                placeholder={t('social_tiktok_placeholder')}
                 value={profile.socialTiktok}
                 onChange={(v) => setField('socialTiktok', v)}
                 disabled={!canEdit}
@@ -542,7 +545,7 @@ export default function AboutEditor({
           {/* Service area — onboarding "Markets" step.
               Persisted to vendors.home_market / vendors.service_markets on Save. */}
           <Section
-            title="Service area"
+            title={t('section_service_area_title')}
             className="lg:col-span-2"
           >
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3 mb-5">
@@ -551,18 +554,18 @@ export default function AboutEditor({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900">
-                  {homeMarketName ?? 'Home market not set'}
+                  {homeMarketName ?? t('home_market_not_set')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Home market, auto-set from your region above.
+                  {t('home_market_hint')}
                 </p>
               </div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
-                Home
+                {t('home_market_badge')}
               </span>
             </div>
 
-            <FieldLabel>Additional markets you serve</FieldLabel>
+            <FieldLabel>{t('field_extra_markets_label')}</FieldLabel>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
               {extraMarkets.map((m) => (
                 <OptionCard
@@ -580,24 +583,24 @@ export default function AboutEditor({
           {/* Bio — onboarding "About" step (bio + languages).
               Bio wireable; languages persisted via saveProfileFields. */}
           <Section
-            title="Bio"
-            hint="What couples read first on your storefront."
+            title={t('section_bio_title')}
+            hint={t('section_bio_hint')}
             className="lg:col-span-2"
           >
             <div className="space-y-5">
               <div>
-                <FieldLabel>Short description</FieldLabel>
+                <FieldLabel>{t('field_short_description_label')}</FieldLabel>
                 <TextArea
                   value={profile.description}
                   onChange={(e) => setField('description', e.target.value)}
                   rows={2}
                   maxLength={200}
-                  hint={`One line couples see on your listing card. Leave blank to use the start of your bio. ${profile.description.trim().length}/200`}
+                  hint={t('short_description_hint', { count: profile.description.trim().length })}
                   disabled={!canEdit}
                 />
               </div>
               <div>
-                <FieldLabel required>Description</FieldLabel>
+                <FieldLabel required>{t('field_description_label')}</FieldLabel>
                 <TextArea
                   value={profile.bio}
                   onChange={(e) => setField('bio', e.target.value)}
@@ -608,7 +611,7 @@ export default function AboutEditor({
               </div>
               <div>
                 <FieldLabel>
-                  Languages spoken with clients
+                  {t('field_languages_label')}
                 </FieldLabel>
                 <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-1">
                   {LANGUAGES.map((lang) => (
@@ -628,12 +631,12 @@ export default function AboutEditor({
           {/* Style & personality — onboarding "Style" + "Personality" steps.
               Persisted to vendors.style / vendors.personality on Save. */}
           <Section
-            title="Style & personality"
+            title={t('section_style_title')}
             className="lg:col-span-2"
           >
             <div className="grid sm:grid-cols-2 gap-6">
               <div>
-                <FieldLabel>Style</FieldLabel>
+                <FieldLabel>{t('field_style_label')}</FieldLabel>
                 <div className="grid gap-2 mt-1">
                   {styles.map((s) => (
                     <OptionCard
@@ -648,7 +651,7 @@ export default function AboutEditor({
                 </div>
               </div>
               <div>
-                <FieldLabel>Personality</FieldLabel>
+                <FieldLabel>{t('field_personality_label')}</FieldLabel>
                 <div className="grid gap-2 mt-1">
                   {PERSONALITY_OPTIONS.map((p) => (
                     <OptionCard
@@ -684,17 +687,16 @@ export default function AboutEditor({
               )
             ) : isDirty ? (
               <span className="text-amber-700 font-semibold">
-                You have unsaved changes.
+                {t('unsaved_changes')}
               </span>
             ) : (
               <span className="text-gray-500">
-                Everything on this page saves to your storefront when you click
-                Save.
+                {t('save_hint')}
               </span>
             )}
             {!canEdit && source.kind === 'live' ? (
               <span className="text-gray-400">
-                Read-only — owner or manager role can edit.
+                {t('readonly_notice')}
               </span>
             ) : null}
           </div>
@@ -706,7 +708,7 @@ export default function AboutEditor({
               className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Save className="w-3.5 h-3.5" />
-              {pending ? 'Saving…' : 'Save changes'}
+              {pending ? t('saving_label') : t('save_button')}
             </button>
             {nextHref ? (
               <button
@@ -714,7 +716,7 @@ export default function AboutEditor({
                 onClick={onNext}
                 className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
               >
-                Next
+                {t('next_button')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : null}

@@ -9,20 +9,23 @@ import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { bookings } from '@/lib/mock-data'
 import { eventDateLabel, relativeDays } from '@/lib/bookings'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
+import { LocaleToggle } from '@/components/LocaleToggle'
 
-const SEGMENT_LABELS: Record<string, string> = {
-  leads: 'Leads',
-  storefront: 'Storefront',
-  bookings: 'Bookings',
-  reviews: 'Reviews',
-  'lead-preferences': 'Lead preferences',
-  plans: 'Plans',
-  boost: 'Boost storefront',
-  insights: 'Insights',
-  help: 'Help center',
-  feedback: 'Feedback',
-  settings: 'Settings',
-  resources: 'Resources',
+function buildSegmentLabels(t: Translator): Record<string, string> {
+  return {
+    leads: t('nav_leads'),
+    storefront: t('nav_storefront'),
+    bookings: t('nav_bookings'),
+    reviews: t('nav_reviews'),
+    'lead-preferences': t('nav_lead_preferences'),
+    plans: t('nav_plans'),
+    boost: t('nav_boost_storefront'),
+    insights: t('nav_insights'),
+    help: t('nav_help_center'),
+    feedback: t('nav_feedback'),
+    settings: t('nav_settings'),
+  }
 }
 
 type PageHeading = { title: string; subtitle: string }
@@ -35,19 +38,11 @@ type HeaderProps = {
   vendorSlug: string | null
 }
 
-const PAGE_HEADINGS: Record<string, PageHeading> = {
-  '/': {
-    title: 'Welcome back, OpusFesta Photography.',
-    subtitle: "Here's what's happening with your storefront today.",
-  },
-  '/leads': {
-    title: 'Leads',
-    subtitle: 'Inquiries from interested couples. Reply within 24 hours to boost your match rate.',
-  },
-  '/reviews': {
-    title: 'Reviews',
-    subtitle: 'Auto-collected from couples after every event. Reply, pin, or request a review.',
-  },
+function buildPageHeadings(t: Translator): Record<string, PageHeading> {
+  return {
+    '/leads': { title: t('nav_leads'), subtitle: t('page_leads_subtitle') },
+    '/reviews': { title: t('nav_reviews'), subtitle: t('page_reviews_subtitle') },
+  }
 }
 
 function humanize(seg: string): string {
@@ -56,39 +51,40 @@ function humanize(seg: string): string {
 
 type Crumb = { label: string; href: string }
 
-function buildCrumbs(pathname: string): Crumb[] {
+function buildCrumbs(pathname: string, segmentLabels: Record<string, string>): Crumb[] {
   if (pathname === '/') return []
   const segs = pathname.split('/').filter(Boolean)
   return segs.map((seg, i) => ({
-    label: SEGMENT_LABELS[seg] ?? humanize(seg),
+    label: segmentLabels[seg] ?? humanize(seg),
     href: '/' + segs.slice(0, i + 1).join('/'),
   }))
 }
 
-function useStorefrontHeading(pathname: string): PageHeading | null {
+function useStorefrontHeading(pathname: string, t: Translator): PageHeading | null {
   const { draft, hydrated } = useOnboardingDraft()
   if (!pathname.startsWith('/storefront')) return null
-  if (!hydrated) return { title: 'Storefront', subtitle: 'Manage your storefront.' }
+  const fallback = { title: t('storefront_fallback_title'), subtitle: t('storefront_fallback_subtitle') }
+  if (!hydrated) return fallback
   const section = getStorefrontSections(draft).find(
     (s) => pathname === s.href || pathname.startsWith(s.href + '/'),
   )
-  if (!section) return { title: 'Storefront', subtitle: 'Manage your storefront.' }
+  if (!section) return fallback
   return { title: section.pageTitle, subtitle: section.pageDescription }
 }
 
-function useBookingsHeading(pathname: string): PageHeading | null {
+function useBookingsHeading(pathname: string, t: Translator): PageHeading | null {
   if (!pathname.startsWith('/bookings')) return null
 
   if (pathname === '/bookings') {
     return {
-      title: 'Bookings',
-      subtitle: 'Track every couple from quote to wedding day.',
+      title: t('nav_bookings'),
+      subtitle: t('page_bookings_subtitle'),
     }
   }
   if (pathname === '/bookings/calendar') {
     return {
-      title: 'Bookings calendar',
-      subtitle: 'See every booked, pending, and off-day at a glance.',
+      title: t('page_bookings_calendar_title'),
+      subtitle: t('page_bookings_calendar_subtitle'),
     }
   }
 
@@ -96,7 +92,7 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   const id = pathname.split('/')[2]
   const b = bookings.find((x) => x.id === id)
   if (!b) {
-    return { title: 'Booking', subtitle: 'Booking details and timeline.' }
+    return { title: t('booking_detail_fallback_title'), subtitle: t('booking_detail_fallback_subtitle') }
   }
   return {
     title: b.couple,
@@ -106,17 +102,19 @@ function useBookingsHeading(pathname: string): PageHeading | null {
 
 export function Header({ vendorName, vendorSlug }: HeaderProps) {
   const pathname = usePathname()
-  const crumbs = buildCrumbs(pathname)
-  const storefrontHeading = useStorefrontHeading(pathname)
-  const bookingsHeading = useBookingsHeading(pathname)
+  const t = usePortalT('portal-chrome')
+  const crumbs = buildCrumbs(pathname, buildSegmentLabels(t))
+  const storefrontHeading = useStorefrontHeading(pathname, t)
+  const bookingsHeading = useBookingsHeading(pathname, t)
+  const pageHeadings = buildPageHeadings(t)
   const rootHeading =
     pathname === '/' || pathname === '/dashboard'
       ? {
-          title: `Welcome back, ${vendorName || 'OpusFesta Photography'}.`,
-          subtitle: "Here's what's happening with your storefront today.",
+          title: t('greeting_title', { vendorName: vendorName || 'OpusFesta Photography' }),
+          subtitle: t('greeting_subtitle'),
         }
       : null
-  const heading = rootHeading ?? PAGE_HEADINGS[pathname] ?? storefrontHeading ?? bookingsHeading
+  const heading = rootHeading ?? pageHeadings[pathname] ?? storefrontHeading ?? bookingsHeading
   const isStorefront = pathname.startsWith('/storefront')
   const { user, isLoaded } = useUser()
   const initials = user?.fullName
@@ -167,14 +165,16 @@ export function Header({ vendorName, vendorSlug }: HeaderProps) {
             rel="noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white transition-colors"
           >
-            View public storefront
+            {t('view_public_storefront')}
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         ) : null}
 
+        <LocaleToggle />
+
         <button
           type="button"
-          aria-label="Help"
+          aria-label={t('aria_help')}
           className="text-gray-400 hover:text-gray-600 transition-colors"
         >
           <HelpCircle className="w-5 h-5" />
@@ -182,7 +182,7 @@ export function Header({ vendorName, vendorSlug }: HeaderProps) {
 
         <button
           type="button"
-          aria-label="Notifications"
+          aria-label={t('aria_notifications')}
           className="relative text-gray-400 hover:text-gray-600 transition-colors"
         >
           <Bell className="w-5 h-5" />
@@ -192,7 +192,7 @@ export function Header({ vendorName, vendorSlug }: HeaderProps) {
         {isLoaded && (
           <Link
             href="/settings"
-            aria-label="Profile settings"
+            aria-label={t('aria_profile_settings')}
             className="shrink-0"
           >
             {user?.imageUrl ? (

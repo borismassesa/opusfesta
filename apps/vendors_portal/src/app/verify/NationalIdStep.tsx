@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { Camera, Check, Lock, RefreshCw, ScanFace, Smartphone, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import CameraCapture from '@/components/CameraCapture'
+import { usePortalT } from '@/components/providers/PortalUIStringsProvider'
 import {
   createNationalIdCaptureToken,
   getNationalIdProgressAction,
@@ -30,6 +31,7 @@ export default function NationalIdStep({
   initialBack: boolean
   initialSelfie: boolean
 }) {
+  const t = usePortalT('verify')
   const router = useRouter()
   const [front, setFront] = useState(initialFront)
   const [back, setBack] = useState(initialBack)
@@ -74,9 +76,7 @@ export default function NationalIdStep({
         }
       } catch {
         if (!cancelled) {
-          setQrError(
-            'Couldn’t generate a phone link — capture here on this device instead.',
-          )
+          setQrError(t('id_qr_mint_error'))
         }
       }
     }
@@ -130,27 +130,27 @@ export default function NationalIdStep({
   const handleFile = (kind: Kind) => (file: File) => {
     setError(null)
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
-      setError('Upload a JPG, PNG, or WEBP photo of your ID.')
+      setError(t('id_error_bad_type'))
       return
     }
     if (file.size === 0) {
-      setError('That file is empty — pick another photo.')
+      setError(t('id_error_empty_file'))
       return
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError('Photo is too large (max 15 MB). Pick a smaller one.')
+      setError(t('id_error_too_large'))
       return
     }
     const reader = new FileReader()
     reader.onload = () => {
       const dataUrl = typeof reader.result === 'string' ? reader.result : ''
       if (!dataUrl) {
-        setError('Could not read that photo — try another.')
+        setError(t('id_error_read_failed'))
         return
       }
       persistShot(kind, dataUrl)
     }
-    reader.onerror = () => setError('Could not read that photo — try another.')
+    reader.onerror = () => setError(t('id_error_read_failed'))
     reader.readAsDataURL(file)
   }
 
@@ -161,15 +161,15 @@ export default function NationalIdStep({
         <CameraCapture
           label={
             capturing === 'front'
-              ? 'Front of National ID'
+              ? t('id_step_front')
               : capturing === 'back'
-                ? 'Back of National ID'
-                : 'Liveness selfie'
+                ? t('id_step_back')
+                : t('id_step_selfie')
           }
           hint={
             isSelfie
-              ? 'Center your face in the oval, look at the camera, then take the photo.'
-              : 'Fit the card inside the frame, then take the photo.'
+              ? t('id_capture_hint_selfie')
+              : t('id_capture_hint_card')
           }
           onCapture={handleCapture(capturing)}
           onCancel={() => setCapturing(null)}
@@ -193,7 +193,7 @@ export default function NationalIdStep({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <CaptureTile
           icon={Camera}
-          label="ID — Front"
+          label={t('id_step_front')}
           done={front}
           onTake={() => setCapturing('front')}
           onUpload={handleFile('front')}
@@ -201,7 +201,7 @@ export default function NationalIdStep({
         />
         <CaptureTile
           icon={Camera}
-          label="ID — Back"
+          label={t('id_step_back')}
           done={back}
           onTake={() => setCapturing('back')}
           onUpload={handleFile('back')}
@@ -212,13 +212,13 @@ export default function NationalIdStep({
       {/* Liveness selfie — unlocks once both ID sides are captured */}
       <CaptureTile
         icon={ScanFace}
-        label="Liveness selfie"
+        label={t('id_step_selfie')}
         sublabel={
           selfie
             ? undefined
             : idDone
-              ? 'Take a quick selfie so we can confirm it’s really you.'
-              : 'Unlocks after both sides of your ID are captured.'
+              ? t('id_selfie_hint_ready')
+              : t('id_selfie_hint_locked')
         }
         done={selfie}
         // An already-captured selfie stays shown as captured even if one ID
@@ -237,7 +237,7 @@ export default function NationalIdStep({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={qr}
-                alt="QR code to capture on your phone"
+                alt={t('id_qr_alt')}
                 className="h-28 w-28 rounded-lg bg-white p-1"
               />
             ) : (
@@ -249,11 +249,10 @@ export default function NationalIdStep({
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
               <Smartphone className="h-4 w-4 text-gray-500" />
-              No camera here? Use your phone
+              {t('id_qr_heading')}
             </p>
             <p className="mt-1 text-sm text-gray-600">
-              Scan this code with your phone’s camera to take the ID photos and
-              selfie there. They’ll appear here automatically.
+              {t('id_qr_description')}
             </p>
             {qrError && <p className="mt-1 text-xs text-amber-700">{qrError}</p>}
           </div>
@@ -282,6 +281,7 @@ function CaptureTile({
   onUpload?: (file: File) => void
   disabled: boolean
 }) {
+  const t = usePortalT('verify')
   return (
     <div
       className={cn(
@@ -315,7 +315,7 @@ function CaptureTile({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">{label}</p>
           <p className="text-xs text-gray-500">
-            {sublabel ?? (done ? 'Captured' : 'Not captured yet')}
+            {sublabel ?? (done ? t('id_tile_captured') : t('id_tile_not_captured'))}
           </p>
         </div>
       </div>
@@ -334,12 +334,12 @@ function CaptureTile({
           {done ? (
             <>
               <RefreshCw className="h-3.5 w-3.5" />
-              Retake
+              {t('id_step_retake')}
             </>
           ) : (
             <>
               <Camera className="h-3.5 w-3.5" />
-              Take photo
+              {t('id_step_capture')}
             </>
           )}
         </button>
@@ -353,7 +353,7 @@ function CaptureTile({
             )}
           >
             <Upload className="h-3 w-3" />
-            {done ? 'Replace by upload' : 'Upload instead'}
+            {done ? t('id_tile_replace_by_upload') : t('id_tile_upload_instead')}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"

@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { ArrowUpRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { assetPath } from '@/lib/asset-path'
 import {
   loadHomepageShowcaseContent,
   type HomepageShowcasePill,
@@ -108,7 +109,13 @@ function StatPill({ pill, delay }: { pill: HomepageShowcasePill; delay: string }
 
 function TogglePill({ pill, delay }: { pill: HomepageShowcasePill; delay: string }) {
   return (
-    <span aria-hidden className="pointer-events-none absolute -top-5 left-2 z-20 hidden sm:block">
+    <span
+      aria-hidden
+      className={cn(
+        'pointer-events-none absolute top-6 z-20 hidden sm:block',
+        pill.side === 'right' ? 'right-0 translate-x-[80%]' : 'left-0 -translate-x-[80%]',
+      )}
+    >
       <span
         style={{ '--pill-delay': delay, '--pill-dur': '8s' } as CSSProperties}
         className="animate-pill-pop inline-flex items-center gap-3 rounded-full bg-white py-2.5 pr-2.5 pl-5 shadow-[0_16px_35px_-10px_rgba(0,0,0,0.4)] ring-1 ring-black/[0.05]"
@@ -190,11 +197,13 @@ export async function Showcase() {
                     {content.caption.title}
                   </h3>
                   <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:gap-3">
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-[#1A1A1A] sm:h-9 sm:w-9 sm:text-sm"
-                      style={{ backgroundColor: content.accent_color }}
-                    >
-                      {content.caption.badge}
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-12 sm:w-12">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={assetPath('/assets/logo/opusfesta-logo-mark.png')}
+                        alt=""
+                        className="h-full w-full scale-150 object-contain"
+                      />
                     </span>
                     <span className="leading-tight">
                       <span className="block text-xs font-bold text-[#1A1A1A] sm:text-sm">

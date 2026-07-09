@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { Review, ReviewInviteCandidate } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 
 type ReviewSort = 'recent' | 'highest' | 'lowest' | 'awaiting-reply'
 type ReviewFilter = 'all' | 'with-photos' | 'awaiting-reply'
@@ -25,16 +26,14 @@ export type ReviewsSource =
   | { kind: 'suspended' }
   | { kind: 'no-env' }
 
-const BANNER_BY_SOURCE: Record<ReviewsSource['kind'], string | null> = {
-  live: null,
-  'no-application':
-    "You haven't started a vendor application yet. Apply to do business on OpusFesta to start collecting reviews.",
-  'pending-approval':
-    'Your vendor application is awaiting OpusFesta verification. Reviews unlock once your account is approved.',
-  suspended:
-    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
-  'no-env':
-    'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
+function buildBannerBySource(t: Translator): Record<ReviewsSource['kind'], string | null> {
+  return {
+    live: null,
+    'no-application': t('banner_no_application'),
+    'pending-approval': t('banner_pending_approval'),
+    suspended: t('banner_suspended'),
+    'no-env': t('banner_no_env'),
+  }
 }
 
 type ReviewsClientProps = {
@@ -50,6 +49,7 @@ export default function ReviewsClient({
   invitesAvailable,
   source,
 }: ReviewsClientProps) {
+  const t = usePortalT('reviews')
   // Reply / pin / invite state are local-only in Phase 1; writes land in Phase 4.
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [pendingInvites, setPendingInvites] =
@@ -60,7 +60,7 @@ export default function ReviewsClient({
   const [replying, setReplying] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
 
-  const banner = BANNER_BY_SOURCE[source.kind]
+  const banner = buildBannerBySource(t)[source.kind]
 
   const stats = useMemo(() => {
     const total = reviews.length
@@ -155,16 +155,16 @@ export default function ReviewsClient({
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">
-              Sort
+              {t('sort_label')}
             </span>
             <SegmentedControl
               value={sort}
               onChange={setSort}
               options={[
-                { id: 'recent', label: 'Most recent' },
-                { id: 'highest', label: 'Highest' },
-                { id: 'lowest', label: 'Lowest' },
-                { id: 'awaiting-reply', label: 'Awaiting reply' },
+                { id: 'recent', label: t('sort_recent') },
+                { id: 'highest', label: t('sort_highest') },
+                { id: 'lowest', label: t('sort_lowest') },
+                { id: 'awaiting-reply', label: t('sort_awaiting_reply') },
               ]}
             />
           </div>
@@ -174,9 +174,9 @@ export default function ReviewsClient({
               value={filter}
               onChange={setFilter}
               options={[
-                { id: 'all', label: `All ${reviews.length}` },
-                { id: 'with-photos', label: 'With photos' },
-                { id: 'awaiting-reply', label: `Awaiting (${stats.awaitingReply})` },
+                { id: 'all', label: t('filter_all', { count: reviews.length }) },
+                { id: 'with-photos', label: t('filter_with_photos') },
+                { id: 'awaiting-reply', label: t('filter_awaiting', { count: stats.awaitingReply }) },
               ]}
             />
           </div>
@@ -186,8 +186,8 @@ export default function ReviewsClient({
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
             <p className="text-sm text-gray-500">
               {reviews.length === 0
-                ? 'No reviews yet — couples leave reviews after their event.'
-                : 'No reviews match these filters.'}
+                ? t('empty_no_reviews')
+                : t('empty_no_match_filters')}
             </p>
           </div>
         ) : (
@@ -223,30 +223,31 @@ function StatsCard({
     awaitingReply: number
   }
 }) {
+  const t = usePortalT('reviews')
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6 lg:p-7">
       <div className="flex flex-wrap items-start gap-6">
         <div className="shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">
-            Average rating
+            {t('stats_average_rating')}
           </p>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-semibold text-gray-900 tabular-nums tracking-tight">
               {stats.avg.toFixed(1)}
             </span>
-            <span className="text-sm text-gray-500 tabular-nums">/ 5</span>
+            <span className="text-sm text-gray-500 tabular-nums">{t('stats_out_of_5')}</span>
           </div>
           <Stars value={stats.avg} size="md" className="mt-2" />
           <p className="text-xs text-gray-500 mt-2">
-            from{' '}
-            <span className="font-semibold text-gray-900 tabular-nums">{stats.total}</span> review
-            {stats.total === 1 ? '' : 's'}
+            {t('stats_from_prefix')}{' '}
+            <span className="font-semibold text-gray-900 tabular-nums">{stats.total}</span>{' '}
+            {stats.total === 1 ? t('stats_review_singular') : t('stats_review_plural')}
           </p>
         </div>
 
         <div className="flex-1 min-w-[260px]">
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-3">
-            Rating distribution
+            {t('stats_rating_distribution')}
           </p>
           <ul className="space-y-1.5">
             {stats.distribution.map(({ star, count }) => {
@@ -273,8 +274,7 @@ function StatsCard({
       </div>
 
       <p className="mt-5 text-xs text-gray-500 leading-relaxed">
-        OpusFesta auto-collects reviews from couples after each event — you can&rsquo;t write or
-        delete them, but you can reply, pin, or report. Verified reviews boost search ranking.
+        {t('stats_footer_note')}
       </p>
     </div>
   )
@@ -293,13 +293,13 @@ function InviteCard({
   onSend: (bookingId: string) => void
   onDismiss: (bookingId: string) => void
 }) {
+  const t = usePortalT('reviews')
   if (!invitesAvailable) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6 text-center">
-        <p className="text-sm font-semibold text-gray-900">Review invites coming soon</p>
+        <p className="text-sm font-semibold text-gray-900">{t('invite_coming_soon_title')}</p>
         <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-          Invites unlock once the bookings module ships — couples need a
-          completed booking before we can email them on your behalf.
+          {t('invite_coming_soon_hint')}
         </p>
       </div>
     )
@@ -307,9 +307,9 @@ function InviteCard({
   if (candidates.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6 text-center">
-        <p className="text-sm font-semibold text-gray-900">All caught up</p>
+        <p className="text-sm font-semibold text-gray-900">{t('invite_all_caught_up_title')}</p>
         <p className="text-xs text-gray-500 mt-1">
-          No past bookings are waiting on a review invite.
+          {t('invite_all_caught_up_hint')}
         </p>
       </div>
     )
@@ -318,10 +318,9 @@ function InviteCard({
     <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6">
       <div className="flex items-start justify-between gap-2 mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Request reviews</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('invite_request_title')}</h3>
           <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-            Past bookings that haven&rsquo;t left a review yet. We send the couple a polite,
-            OpusFesta-branded email — your storefront&rsquo;s rating only updates if they post.
+            {t('invite_request_hint')}
           </p>
         </div>
       </div>
@@ -348,7 +347,7 @@ function InviteCard({
               {sent ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <Check className="w-3 h-3" />
-                  Invited
+                  {t('invite_invited_pill')}
                 </span>
               ) : (
                 <button
@@ -357,15 +356,15 @@ function InviteCard({
                   className="inline-flex items-center gap-1 bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-md transition-colors"
                 >
                   <Send className="w-3 h-3" />
-                  Invite
+                  {t('invite_send_button')}
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => onDismiss(c.bookingId)}
                 className="text-gray-400 hover:text-gray-700 text-[10px] font-medium"
-                aria-label={`Dismiss ${c.couple}`}
-                title="Dismiss"
+                aria-label={t('invite_dismiss_aria', { couple: c.couple })}
+                title={t('invite_dismiss_title')}
               >
                 ✕
               </button>
@@ -429,6 +428,7 @@ function ReviewCard({
   onRemoveReply: () => void
   onTogglePin: () => void
 }) {
+  const t = usePortalT('reviews')
   return (
     <article
       className={cn(
@@ -449,19 +449,19 @@ function ReviewCard({
             {review.isPinned ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#F0DFF6] text-[#7E5896]">
                 <Pin className="w-3 h-3" />
-                Pinned
+                {t('card_pinned_pill')}
               </span>
             ) : null}
           </div>
           <Stars value={review.rating} size="sm" className="mt-1" />
           <p className="text-xs text-gray-500 mt-1.5">
-            {review.packageName} · Wedding {formatDate(review.eventDate)} · Reviewed{' '}
-            {formatRelative(review.reviewedAt)}
+            {review.packageName} · {t('card_wedding_label')} {formatDate(review.eventDate)} · {t('card_reviewed_prefix')}{' '}
+            {formatRelative(review.reviewedAt, t)}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <IconAction
-            label={review.isPinned ? 'Unpin' : 'Pin to top'}
+            label={review.isPinned ? t('action_unpin') : t('action_pin')}
             onClick={onTogglePin}
             icon={
               review.isPinned ? (
@@ -472,7 +472,7 @@ function ReviewCard({
             }
           />
           <IconAction
-            label="Report"
+            label={t('action_report')}
             icon={<Flag className="w-3.5 h-3.5" />}
             tone="muted"
           />
@@ -508,7 +508,7 @@ function ReviewCard({
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
               <MessageSquareReply className="w-3 h-3" />
-              Your reply · {formatRelative(review.reply.repliedAt)}
+              {t('reply_your_reply_prefix')} · {formatRelative(review.reply.repliedAt, t)}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -516,14 +516,14 @@ function ReviewCard({
                 onClick={onStartReply}
                 className="text-[11px] font-semibold text-gray-600 hover:text-gray-900"
               >
-                Edit
+                {t('reply_edit')}
               </button>
               <button
                 type="button"
                 onClick={onRemoveReply}
                 className="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
               >
-                Remove
+                {t('reply_remove')}
               </button>
             </div>
           </div>
@@ -539,13 +539,13 @@ function ReviewCard({
             autoFocus
             value={replyDraft}
             onChange={(e) => onReplyDraftChange(e.target.value)}
-            placeholder="Thank the couple, address any concern with grace, keep it short. Other couples will read this."
+            placeholder={t('reply_placeholder')}
             rows={4}
             className="w-full text-sm bg-white border border-gray-200 rounded-md px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none resize-none"
           />
           <div className="mt-2 flex items-center justify-between gap-2">
             <p className="text-[11px] text-gray-500">
-              Replies are public. Stick to facts; never share private contact info.
+              {t('reply_public_hint')}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -553,7 +553,7 @@ function ReviewCard({
                 onClick={onCancelReply}
                 className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md"
               >
-                Cancel
+                {t('reply_cancel')}
               </button>
               <button
                 type="button"
@@ -561,7 +561,7 @@ function ReviewCard({
                 disabled={!replyDraft.trim()}
                 className="inline-flex items-center gap-1 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
               >
-                Post reply
+                {t('reply_post')}
               </button>
             </div>
           </div>
@@ -573,7 +573,7 @@ function ReviewCard({
           className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-gray-900 px-3 py-1.5 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors"
         >
           <MessageSquareReply className="w-3.5 h-3.5" />
-          Reply publicly
+          {t('reply_publicly_button')}
         </button>
       ) : null}
     </article>
@@ -648,14 +648,14 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, t: Translator): string {
   const d = new Date(iso)
   const now = Date.now()
   const diffDays = Math.floor((now - d.getTime()) / 86_400_000)
-  if (diffDays < 1) return 'today'
-  if (diffDays < 2) return 'yesterday'
-  if (diffDays < 7) return `${diffDays}d ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`
-  return `${Math.floor(diffDays / 365)}y ago`
+  if (diffDays < 1) return t('relative_today')
+  if (diffDays < 2) return t('relative_yesterday')
+  if (diffDays < 7) return t('relative_days_ago', { n: diffDays })
+  if (diffDays < 30) return t('relative_weeks_ago', { n: Math.floor(diffDays / 7) })
+  if (diffDays < 365) return t('relative_months_ago', { n: Math.floor(diffDays / 30) })
+  return t('relative_years_ago', { n: Math.floor(diffDays / 365) })
 }

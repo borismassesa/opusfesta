@@ -30,7 +30,7 @@ export class StubWhatsAppProvider implements WhatsAppProvider {
     console.warn('[whatsapp:stub] would send entrance pass', {
       to: send.to,
       guest: send.guestName,
-      event: send.eventName,
+      event: `${send.eventCategory} ya ${send.coupleName}`,
       header: send.headerImageUrl,
     })
     return { ok: true, wamid: this.fakeWamid(), dryRun: true }

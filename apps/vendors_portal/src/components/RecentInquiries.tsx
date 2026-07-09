@@ -1,8 +1,11 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowUpRight, MapPin, Wallet } from 'lucide-react'
 import type { InquiryRow } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { usePortalT, type Translator } from '@/components/providers/PortalUIStringsProvider'
 
 const STATUS_STYLES: Record<InquiryRow['status'], string> = {
   new: 'bg-[#F0DFF6] text-[#7E5896]',
@@ -12,27 +15,31 @@ const STATUS_STYLES: Record<InquiryRow['status'], string> = {
   closed: 'bg-gray-100 text-gray-500',
 }
 
-const STATUS_LABEL: Record<InquiryRow['status'], string> = {
-  new: 'New',
-  replied: 'Replied',
-  booked: 'Booked',
-  declined: 'Declined',
-  closed: 'Closed',
+function buildStatusLabel(t: Translator): Record<InquiryRow['status'], string> {
+  return {
+    new: t('inquiry_status_new'),
+    replied: t('inquiry_status_replied'),
+    booked: t('inquiry_status_booked'),
+    declined: t('inquiry_status_declined'),
+    closed: t('inquiry_status_closed'),
+  }
 }
 
 export function RecentInquiries({ rows }: { rows: InquiryRow[] }) {
+  const t = usePortalT('dashboard')
+  const statusLabel = buildStatusLabel(t)
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] w-full h-full flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-6 pt-6 pb-4">
         <div>
-          <h3 className="text-[15px] font-medium text-gray-900">Recent inquiries</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Couples who reached out recently.</p>
+          <h3 className="text-[15px] font-medium text-gray-900">{t('recent_inquiries_header')}</h3>
+          <p className="text-sm text-gray-500 mt-0.5">{t('recent_inquiries_subtitle')}</p>
         </div>
         <Link
           href="/leads"
           className="flex items-center gap-1 text-sm font-semibold text-[#7E5896] hover:text-[#5d3f77] transition-colors"
         >
-          View all
+          {t('recent_inquiries_view_all')}
           <ArrowUpRight className="w-4 h-4" />
         </Link>
       </div>
@@ -68,7 +75,7 @@ export function RecentInquiries({ rows }: { rows: InquiryRow[] }) {
                       STATUS_STYLES[row.status],
                     )}
                   >
-                    {STATUS_LABEL[row.status]}
+                    {statusLabel[row.status]}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">{row.date}</p>

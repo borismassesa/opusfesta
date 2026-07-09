@@ -72,7 +72,7 @@ export default function NamePage() {
           />
         </div>
         <div>
-          <FieldLabel>Logo or profile picture</FieldLabel>
+          <FieldLabel>{t('profile.name.logo.label')}</FieldLabel>
           <div className="mt-1">
             <LogoUpload
               value={draft.logo}
@@ -82,7 +82,7 @@ export default function NamePage() {
                 fd.append('file', file)
                 return uploadOnboardingLogo(fd)
               }}
-              hint="Optional. Square works best. Shown on your storefront."
+              hint={t('profile.name.logo.hint')}
             />
           </div>
         </div>

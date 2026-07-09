@@ -3,6 +3,9 @@ import { getCurrentVendor } from '@/lib/vendor'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { BOOKING_SELECT, mapDbBooking, type DbBookingRow } from '@/lib/booking-db'
 import { bookings as mockBookings } from '@/lib/mock-data'
+import { getLocale } from '@/lib/cms/locale'
+import { loadPortalUiStrings } from '@/lib/cms/portal-ui'
+import { PortalUIStringsProvider } from '@/components/providers/PortalUIStringsProvider'
 import BookingDetailClient from './BookingDetailClient'
 
 export default async function BookingDetailPage({
@@ -12,11 +15,17 @@ export default async function BookingDetailPage({
 }) {
   const { id } = await params
   const state = await getCurrentVendor()
+  const locale = await getLocale()
+  const bookingsStrings = await loadPortalUiStrings('bookings', locale)
 
   if (state.kind === 'no-env') {
     const booking = mockBookings.find((b) => b.id === id)
     if (!booking) notFound()
-    return <BookingDetailClient booking={booking} />
+    return (
+      <PortalUIStringsProvider bundles={{ bookings: bookingsStrings }}>
+        <BookingDetailClient booking={booking} />
+      </PortalUIStringsProvider>
+    )
   }
 
   if (state.kind !== 'live') {
@@ -37,5 +46,9 @@ export default async function BookingDetailPage({
   }
   if (!data) notFound()
 
-  return <BookingDetailClient booking={mapDbBooking(data)} />
+  return (
+    <PortalUIStringsProvider bundles={{ bookings: bookingsStrings }}>
+      <BookingDetailClient booking={mapDbBooking(data)} />
+    </PortalUIStringsProvider>
+  )
 }
