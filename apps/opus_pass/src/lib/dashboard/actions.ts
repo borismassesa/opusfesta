@@ -386,16 +386,12 @@ async function ensureInvitationsForAllEvents(userId: string, guestId: string): P
   }
 }
 
-export interface CreateGuestResult {
-  ok: boolean
-  id?: string
-  /** User-facing validation/failure reason. Returned rather than thrown —
-   *  Next.js strips thrown Server Action error messages in production
-   *  builds down to a generic "Server Components render" message with no
-   *  detail, which makes an expected outcome like a duplicate phone number
-   *  look like a crash. Returning it keeps the real message intact. */
-  error?: string
-}
+/** Returned rather than thrown — Next.js strips thrown Server Action error
+ *  messages in production builds down to a generic "Server Components
+ *  render" message with no detail, which makes an expected outcome like a
+ *  duplicate phone number look like a crash. Returning it keeps the real
+ *  message intact. */
+export type CreateGuestResult = { ok: true; id: string } | { ok: false; error: string }
 
 export async function createGuest(input: GuestInput): Promise<CreateGuestResult> {
   const user = await requireDashboardUser()
