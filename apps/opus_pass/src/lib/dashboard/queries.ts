@@ -1286,6 +1286,12 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
   // guest who was genuinely already invited. Erring toward a free resend is
   // the safer failure mode for a paying customer. Dry-run stub sends log fake
   // wamid.STUB-* ids — they must never consume paid credits.
+  //
+  // "Already sent" must match every SUCCESS status, not just 'sent' — the
+  // webhook upgrades rows sent → delivered → read as Meta's receipts land,
+  // so matching only 'sent' made a guest flip back to "Not sent" (and freed
+  // their quota slot, double-charging a resend) the moment their invite was
+  // successfully delivered. Only 'failed' means not sent.
   const { data: sent } = await supabase
     .from('whatsapp_messages')
     .select('guest_contact_id')
@@ -1293,7 +1299,7 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
     .or(`event_id.eq.${eventId},event_id.is.null`)
     .eq('direction', 'out')
     .eq('kind', 'invite')
-    .eq('status', 'sent')
+    .in('status', ['sent', 'delivered', 'read'])
     .not('wamid', 'like', 'wamid.STUB-%')
   const alreadySentIds = [
     ...new Set((sent ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x))),

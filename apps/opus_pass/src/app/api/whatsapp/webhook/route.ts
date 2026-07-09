@@ -109,13 +109,16 @@ export async function POST(req: Request) {
     // eventId there is no way to know for certain which invite was tapped.
     let resolvedEventId = tap.eventId
     if (!resolvedEventId) {
+      // Match any success status — by the time a guest taps a button their
+      // invite has been upgraded sent → delivered → read by the receipts
+      // above, so matching only 'sent' would never find it.
       const { data: lastInvite } = await supabase
         .from('whatsapp_messages')
         .select('event_id')
         .eq('guest_contact_id', guest.id)
         .eq('direction', 'out')
         .eq('kind', 'invite')
-        .eq('status', 'sent')
+        .in('status', ['sent', 'delivered', 'read'])
         .not('event_id', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
