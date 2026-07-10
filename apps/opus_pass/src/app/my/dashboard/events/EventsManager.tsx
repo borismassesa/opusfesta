@@ -57,6 +57,9 @@ type FormState = {
   /** Free-text label used when event_type is 'other'. */
   custom_type: string
   startDate: string
+  startTime: string
+  endDate: string
+  endTime: string
   venue_name: string
   address: string
   city: string
@@ -71,6 +74,9 @@ const EMPTY_FORM: FormState = {
   event_type: 'wedding',
   custom_type: '',
   startDate: '',
+  startTime: '',
+  endDate: '',
+  endTime: '',
   venue_name: '',
   address: '',
   city: '',
@@ -82,29 +88,36 @@ const EMPTY_FORM: FormState = {
 
 // ------------------------------------------------------------------- helpers
 
-function splitLocal(iso: string | null): string {
-  if (!iso) return ''
+function splitLocal(iso: string | null): { date: string; time: string } {
+  if (!iso) return { date: '', time: '' }
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
+  if (Number.isNaN(d.getTime())) return { date: '', time: '' }
   const off = d.getTimezoneOffset()
   const local = new Date(d.getTime() - off * 60000)
-  return local.toISOString().slice(0, 10)
+  const s = local.toISOString()
+  return { date: s.slice(0, 10), time: s.slice(11, 16) }
 }
 
-function combineLocal(date: string): string | null {
+function combineLocal(date: string, time: string): string | null {
   if (!date) return null
-  const local = new Date(`${date}T00:00`)
+  const t = time || '00:00'
+  const local = new Date(`${date}T${t}`)
   if (Number.isNaN(local.getTime())) return null
   return local.toISOString()
 }
 
 function fromEvent(e: WeddingEvent): FormState {
+  const start = splitLocal(e.starts_at)
+  const end = splitLocal(e.ends_at)
   const known = e.event_type in EVENT_TYPE_LABELS
   return {
     name: e.name,
     event_type: known ? e.event_type : 'other',
     custom_type: known ? '' : e.event_type,
-    startDate: splitLocal(e.starts_at),
+    startDate: start.date,
+    startTime: start.time,
+    endDate: end.date,
+    endTime: end.time,
     venue_name: e.venue_name ?? '',
     address: e.address ?? '',
     city: e.city ?? '',
@@ -127,7 +140,8 @@ function toPayload(f: FormState): EventInput {
     venue_name: f.venue_name.trim() || null,
     address: f.address.trim() || null,
     city: f.city.trim() || null,
-    starts_at: combineLocal(f.startDate),
+    starts_at: combineLocal(f.startDate, f.startTime),
+    ends_at: combineLocal(f.endDate, f.endTime),
     dress_code: f.dress_code.trim() || null,
     is_public: f.is_public,
     allow_rsvp: f.allow_rsvp,
@@ -147,15 +161,16 @@ function formatStartsAt(iso: string | null): string | null {
   })
 }
 
-function formatWhen(date: string): string | null {
-  if (!date) return null
-  const local = new Date(`${date}T00:00`)
-  if (Number.isNaN(local.getTime())) return null
-  return local.toLocaleDateString('en-GB', {
+function formatWhen(date: string, time: string): string | null {
+  const iso = combineLocal(date, time)
+  if (!iso) return null
+  return new Date(iso).toLocaleString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -363,14 +378,40 @@ export default function EventsManager({
               <CounterRow value={form.name.length} max={NAME_MAX} hint={strings.hint_max_100} />
             </Field>
 
-            <Field label={strings.field_start_date}>
-              <input
-                type="date"
-                className={inputClass}
-                value={form.startDate}
-                onChange={(e) => set('startDate', e.target.value)}
-              />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={strings.field_start_date}>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.startDate}
+                  onChange={(e) => set('startDate', e.target.value)}
+                />
+              </Field>
+              <Field label={strings.field_start_time}>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={form.startTime}
+                  onChange={(e) => set('startTime', e.target.value)}
+                />
+              </Field>
+              <Field label={strings.field_end_date}>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.endDate}
+                  onChange={(e) => set('endDate', e.target.value)}
+                />
+              </Field>
+              <Field label={strings.field_end_time}>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={form.endTime}
+                  onChange={(e) => set('endTime', e.target.value)}
+                />
+              </Field>
+            </div>
           </div>
 
           {/* Event location */}
@@ -734,7 +775,7 @@ function PreviewCard({
   editing: WeddingEvent | null
   strings: DashboardEventsStrings
 }) {
-  const when = formatWhen(form.startDate)
+  const when = formatWhen(form.startDate, form.startTime)
   const whereParts = [form.venue_name, form.city].filter(Boolean)
   return (
     <Card className="overflow-hidden p-0">

@@ -123,9 +123,12 @@ function scopedInvitations(g: GuestWithInvitations, eventFilter: string): GuestI
 
 /** Whether a guest's invite has been sent for the given event scope.
  *  Prefers per-event send logs (event_id tagged in guest_message_log);
- *  falls back to the guest-level invite_count for sends that predate
- *  event-scoping, but only when the guest is invited to just one event —
- *  otherwise there's no way to tell which event that legacy send was for. */
+ *  falls back to the guest-level invite_count/last_invited_at for sends that
+ *  predate event-scoping. A legacy send can only have targeted an event the
+ *  guest was already invited to at send time — comparing last_invited_at
+ *  against each invitation's created_at keeps that signal even after the
+ *  guest is later added to a second event (invitations.length alone can't
+ *  tell those cases apart, and would otherwise wrongly revert to "not sent"). */
 function wasSentForScope(
   g: GuestWithInvitations,
   eventFilter: string,
@@ -135,7 +138,10 @@ function wasSentForScope(
   const tagged = sentEventIds[g.id] ?? []
   if (tagged.includes(eventFilter)) return true
   if (tagged.length > 0) return false
-  return g.invite_count > 0 && g.invitations.length <= 1
+  if (g.invite_count === 0 || !g.last_invited_at) return false
+  const invitation = g.invitations.find((i) => i.event_id === eventFilter)
+  if (!invitation) return false
+  return new Date(invitation.created_at).getTime() <= new Date(g.last_invited_at).getTime()
 }
 
 export default function GuestsManager({

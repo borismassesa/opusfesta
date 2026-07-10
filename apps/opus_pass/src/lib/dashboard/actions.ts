@@ -6,7 +6,7 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { PLEDGE_CARD_TEMPLATES, PLEDGE_TEMPLATE_FREE_TIER_IDS } from './pledge-card-templates'
+import { PLEDGE_TEMPLATE_FREE_TIER_IDS } from './pledge-card-templates'
 import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, pledgeUrl, publicOrigin } from './share'
 import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
@@ -49,6 +49,7 @@ export interface EventInput {
   address?: string | null
   city?: string | null
   starts_at?: string | null
+  ends_at?: string | null
   dress_code?: string | null
   /** Show on public website. Defaults to true server-side. */
   is_public?: boolean
@@ -69,6 +70,7 @@ export async function createEvent(input: EventInput): Promise<void> {
     address: input.address || null,
     city: input.city || null,
     starts_at: input.starts_at || null,
+    ends_at: input.ends_at || null,
     dress_code: input.dress_code || null,
     is_public: input.is_public ?? true,
     allow_rsvp: input.allow_rsvp ?? false,
@@ -91,6 +93,7 @@ export async function updateEvent(id: string, input: EventInput): Promise<void> 
       address: input.address || null,
       city: input.city || null,
       starts_at: input.starts_at || null,
+      ends_at: input.ends_at || null,
       dress_code: input.dress_code || null,
       is_public: input.is_public ?? true,
       allow_rsvp: input.allow_rsvp ?? false,
@@ -926,14 +929,11 @@ export async function setPledgeCoverImage(
   revalidatePath('/my/dashboard/pledges')
 }
 
-/** Apply one of the curated pledge-card template presets (tone + accent) as
- *  the pledge page cover. Free for Elegant/Signature only — re-derives the
- *  event's paid-order tier server-side rather than trusting a client-supplied
- *  tier, since this gates a paid feature (Classic/Essential must unlock it). */
-export async function applyPledgeCardTemplate(eventId: string, templateId: string): Promise<void> {
-  const template = PLEDGE_CARD_TEMPLATES.find((t) => t.id === templateId)
-  if (!template) throw new Error('Unknown pledge card template')
-
+/** Apply a card design pulled from the invitation catalog as the pledge page
+ *  cover, for free. Free for Elegant/Signature only — re-derives the event's
+ *  paid-order tier server-side rather than trusting a client-supplied tier,
+ *  since this gates a paid feature (Classic/Essential must unlock it). */
+export async function applyPledgeCardTemplate(eventId: string, cardImageUrl: string): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const { data: profile } = await supabase
@@ -953,10 +953,8 @@ export async function applyPledgeCardTemplate(eventId: string, templateId: strin
 
   const nextConfig: PledgePageConfig = {
     ...(profile?.pledge_page ?? {}),
-    coverImageUrl: null,
-    coverIsFullTemplate: false,
-    coverTone: template.coverTone,
-    accent: template.accent,
+    coverImageUrl: cardImageUrl,
+    coverIsFullTemplate: true,
   }
   const { data, error } = await supabase
     .from('couple_profiles')
@@ -2010,6 +2008,7 @@ async function sendWhatsAppLinkRequests(
   kind: LinkRequestKind,
   guestIds: string[],
   token: string | null,
+  eventId?: string,
 ): Promise<WhatsAppLinkSendSummary> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
@@ -2018,9 +2017,10 @@ async function sendWhatsAppLinkRequests(
 
   if (!token || !guestIds.length) return summary
 
-  // Collector/pledge links are couple-level, not tied to any one event — only
-  // coupleName is needed here, so any resolvable event id is sufficient.
-  const resolvedEventId = await resolveDefaultEventId()
+  // Collector/pledge links are couple-level, not tied to any one event — but
+  // when the caller knows which event is currently in view, prefer that one
+  // so `ent.coupleName`/category context matches what's on screen.
+  const resolvedEventId = await resolveDefaultEventId(eventId)
   if (!resolvedEventId) return summary
   const ent = await getWhatsAppEntitlement(resolvedEventId)
   // Generic OpusPass banner — collector/pledge links aren't tied to a paid card.
@@ -2085,10 +2085,15 @@ export async function sendWhatsAppCollectorRequests(guestIds: string[]): Promise
   return sendWhatsAppLinkRequests('collector', guestIds, token)
 }
 
-/** Send the self-pledge link to selected saved contacts via WhatsApp. */
-export async function sendWhatsAppPledgeRequests(guestIds: string[]): Promise<WhatsAppLinkSendSummary> {
+/** Send the self-pledge link to selected saved contacts via WhatsApp. `eventId`,
+ *  when passed, should be the event currently in view on the Pledges page so
+ *  the resolved coupleName/category context matches what the couple sees. */
+export async function sendWhatsAppPledgeRequests(
+  guestIds: string[],
+  eventId?: string,
+): Promise<WhatsAppLinkSendSummary> {
   const token = await getMyPledgeToken()
-  return sendWhatsAppLinkRequests('pledge', guestIds, token)
+  return sendWhatsAppLinkRequests('pledge', guestIds, token, eventId)
 }
 
 /** Result of a Pledge link broadcast over Email or SMS. */
@@ -2102,12 +2107,15 @@ export interface PledgeLinkSendSummary {
 }
 
 /** Pledge links are couple-level (not tied to one event), but the pledge page
- *  itself can be event-scoped — resolve the couple's default event the same
- *  way the WhatsApp send does, so all three channels point at the same page. */
-async function resolvePledgeSendContext(): Promise<{ token: string; coupleName: string; eventId: string } | null> {
+ *  itself can be event-scoped — resolve the given event (falling back to the
+ *  couple's default event) the same way the WhatsApp send does, so all three
+ *  channels point at the same page the couple currently has open. */
+async function resolvePledgeSendContext(
+  eventId?: string,
+): Promise<{ token: string; coupleName: string; eventId: string } | null> {
   const token = await getMyPledgeToken()
   if (!token) return null
-  const resolvedEventId = await resolveDefaultEventId()
+  const resolvedEventId = await resolveDefaultEventId(eventId)
   if (!resolvedEventId) return null
   const ent = await getWhatsAppEntitlement(resolvedEventId)
   return { token, coupleName: ent.coupleName, eventId: resolvedEventId }
@@ -2119,14 +2127,17 @@ async function resolvePledgeSendContext(): Promise<{ token: string; coupleName: 
  * via Resend once RESEND_API_KEY is set, else a dry run (mirrors the
  * WhatsApp stub) so the send pipeline is testable before then.
  */
-export async function sendEmailPledgeRequests(guestIds: string[]): Promise<PledgeLinkSendSummary> {
+export async function sendEmailPledgeRequests(
+  guestIds: string[],
+  eventId?: string,
+): Promise<PledgeLinkSendSummary> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const live = isEmailConfigured()
   const summary: PledgeLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !live }
   if (!guestIds.length) return summary
 
-  const ctx = await resolvePledgeSendContext()
+  const ctx = await resolvePledgeSendContext(eventId)
   if (!ctx) return summary
 
   const { data: guests, error } = await supabase
@@ -2174,14 +2185,17 @@ export async function sendEmailPledgeRequests(guestIds: string[]): Promise<Pledg
  * picker, message log, and dashboard UI already work end to end and only the
  * provider (`@/lib/sms`) needs to change once a gateway is chosen.
  */
-export async function sendSmsPledgeRequests(guestIds: string[]): Promise<PledgeLinkSendSummary> {
+export async function sendSmsPledgeRequests(
+  guestIds: string[],
+  eventId?: string,
+): Promise<PledgeLinkSendSummary> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const provider = getSmsProvider()
   const summary: PledgeLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !provider.live }
   if (!guestIds.length) return summary
 
-  const ctx = await resolvePledgeSendContext()
+  const ctx = await resolvePledgeSendContext(eventId)
   if (!ctx) return summary
 
   const { data: guests, error } = await supabase

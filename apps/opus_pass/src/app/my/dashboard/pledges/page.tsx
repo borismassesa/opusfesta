@@ -20,7 +20,11 @@ import { loadUiStrings } from '@/lib/cms/ui-strings'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { getSmsProvider } from '@/lib/sms'
 import { isEmailConfigured } from '@/lib/email'
+import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import PledgesManager from './PledgesManager'
+
+/** How many catalog designs to offer as free pledge-card templates. */
+const PLEDGE_CARD_CATALOG_SIZE = 10
 
 export const dynamic = 'force-dynamic'
 
@@ -50,21 +54,36 @@ export default async function PledgesPage({
 
   const selectedEventId = scope.selected?.id ?? null
   // Legacy pledges (recorded before events existed) surface under the
-  // couple's default (first) event so no money silently disappears.
+  // couple's OLDEST event (by created_at, not display sort order — sort
+  // order/starts_at can change via the Events editor, which would otherwise
+  // silently move where these pledges are visible) so no money disappears.
+  const oldestEventId = events.length
+    ? events.reduce((oldest, e) =>
+        new Date(e.created_at).getTime() < new Date(oldest.created_at).getTime() ? e : oldest,
+      ).id
+    : null
   const pledgeScope: PledgeScope = selectedEventId
-    ? { eventId: selectedEventId, includeUnassigned: selectedEventId === events[0]?.id }
+    ? { eventId: selectedEventId, includeUnassigned: selectedEventId === oldestEventId }
     : {}
 
-  const [pledges, guests, profile, pledgeToken, pledgePageConfig, orderLinks, copy, packageTierId] = await Promise.all([
-    getPledges(pledgeScope),
-    getGuestsWithInvitations(),
-    getCoupleProfile(),
-    getMyPledgeToken(),
-    getMyPledgePageConfig(),
-    getEventOrderLinks(),
-    loadDashboardCopy('pledges', locale),
-    selectedEventId ? getEventPackageTierId(selectedEventId) : Promise.resolve(null),
-  ])
+  const [pledges, guests, profile, pledgeToken, pledgePageConfig, orderLinks, copy, packageTierId, catalogProducts] =
+    await Promise.all([
+      getPledges(pledgeScope),
+      getGuestsWithInvitations(),
+      getCoupleProfile(),
+      getMyPledgeToken(),
+      getMyPledgePageConfig(),
+      getEventOrderLinks(),
+      loadDashboardCopy('pledges', locale),
+      selectedEventId ? getEventPackageTierId(selectedEventId) : Promise.resolve(null),
+      loadInvitationProducts(locale),
+    ])
+  // A curated slice of the invitation catalog, offered as ready-made pledge
+  // page covers — Elegant/Signature couples can use any of these for free.
+  const pledgeCardCatalog = catalogProducts
+    .filter((p) => p.imageUrl)
+    .slice(0, PLEDGE_CARD_CATALOG_SIZE)
+    .map((p) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl! }))
   const stats = pledgeStatsFrom(pledges)
   // The first paid card design (if any) linked to this event — offered as a
   // one-click pledge-card cover so couples don't have to buy a second design
@@ -98,6 +117,7 @@ export default async function PledgesPage({
       purchasedCard={purchasedCard ? { cardName: purchasedCard.cardName, cardImageUrl: purchasedCard.cardImageUrl } : null}
       hasUnassignedOrder={hasUnassignedOrder}
       packageTierId={packageTierId}
+      pledgeCardCatalog={pledgeCardCatalog}
       copy={copy}
       whatsappLive={getWhatsAppProvider().live}
       emailLive={isEmailConfigured()}

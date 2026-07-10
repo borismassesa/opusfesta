@@ -721,6 +721,9 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     placeholder_event_name: 'Our ceremony',
     hint_max_100: 'Maximum 100 characters',
     field_start_date: 'Event date',
+    field_start_time: 'Start time',
+    field_end_date: 'End date',
+    field_end_time: 'End time',
     section_location: 'Event location',
     field_venue_name: 'Venue name',
     reset_address: 'Reset address →',
@@ -2020,6 +2023,9 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       legend: 'Event date',
       fields: [
         { key: 'field_start_date', label: 'Field: event date', kind: 'text', max: 40 },
+        { key: 'field_start_time', label: 'Field: start time', kind: 'text', max: 40 },
+        { key: 'field_end_date', label: 'Field: end date', kind: 'text', max: 40 },
+        { key: 'field_end_time', label: 'Field: end time', kind: 'text', max: 40 },
       ],
     },
     {

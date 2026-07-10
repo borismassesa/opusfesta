@@ -810,6 +810,9 @@ export interface DashboardEventsStrings {
   placeholder_event_name: string
   hint_max_100: string
   field_start_date: string
+  field_start_time: string
+  field_end_date: string
+  field_end_time: string
   // Location section
   section_location: string
   field_venue_name: string
@@ -1785,6 +1788,9 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     placeholder_event_name: 'Our ceremony',
     hint_max_100: 'Maximum 100 characters',
     field_start_date: 'Event date',
+    field_start_time: 'Start time',
+    field_end_date: 'End date',
+    field_end_time: 'End time',
     section_location: 'Event location',
     field_venue_name: 'Venue name',
     reset_address: 'Reset address →',

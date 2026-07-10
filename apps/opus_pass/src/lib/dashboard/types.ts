@@ -30,6 +30,7 @@ export interface WeddingEvent {
   address: string | null
   city: string | null
   starts_at: string | null
+  ends_at: string | null
   dress_code: string | null
   /** Show this event on the public wedding website. */
   is_public: boolean
