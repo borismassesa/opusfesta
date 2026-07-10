@@ -30,10 +30,7 @@ export interface WeddingEvent {
   address: string | null
   city: string | null
   starts_at: string | null
-  ends_at: string | null
   dress_code: string | null
-  collect_meal_choice: boolean
-  meal_options: string[]
   /** Show this event on the public wedding website. */
   is_public: boolean
   /** Let guests RSVP to this event directly from the wedding website. */

@@ -399,13 +399,16 @@ export default function Navbar() {
                 onMouseEnter={() => setActiveMenu(item.label)}
                 aria-expanded={activeMenu === item.label}
                 aria-haspopup="true"
-                className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap ${
-                  activeMenu === item.label
-                    ? 'bg-(--accent) text-(--on-accent)'
-                    : 'text-gray-700 hover:bg-gray-100'
+                className={`relative rounded-md px-4 py-2.5 transition-colors whitespace-nowrap ${
+                  activeMenu === item.label ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 {item.label}
+                <span
+                  className={`absolute inset-x-4 bottom-1 h-0.5 rounded-full bg-gray-900 transition-opacity ${
+                    activeMenu === item.label ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
               </button>
             ))}
           </div>

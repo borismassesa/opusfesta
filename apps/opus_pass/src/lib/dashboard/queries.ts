@@ -4,6 +4,7 @@ import { getDashboardUser, requireDashboardUser } from './auth'
 import { firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
+import { toTzs } from './currency'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import type { SiteDoc } from '@/lib/builder/types'
 import type { Treatment } from '@/components/guests/InvitationVisual'
@@ -258,6 +259,28 @@ export async function getGuestsWithInvitations(): Promise<GuestWithInvitations[]
     ...g,
     invitations: byGuest.get(g.id) ?? [],
   }))
+}
+
+/** Which event(s) each guest has a logged send for — keyed by guest_contact_id.
+ *  Powers per-event "Sent"/"Not sent" on the guest list when scoped to one
+ *  event. Rows that predate event-scoping have a NULL event_id and are
+ *  omitted here (see 20260705000002_opuspass_event_scoped_invites.sql). */
+export async function getSentEventIdsByGuest(): Promise<Record<string, string[]>> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('guest_message_log')
+    .select('guest_contact_id, event_id')
+    .eq('user_id', user.id)
+    .not('event_id', 'is', null)
+
+  const map: Record<string, string[]> = {}
+  for (const row of (data ?? []) as { guest_contact_id: string; event_id: string }[]) {
+    const list = map[row.guest_contact_id] ?? []
+    if (!list.includes(row.event_id)) list.push(row.event_id)
+    map[row.guest_contact_id] = list
+  }
+  return map
 }
 
 /** When/how each guest was last contacted — keyed by guest_contact_id.
@@ -516,7 +539,9 @@ export async function getPledgeStats(scope: PledgeScope = {}): Promise<PledgeSta
 
 /** Pure aggregation over an already-fetched pledge list — use this instead of
  *  getPledgeStats when the caller already has the pledges, to avoid a second
- *  identical query. */
+ *  identical query. Totals are in TZS: each pledge's amount is converted
+ *  from its own currency before summing, so a mix of TZS/USD/KES/EUR
+ *  pledges doesn't get added together as if they were the same currency. */
 export function pledgeStatsFrom(pledges: PledgeWithContact[]): PledgeStats {
   let totalPledged = 0
   let totalReceived = 0
@@ -525,8 +550,8 @@ export function pledgeStatsFrom(pledges: PledgeWithContact[]): PledgeStats {
   let cardsToPrepare = 0
 
   for (const p of pledges) {
-    if (p.status !== 'declined') totalPledged += p.pledged_amount
-    totalReceived += p.amount_received
+    if (p.status !== 'declined') totalPledged += toTzs(p.pledged_amount, p.currency)
+    totalReceived += toTzs(p.amount_received, p.currency)
     if (p.status === 'paid') paidCount += 1
     if (p.will_attend === 'yes') attendingCount += 1
     // Card prep queue: they paid, confirmed they're coming, card not yet sent.
@@ -1278,6 +1303,25 @@ export async function getEventOrderLinks(): Promise<EventOrderLinks> {
     ;(byEvent[o.event_id] ??= []).push(orderSummaryFrom(o))
   }
   return { byEvent, unassigned: unassignedOrdersFrom(orders) }
+}
+
+/** The package tier (lite/classic/elegant/signature) behind an event's most
+ *  recent paid order, if any — used to gate free vs. paid pledge-card
+ *  templates. UI-only signal; the server action re-derives this itself
+ *  before actually granting the free template. */
+export async function getEventPackageTierId(eventId: string): Promise<string | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.event_id === eventId)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+  return withImage?.tierId ?? items[0]?.tierId ?? null
 }
 
 export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppEntitlement> {

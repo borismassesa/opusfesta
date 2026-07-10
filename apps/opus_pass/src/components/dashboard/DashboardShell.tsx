@@ -86,7 +86,7 @@ function NavLinks({
           'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
           collapsed && 'justify-center px-0',
           active
-            ? 'bg-[#C9A0DC]/15 text-[#1A1A1A]'
+            ? 'bg-(--accent) text-(--on-accent)'
             : 'text-[#1A1A1A]/60 hover:bg-black/[0.04] hover:text-[#1A1A1A]',
         )
         const inner = (
@@ -94,7 +94,7 @@ function NavLinks({
             <Icon
               className={cn(
                 'h-[18px] w-[18px] shrink-0',
-                active ? 'text-[#8e57b3]' : 'text-[#1A1A1A]/40',
+                active ? 'text-(--on-accent)' : 'text-[#1A1A1A]/40',
               )}
             />
             {collapsed ? null : <span className="flex-1">{label}</span>}

@@ -305,24 +305,6 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                       </label>
                     ) : null}
 
-                    {e.collect_meal_choice && e.meal_options.length > 0 ? (
-                      <label className="block">
-                        <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">{t('meal_label')}</span>
-                        <select
-                          className={inputClass}
-                          value={a.meal_choice}
-                          onChange={(ev) => update(e.invitation.id, { meal_choice: ev.target.value })}
-                        >
-                          <option value="">{t('meal_placeholder')}</option>
-                          {e.meal_options.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-
                     <label className="block">
                       <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">
                         {t('dietary_label')} <span className="font-normal text-[#1A1A1A]/40">{t('dietary_optional')}</span>

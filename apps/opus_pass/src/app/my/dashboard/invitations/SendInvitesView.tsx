@@ -24,6 +24,9 @@ import {
   Check,
   Ticket,
   ChevronDown,
+  ChevronRight,
+  Settings2,
+  ImagePlus,
 } from 'lucide-react'
 import {
   enablePublicSharing,
@@ -499,7 +502,7 @@ export default function SendInvitesView({
     const guestLike = { full_name: g.name, phone: g.phone, whatsapp_phone: g.whatsappPhone }
     const url = channel === 'whatsapp' ? whatsappShareUrl(guestLike, msg) : smsShareUrl(guestLike, msg)
     window.open(url, '_blank', 'noopener,noreferrer')
-    recordSend(g.id, channel).catch(() => {})
+    recordSend(g.id, channel, eventId).catch(() => {})
     if (reminding)
       toast.success(fmt(strings.toast_reminder_ready, { name: firstNameOf(g.name) }))
   }
@@ -727,68 +730,74 @@ export default function SendInvitesView({
 
       {/* Event context */}
       <div className="ctx">
-        <div className={`ccard${event.cardImageUrl || event.cardTreatment ? '' : ' noDesign'}`}>
-          {event.cardImageUrl ? (
-            <Image
-              src={event.cardImageUrl}
-              alt={`${event.coupleName} invitation card`}
-              fill
-              sizes="132px"
-              quality={90}
-              className="object-cover"
-            />
-          ) : event.cardTreatment ? (
-            <InvitationVisual treatment={event.cardTreatment} />
-          ) : (
-            <a href={unassignedOrders.length > 0 ? '#unassigned-orders' : '/invitations/catalog'} className="ci noDesign">
-              <span>{strings.card_fallback_label}</span>
-              <b>{unassignedOrders.length > 0 ? strings.no_design_pick_cta : strings.no_design_cta}</b>
-            </a>
-          )}
+        <div className="ctxhead">
+          <Link href="/my/dashboard/events" className="chg">
+            <Settings2 size={13} /> {strings.manage_events} <ChevronRight size={13} />
+          </Link>
         </div>
-        <div className="cinfo">
-          <h3>{headingName}</h3>
-          <div className="row">
-            {event.dateLabel ? <span>📅 {event.dateLabel}</span> : null}
-            {event.venue ? <span>📍 {event.venue}</span> : null}
-            {!event.hasPaidOrder && showCategoryPill ? (
-              <span className="catpill">{event.eventTypeLabel}</span>
-            ) : null}
+        <div className="ctxbody">
+          <div className={`ccard${event.cardImageUrl || event.cardTreatment ? '' : ' noDesign'}`}>
+            {event.cardImageUrl ? (
+              <Image
+                src={event.cardImageUrl}
+                alt={`${event.coupleName} invitation card`}
+                fill
+                sizes="92px"
+                quality={90}
+                className="object-cover"
+              />
+            ) : event.cardTreatment ? (
+              <InvitationVisual treatment={event.cardTreatment} />
+            ) : (
+              <a href={unassignedOrders.length > 0 ? '#unassigned-orders' : '/invitations/catalog'} className="ci noDesign">
+                <ImagePlus size={20} />
+                <b>{unassignedOrders.length > 0 ? strings.no_design_pick_cta : strings.no_design_cta}</b>
+              </a>
+            )}
+          </div>
+          <div className="cinfo">
+            <h3>{headingName}</h3>
+            <div className="row">
+              {event.dateLabel ? <span>📅 {event.dateLabel}</span> : null}
+              {event.venue ? <span>📍 {event.venue}</span> : null}
+              {!event.hasPaidOrder && showCategoryPill ? (
+                <span className="catpill">{event.eventTypeLabel}</span>
+              ) : null}
+              {event.hasPaidOrder ? (
+                <span className="badge">✓ {strings.card_purchased}</span>
+              ) : null}
+            </div>
+
             {event.hasPaidOrder ? (
-              <span className="badge">✓ {event.cardTier ? fmt(strings.card_purchased_tier, { tier: event.cardTier }) : strings.card_purchased}</span>
+              <>
+                <div className="pmeta">
+                  {showCategoryPill ? (
+                    <span className="catpill">{event.eventTypeLabel}</span>
+                  ) : null}
+                  {event.cardTier ? (
+                    <span className="fact"><i>{strings.fact_package}</i>{event.cardTier}</span>
+                  ) : null}
+                  {event.cardName ? (
+                    <span className="fact"><i>{strings.fact_design}</i>{event.cardName}</span>
+                  ) : null}
+                  <span className="fact">
+                    <i>{strings.fact_invites_paid}</i>
+                    {fmt(strings.fact_to_share, { n: quota.purchased })}
+                  </span>
+                </div>
+
+                {event.addOns.length > 0 ? (
+                  <div className="addons">
+                    <span className="al">{strings.addons_label}</span>
+                    {event.addOns.map((a) => (
+                      <span key={a} className="ao">{a}</span>
+                    ))}
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </div>
-
-          {event.hasPaidOrder ? (
-            <>
-              <div className="pmeta">
-                {showCategoryPill ? (
-                  <span className="catpill">{event.eventTypeLabel}</span>
-                ) : null}
-                {event.cardTier ? (
-                  <span className="fact"><i>{strings.fact_package}</i>{event.cardTier}</span>
-                ) : null}
-                {event.cardName ? (
-                  <span className="fact"><i>{strings.fact_design}</i>{event.cardName}</span>
-                ) : null}
-                <span className="fact">
-                  <i>{strings.fact_invites_paid}</i>
-                  {fmt(strings.fact_to_share, { n: quota.purchased })}
-                </span>
-              </div>
-
-              {event.addOns.length > 0 ? (
-                <div className="addons">
-                  <span className="al">{strings.addons_label}</span>
-                  {event.addOns.map((a) => (
-                    <span key={a} className="ao">{a}</span>
-                  ))}
-                </div>
-              ) : null}
-            </>
-          ) : null}
         </div>
-        <Link href="/my/dashboard/events" className="chg">{strings.manage_events}</Link>
       </div>
 
       {/* Funnel + quota */}
@@ -1415,6 +1424,7 @@ const css = `
   --ink:#1c1b1f; --muted:#8b8790; --faint:#b6b2ba; --line:#ededf0; --hover:#faf8fc;
   --wa:#25D366; --sms:#3478F6; --amber-bg:#FFFBEB; --amber-bd:#FBE8B0; --amber-tx:#8a6d1a;
   --ok-bg:#EAF6EF; --ok-tx:#2E7D55; --bad-bg:#fcecec; --bad-tx:#c0392b;
+  --green:#9FE870; --green-tx:#3f6b1f;
   --radius:16px; --soft:0 1px 2px rgba(20,18,30,.05);
   color:var(--ink); }
 .si .serif, .si h1, .si h2, .si h3, .si .n, .si .ci b{ font-family:var(--font-cormorant),Georgia,serif; }
@@ -1452,35 +1462,39 @@ const css = `
 .si .btn.dangerfill{ background:var(--bad-tx); color:#fff; }
 .si .spin{ animation:si-spin .8s linear infinite; }
 @keyframes si-spin{ to{ transform:rotate(360deg); } }
-.si .ctx{ display:flex; gap:20px; align-items:center; background:#fff; border:1px solid var(--line);
-  border-radius:var(--radius); padding:18px; margin:22px 0 18px; box-shadow:var(--soft); }
-.si .ccard{ width:132px; height:178px; flex:none; border-radius:12px; position:relative; overflow:hidden;
-  background:linear-gradient(155deg,var(--purple),var(--lav)); }
-.si .ccard.noDesign{ background:var(--line); }
-.si .ccard .ci{ position:absolute; inset:9px; border:1px solid rgba(255,255,255,.55); border-radius:7px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; color:#fff; }
-.si .ccard .ci b{ font-size:14px; }
+.si .ctx{ position:relative; background:#fff; border:1px solid var(--line); border-radius:20px;
+  padding:14px 22px 22px; margin:22px 0 18px; box-shadow:var(--soft); }
+.si .ctxhead{ display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.si .ctxhead .eyebrow{ font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--faint); }
+.si .ctx .chg{ margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-size:12.5px;
+  font-weight:600; color:var(--purple-d); background:var(--lav-soft); padding:6px 12px 6px 13px;
+  border-radius:999px; text-decoration:none; transition:background .12s, transform .08s; }
+.si .ctx .chg:hover{ background:var(--lav-btn); transform:translateY(-1px); }
+.si .ctx .chg svg{ width:13px; height:13px; }
+.si .ctxbody{ display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+.si .ccard{ width:92px; height:122px; flex:none; border-radius:14px; position:relative; overflow:hidden;
+  background:linear-gradient(155deg,var(--purple),var(--lav)); box-shadow:0 4px 14px rgba(107,63,160,.22); }
+.si .ccard.noDesign{ background:linear-gradient(155deg,var(--lav-soft),#fff); border:1.5px dashed var(--lav); box-shadow:none; }
+.si .ccard .ci{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:5px; text-align:center; color:#fff; padding:8px; }
+.si .ccard .ci b{ font-size:13px; line-height:1.25; }
 .si .ccard .ci span{ font-size:7px; letter-spacing:1.2px; opacity:.85; }
-.si .ccard .ci.noDesign{ text-decoration:none; cursor:pointer; border:1px dashed var(--muted); border-radius:7px;
-  transition:background .12s; padding:8px; color:var(--muted); }
-.si .ccard .ci.noDesign:hover{ background:#fff; }
+.si .ccard .ci.noDesign{ text-decoration:none; cursor:pointer; color:var(--purple-d); gap:7px; }
+.si .ccard .ci.noDesign svg{ width:20px; height:20px; opacity:.7; }
 .si .ccard .ci.noDesign span{ opacity:.7; }
-.si .ccard .ci.noDesign b{ font-size:12px; line-height:1.3; text-decoration:underline; color:var(--ink); }
-.si .ctx h3{ font-size:20px; font-weight:600; }
-.si .ctx .row{ display:flex; gap:16px; color:var(--muted); font-size:13px; margin-top:8px; flex-wrap:wrap; align-items:center; }
-.si .badge{ display:inline-flex; align-items:center; gap:6px; background:var(--ok-bg); color:var(--ok-tx);
-  font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
-.si .ctx .chg{ margin-left:auto; align-self:flex-start; font-size:13px; color:var(--purple); font-weight:600; text-decoration:none; }
-.si .cinfo{ min-width:0; }
-.si .pmeta{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 26px; margin-top:14px; }
-.si .pmeta .fact{ display:inline-flex; flex-direction:column; gap:2px; font-size:14px; font-weight:600; color:var(--ink); }
-.si .pmeta .fact i{ font-style:normal; font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
-.si .catpill{ display:inline-flex; align-items:center; background:rgba(159,232,112,.28); color:#3f6b1f;
-  font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; }
-.si .addons{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:14px; }
-.si .addons .al{ font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
+.si .ccard .ci.noDesign b{ font-size:11.5px; line-height:1.3; text-decoration:underline; }
+.si .ctx h3{ font-size:19px; font-weight:600; }
+.si .ctx .row{ display:flex; gap:14px; color:var(--muted); font-size:13px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+.si .badge, .si .catpill{ display:inline-flex; align-items:center; gap:5px; background:var(--green); color:var(--green-tx);
+  font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; }
+.si .cinfo{ min-width:0; flex:1; }
+.si .pmeta{ display:flex; flex-wrap:wrap; align-items:center; gap:9px 24px; margin-top:12px; }
+.si .pmeta .fact{ display:inline-flex; flex-direction:column; gap:2px; font-size:13.5px; font-weight:600; color:var(--ink); }
+.si .pmeta .fact i{ font-style:normal; font-size:9.5px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
+.si .addons{ display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:12px; }
+.si .addons .al{ font-size:9.5px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
 .si .addons .ao{ display:inline-flex; align-items:center; background:var(--lav-soft); color:var(--purple-d);
-  font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; }
+  font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
 .si .funnel{ display:grid; grid-template-columns:repeat(4,1fr) 1.5fr; gap:12px; }
 .si .fc{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--soft); }
 .si .fc .n{ font-size:27px; line-height:1; font-weight:600; }
@@ -1674,6 +1688,6 @@ const css = `
 
 @media(max-width:900px){ .si .modes{ grid-template-columns:1fr; } .si .funnel{ grid-template-columns:repeat(2,1fr); }
   .si .funnel .quota{ grid-column:span 2; } }
-@media(max-width:640px){ .si .ctx{ flex-direction:column; align-items:flex-start; } .si .ctx .chg{ margin-left:0; }
+@media(max-width:640px){ .si .ctx .chg{ margin-left:0; }
   .si .gth .acts{ margin-left:0; width:100%; justify-content:flex-start; } }
 `

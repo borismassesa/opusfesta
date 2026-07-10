@@ -6,10 +6,14 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, publicOrigin } from './share'
+import { PLEDGE_CARD_TEMPLATES, PLEDGE_TEMPLATE_FREE_TIER_IDS } from './pledge-card-templates'
+import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, pledgeUrl, publicOrigin } from './share'
 import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
+import { getSmsProvider } from '@/lib/sms'
+import { isEmailConfigured, sendEmail } from '@/lib/email'
+import { pledgeRequestEmail } from './pledge-email'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -45,10 +49,7 @@ export interface EventInput {
   address?: string | null
   city?: string | null
   starts_at?: string | null
-  ends_at?: string | null
   dress_code?: string | null
-  collect_meal_choice?: boolean
-  meal_options?: string[]
   /** Show on public website. Defaults to true server-side. */
   is_public?: boolean
   /** Let guests RSVP via the website. Defaults to false server-side. */
@@ -68,10 +69,7 @@ export async function createEvent(input: EventInput): Promise<void> {
     address: input.address || null,
     city: input.city || null,
     starts_at: input.starts_at || null,
-    ends_at: input.ends_at || null,
     dress_code: input.dress_code || null,
-    collect_meal_choice: input.collect_meal_choice ?? false,
-    meal_options: input.meal_options ?? [],
     is_public: input.is_public ?? true,
     allow_rsvp: input.allow_rsvp ?? false,
     sort_order: input.sort_order ?? 0,
@@ -93,10 +91,7 @@ export async function updateEvent(id: string, input: EventInput): Promise<void> 
       address: input.address || null,
       city: input.city || null,
       starts_at: input.starts_at || null,
-      ends_at: input.ends_at || null,
       dress_code: input.dress_code || null,
-      collect_meal_choice: input.collect_meal_choice ?? false,
-      meal_options: input.meal_options ?? [],
       is_public: input.is_public ?? true,
       allow_rsvp: input.allow_rsvp ?? false,
       sort_order: input.sort_order ?? 0,
@@ -557,7 +552,7 @@ export async function updateRsvp(invitationId: string, update: RsvpUpdate): Prom
 
 // ---------------------------------------------------------------- Sending
 
-export async function recordSend(guestId: string, channel: SendChannel): Promise<void> {
+export async function recordSend(guestId: string, channel: SendChannel, eventId?: string): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
@@ -578,7 +573,7 @@ export async function recordSend(guestId: string, channel: SendChannel): Promise
 
   const { error: logErr } = await supabase
     .from('guest_message_log')
-    .insert({ user_id: user.id, guest_contact_id: guestId, channel })
+    .insert({ user_id: user.id, guest_contact_id: guestId, channel, event_id: eventId ?? null })
   if (logErr) throw new Error(logErr.message)
   revalidateDashboard()
 }
@@ -894,6 +889,85 @@ export async function updatePledgePageConfig(config: PledgePageConfig): Promise<
     const { error: insErr } = await supabase
       .from('couple_profiles')
       .insert({ user_id: user.id, partner1_name: 'The Couple', pledge_page: config })
+    if (insErr) throw new Error(insErr.message)
+  }
+  revalidatePath('/my/dashboard/pledges')
+}
+
+/** Set (or clear) the pledge page's cover image without touching the rest of
+ *  the couple's customizations — used by the "Share & Preview" pledge card
+ *  picker (purchased design or an uploaded photo), which only ever knows
+ *  about the cover, not the couple's full saved config. */
+export async function setPledgeCoverImage(
+  coverImageUrl: string | null,
+  coverIsFullTemplate: boolean,
+): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('pledge_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
+  const nextConfig: PledgePageConfig = { ...(profile?.pledge_page ?? {}), coverImageUrl, coverIsFullTemplate }
+
+  const { data, error } = await supabase
+    .from('couple_profiles')
+    .update({ pledge_page: nextConfig, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', pledge_page: nextConfig })
+    if (insErr) throw new Error(insErr.message)
+  }
+  revalidatePath('/my/dashboard/pledges')
+}
+
+/** Apply one of the curated pledge-card template presets (tone + accent) as
+ *  the pledge page cover. Free for Elegant/Signature only — re-derives the
+ *  event's paid-order tier server-side rather than trusting a client-supplied
+ *  tier, since this gates a paid feature (Classic/Essential must unlock it). */
+export async function applyPledgeCardTemplate(eventId: string, templateId: string): Promise<void> {
+  const template = PLEDGE_CARD_TEMPLATES.find((t) => t.id === templateId)
+  if (!template) throw new Error('Unknown pledge card template')
+
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone, pledge_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null; pledge_page: PledgePageConfig | null }>()
+
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.event_id === eventId)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+  const tierId = withImage?.tierId ?? items[0]?.tierId ?? null
+  if (!tierId || !PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(tierId)) {
+    throw new Error('Pledge card templates are included with Elegant and Signature packages — unlock this design to use it.')
+  }
+
+  const nextConfig: PledgePageConfig = {
+    ...(profile?.pledge_page ?? {}),
+    coverImageUrl: null,
+    coverIsFullTemplate: false,
+    coverTone: template.coverTone,
+    accent: template.accent,
+  }
+  const { data, error } = await supabase
+    .from('couple_profiles')
+    .update({ pledge_page: nextConfig, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', pledge_page: nextConfig })
     if (insErr) throw new Error(insErr.message)
   }
   revalidatePath('/my/dashboard/pledges')
@@ -2015,6 +2089,143 @@ export async function sendWhatsAppCollectorRequests(guestIds: string[]): Promise
 export async function sendWhatsAppPledgeRequests(guestIds: string[]): Promise<WhatsAppLinkSendSummary> {
   const token = await getMyPledgeToken()
   return sendWhatsAppLinkRequests('pledge', guestIds, token)
+}
+
+/** Result of a Pledge link broadcast over Email or SMS. */
+export interface PledgeLinkSendSummary {
+  sent: number
+  failed: number
+  /** Contacts with no usable email/phone on file. */
+  skipped: number
+  /** True when handled by a dry-run stub (no live provider configured yet). */
+  dryRun: boolean
+}
+
+/** Pledge links are couple-level (not tied to one event), but the pledge page
+ *  itself can be event-scoped — resolve the couple's default event the same
+ *  way the WhatsApp send does, so all three channels point at the same page. */
+async function resolvePledgeSendContext(): Promise<{ token: string; coupleName: string; eventId: string } | null> {
+  const token = await getMyPledgeToken()
+  if (!token) return null
+  const resolvedEventId = await resolveDefaultEventId()
+  if (!resolvedEventId) return null
+  const ent = await getWhatsAppEntitlement(resolvedEventId)
+  return { token, coupleName: ent.coupleName, eventId: resolvedEventId }
+}
+
+/**
+ * Send the self-pledge link to selected saved contacts by email — a branded
+ * HTML message with a CTA button to the couple's pledge page. Real delivery
+ * via Resend once RESEND_API_KEY is set, else a dry run (mirrors the
+ * WhatsApp stub) so the send pipeline is testable before then.
+ */
+export async function sendEmailPledgeRequests(guestIds: string[]): Promise<PledgeLinkSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const live = isEmailConfigured()
+  const summary: PledgeLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !live }
+  if (!guestIds.length) return summary
+
+  const ctx = await resolvePledgeSendContext()
+  if (!ctx) return summary
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, email')
+    .eq('user_id', user.id)
+    .in('id', guestIds)
+  if (error) throw new Error(error.message)
+
+  const link = pledgeUrl(publicOrigin(), ctx.token, ctx.eventId)
+
+  for (const g of (guests ?? []) as { id: string; full_name: string; email: string | null }[]) {
+    if (!g.email) {
+      summary.skipped += 1
+      continue
+    }
+
+    const { subject, html, text } = pledgeRequestEmail(ctx.coupleName, firstNameOf(g.full_name), link)
+    let ok = true
+    if (live) {
+      ok = (await sendEmail({ to: g.email, subject, html, text })).sent
+    } else {
+      console.warn('[email:dry-run] would send pledge request', { to: g.email, subject })
+    }
+
+    if (ok) {
+      summary.sent += 1
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        channel: 'email',
+      })
+    } else {
+      summary.failed += 1
+    }
+  }
+
+  revalidateDashboard()
+  return summary
+}
+
+/**
+ * Send the self-pledge link to selected saved contacts by SMS. No gateway is
+ * wired up yet, so every send runs through the dry-run stub — the contact
+ * picker, message log, and dashboard UI already work end to end and only the
+ * provider (`@/lib/sms`) needs to change once a gateway is chosen.
+ */
+export async function sendSmsPledgeRequests(guestIds: string[]): Promise<PledgeLinkSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getSmsProvider()
+  const summary: PledgeLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !provider.live }
+  if (!guestIds.length) return summary
+
+  const ctx = await resolvePledgeSendContext()
+  if (!ctx) return summary
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, phone, whatsapp_phone')
+    .eq('user_id', user.id)
+    .in('id', guestIds)
+  if (error) throw new Error(error.message)
+
+  const link = pledgeUrl(publicOrigin(), ctx.token, ctx.eventId)
+
+  for (const g of (guests ?? []) as {
+    id: string
+    full_name: string
+    phone: string | null
+    whatsapp_phone: string | null
+  }[]) {
+    const to = normalizePhone(g.phone ?? g.whatsapp_phone)
+    if (!to) {
+      summary.skipped += 1
+      continue
+    }
+
+    const result = await provider.sendLinkRequest({
+      to,
+      contactFirstName: firstNameOf(g.full_name),
+      coupleName: ctx.coupleName,
+      link,
+    })
+
+    if (result.ok) {
+      summary.sent += 1
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        channel: 'sms',
+      })
+    } else {
+      summary.failed += 1
+    }
+  }
+
+  revalidateDashboard()
+  return summary
 }
 
 /**

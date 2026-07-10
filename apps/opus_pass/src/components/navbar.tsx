@@ -40,6 +40,15 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
   const { isSignedIn, isLoaded } = useUser()
+  // Clerk can resolve `isLoaded` synchronously on some client reloads (cached
+  // session), before hydration reconciles — the auth block would then render
+  // differently on the client's first pass than the server's (always
+  // `isLoaded: false`) pass, throwing a hydration mismatch. Gating on `mounted`
+  // (flipped in an effect, so it's always `false` on the first client render)
+  // guarantees that first pass always matches the server: nothing rendered.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const authReady = mounted && isLoaded
 
   // Built from CMS-resolved strings (labels) + hardcoded hrefs/icons/images.
   // Defined inside the component so labels can call t(). The `label` of each item
@@ -217,13 +226,16 @@ export default function Navbar() {
                 }}
                 aria-expanded={activeMenu === item.label}
                 aria-haspopup="true"
-                className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
-                  activeMenu === item.label
-                    ? 'bg-(--accent) text-(--on-accent)'
-                    : 'text-gray-700 hover:bg-gray-100'
+                className={`relative rounded-md px-4 py-2.5 transition-colors whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2 ${
+                  activeMenu === item.label ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 {item.label}
+                <span
+                  className={`absolute inset-x-4 bottom-1 h-0.5 rounded-full bg-gray-900 transition-opacity ${
+                    activeMenu === item.label ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
               </button>
             ))}
           </div>
@@ -239,7 +251,7 @@ export default function Navbar() {
           <CartMenu />
 
           {/* Auth — Log in / Sign up when signed out, Dashboard + account when signed in */}
-          {isLoaded && !isSignedIn ? (
+          {authReady && !isSignedIn ? (
             <>
               <Link
                 href="/sign-in"
@@ -254,7 +266,7 @@ export default function Navbar() {
                 {t('auth_signup')}
               </Link>
             </>
-          ) : isLoaded ? (
+          ) : authReady ? (
             <>
               <Link
                 href="/my/dashboard"
@@ -440,7 +452,7 @@ export default function Navbar() {
                 <span className="text-xs font-semibold text-gray-500">Language · Lugha</span>
                 <LocaleToggle />
               </div>
-              {isLoaded && !isSignedIn ? (
+              {authReady && !isSignedIn ? (
                 <>
                   <Link
                     href="/sign-up"
@@ -457,7 +469,7 @@ export default function Navbar() {
                     {t('auth_login')}
                   </Link>
                 </>
-              ) : isLoaded ? (
+              ) : authReady ? (
                 <Link
                   href="/my/dashboard"
                   onClick={closeMobile}

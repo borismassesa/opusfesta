@@ -686,8 +686,6 @@ export interface FormsRsvpStrings {
   party_size_label: string
   party_size_one: string // uses {n}
   party_size_other: string // uses {n}
-  meal_label: string
-  meal_placeholder: string
   dietary_label: string
   dietary_optional: string
   dietary_placeholder: string
@@ -812,9 +810,6 @@ export interface DashboardEventsStrings {
   placeholder_event_name: string
   hint_max_100: string
   field_start_date: string
-  field_start_time: string
-  field_end_date: string
-  field_end_time: string
   // Location section
   section_location: string
   field_venue_name: string
@@ -834,12 +829,6 @@ export interface DashboardEventsStrings {
   field_note: string
   placeholder_note: string
   hint_note_suggestions: string
-  // Meal preferences section
-  section_meal_preferences: string
-  toggle_collect_meal: string
-  aria_remove_meal: string
-  placeholder_meal_option: string
-  add_meal_option: string
   // Footer buttons
   delete_event: string
   btn_saving: string
@@ -852,7 +841,6 @@ export interface DashboardEventsStrings {
   preview_add_date: string
   preview_attire_label: string
   preview_note_label: string
-  preview_meal_label: string
   // Promo (sharing) card
   promo_label: string
   promo_body: string
@@ -963,7 +951,6 @@ export interface DashboardSendStrings {
   no_design_cta: string
   no_design_pick_cta: string
   card_purchased: string
-  card_purchased_tier: string // {tier}
   fact_package: string
   fact_design: string
   fact_invites_paid: string
@@ -1704,8 +1691,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     party_size_label: 'How many in your party?',
     party_size_one: '{n} guest',
     party_size_other: '{n} guests',
-    meal_label: 'Meal choice',
-    meal_placeholder: 'Select…',
     dietary_label: 'Dietary needs',
     dietary_optional: '(optional)',
     dietary_placeholder: 'Allergies, preferences…',
@@ -1800,9 +1785,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     placeholder_event_name: 'Our ceremony',
     hint_max_100: 'Maximum 100 characters',
     field_start_date: 'Event date',
-    field_start_time: 'Start time',
-    field_end_date: 'End date',
-    field_end_time: 'End time',
     section_location: 'Event location',
     field_venue_name: 'Venue name',
     reset_address: 'Reset address →',
@@ -1821,11 +1803,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     placeholder_note:
       "There will be a few light bites in addition to cocktails. Can't wait to see you!",
     hint_note_suggestions: 'e.g. parking info, weather tips, or a warm welcome message',
-    section_meal_preferences: 'Ask for meal preferences',
-    toggle_collect_meal: 'Collect meal choices for this event',
-    aria_remove_meal: 'Remove {option}',
-    placeholder_meal_option: 'Add a meal option (e.g. Vegetarian)',
-    add_meal_option: 'Add meal option',
     delete_event: 'Delete event',
     btn_saving: 'Saving…',
     btn_save_changes: 'Save changes',
@@ -1836,7 +1813,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     preview_add_date: 'Add an event date',
     preview_attire_label: 'Dress code',
     preview_note_label: 'Note to guests',
-    preview_meal_label: 'Meal choices',
     promo_label: 'Sharing',
     promo_body:
       'Each event has its own RSVP link. Send it on WhatsApp, SMS or email and guests reply per event. You can see every response in the guest list.',
@@ -1934,7 +1910,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     no_design_cta: 'Browse card designs',
     no_design_pick_cta: 'Pick your paid design',
     card_purchased: 'Card purchased',
-    card_purchased_tier: '{tier} card purchased',
     fact_package: 'Package',
     fact_design: 'Design',
     fact_invites_paid: 'Invites paid',

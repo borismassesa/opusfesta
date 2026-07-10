@@ -57,9 +57,6 @@ type FormState = {
   /** Free-text label used when event_type is 'other'. */
   custom_type: string
   startDate: string
-  startTime: string
-  endDate: string
-  endTime: string
   venue_name: string
   address: string
   city: string
@@ -67,8 +64,6 @@ type FormState = {
   allow_rsvp: boolean
   dress_code: string
   description: string
-  collect_meal_choice: boolean
-  meal_options: string[]
 }
 
 const EMPTY_FORM: FormState = {
@@ -76,9 +71,6 @@ const EMPTY_FORM: FormState = {
   event_type: 'wedding',
   custom_type: '',
   startDate: '',
-  startTime: '',
-  endDate: '',
-  endTime: '',
   venue_name: '',
   address: '',
   city: '',
@@ -86,42 +78,33 @@ const EMPTY_FORM: FormState = {
   allow_rsvp: false,
   dress_code: '',
   description: '',
-  collect_meal_choice: false,
-  meal_options: [],
 }
 
 // ------------------------------------------------------------------- helpers
 
-function splitLocal(iso: string | null): { date: string; time: string } {
-  if (!iso) return { date: '', time: '' }
+function splitLocal(iso: string | null): string {
+  if (!iso) return ''
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return { date: '', time: '' }
+  if (Number.isNaN(d.getTime())) return ''
   const off = d.getTimezoneOffset()
   const local = new Date(d.getTime() - off * 60000)
-  const s = local.toISOString()
-  return { date: s.slice(0, 10), time: s.slice(11, 16) }
+  return local.toISOString().slice(0, 10)
 }
 
-function combineLocal(date: string, time: string): string | null {
+function combineLocal(date: string): string | null {
   if (!date) return null
-  const t = time || '00:00'
-  const local = new Date(`${date}T${t}`)
+  const local = new Date(`${date}T00:00`)
   if (Number.isNaN(local.getTime())) return null
   return local.toISOString()
 }
 
 function fromEvent(e: WeddingEvent): FormState {
-  const start = splitLocal(e.starts_at)
-  const end = splitLocal(e.ends_at)
   const known = e.event_type in EVENT_TYPE_LABELS
   return {
     name: e.name,
     event_type: known ? e.event_type : 'other',
     custom_type: known ? '' : e.event_type,
-    startDate: start.date,
-    startTime: start.time,
-    endDate: end.date,
-    endTime: end.time,
+    startDate: splitLocal(e.starts_at),
     venue_name: e.venue_name ?? '',
     address: e.address ?? '',
     city: e.city ?? '',
@@ -129,8 +112,6 @@ function fromEvent(e: WeddingEvent): FormState {
     allow_rsvp: e.allow_rsvp,
     dress_code: e.dress_code ?? '',
     description: e.description ?? '',
-    collect_meal_choice: e.collect_meal_choice,
-    meal_options: e.meal_options,
   }
 }
 
@@ -146,13 +127,10 @@ function toPayload(f: FormState): EventInput {
     venue_name: f.venue_name.trim() || null,
     address: f.address.trim() || null,
     city: f.city.trim() || null,
-    starts_at: combineLocal(f.startDate, f.startTime),
-    ends_at: combineLocal(f.endDate, f.endTime),
+    starts_at: combineLocal(f.startDate),
     dress_code: f.dress_code.trim() || null,
     is_public: f.is_public,
     allow_rsvp: f.allow_rsvp,
-    collect_meal_choice: f.collect_meal_choice,
-    meal_options: f.collect_meal_choice ? f.meal_options.filter((m) => m.trim()) : [],
   }
 }
 
@@ -814,23 +792,6 @@ function PreviewCard({
               {strings.preview_note_label}
             </p>
             <p className="mt-1 text-sm text-[#1A1A1A]/75">{form.description}</p>
-          </div>
-        ) : null}
-        {form.collect_meal_choice && form.meal_options.length ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              {strings.preview_meal_label}
-            </p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {form.meal_options.map((m) => (
-                <span
-                  key={m}
-                  className="rounded-full bg-black/[0.05] px-2.5 py-0.5 text-xs text-[#1A1A1A]/80"
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
           </div>
         ) : null}
       </div>

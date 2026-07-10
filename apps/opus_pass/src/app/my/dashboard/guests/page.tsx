@@ -1,5 +1,6 @@
 import {
   getGuestsWithInvitations,
+  getSentEventIdsByGuest,
   getEvents,
   getCoupleProfile,
   coupleDisplayName,
@@ -40,8 +41,9 @@ export default async function GuestsPage({
     )
   }
 
-  const [guests, profile, hero, collectorToken, copy] = await Promise.all([
+  const [guests, sentEventIds, profile, hero, collectorToken, copy] = await Promise.all([
     getGuestsWithInvitations(),
+    getSentEventIdsByGuest(),
     getCoupleProfile(),
     loadDashboardHero('guests', locale),
     getMyCollectorToken(),
@@ -59,6 +61,7 @@ export default async function GuestsPage({
       <ReviewQueue initial={awaitingReview} />
       <GuestsManager
         initialGuests={confirmedGuests}
+        sentEventIds={sentEventIds}
         events={events}
         eventFilter={scope.isAll ? ALL_EVENTS : (scope.selected?.id ?? ALL_EVENTS)}
         scopeStrings={scopeStrings}

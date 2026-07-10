@@ -25,6 +25,9 @@ import {
   ExternalLink,
   Target,
   Wallet,
+  Loader2,
+  Image as ImageIcon,
+  ShoppingBag,
 } from 'lucide-react'
 import { Card, EmptyState } from '@/components/dashboard/primitives'
 import { ChartCard, BarRows, Funnel, LineChart } from '@/components/dashboard/charts'
@@ -38,9 +41,19 @@ import {
   recordPledgeReminder,
   updatePledgeCollection,
   sendWhatsAppPledgeRequests,
+  sendEmailPledgeRequests,
+  sendSmsPledgeRequests,
+  setPledgeCoverImage,
+  applyPledgeCardTemplate,
   type PledgeInput,
 } from '@/lib/dashboard/actions'
-import { PAYMENT_PROVIDERS, type PledgePaymentMethod } from '@/lib/dashboard/pledge-page'
+import { PAYMENT_PROVIDERS, COVER_TONES, type PledgePaymentMethod } from '@/lib/dashboard/pledge-page'
+import {
+  PLEDGE_CARD_TEMPLATES,
+  PLEDGE_TEMPLATE_FREE_TIER_IDS,
+  PLEDGE_TEMPLATE_UNLOCK_FEE,
+} from '@/lib/dashboard/pledge-card-templates'
+import { CoverUploader } from '@/components/dashboard/page-customizer'
 import {
   pledgeUrl,
   pledgeReminderMessage,
@@ -70,6 +83,7 @@ import {
   PAYMENT_METHOD_LABELS,
   PLEDGE_STATUS_LABELS,
 } from '@/lib/dashboard/types'
+import { PLEDGE_CURRENCIES, toTzs } from '@/lib/dashboard/currency'
 
 type ContactLite = {
   id: string
@@ -151,19 +165,23 @@ function outstandingAging(pledges: PledgeWithContact[]): AgingBucket[] {
     const bucket =
       d === null ? at('nodate') : d >= 0 ? at('due') : d >= -7 ? at('over1') : d >= -30 ? at('over8') : at('over30')
     bucket.count += 1
-    bucket.amount += owing
+    // Amounts pooled across pledges must share one currency — convert each
+    // pledge's own currency to TZS before adding it to the bucket total.
+    bucket.amount += toTzs(owing, p.currency)
   }
   return buckets.filter((b) => b.count > 0)
 }
 
-/** Cumulative pledged amount over time (grouped by creation day) for the trend chart. */
+/** Cumulative pledged amount over time (grouped by creation day) for the
+ *  trend chart. Each pledge is converted to TZS before summing so pledges
+ *  in different currencies don't get added together at face value. */
 function cumulativePledgedByDay(pledges: PledgeWithContact[]): { label: string; value: number }[] {
   const byDay = new Map<string, number>()
   for (const p of pledges) {
     if (p.status === 'declined') continue
     const day = (p.created_at || '').slice(0, 10)
     if (!day) continue
-    byDay.set(day, (byDay.get(day) ?? 0) + p.pledged_amount)
+    byDay.set(day, (byDay.get(day) ?? 0) + toTzs(p.pledged_amount, p.currency))
   }
   const days = [...byDay.keys()].sort()
   let cumulative = 0
@@ -174,11 +192,17 @@ function cumulativePledgedByDay(pledges: PledgeWithContact[]): { label: string; 
 }
 
 /** Largest pledges first (declined and zero-amount excluded) — feeds the
- *  "top contributors" recognition list. */
+ *  "top contributors" recognition list. Ranked by TZS-equivalent value so a
+ *  pledge in a stronger currency doesn't rank below a larger face-value
+ *  pledge in a weaker one. */
 function topContributors(pledges: PledgeWithContact[], limit = 10): PledgeWithContact[] {
   return pledges
     .filter((p) => p.status !== 'declined' && p.pledged_amount > 0)
-    .sort((a, b) => b.pledged_amount - a.pledged_amount || b.amount_received - a.amount_received)
+    .sort(
+      (a, b) =>
+        toTzs(b.pledged_amount, b.currency) - toTzs(a.pledged_amount, a.currency) ||
+        toTzs(b.amount_received, b.currency) - toTzs(a.amount_received, a.currency),
+    )
     .slice(0, limit)
 }
 
@@ -230,8 +254,15 @@ export default function PledgesManager({
   weddingDate,
   hero,
   pledgeToken,
+  pledgeCoverImageUrl,
+  pledgeCoverIsFullTemplate,
+  purchasedCard,
+  hasUnassignedOrder,
+  packageTierId,
   copy,
   whatsappLive,
+  emailLive,
+  smsLive,
 }: {
   initialPledges: PledgeWithContact[]
   stats: PledgeStats
@@ -247,8 +278,22 @@ export default function PledgesManager({
   weddingDate: string | null
   hero: DashboardHeroContent
   pledgeToken: string | null
+  /** Current pledge-page cover image (purchased design or an upload), if any. */
+  pledgeCoverImageUrl: string | null
+  /** True when the cover is a pre-designed template (names/date baked in). */
+  pledgeCoverIsFullTemplate: boolean
+  /** A paid invitation card design already linked to this event, if any —
+   *  offered as a one-click pledge-card cover. */
+  purchasedCard: { cardName: string | null; cardImageUrl: string | null } | null
+  /** True when the couple has a paid card design not yet linked to any event. */
+  hasUnassignedOrder: boolean
+  /** Package tier (lite/classic/elegant/signature) behind this event's paid
+   *  order, if any — Elegant/Signature get free pledge-card templates. */
+  packageTierId: string | null
   copy: PledgesDashboardCopy
   whatsappLive: boolean
+  emailLive: boolean
+  smsLive: boolean
 }) {
   const [section, setSection] = useState<Section>('manage')
   const [query, setQuery] = useState('')
@@ -517,8 +562,8 @@ export default function PledgesManager({
       .map((s) => {
         const rows = initialPledges.filter((p) => p.status === s)
         return `<tr><td>${PLEDGE_STATUS_LABELS[s]}</td><td class="r">${rows.length}</td><td class="r">${fmt(
-          rows.reduce((n, p) => n + p.pledged_amount, 0),
-        )}</td><td class="r">${fmt(rows.reduce((n, p) => n + p.amount_received, 0))}</td></tr>`
+          rows.reduce((n, p) => n + toTzs(p.pledged_amount, p.currency), 0),
+        )}</td><td class="r">${fmt(rows.reduce((n, p) => n + toTzs(p.amount_received, p.currency), 0))}</td></tr>`
       })
       .join('')
 
@@ -532,8 +577,9 @@ export default function PledgesManager({
     const topRows = topContributors(initialPledges, 10)
       .map(
         (p) =>
-          `<tr><td>${esc(p.full_name)}</td><td class="r">${fmt(p.pledged_amount)}</td><td class="r">${fmt(
+          `<tr><td>${esc(p.full_name)}</td><td class="r">${formatMoney(p.pledged_amount, p.currency)}</td><td class="r">${formatMoney(
             p.amount_received,
+            p.currency,
           )}</td></tr>`,
       )
       .join('')
@@ -762,6 +808,15 @@ export default function PledgesManager({
           onCopy={copyShareLink}
           copy={copy}
           contacts={contacts}
+          whatsappLive={whatsappLive}
+          emailLive={emailLive}
+          smsLive={smsLive}
+          coverImageUrl={pledgeCoverImageUrl}
+          coverIsFullTemplate={pledgeCoverIsFullTemplate}
+          purchasedCard={purchasedCard}
+          hasUnassignedOrder={hasUnassignedOrder}
+          selectedEventId={selectedEventId}
+          packageTierId={packageTierId}
         />
       ) : null}
 
@@ -1469,21 +1524,98 @@ function CollectionSection({
   )
 }
 
+type ShareChannel = 'whatsapp' | 'sms' | 'email'
+
+const SHARE_CHANNELS: { id: ShareChannel; label: string; icon: typeof MessageCircle }[] = [
+  { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { id: 'sms', label: 'SMS', icon: Smartphone },
+  { id: 'email', label: 'Email', icon: Mail },
+]
+
+const CHANNEL_BUTTON_BG: Record<ShareChannel, string> = {
+  whatsapp: 'bg-[#25D366]',
+  sms: 'bg-[#1A1A1A]',
+  email: 'bg-[#6B3FA0]',
+}
+
+function contactHasChannel(c: ContactLite, channel: ShareChannel): boolean {
+  if (channel === 'email') return Boolean(c.email)
+  return Boolean(c.whatsapp_phone || c.phone)
+}
+
 function InviteSection({
   shareLink,
   coupleName,
   onCopy,
   copy,
   contacts,
+  whatsappLive,
+  emailLive,
+  smsLive,
+  coverImageUrl,
+  coverIsFullTemplate,
+  purchasedCard,
+  hasUnassignedOrder,
+  selectedEventId,
+  packageTierId,
 }: {
   shareLink: string | null
   coupleName: string
   onCopy: () => void
   copy: PledgesDashboardCopy
   contacts: ContactLite[]
+  whatsappLive: boolean
+  emailLive: boolean
+  smsLive: boolean
+  coverImageUrl: string | null
+  coverIsFullTemplate: boolean
+  purchasedCard: { cardName: string | null; cardImageUrl: string | null } | null
+  hasUnassignedOrder: boolean
+  selectedEventId: string | null
+  packageTierId: string | null
 }) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [channel, setChannel] = useState<ShareChannel>('whatsapp')
+  const [contactSearch, setContactSearch] = useState('')
   const [pending, startTransition] = useTransition()
+  const [cover, setCover] = useState<{ url: string | null; isTemplate: boolean }>({
+    url: coverImageUrl,
+    isTemplate: coverIsFullTemplate,
+  })
+  const [savingCover, startCoverSave] = useTransition()
+  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null)
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
+  const hasFreeTemplateAccess = Boolean(packageTierId && PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(packageTierId))
+
+  function saveCover(url: string | null, isTemplate: boolean) {
+    setCover({ url, isTemplate })
+    setAppliedTemplateId(null)
+    startCoverSave(async () => {
+      try {
+        await setPledgeCoverImage(url, isTemplate)
+        toast.success(url ? 'Pledge card image saved' : 'Pledge card image removed')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not save the pledge card image')
+      }
+    })
+  }
+
+  function useTemplate(templateId: string) {
+    if (!selectedEventId) return
+    setApplyingTemplateId(templateId)
+    startCoverSave(async () => {
+      try {
+        await applyPledgeCardTemplate(selectedEventId, templateId)
+        setCover({ url: null, isTemplate: false })
+        setAppliedTemplateId(templateId)
+        toast.success('Pledge card template applied')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not apply this template')
+      } finally {
+        setApplyingTemplateId(null)
+      }
+    })
+  }
 
   if (!shareLink) {
     return (
@@ -1501,6 +1633,14 @@ function InviteSection({
   const smsUrl = smsShareUrl(noone, message)
   const emailUrl = emailShareUrl({ email: null }, `You're invited to contribute — ${coupleName}`, message)
 
+  const liveByChannel: Record<ShareChannel, boolean> = { whatsapp: whatsappLive, sms: smsLive, email: emailLive }
+  const ActiveIcon = SHARE_CHANNELS.find((c) => c.id === channel)!.icon
+  const eligible = contacts.filter((c) => contactHasChannel(c, channel))
+  const allEligiblePicked = eligible.length > 0 && eligible.every((c) => picked.has(c.id))
+  const visibleContacts = contactSearch.trim()
+    ? contacts.filter((c) => c.full_name.toLowerCase().includes(contactSearch.trim().toLowerCase()))
+    : contacts
+
   function togglePick(id: string) {
     setPicked((prev) => {
       const next = new Set(prev)
@@ -1509,16 +1649,33 @@ function InviteSection({
     })
   }
 
+  function toggleAll() {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (allEligiblePicked) eligible.forEach((c) => next.delete(c.id))
+      else eligible.forEach((c) => next.add(c.id))
+      return next
+    })
+  }
+
   function sendToPicked() {
     if (picked.size === 0) return
     const ids = [...picked]
+    const channelLabel = SHARE_CHANNELS.find((c) => c.id === channel)!.label
+    const sendFn =
+      channel === 'whatsapp' ? sendWhatsAppPledgeRequests
+      : channel === 'email' ? sendEmailPledgeRequests
+      : sendSmsPledgeRequests
     startTransition(async () => {
       try {
-        const r = await sendWhatsAppPledgeRequests(ids)
+        const r = await sendFn(ids)
+        const skippedNote = r.skipped
+          ? `, ${r.skipped} skipped (no ${channel === 'email' ? 'email' : 'phone'} on file)`
+          : ''
         toast.success(
           r.dryRun
-            ? `Dry run: would send pledge link to ${r.sent} contact${r.sent === 1 ? '' : 's'}`
-            : `Pledge link sent to ${r.sent} contact${r.sent === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed` : ''}`,
+            ? `Dry run: would send ${channelLabel} pledge link to ${r.sent} contact${r.sent === 1 ? '' : 's'}${skippedNote}`
+            : `${channelLabel} pledge link sent to ${r.sent} contact${r.sent === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed` : ''}${skippedNote}`,
         )
         setPicked(new Set())
       } catch (err) {
@@ -1529,115 +1686,379 @@ function InviteSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <a
-          href={shareLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-full border border-[#1A1A1A]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#1A1A1A] transition hover:bg-black/[0.03]"
-        >
-          <ExternalLink className="h-4 w-4" /> Preview as guest
-        </a>
-        <Link
-          href="/my/dashboard/pledges/customize"
-          className="inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-black/90"
-        >
-          <Palette className="h-4 w-4" /> Customize
-        </Link>
-      </div>
-
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        {/* Share */}
-        <Card className="space-y-5 px-5 py-5">
-          <div>
+      {/* Broad share: copy the link or hand it off to a native app — for
+          posting in a family group or a one-off manual send. */}
+      <Card className="space-y-4 px-5 py-5">
+        <div className="space-y-3 sm:flex sm:items-start sm:justify-between sm:gap-3 sm:space-y-0">
+          <div className="min-w-0 sm:flex-1">
             <h3 className="text-base font-semibold text-[#1A1A1A]">{copy.share_title}</h3>
             <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.share_description}</p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1 truncate rounded-xl border border-black/[0.12] bg-white px-3 py-2.5 text-sm text-[#1A1A1A]/80">
-              {shareLink.replace(/^https?:\/\//, '')}
-            </div>
-            <button
-              type="button"
-              onClick={onCopy}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-            >
-              <Copy className="h-3.5 w-3.5" /> Copy
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:shrink-0">
             <a
-              href={waUrl}
+              href={shareLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white hover:brightness-95"
+              className="inline-flex items-center gap-2 rounded-full border border-[#1A1A1A]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#1A1A1A] transition hover:bg-black/[0.03]"
             >
-              <MessageCircle className="h-4 w-4" /> WhatsApp
+              <ExternalLink className="h-4 w-4" /> Preview as guest
             </a>
-            <a
-              href={smsUrl}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+            <Link
+              href="/my/dashboard/pledges/customize"
+              className="inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-black/90"
             >
-              <Smartphone className="h-4 w-4" /> SMS
-            </a>
-            <a
-              href={emailUrl}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-            >
-              <Mail className="h-4 w-4" /> Email
-            </a>
+              <Palette className="h-4 w-4" /> Customize
+            </Link>
           </div>
-        </Card>
+        </div>
 
-        <Card className="space-y-2 px-5 py-5">
-          <h4 className="text-sm font-semibold text-[#1A1A1A]">The message they’ll receive</h4>
-          <div className="whitespace-pre-line rounded-xl bg-[#DCF8C6]/50 px-4 py-3 text-sm leading-relaxed text-[#1A1A1A]/85 ring-1 ring-black/[0.04]">
-            {message}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-0 flex-1 basis-64 truncate rounded-xl border border-black/[0.12] bg-white px-3 py-2.5 text-sm text-[#1A1A1A]/80">
+            {shareLink.replace(/^https?:\/\//, '')}
           </div>
-        </Card>
-      </div>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+          >
+            <Copy className="h-3.5 w-3.5" /> Copy
+          </button>
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3.5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
+          >
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </a>
+          <a
+            href={smsUrl}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+          >
+            <Smartphone className="h-4 w-4" /> SMS
+          </a>
+          <a
+            href={emailUrl}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+          >
+            <Mail className="h-4 w-4" /> Email
+          </a>
+        </div>
+      </Card>
 
+      {/* Pledge card image: a purchased card design (reusing the invitation
+          catalog) or an uploaded photo, shown as the cover on the shared
+          pledge page. */}
       <Card className="space-y-4 px-5 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-[#1A1A1A]">Pledge card image</h3>
+          <p className="mt-1 text-sm text-[#1A1A1A]/55">
+            Give your pledge page a designed look — buy a card design, or upload your own photo.
+          </p>
+        </div>
+
+        {cover.url ? (
+          <div className="flex items-start gap-3">
+            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-black/[0.12]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={cover.url} alt="Pledge card cover" className="h-full w-full object-cover" />
+            </div>
+            <div className="space-y-1.5 text-sm">
+              <p className="font-medium text-[#1A1A1A]">
+                {cover.isTemplate ? 'Using a purchased card design' : 'Using your uploaded photo'}
+              </p>
+              <button
+                type="button"
+                disabled={savingCover}
+                onClick={() => saveCover(null, false)}
+                className="text-xs font-semibold text-rose-600 underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2 rounded-xl border border-black/[0.12] p-3.5">
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1A1A1A]">
+              <ShoppingBag className="h-4 w-4" /> Buy a card design
+            </p>
+            {purchasedCard?.cardImageUrl ? (
+              <>
+                <p className="text-xs text-[#1A1A1A]/55">
+                  You already own “{purchasedCard.cardName ?? 'a card design'}” — use it as your pledge card too.
+                </p>
+                <button
+                  type="button"
+                  disabled={savingCover}
+                  onClick={() => saveCover(purchasedCard.cardImageUrl, true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#1A1A1A] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-black/90 disabled:opacity-50"
+                >
+                  {savingCover ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  Use this design
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-[#1A1A1A]/55">
+                  {hasUnassignedOrder
+                    ? 'You have a paid design not yet linked to this event — assign it from the Events page to use it here.'
+                    : 'Pick a designed card from the invitation catalog — it can double as your pledge card cover.'}
+                </p>
+                <Link
+                  href={hasUnassignedOrder ? '/my/dashboard/events' : '/invitations/catalog'}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+                >
+                  {hasUnassignedOrder ? 'Go to Events' : 'Browse designs'} <ExternalLink className="h-3 w-3" />
+                </Link>
+              </>
+            )}
+          </div>
+
+          <div className="space-y-2 rounded-xl border border-black/[0.12] p-3.5">
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1A1A1A]">
+              <ImageIcon className="h-4 w-4" /> Or upload your own photo
+            </p>
+            <CoverUploader value={null} onChange={(url) => saveCover(url, false)} />
+          </div>
+        </div>
+
+        {/* Pledge card templates: curated tone+accent looks. Free for
+            Elegant/Signature; Classic/Essential unlock via a flat one-time
+            fee (WhatsApp request today — no live payment wired yet). */}
+        <div className="space-y-3 border-t border-black/[0.06] pt-4">
           <div>
-            <h3 className="text-base font-semibold text-[#1A1A1A]">Send via WhatsApp</h3>
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1A1A1A]">
+              <Palette className="h-4 w-4" /> Pledge card templates
+            </p>
+            <p className="mt-0.5 text-xs text-[#1A1A1A]/55">
+              {hasFreeTemplateAccess
+                ? 'Included with your package — pick a look for your pledge page cover.'
+                : `Included free with Elegant & Signature packages. On your current package, unlock all templates for a one-time TZS ${PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()} fee.`}
+            </p>
+          </div>
+
+          {!hasFreeTemplateAccess ? (
+            <a
+              href={`https://wa.me/255799242471?text=${encodeURIComponent(
+                `Hi, I'd like to unlock pledge card templates for ${coupleName} (one-time TZS ${PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()} fee).`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#1A1A1A] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-black/90"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> Request to unlock — TZS {PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()}
+            </a>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
+            {PLEDGE_CARD_TEMPLATES.map((t) => {
+              const tone = COVER_TONES[t.coverTone]
+              const isApplying = applyingTemplateId === t.id && savingCover
+              const isApplied = appliedTemplateId === t.id
+              return (
+                <div
+                  key={t.id}
+                  className={cn(
+                    'space-y-1.5 rounded-xl border p-2',
+                    isApplied ? 'border-[#1A1A1A]' : 'border-black/[0.12]',
+                    !hasFreeTemplateAccess && 'opacity-60',
+                  )}
+                >
+                  <div
+                    className="relative h-16 w-full overflow-hidden rounded-lg"
+                    style={{ background: tone.gradient }}
+                  >
+                    <span
+                      className="absolute bottom-1.5 right-1.5 h-3 w-3 rounded-full border border-white/70"
+                      style={{ background: t.accent }}
+                    />
+                    {!hasFreeTemplateAccess ? (
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-white/90">
+                        Locked
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="truncate text-[11px] font-semibold text-[#1A1A1A]">{t.name}</p>
+                  {hasFreeTemplateAccess ? (
+                    <button
+                      type="button"
+                      disabled={savingCover}
+                      onClick={() => useTemplate(t.id)}
+                      className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-black/[0.14] bg-white px-2 py-1 text-[10.5px] font-semibold text-[#1A1A1A] transition hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isApplying ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : isApplied ? (
+                        <Check className="h-3 w-3" />
+                      ) : null}
+                      {isApplied ? 'Applied' : 'Use this template'}
+                    </button>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </Card>
+
+      {/* Targeted send: pick contacts, pick a channel, send that channel's
+          template (Meta-approved for WhatsApp; SMS/Email run as a dry run
+          until their providers go live). */}
+      <Card className="space-y-5 px-5 py-5">
+        <div className="space-y-3 sm:flex sm:items-start sm:justify-between sm:gap-3 sm:space-y-0">
+          <div className="min-w-0 sm:flex-1">
+            <h3 className="text-base font-semibold text-[#1A1A1A]">Send to your guests</h3>
             <p className="mt-1 text-sm text-[#1A1A1A]/55">
-              Pick saved contacts and OpusPass sends each one a WhatsApp message with the pledge link.
+              Pick saved contacts, choose a channel, and OpusPass sends each one the pledge link.
             </p>
           </div>
           <button
             type="button"
             onClick={sendToPicked}
             disabled={picked.size === 0 || pending}
-            className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50"
+            className={cn(
+              'inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:shrink-0',
+              CHANNEL_BUTTON_BG[channel],
+            )}
           >
-            <MessageCircle className="h-4 w-4" /> Send to {picked.size || ''} selected
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ActiveIcon className="h-4 w-4" />}
+            Send to {picked.size || ''} selected
           </button>
         </div>
 
-        {contacts.length === 0 ? (
-          <p className="text-sm text-[#1A1A1A]/55">No saved contacts yet — add some under Guests first.</p>
-        ) : (
-          <div className="max-h-64 divide-y divide-black/[0.05] overflow-y-auto rounded-xl border border-black/[0.08]">
-            {contacts.map((c) => (
-              <label
+        <div className="flex flex-wrap gap-2">
+          {SHARE_CHANNELS.map((c) => {
+            const Icon = c.icon
+            const isLive = liveByChannel[c.id]
+            const active = channel === c.id
+            return (
+              <button
                 key={c.id}
-                className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-black/[0.02]"
+                type="button"
+                onClick={() => setChannel(c.id)}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition',
+                  active
+                    ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
+                    : 'border-black/[0.14] bg-white text-[#1A1A1A] hover:bg-black/[0.03]',
+                )}
               >
-                <input
-                  type="checkbox"
-                  checked={picked.has(c.id)}
-                  onChange={() => togglePick(c.id)}
-                  className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
-                />
-                <span className="font-medium text-[#1A1A1A]">{c.full_name}</span>
-                <span className="text-[#1A1A1A]/50">{c.whatsapp_phone || c.phone || 'No phone'}</span>
-              </label>
-            ))}
-          </div>
-        )}
+                <Icon className="h-4 w-4" /> {c.label}
+                <span
+                  className={cn(
+                    'ml-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                    active
+                      ? 'bg-white/15 text-white'
+                      : isLive
+                        ? 'bg-[#9FE870]/35 text-[#3f6b1f]'
+                        : 'bg-black/[0.06] text-[#1A1A1A]/45',
+                  )}
+                >
+                  {isLive ? 'Live' : 'Dry run'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Contact picker, filtered to what this channel can reach */}
+        <div className="space-y-2">
+          {contacts.length === 0 ? (
+            <p className="text-sm text-[#1A1A1A]/55">No saved contacts yet — add some under Guests first.</p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-black/[0.08]">
+              <div className="flex flex-wrap items-center gap-3 border-b border-black/[0.08] bg-black/[0.015] px-4 py-3">
+                <label className="inline-flex shrink-0 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={allEligiblePicked}
+                    onChange={toggleAll}
+                    disabled={eligible.length === 0}
+                    className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
+                  />
+                  <span className="text-sm font-semibold text-[#1A1A1A]">Guests</span>
+                  <span className="text-xs text-[#1A1A1A]/45">
+                    {eligible.length} with {channel === 'email' ? 'an email' : 'a phone number'}
+                  </span>
+                </label>
+                <div className="ml-auto flex shrink-0 items-center gap-3">
+                  {picked.size > 0 ? (
+                    <span className="text-xs font-semibold text-[#1A1A1A]/60">{picked.size} selected</span>
+                  ) : null}
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1A1A1A]/35" />
+                    <input
+                      type="search"
+                      value={contactSearch}
+                      onChange={(e) => setContactSearch(e.target.value)}
+                      placeholder="Search guests…"
+                      aria-label="Search guests"
+                      className="w-44 rounded-full border border-black/[0.14] bg-white py-1.5 pl-8 pr-3 text-xs text-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]/30"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-white">
+                    <tr className="border-b border-black/[0.06] text-left text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/45">
+                      <th scope="col" className="w-10 py-2 pl-4" />
+                      <th scope="col" className="px-2 py-2">Guest</th>
+                      <th scope="col" className="px-2 py-2">Contact</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/[0.05]">
+                    {visibleContacts.map((c) => {
+                      const ok = contactHasChannel(c, channel)
+                      const detail = channel === 'email' ? c.email : c.whatsapp_phone || c.phone
+                      return (
+                        <tr
+                          key={c.id}
+                          onClick={() => ok && togglePick(c.id)}
+                          className={cn(
+                            'align-middle',
+                            ok ? 'cursor-pointer hover:bg-black/[0.02]' : 'cursor-not-allowed opacity-45',
+                          )}
+                        >
+                          <td className="py-2.5 pl-4">
+                            <input
+                              type="checkbox"
+                              checked={picked.has(c.id)}
+                              disabled={!ok}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => togglePick(c.id)}
+                              className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
+                            />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-xs font-semibold text-[#1A1A1A]/70">
+                                {c.full_name.charAt(0).toUpperCase()}
+                              </span>
+                              <span className="font-medium text-[#1A1A1A]">{c.full_name}</span>
+                            </div>
+                          </td>
+                          <td className="px-2 py-2.5 text-[#1A1A1A]/55">
+                            {detail || (channel === 'email' ? 'No email' : 'No phone')}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {visibleContacts.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-6 text-center text-sm text-[#1A1A1A]/45">
+                          No guests match your search
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </Card>
     </div>
   )
@@ -1791,13 +2212,15 @@ function ReportsSection({
   const collectionRate =
     stats.totalPledged > 0 ? Math.round((stats.totalReceived / stats.totalPledged) * 100) : 0
 
+  // All the reduces below pool amounts across pledges that may each be in a
+  // different currency, so every amount is converted to TZS before adding.
   const byStatus = (Object.keys(PLEDGE_STATUS_LABELS) as PledgeStatus[]).map((s) => {
     const rows = pledges.filter((p) => p.status === s)
     return {
       label: PLEDGE_STATUS_LABELS[s],
       count: rows.length,
-      pledged: rows.reduce((n, p) => n + p.pledged_amount, 0),
-      received: rows.reduce((n, p) => n + p.amount_received, 0),
+      pledged: rows.reduce((n, p) => n + toTzs(p.pledged_amount, p.currency), 0),
+      received: rows.reduce((n, p) => n + toTzs(p.amount_received, p.currency), 0),
     }
   })
 
@@ -1807,7 +2230,7 @@ function ReportsSection({
       return {
         label: PAYMENT_METHOD_LABELS[m],
         count: rows.length,
-        received: rows.reduce((n, p) => n + p.amount_received, 0),
+        received: rows.reduce((n, p) => n + toTzs(p.amount_received, p.currency), 0),
       }
     })
     .filter((r) => r.count > 0)
@@ -1816,8 +2239,8 @@ function ReportsSection({
     pledges.reduce<Record<string, { pledged: number; received: number; count: number }>>((acc, p) => {
       const key = p.group_tag?.trim() || 'Ungrouped'
       const g = acc[key] ?? { pledged: 0, received: 0, count: 0 }
-      g.pledged += p.pledged_amount
-      g.received += p.amount_received
+      g.pledged += toTzs(p.pledged_amount, p.currency)
+      g.received += toTzs(p.amount_received, p.currency)
       g.count += 1
       acc[key] = g
       return acc
@@ -1853,12 +2276,15 @@ function ReportsSection({
   const awaitingCount = pledges.filter((p) => p.status === 'invited').length
   const top = topContributors(pledges, 10)
 
-  // Pledge-amount mix (count-based fulfillment + average / largest).
+  // Pledge-amount mix (count-based fulfillment + average / largest), pooled
+  // in TZS since `contributing` can span multiple currencies.
   const contributing = pledges.filter((p) => p.status !== 'declined' && p.pledged_amount > 0)
   const avgPledge = contributing.length
-    ? Math.round(contributing.reduce((n, p) => n + p.pledged_amount, 0) / contributing.length)
+    ? Math.round(
+        contributing.reduce((n, p) => n + toTzs(p.pledged_amount, p.currency), 0) / contributing.length,
+      )
     : 0
-  const largestPledge = contributing.reduce((m, p) => Math.max(m, p.pledged_amount), 0)
+  const largestPledge = contributing.reduce((m, p) => Math.max(m, toTzs(p.pledged_amount, p.currency)), 0)
   const fulfillmentRate = stats.totalPledges > 0 ? Math.round((stats.paidCount / stats.totalPledges) * 100) : 0
 
   // Goal progress.
@@ -2002,7 +2428,7 @@ function ReportsSection({
         <ReportTable
           title="Top contributors"
           head={['Contributor', 'Pledged', 'Received']}
-          rows={top.map((p) => [p.full_name, formatMoney(p.pledged_amount, 'TZS'), formatMoney(p.amount_received, 'TZS')])}
+          rows={top.map((p) => [p.full_name, formatMoney(p.pledged_amount, p.currency), formatMoney(p.amount_received, p.currency)])}
         />
       ) : null}
 
@@ -2238,10 +2664,11 @@ function PledgeSlideover({
                 value={form.currency}
                 onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
               >
-                <option value="TZS">TZS</option>
-                <option value="USD">USD</option>
-                <option value="KES">KES</option>
-                <option value="EUR">EUR</option>
+                {PLEDGE_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Amount pledged">

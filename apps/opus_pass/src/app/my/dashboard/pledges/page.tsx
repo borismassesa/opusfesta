@@ -6,6 +6,9 @@ import {
   getCoupleProfile,
   coupleDisplayName,
   getMyPledgeToken,
+  getMyPledgePageConfig,
+  getEventOrderLinks,
+  getEventPackageTierId,
   type PledgeScope,
 } from '@/lib/dashboard/queries'
 import { resolveEventScope } from '@/lib/dashboard/event-scope'
@@ -15,6 +18,8 @@ import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import { getLocale } from '@/lib/cms/locale'
 import { loadUiStrings } from '@/lib/cms/ui-strings'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
+import { getSmsProvider } from '@/lib/sms'
+import { isEmailConfigured } from '@/lib/email'
 import PledgesManager from './PledgesManager'
 
 export const dynamic = 'force-dynamic'
@@ -50,14 +55,23 @@ export default async function PledgesPage({
     ? { eventId: selectedEventId, includeUnassigned: selectedEventId === events[0]?.id }
     : {}
 
-  const [pledges, guests, profile, pledgeToken, copy] = await Promise.all([
+  const [pledges, guests, profile, pledgeToken, pledgePageConfig, orderLinks, copy, packageTierId] = await Promise.all([
     getPledges(pledgeScope),
     getGuestsWithInvitations(),
     getCoupleProfile(),
     getMyPledgeToken(),
+    getMyPledgePageConfig(),
+    getEventOrderLinks(),
     loadDashboardCopy('pledges', locale),
+    selectedEventId ? getEventPackageTierId(selectedEventId) : Promise.resolve(null),
   ])
   const stats = pledgeStatsFrom(pledges)
+  // The first paid card design (if any) linked to this event — offered as a
+  // one-click pledge-card cover so couples don't have to buy a second design
+  // just for the pledge page.
+  const purchasedCard =
+    (selectedEventId ? orderLinks.byEvent[selectedEventId] : undefined)?.find((o) => o.cardImageUrl) ?? null
+  const hasUnassignedOrder = orderLinks.unassigned.length > 0
   return (
     <PledgesManager
       initialPledges={pledges}
@@ -79,8 +93,15 @@ export default async function PledgesPage({
       weddingDate={profile?.wedding_date ?? null}
       hero={hero}
       pledgeToken={pledgeToken}
+      pledgeCoverImageUrl={pledgePageConfig.coverImageUrl ?? null}
+      pledgeCoverIsFullTemplate={pledgePageConfig.coverIsFullTemplate ?? false}
+      purchasedCard={purchasedCard ? { cardName: purchasedCard.cardName, cardImageUrl: purchasedCard.cardImageUrl } : null}
+      hasUnassignedOrder={hasUnassignedOrder}
+      packageTierId={packageTierId}
       copy={copy}
       whatsappLive={getWhatsAppProvider().live}
+      emailLive={isEmailConfigured()}
+      smsLive={getSmsProvider().live}
     />
   )
 }
