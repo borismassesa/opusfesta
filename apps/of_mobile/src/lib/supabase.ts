@@ -29,7 +29,7 @@ function assertSupabaseEnvConfigured() {
 
   throw new Error(
     `Missing Supabase environment variables: ${missingSupabaseEnvVars.join(', ')}. ` +
-      'Set them in apps/mobile/.env.',
+      'Set them in apps/of_mobile/.env.',
   );
 }
 

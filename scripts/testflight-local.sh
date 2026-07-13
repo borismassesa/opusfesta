@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-MOBILE_DIR="$(cd "$(dirname "$0")/../apps/mobile" && pwd)"
+MOBILE_DIR="$(cd "$(dirname "$0")/../apps/of_mobile" && pwd)"
 WORKSPACE="$MOBILE_DIR/ios/OpusFesta.xcworkspace"
 SCHEME="OpusFesta"
 ARCHIVE_PATH="/tmp/OpusFesta.xcarchive"
@@ -38,7 +38,7 @@ echo "==> OpusFesta local TestFlight build"
 ENV_PRODUCTION="$MOBILE_DIR/.env.production"
 trap 'rm -f "$ENV_PRODUCTION"' EXIT
 echo "==> Pulling production env vars from EAS..."
-(cd "$MOBILE_DIR" && npx eas env:pull production --path "$ENV_PRODUCTION" --non-interactive)
+(cd "$MOBILE_DIR" && eas env:pull production --path "$ENV_PRODUCTION" --non-interactive)
 
 # 1. Prebuild (generates native iOS project from Expo config)
 if [[ "$SKIP_PREBUILD" == false ]]; then

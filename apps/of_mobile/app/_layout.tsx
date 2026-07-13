@@ -46,7 +46,7 @@ function MissingConfigScreen({ missingVars }: { missingVars: string[] }) {
           </Text>
         ))}
         <Text className="mt-4 font-work-sans text-xs leading-5 text-red-700">
-          Add them to apps/mobile/.env and restart Expo.
+          Add them to apps/of_mobile/.env and restart Expo.
         </Text>
       </View>
     </View>
