@@ -274,6 +274,9 @@ const ALL_PERMISSION_KEYS: readonly PermissionKey[] = [
   'opuspass.checkin',
   // OpusPass ticket generation: importing guest lists + printable entry-pass tickets.
   'opuspass.tickets',
+  // Pledge Concierge: staff-run pledge campaigns for Elegant/Signature couples.
+  'opuspass.pledges.read',
+  'opuspass.pledges.write',
   // MD Daily Tracker: each engine's MD can only write their own engine's rows.
   'md_tracker.opusfesta.write',
   'md_tracker.opusstudio.write',
@@ -342,6 +345,8 @@ function fallbackRolePermissions(role: AdminAccessRole): Set<PermissionKey> {
         'insights.read',
         'opuspass.checkin',
         'opuspass.tickets',
+        'opuspass.pledges.read',
+        'opuspass.pledges.write',
         'md_tracker.opusfesta.write',
         'md_tracker.opusstudio.write',
         'md_tracker.opuspass.write',
