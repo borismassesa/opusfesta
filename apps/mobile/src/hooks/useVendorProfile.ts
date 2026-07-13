@@ -1,7 +1,16 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthenticatedSupabase } from '@/lib/supabase';
-import { updateMyVendor, updateVendorPackages } from '@/lib/api/vendorProfile';
+import { getVendorDashboardStats, updateMyVendor, updateVendorPackages } from '@/lib/api/vendorProfile';
 import type { VendorPackage, VendorRow } from '@/types/vendor';
+
+export function useVendorDashboardStats(vendorId: string | undefined) {
+  const client = useAuthenticatedSupabase();
+  return useQuery({
+    queryKey: ['vendor-dashboard', vendorId],
+    queryFn: () => getVendorDashboardStats(client, vendorId!),
+    enabled: !!vendorId,
+  });
+}
 
 function useInvalidateVendor() {
   const queryClient = useQueryClient();

@@ -15,6 +15,7 @@ import {
   useRecordInvitationSend,
 } from '@/hooks/useGuestList';
 import { buildRsvpLink } from '@/lib/api/guests';
+import type { Guest } from '@/types/guest';
 import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
@@ -33,24 +34,13 @@ const RSVP_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
 };
 
 function StatCard({ label, value }: { label: string; value: number }) {
-  const { editorial } = useTheme();
   return (
     <View
-      style={[
-        {
-          flex: 1,
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 12,
-          alignItems: 'center',
-        },
-        shadowSoftSm,
-      ]}
+      className="flex-1 bg-ed-surface-container-lowest rounded-xl border border-ed-outline-variant p-3 items-center"
+      style={shadowSoftSm}
     >
-      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onSurface }}>{value}</Text>
-      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 0.5, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+      <Text className="font-space-grotesk-bold text-xl text-ed-on-surface">{value}</Text>
+      <Text className="font-work-sans-bold text-[10px] tracking-[0.5px] text-ed-on-surface-variant mt-0.5">
         {label}
       </Text>
     </View>
@@ -75,9 +65,9 @@ export default function GuestListScreen() {
 
   const counts = {
     total: guests.length,
-    attending: guests.filter((g: any) => g.rsvp_status === 'attending').length,
-    pending: guests.filter((g: any) => g.rsvp_status === 'pending').length,
-    declined: guests.filter((g: any) => g.rsvp_status === 'declined').length,
+    attending: guests.filter((g) => g.rsvp_status === 'attending').length,
+    pending: guests.filter((g) => g.rsvp_status === 'pending').length,
+    declined: guests.filter((g) => g.rsvp_status === 'declined').length,
   };
 
   const handleAdd = () => {
@@ -95,13 +85,13 @@ export default function GuestListScreen() {
     );
   };
 
-  const cycleRsvp = (guest: any) => {
+  const cycleRsvp = (guest: Guest) => {
     const idx = RSVP_CYCLE.indexOf(guest.rsvp_status);
     const next = RSVP_CYCLE[(idx + 1) % RSVP_CYCLE.length];
     updateRsvp.mutate({ guestContactId: guest.id, rsvpStatus: next });
   };
 
-  const handleSendInvite = async (guest: any) => {
+  const handleSendInvite = async (guest: Guest) => {
     if (!guest.public_token) return;
     const link = buildRsvpLink(guest.public_token);
     const result = await Share.share({
@@ -113,7 +103,7 @@ export default function GuestListScreen() {
     }
   };
 
-  const confirmDelete = (guest: any) => {
+  const confirmDelete = (guest: Guest) => {
     Alert.alert('Remove guest', `Remove ${guest.full_name} from your guest list?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => deleteGuest.mutate(guest.id) },
@@ -128,14 +118,7 @@ export default function GuestListScreen() {
         rightAction={
           <Pressable
             onPress={() => setShowAdd((v) => !v)}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: editorial.primaryContainer,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="w-9 h-9 rounded-full items-center justify-center bg-ed-primary-container"
           >
             <Ionicons name={showAdd ? 'close' : 'add'} size={20} color="#fff" />
           </Pressable>
@@ -143,12 +126,12 @@ export default function GuestListScreen() {
       />
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : (
         <>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          <View className="flex-row gap-2 mb-4">
             <StatCard label="TOTAL" value={counts.total} />
             <StatCard label="ATTENDING" value={counts.attending} />
             <StatCard label="PENDING" value={counts.pending} />
@@ -156,7 +139,7 @@ export default function GuestListScreen() {
           </View>
 
           {showAdd && (
-            <View style={{ gap: 10, marginBottom: 16 }}>
+            <View className="gap-2.5 mb-4">
               <Input label="Name" value={name} onChangeText={setName} placeholder="Guest name" />
               <Input
                 label="Phone (optional)"
@@ -176,51 +159,33 @@ export default function GuestListScreen() {
           )}
 
           {guests.length === 0 ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-              <Text
-                style={{
-                  fontFamily: 'WorkSans-Regular',
-                  fontSize: 14,
-                  color: editorial.onSurfaceVariant,
-                  textAlign: 'center',
-                }}
-              >
+            <View className="flex-1 items-center justify-center px-8">
+              <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center">
                 No guests yet. Tap + to add your first guest.
               </Text>
             </View>
           ) : (
             <FlatList
               data={guests}
-              keyExtractor={(item: any) => item.id}
+              keyExtractor={(item) => item.id}
               contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
-              renderItem={({ item }: any) => (
+              renderItem={({ item }) => (
                 <View
-                  style={[
-                    {
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: editorial.surfaceContainerLowest,
-                      borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: editorial.outlineVariant,
-                      padding: 14,
-                      gap: 10,
-                    },
-                    shadowSoftSm,
-                  ]}
+                  className="flex-row items-center bg-ed-surface-container-lowest rounded-[14px] border border-ed-outline-variant p-3.5 gap-2.5"
+                  style={shadowSoftSm}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
+                  <View className="flex-1">
+                    <Text className="font-space-grotesk-bold text-sm text-ed-on-surface">
                       {item.full_name}
                     </Text>
                     {(item.group_tag || item.phone) && (
-                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                      <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5">
                         {[item.group_tag, item.phone].filter(Boolean).join(' · ')}
                       </Text>
                     )}
                     {item.responded_at && (item.meal_choice || item.guest_message || item.party_size > 1) && (
-                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginTop: 4 }} numberOfLines={2}>
+                      <Text className="font-work-sans text-[11px] text-ed-on-surface-variant mt-1" numberOfLines={2}>
                         {[
                           item.party_size > 1 ? `Party of ${item.party_size}` : null,
                           item.meal_choice,
@@ -231,20 +196,20 @@ export default function GuestListScreen() {
                       </Text>
                     )}
                     {item.last_invited_at && (
-                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 10, color: editorial.outline, marginTop: 2 }}>
+                      <Text className="font-work-sans text-[10px] text-ed-outline mt-0.5">
                         Invited {new Date(item.last_invited_at).toLocaleDateString()}
                       </Text>
                     )}
                   </View>
                   {item.public_token && (
-                    <Pressable onPress={() => handleSendInvite(item)} style={{ padding: 4 }}>
+                    <Pressable onPress={() => handleSendInvite(item)} className="p-1">
                       <Ionicons name="paper-plane-outline" size={18} color={editorial.primaryContainer} />
                     </Pressable>
                   )}
                   <Pressable onPress={() => cycleRsvp(item)}>
                     <Badge label={RSVP_LABEL[item.rsvp_status] ?? item.rsvp_status} variant={RSVP_VARIANT[item.rsvp_status] ?? 'default'} />
                   </Pressable>
-                  <Pressable onPress={() => confirmDelete(item)} style={{ padding: 4 }}>
+                  <Pressable onPress={() => confirmDelete(item)} className="p-1">
                     <Ionicons name="trash-outline" size={18} color={editorial.error} />
                   </Pressable>
                 </View>

@@ -11,9 +11,9 @@ export default function WelcomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={{ flex: 1, backgroundColor: editorial.bg }}>
+    <View className="flex-1" style={{ backgroundColor: editorial.bg }}>
       {/* ─── Top: Hero ─── */}
-      <View style={{ flex: 0.45, position: 'relative', overflow: 'hidden' }}>
+      <View className="relative overflow-hidden" style={{ flex: 0.45 }}>
         <LinearGradient
           colors={[purpleTints[200], purpleTints[300], purpleTints[400]]}
           style={StyleSheet.absoluteFill}
@@ -25,21 +25,16 @@ export default function WelcomeScreen() {
         />
 
         {/* Logo on top of video */}
-        <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 }}>
+        <SafeAreaView edges={['top']} className="absolute top-0 left-0 right-0">
+          <View className="flex-row items-center px-6 pt-2">
             <Image
               source={logoMark}
-              style={{ width: 32, height: 32 }}
+              className="w-8 h-8"
               resizeMode="contain"
             />
             <Text
-              style={{
-                fontFamily: 'SpaceGrotesk-Bold',
-                fontSize: 18,
-                color: '#fff',
-                letterSpacing: -0.5,
-                marginLeft: 8,
-              }}
+              className="font-space-grotesk-bold text-lg tracking-[-0.5px] ml-2"
+              style={{ color: '#fff' }}
             >
               OpusFesta
             </Text>
@@ -47,14 +42,10 @@ export default function WelcomeScreen() {
         </SafeAreaView>
 
         {/* Tagline over video bottom */}
-        <View style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
+        <View className="absolute bottom-6 left-6 right-6">
           <Text
-            style={{
-              fontFamily: 'PlayfairDisplay-Bold',
-              fontSize: 32,
-              lineHeight: 38,
-              color: '#fff',
-            }}
+            className="font-playfair-bold text-[32px] leading-[38px]"
+            style={{ color: '#fff' }}
           >
             Plan Less.{'\n'}
             <Text style={{ color: purpleTints[300] }}>Celebrate More.</Text>
@@ -64,27 +55,17 @@ export default function WelcomeScreen() {
 
       {/* ─── Bottom: Content + CTAs ─── */}
       <SafeAreaView edges={['bottom']} style={{ flex: 0.55, backgroundColor: editorial.bg }}>
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24 }}>
+        <View className="flex-1 px-6 pt-6">
           {/* Subtitle */}
           <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 15,
-              lineHeight: 22,
-              color: editorial.onSurfaceVariant,
-            }}
+            className="font-work-sans text-[15px] leading-[22px]"
+            style={{ color: editorial.onSurfaceVariant }}
           >
             Discover East Africa's premier wedding vendors and create moments that last a lifetime.
           </Text>
 
           {/* Stats row */}
-          <View
-            style={{
-              flexDirection: 'row',
-              marginTop: 20,
-              gap: 8,
-            }}
-          >
+          <View className="flex-row mt-5 gap-2">
             {[
               { value: '500+', label: 'Vendors', emoji: '✨' },
               { value: '12k+', label: 'Events', emoji: '💍' },
@@ -92,37 +73,19 @@ export default function WelcomeScreen() {
             ].map((stat) => (
               <View
                 key={stat.label}
-                style={[
-                  {
-                    flex: 1,
-                    backgroundColor: purpleTints[50],
-                    borderRadius: 10,
-                    paddingVertical: 12,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: purpleTints[150],
-                  },
-                ]}
+                className="flex-1 rounded-[10px] py-3 items-center border"
+                style={{ backgroundColor: purpleTints[50], borderColor: purpleTints[150] }}
               >
-                <Text style={{ fontSize: 16, marginBottom: 4 }}>{stat.emoji}</Text>
+                <Text className="text-base mb-1">{stat.emoji}</Text>
                 <Text
-                  style={{
-                    fontFamily: 'SpaceGrotesk-Bold',
-                    fontSize: 18,
-                    color: purpleTints[700],
-                  }}
+                  className="font-space-grotesk-bold text-lg"
+                  style={{ color: purpleTints[700] }}
                 >
                   {stat.value}
                 </Text>
                 <Text
-                  style={{
-                    fontFamily: 'WorkSans-Bold',
-                    fontSize: 9,
-                    letterSpacing: 1,
-                    textTransform: 'uppercase',
-                    color: editorial.outline,
-                    marginTop: 2,
-                  }}
+                  className="font-work-sans-bold text-[9px] tracking-[1px] uppercase mt-0.5"
+                  style={{ color: editorial.outline }}
                 >
                   {stat.label}
                 </Text>
@@ -131,30 +94,17 @@ export default function WelcomeScreen() {
           </View>
 
           {/* Spacer */}
-          <View style={{ flex: 1 }} />
+          <View className="flex-1" />
 
           {/* Primary CTA */}
           <Pressable
             onPress={() => router.push('/(auth)/sign-up?role=couple')}
-            style={[
-              {
-                backgroundColor: purpleTints[700],
-                paddingVertical: 18,
-                borderRadius: 9999,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 8,
-              },
-              shadowSoftPrimary,
-            ]}
+            className="rounded-full items-center justify-center flex-row gap-2 py-[18px]"
+            style={[{ backgroundColor: purpleTints[700] }, shadowSoftPrimary]}
           >
             <Text
-              style={{
-                fontFamily: 'SpaceGrotesk-Bold',
-                fontSize: 17,
-                color: '#fff',
-              }}
+              className="font-space-grotesk-bold text-[17px]"
+              style={{ color: '#fff' }}
             >
               Get Started
             </Text>
@@ -164,26 +114,15 @@ export default function WelcomeScreen() {
           {/* Secondary CTA */}
           <Pressable
             onPress={() => router.push('/(auth)/sign-in')}
+            className="mt-3 py-4 rounded-full items-center justify-center border"
             style={[
-              {
-                marginTop: 12,
-                paddingVertical: 16,
-                borderRadius: 9999,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                backgroundColor: editorial.surfaceContainerLowest,
-              },
+              { borderColor: editorial.outlineVariant, backgroundColor: editorial.surfaceContainerLowest },
               shadowSoftSm,
             ]}
           >
             <Text
-              style={{
-                fontFamily: 'SpaceGrotesk-Bold',
-                fontSize: 15,
-                color: editorial.onSurface,
-              }}
+              className="font-space-grotesk-bold text-[15px]"
+              style={{ color: editorial.onSurface }}
             >
               I already have an account
             </Text>
@@ -192,17 +131,14 @@ export default function WelcomeScreen() {
           {/* Vendor link */}
           <Pressable
             onPress={() => router.push('/(auth)/sign-up?role=vendor')}
-            style={{ alignItems: 'center', marginTop: 16, paddingBottom: 8 }}
+            className="items-center mt-4 pb-2"
           >
             <Text
-              style={{
-                fontFamily: 'WorkSans-Bold',
-                fontSize: 12,
-                color: purpleTints[500],
-              }}
+              className="font-work-sans-bold text-xs"
+              style={{ color: purpleTints[500] }}
             >
               Are you a vendor?{' '}
-              <Text style={{ textDecorationLine: 'underline' }}>Join as a partner</Text>
+              <Text className="underline">Join as a partner</Text>
             </Text>
           </Pressable>
         </View>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert, TextInput, Share, type StyleProp, type ViewStyle } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert, TextInput, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
 import { useVendorTeam, useVendorInvitations, useInviteTeamMember, useRevokeInvitation } from '@/hooks/useVendorTeam';
 import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
+import { getErrorMessage } from '@/lib/errors';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
@@ -14,27 +15,17 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function SectionTitle({ children }: { children: string }) {
-  const { editorial } = useTheme();
   return (
-    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
+    <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-2">
       {children}
     </Text>
   );
 }
 
+const CARD_CLASS = 'bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-4 mb-5';
+
 function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorId: string; businessName: string; ownerCanInviteManager: boolean }) {
   const { editorial } = useTheme();
-  const cardStyle: StyleProp<ViewStyle> = [
-    {
-      backgroundColor: editorial.surfaceContainerLowest,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: editorial.outlineVariant,
-      padding: 16,
-      marginBottom: 20,
-    },
-    shadowSoftSm,
-  ];
   const inviteMutation = useInviteTeamMember();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'manager' | 'staff'>('staff');
@@ -53,39 +44,39 @@ function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorI
           setIssuedCode(code);
           setEmail('');
         },
-        onError: (err: any) => Alert.alert('Could not create invite', err?.message ?? 'Please try again.'),
+        onError: (err) => Alert.alert('Could not create invite', getErrorMessage(err, 'Please try again.')),
       }
     );
   };
 
   if (issuedCode) {
     return (
-      <View style={cardStyle}>
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant }}>
+      <View className={CARD_CLASS} style={shadowSoftSm}>
+        <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant">
           Invite code — shown once
         </Text>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, letterSpacing: 4, color: editorial.onSurface, marginVertical: 10 }}>
+        <Text className="font-space-grotesk-bold text-[30px] tracking-[4px] text-ed-on-surface my-2.5">
           {issuedCode}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginBottom: 12 }}>
+        <Text className="font-work-sans text-xs text-ed-on-surface-variant mb-3">
           Share it with your team member. They sign up in the OpusFesta app, choose “Join a vendor team”, and enter this code. It expires in 7 days.
         </Text>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View className="flex-row gap-3">
           <Pressable
             onPress={() =>
               Share.share({
                 message: `You've been invited to join ${businessName} on OpusFesta. Download the app, sign up, choose "Join a vendor team", and enter this code: ${issuedCode}`,
               })
             }
-            style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: editorial.primaryContainer }}
+            className="flex-1 rounded-xl py-3 items-center bg-ed-primary-container"
           >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>Share code</Text>
+            <Text className="font-work-sans-bold text-[13px] text-white">Share code</Text>
           </Pressable>
           <Pressable
             onPress={() => setIssuedCode(null)}
-            style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: editorial.outlineVariant }}
+            className="flex-1 rounded-xl py-3 items-center border border-ed-outline-variant"
           >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Done</Text>
+            <Text className="font-work-sans-bold text-[13px] text-ed-on-surface-variant">Done</Text>
           </Pressable>
         </View>
       </View>
@@ -93,7 +84,7 @@ function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorI
   }
 
   return (
-    <View style={cardStyle}>
+    <View className={CARD_CLASS} style={shadowSoftSm}>
       <TextInput
         value={email}
         onChangeText={setEmail}
@@ -101,39 +92,24 @@ function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorI
         placeholderTextColor={editorial.onSurfaceVariant}
         keyboardType="email-address"
         autoCapitalize="none"
-        style={{
-          backgroundColor: editorial.surfaceContainerLow,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 12,
-          fontFamily: 'WorkSans-Regular',
-          fontSize: 14,
-          color: editorial.onSurface,
-          marginBottom: 12,
-        }}
+        className="bg-ed-surface-container-low rounded-xl border border-ed-outline-variant p-3 font-work-sans text-sm text-ed-on-surface mb-3"
       />
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+      <View className="flex-row gap-2 mb-3">
         {(['staff', ...(ownerCanInviteManager ? (['manager'] as const) : [])] as ('staff' | 'manager')[]).map((r) => (
           <Pressable
             key={r}
             onPress={() => setRole(r)}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 999,
-              backgroundColor: role === r ? editorial.onSurface : editorial.surfaceContainerLow,
-              borderWidth: 1,
-              borderColor: role === r ? editorial.onSurface : editorial.outlineVariant,
-            }}
+            className={`px-3.5 py-2 rounded-full border ${
+              role === r ? 'bg-ed-on-surface border-ed-on-surface' : 'bg-ed-surface-container-low border-ed-outline-variant'
+            }`}
           >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: role === r ? '#fff' : editorial.onSurfaceVariant }}>
+            <Text className={`font-work-sans-bold text-xs ${role === r ? 'text-white' : 'text-ed-on-surface-variant'}`}>
               {ROLE_LABELS[r]}
             </Text>
           </Pressable>
         ))}
       </View>
-      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginBottom: 12 }}>
+      <Text className="font-work-sans text-[11px] text-ed-on-surface-variant mb-3">
         {role === 'manager'
           ? 'Managers can edit the storefront, manage bookings and the calendar, and invite staff.'
           : 'Staff can view leads, bookings, and the calendar, and message couples.'}
@@ -141,15 +117,9 @@ function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorI
       <Pressable
         disabled={inviteMutation.isPending}
         onPress={submit}
-        style={{
-          borderRadius: 12,
-          paddingVertical: 12,
-          alignItems: 'center',
-          backgroundColor: editorial.primaryContainer,
-          opacity: inviteMutation.isPending ? 0.5 : 1,
-        }}
+        className={`rounded-xl py-3 items-center bg-ed-primary-container ${inviteMutation.isPending ? 'opacity-50' : 'opacity-100'}`}
       >
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>
+        <Text className="font-work-sans-bold text-[13px] text-white">
           {inviteMutation.isPending ? 'Creating…' : 'Create invite code'}
         </Text>
       </Pressable>
@@ -159,17 +129,6 @@ function InviteForm({ vendorId, businessName, ownerCanInviteManager }: { vendorI
 
 export default function TeamScreen() {
   const { editorial } = useTheme();
-  const cardStyle: StyleProp<ViewStyle> = [
-    {
-      backgroundColor: editorial.surfaceContainerLowest,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: editorial.outlineVariant,
-      padding: 16,
-      marginBottom: 20,
-    },
-    shadowSoftSm,
-  ];
   const { vendor, myRole, isLoading: vendorLoading } = useCurrentVendor();
   const canManage = myRole === 'owner' || myRole === 'manager';
   const { data: members, isLoading: membersLoading } = useVendorTeam(vendor?.id);
@@ -179,45 +138,39 @@ export default function TeamScreen() {
   if (vendorLoading || !vendor) {
     return (
       <ScreenWrapper>
-        <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ marginTop: 60 }} />
+        <ActivityIndicator size="small" color={editorial.primaryContainer} className="mt-[60px]" />
       </ScreenWrapper>
     );
   }
 
   return (
     <ScreenWrapper>
-      <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 20 }}>
+      <Text className="font-dancing-script-bold text-[28px] text-ed-primary-container mb-5">
         Team
       </Text>
 
       <SectionTitle>Members</SectionTitle>
-      <View style={cardStyle}>
+      <View className={CARD_CLASS} style={shadowSoftSm}>
         {membersLoading ? (
-          <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ paddingVertical: 20 }} />
+          <ActivityIndicator size="small" color={editorial.primaryContainer} className="py-5" />
         ) : (
           (members ?? []).map((member, index) => (
             <View
               key={member.id}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 10,
-                borderTopWidth: index === 0 ? 0 : 1,
-                borderTopColor: editorial.outlineVariant,
-              }}
+              className={`flex-row items-center py-2.5 ${index === 0 ? 'border-t-0' : 'border-t border-ed-outline-variant'}`}
             >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: editorial.onSurface }}>
+              <View className="flex-1">
+                <Text className="font-work-sans-bold text-sm text-ed-on-surface">
                   {member.user?.name ?? member.user?.email ?? 'Team member'}
                 </Text>
                 {member.user?.email && (
-                  <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                  <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5">
                     {member.user.email}
                   </Text>
                 )}
               </View>
-              <View style={{ backgroundColor: editorial.surfaceContainerLow, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: editorial.onSurfaceVariant }}>
+              <View className="bg-ed-surface-container-low rounded px-2.5 py-1">
+                <Text className="font-work-sans-bold text-[11px] text-ed-on-surface-variant">
                   {ROLE_LABELS[member.role]}
                 </Text>
               </View>
@@ -234,21 +187,15 @@ export default function TeamScreen() {
           {(invitations ?? []).length > 0 && (
             <>
               <SectionTitle>Pending invitations</SectionTitle>
-              <View style={cardStyle}>
+              <View className={CARD_CLASS} style={shadowSoftSm}>
                 {(invitations ?? []).map((invitation, index) => (
                   <View
                     key={invitation.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 10,
-                      borderTopWidth: index === 0 ? 0 : 1,
-                      borderTopColor: editorial.outlineVariant,
-                    }}
+                    className={`flex-row items-center py-2.5 ${index === 0 ? 'border-t-0' : 'border-t border-ed-outline-variant'}`}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurface }}>{invitation.email}</Text>
-                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                    <View className="flex-1">
+                      <Text className="font-work-sans-bold text-[13px] text-ed-on-surface">{invitation.email}</Text>
+                      <Text className="font-work-sans text-[11px] text-ed-on-surface-variant mt-0.5">
                         {ROLE_LABELS[invitation.role]} · expires {new Date(invitation.expires_at).toLocaleDateString()}
                       </Text>
                     </View>
@@ -263,7 +210,7 @@ export default function TeamScreen() {
                           },
                         ])
                       }
-                      style={{ padding: 6 }}
+                      className="p-1.5"
                     >
                       <Ionicons name="trash-outline" size={18} color={editorial.onSurfaceVariant} />
                     </Pressable>

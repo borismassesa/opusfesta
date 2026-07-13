@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthInput } from '@/components/auth/AuthInput';
 import { AuthHeader } from '@/components/auth/AuthHeader';
 import { OtpInput } from '@/components/auth/OtpInput';
-import { authTheme } from '@/constants/theme';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function ResetPasswordScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -47,30 +47,30 @@ export default function ResetPasswordScreen() {
       } else {
         setError('Password reset could not be completed. Please try again.');
       }
-    } catch (err: any) {
-      setError(err.errors?.[0]?.message || 'Reset failed');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Reset failed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+    <SafeAreaView className="flex-1 bg-of-white">
       <AuthHeader onBack={() => router.back()} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 8 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 26, color: authTheme.ink, marginBottom: 8 }}>
+          <Text className="font-work-sans-bold text-[26px] text-of-ink mb-2">
             Choose a new password
           </Text>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 15, color: authTheme.textSecondary, marginBottom: 28 }}>
+          <Text className="font-work-sans text-[15px] text-of-muted mb-7">
             We sent a 6-digit code to {email}. Set your new password, then enter the code below.
           </Text>
 
-          <View style={{ gap: 24 }}>
+          <View className="gap-6">
             <AuthInput
               label="New Password"
               value={newPassword}
@@ -84,14 +84,7 @@ export default function ResetPasswordScreen() {
             <OtpInput onComplete={handleComplete} error={error} onResend={handleResendCode} resendCooldownSeconds={30} />
 
             {loading && (
-              <Text
-                style={{
-                  fontFamily: 'WorkSans-Regular',
-                  fontSize: 14,
-                  color: authTheme.textSecondary,
-                  textAlign: 'center',
-                }}
-              >
+              <Text className="font-work-sans text-sm text-of-muted text-center">
                 Resetting password...
               </Text>
             )}

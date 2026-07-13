@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SavedVendorRow } from '@/types/vendor';
 
-export async function getSavedVendors(client: SupabaseClient) {
+export async function getSavedVendors(client: SupabaseClient): Promise<SavedVendorRow[]> {
   const { data, error } = await client
     .from('saved_vendors')
     .select('*, vendors:vendor_id (id, business_name, logo, category, cover_image, location, price_range, stats)')

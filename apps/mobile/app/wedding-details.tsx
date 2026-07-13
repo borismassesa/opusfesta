@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { DatePickerField } from '@/components/onboarding/DatePickerField';
 import { CITIES, type CityKey } from '@/constants/onboarding';
 import { useCoupleProfile, useUpdateCoupleProfile } from '@/hooks/useCoupleProfile';
-import { shadowSoftSm, radii } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
+import { shadowSoftSm } from '@/constants/theme';
+import { getErrorMessage } from '@/lib/errors';
 
 const toIsoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -23,8 +23,6 @@ const parseStored = (value: string | null | undefined): Date | null => {
 export default function WeddingDetailsScreen() {
   const { data: profile } = useCoupleProfile();
   const updateProfile = useUpdateCoupleProfile();
-  const { editorial, colors } = useTheme();
-
   const [partner1Name, setPartner1Name] = useState(profile?.partner1_name ?? '');
   const [partner2Name, setPartner2Name] = useState(profile?.partner2_name ?? '');
   const [weddingDate, setWeddingDate] = useState<Date | null>(parseStored(profile?.wedding_date));
@@ -41,32 +39,22 @@ export default function WeddingDetailsScreen() {
         city: city ?? null,
       });
       Alert.alert('Saved', 'Your wedding details have been updated.');
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Something went wrong');
+    } catch (err) {
+      Alert.alert('Error', getErrorMessage(err, 'Something went wrong'));
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 }}>
         <Header title="Wedding Details" showBack />
 
-        <View style={{ gap: 16 }}>
+        <View className="gap-4">
           <Input label="Partner 1 name" value={partner1Name} onChangeText={setPartner1Name} placeholder="Your name" />
           <Input label="Partner 2 name" value={partner2Name} onChangeText={setPartner2Name} placeholder="Their name" />
 
           <View>
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Bold',
-                fontSize: 11,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                color: editorial.onSurfaceVariant,
-                marginBottom: 6,
-                marginLeft: 2,
-              }}
-            >
+            <Text className="font-work-sans-bold text-[11px] tracking-[2px] uppercase text-ed-on-surface-variant mb-1.5 ml-0.5">
               Wedding date
             </Text>
             {!dateUndecided && (
@@ -79,68 +67,37 @@ export default function WeddingDetailsScreen() {
             )}
             <Pressable
               onPress={() => setDateUndecided((v) => !v)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}
+              className="flex-row items-center gap-2 mt-2.5"
             >
               <View
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 4,
-                  borderWidth: 2,
-                  borderColor: dateUndecided ? editorial.primaryContainer : editorial.outlineVariant,
-                  backgroundColor: dateUndecided ? editorial.primaryContainer : 'transparent',
-                }}
+                className={`w-[18px] h-[18px] rounded border-2 ${
+                  dateUndecided ? 'border-ed-primary-container bg-ed-primary-container' : 'border-ed-outline-variant bg-transparent'
+                }`}
               />
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant }}>
+              <Text className="font-work-sans text-sm text-ed-on-surface-variant">
                 We haven't decided yet
               </Text>
             </Pressable>
           </View>
 
           <View>
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Bold',
-                fontSize: 11,
-                letterSpacing: 2,
-                textTransform: 'uppercase',
-                color: editorial.onSurfaceVariant,
-                marginBottom: 6,
-                marginLeft: 2,
-              }}
-            >
+            <Text className="font-work-sans-bold text-[11px] tracking-[2px] uppercase text-ed-on-surface-variant mb-1.5 ml-0.5">
               City
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View className="flex-row flex-wrap gap-2">
               {CITIES.map((c) => {
                 const isSelected = city === c.key;
                 return (
                   <Pressable
                     key={c.key}
                     onPress={() => setCity(c.key)}
-                    style={[
-                      {
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 6,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        borderRadius: radii.input,
-                        backgroundColor: isSelected ? colors.light : editorial.surfaceContainerLowest,
-                        borderWidth: 1,
-                        borderColor: isSelected ? colors.light : editorial.outlineVariant,
-                      },
-                      shadowSoftSm,
-                    ]}
+                    className={`flex-row items-center gap-1.5 px-3.5 py-2.5 rounded-input border ${
+                      isSelected ? 'bg-of-light border-of-light' : 'bg-ed-surface-container-lowest border-ed-outline-variant'
+                    }`}
+                    style={shadowSoftSm}
                   >
-                    <Text style={{ fontSize: 14 }}>{c.icon}</Text>
-                    <Text
-                      style={{
-                        fontFamily: 'WorkSans-Medium',
-                        fontSize: 13,
-                        color: editorial.onSurface,
-                      }}
-                    >
+                    <Text className="text-sm">{c.icon}</Text>
+                    <Text className="font-work-sans-medium text-[13px] text-ed-on-surface">
                       {c.label}
                     </Text>
                   </Pressable>

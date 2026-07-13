@@ -1,4 +1,18 @@
 import { supabase } from '../supabase';
+import type { VendorReview, VendorListing, VendorPackageDetail } from '@/types/vendor';
+
+// Row shape returned by the get_vendor_reviews_with_users RPC.
+interface VendorReviewRpcRow {
+  id: string;
+  vendor_id: string;
+  rating: number;
+  title: string | null;
+  content: string | null;
+  event_type: string | null;
+  created_at: string;
+  user_name: string | null;
+  user_avatar: string | null;
+}
 
 const VENDOR_COLUMNS = `
   id, slug, user_id, business_name, category, subcategories, bio, description,
@@ -7,7 +21,7 @@ const VENDOR_COLUMNS = `
   created_at, updated_at
 `;
 
-export async function getFeaturedVendors() {
+export async function getFeaturedVendors(): Promise<VendorListing[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('vendors')
@@ -17,10 +31,10 @@ export async function getFeaturedVendors() {
     .limit(10);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as VendorListing[];
 }
 
-export async function getVendorsByCategory(category: string) {
+export async function getVendorsByCategory(category: string): Promise<VendorListing[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('vendors')
@@ -32,7 +46,7 @@ export async function getVendorsByCategory(category: string) {
   return data ?? [];
 }
 
-export async function getVendorById(id: string) {
+export async function getVendorById(id: string): Promise<VendorListing | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from('vendors')
@@ -44,7 +58,7 @@ export async function getVendorById(id: string) {
   return data;
 }
 
-export async function searchVendors(query: string) {
+export async function searchVendors(query: string): Promise<VendorListing[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('vendors')
@@ -63,7 +77,7 @@ export async function getVendorReviews(vendorId: string) {
   });
 
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return ((data ?? []) as VendorReviewRpcRow[]).map((row): VendorReview => ({
     id: row.id,
     vendor_id: row.vendor_id,
     rating: row.rating,
@@ -78,7 +92,7 @@ export async function getVendorReviews(vendorId: string) {
   }));
 }
 
-export async function getVendorPackages(vendorId: string) {
+export async function getVendorPackages(vendorId: string): Promise<VendorPackageDetail[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('vendors')
@@ -100,7 +114,7 @@ export async function getCategoryCounts() {
   if (error) throw error;
 
   const counts: Record<string, number> = {};
-  (data ?? []).forEach((v: any) => {
+  ((data ?? []) as { category: string }[]).forEach((v) => {
     counts[v.category] = (counts[v.category] || 0) + 1;
   });
   return counts;

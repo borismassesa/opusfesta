@@ -9,7 +9,7 @@ interface CategoryGridProps {
   singleSelect?: boolean;
 }
 
-export function CategoryGrid({ categories, selected, onToggle, singleSelect }: CategoryGridProps) {
+export function CategoryGrid({ categories, selected, onToggle }: CategoryGridProps) {
   const { colors } = useTheme();
   return (
     <View className="flex-row flex-wrap gap-3">

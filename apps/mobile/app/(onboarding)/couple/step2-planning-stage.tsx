@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { StepContainer } from '@/components/onboarding/StepContainer';
 import { shadowSoft } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import { PLANNING_STAGES } from '@/constants/onboarding';
@@ -20,7 +20,7 @@ export default function PlanningStageStep() {
   };
 
   return (
-    <EditorialStepContainer
+    <StepContainer
       title="Where are you in your"
       titleAccent="planning journey?"
       subtitle="Every great celebration starts with a single step. Tell us your status so we can tailor your dashboard."
@@ -35,44 +35,29 @@ export default function PlanningStageStep() {
         router.push('/(onboarding)/couple/step3-date');
       }}
     >
-      <View style={{ gap: 14, marginTop: 8 }}>
+      <View className="gap-3.5 mt-2">
         {PLANNING_STAGES.map((stage) => {
           const isSelected = selected === stage.key;
           return (
             <Pressable
               key={stage.key}
               onPress={() => setSelected(stage.key)}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: 16,
-                  borderRadius: 12,
-                  backgroundColor: isSelected ? editorial.surfaceContainerLowest : editorial.surfaceContainerLow,
-                  borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? editorial.onSecondaryContainer : 'transparent',
-                },
-                shadowSoft,
-              ]}
+              className={`flex-row items-center gap-4 p-4 rounded-xl ${
+                isSelected ? 'bg-ed-surface-container-lowest border-2 border-ed-on-secondary-container' : 'bg-ed-surface-container-low border-0 border-transparent'
+              }`}
+              style={shadowSoft}
             >
               <View
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 10,
-                  backgroundColor: stage.bgColor,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                className="w-[52px] h-[52px] rounded-[10px] items-center justify-center"
+                style={{ backgroundColor: stage.bgColor }}
               >
-                <Ionicons name={stage.icon as any} size={26} color={stage.iconColor} />
+                <Ionicons name={stage.icon as keyof typeof Ionicons.glyphMap} size={26} color={stage.iconColor} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
+              <View className="flex-1">
+                <Text className="font-space-grotesk-bold text-lg text-ed-on-surface">
                   {stage.label}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                <Text className="font-work-sans text-[13px] text-ed-on-surface-variant mt-0.5">
                   {stage.description}
                 </Text>
               </View>
@@ -83,6 +68,6 @@ export default function PlanningStageStep() {
           );
         })}
       </View>
-    </EditorialStepContainer>
+    </StepContainer>
   );
 }

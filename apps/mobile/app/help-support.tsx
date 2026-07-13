@@ -50,49 +50,27 @@ export default function HelpSupportScreen() {
     <ScreenWrapper>
       <Header title="Help & support" showBack />
 
-      <Text
-        style={{
-          fontFamily: 'SpaceGrotesk-Bold',
-          fontSize: 15,
-          color: editorial.onSurface,
-          marginBottom: 12,
-        }}
-      >
+      <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-3">
         Frequently asked questions
       </Text>
-      <View style={{ gap: 10, marginBottom: 28 }}>
+      <View className="gap-2.5 mb-7">
         {FAQ_ITEMS.map((item) => (
           <View
             key={item.question}
-            style={[
-              {
-                backgroundColor: editorial.surfaceContainerLowest,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                padding: 14,
-              },
-              shadowSoftSm,
-            ]}
+            className="bg-ed-surface-container-lowest rounded-xl border border-ed-outline-variant p-3.5"
+            style={shadowSoftSm}
           >
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.onSurface, marginBottom: 4 }}>
+            <Text className="font-space-grotesk-bold text-[13px] text-ed-on-surface mb-1">
               {item.question}
             </Text>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, lineHeight: 18 }}>
+            <Text className="font-work-sans text-xs text-ed-on-surface-variant leading-[18px]">
               {item.answer}
             </Text>
           </View>
         ))}
       </View>
 
-      <Text
-        style={{
-          fontFamily: 'SpaceGrotesk-Bold',
-          fontSize: 15,
-          color: editorial.onSurface,
-          marginBottom: 12,
-        }}
-      >
+      <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-3">
         Get in touch
       </Text>
       <View>
@@ -100,17 +78,10 @@ export default function HelpSupportScreen() {
           <Pressable
             key={item.label}
             onPress={item.onPress}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 14,
-              paddingVertical: 14,
-              borderBottomWidth: i < LINK_ITEMS.length - 1 ? 1 : 0,
-              borderBottomColor: editorial.outlineVariant,
-            }}
+            className={`flex-row items-center gap-3.5 py-3.5 ${i < LINK_ITEMS.length - 1 ? 'border-b border-ed-outline-variant' : ''}`}
           >
             <Ionicons name={item.icon} size={20} color={editorial.primaryContainer} />
-            <Text style={{ flex: 1, fontFamily: 'WorkSans-Medium', fontSize: 14, color: editorial.onSurface }}>
+            <Text className="flex-1 font-work-sans-medium text-sm text-ed-on-surface">
               {item.label}
             </Text>
             <Ionicons name="chevron-forward" size={16} color={editorial.outlineVariant} />

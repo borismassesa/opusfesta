@@ -12,13 +12,13 @@ import { useTheme } from '@/theme/useTheme';
 function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   const { editorial } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+    <View className="flex-row items-start gap-2.5 mb-3.5">
       <Ionicons name={icon} size={16} color={editorial.onSurfaceVariant} style={{ marginTop: 2 }} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant }}>
+      <View className="flex-1">
+        <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant">
           {label}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, marginTop: 2 }}>{value}</Text>
+        <Text className="font-work-sans text-sm text-ed-on-surface mt-0.5">{value}</Text>
       </View>
     </View>
   );
@@ -27,9 +27,9 @@ function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMa
 function ChecklistRow({ label, done }: { label: string; done: boolean }) {
   const { editorial } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}>
+    <View className="flex-row items-center gap-2.5 py-2">
       <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={done ? '#16a34a' : editorial.outline} />
-      <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: done ? editorial.onSurface : editorial.onSurfaceVariant }}>
+      <Text className={`font-work-sans-medium text-[13px] ${done ? 'text-ed-on-surface' : 'text-ed-on-surface-variant'}`}>
         {label}
       </Text>
     </View>
@@ -50,7 +50,7 @@ export default function BookingDetailScreen() {
   if (isLoading || !booking) {
     return (
       <ScreenWrapper>
-        <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ marginTop: 60 }} />
+        <ActivityIndicator size="small" color={editorial.primaryContainer} className="mt-[60px]" />
       </ScreenWrapper>
     );
   }
@@ -78,51 +78,33 @@ export default function BookingDetailScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <Pressable onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+      <View className="flex-row items-center mb-5">
+        <Pressable onPress={() => router.back()} className="p-1 mr-2">
           <Ionicons name="chevron-back" size={24} color={editorial.primaryContainer} />
         </Pressable>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onSurface, flex: 1 }} numberOfLines={1}>
+        <Text className="font-space-grotesk-bold text-xl text-ed-on-surface flex-1" numberOfLines={1}>
           {booking.partner_a} &amp; {booking.partner_b}
         </Text>
-        <View style={{ backgroundColor: style.bg, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: style.fg }}>{style.label}</Text>
+        <View className="rounded px-2.5 py-1" style={{ backgroundColor: style.bg }}>
+          <Text className="font-work-sans-bold text-[11px]" style={{ color: style.fg }}>{style.label}</Text>
         </View>
       </View>
 
-      <View
-        style={[
-          {
-            backgroundColor: editorial.primaryContainer,
-            borderRadius: 24,
-            padding: 22,
-            marginBottom: 20,
-          },
-        ]}
-      >
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>
+      <View className="rounded-3xl p-[22px] mb-5 bg-ed-primary-container">
+        <Text className="font-work-sans-bold text-[10px] tracking-[2px] uppercase text-white/70">
           Total value
         </Text>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: '#fff', marginTop: 4 }}>
+        <Text className="font-space-grotesk-bold text-[30px] text-white mt-1">
           {formatCurrency(booking.total_value)}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 4 }}>
+        <Text className="font-work-sans text-xs text-white/70 mt-1">
           {booking.deposit_percent}% deposit {booking.deposit_paid ? '· paid' : '· pending'}
         </Text>
       </View>
 
       <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            padding: 18,
-            marginBottom: 20,
-          },
-          shadowSoftSm,
-        ]}
+        className="bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-[18px] mb-5"
+        style={shadowSoftSm}
       >
         <DetailRow
           icon="calendar-outline"
@@ -136,21 +118,12 @@ export default function BookingDetailScreen() {
         {booking.phone && <DetailRow icon="call-outline" label="Phone" value={booking.phone} />}
       </View>
 
-      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
+      <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-2">
         Checklist
       </Text>
       <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            padding: 16,
-            marginBottom: 24,
-          },
-          shadowSoftSm,
-        ]}
+        className="bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-4 mb-6"
+        style={shadowSoftSm}
       >
         <ChecklistRow label="Deposit paid" done={booking.deposit_paid} />
         <ChecklistRow label="Contract sent" done={!!booking.contract_sent_at} />
@@ -163,15 +136,9 @@ export default function BookingDetailScreen() {
         <Pressable
           disabled={advanceMutation.isPending}
           onPress={handleAdvance}
-          style={{
-            backgroundColor: editorial.onSurface,
-            borderRadius: 14,
-            paddingVertical: 14,
-            alignItems: 'center',
-            opacity: advanceMutation.isPending ? 0.5 : 1,
-          }}
+          className={`bg-ed-on-surface rounded-[14px] py-3.5 items-center ${advanceMutation.isPending ? 'opacity-50' : 'opacity-100'}`}
         >
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: '#fff' }}>
+          <Text className="font-work-sans-bold text-sm text-white">
             {advanceMutation.isPending ? 'Updating…' : `Move to "${upcomingLabel}"`}
           </Text>
         </Pressable>

@@ -10,8 +10,9 @@
  *      and guarded by src/theme/palette.sync.test.ts, which asserts global.css
  *      matches `ofVars` below so the two files can never silently drift.
  *
- * `editorial` is JS-only (the `br-*` Tailwind namespace has no usages), so it does
- * NOT need CSS variables — only `colors`/`of-*` do.
+ * `editorial` is mirrored into the `ed-*` NativeWind namespace (CSS variables in
+ * global.css, `ofVars` below) so screens can style with classes; `colors` backs
+ * the flat `of-*` namespace. Both are guarded by palette.sync.test.ts.
  *
  * Light strategy: neutral black/white/gray with a single lavender accent
  * (#C9A0DC), matching apps/opus_pass's monochrome look — deliberately NOT the
@@ -191,4 +192,32 @@ export const ofVars: Record<string, { light: string; dark?: string }> = {
   '--of-danger': { light: '#DC2626', dark: '#F87171' },
   '--of-accent': { light: '#7E5896' },
   '--of-placeholder': { light: '#9CA3AF' },
+  // Editorial Romance tokens — the `ed-*` NativeWind namespace, mirroring the
+  // JS `editorial` object above so screens can style with classes instead of
+  // inline `useTheme().editorial.*`. Derived from lightEditorial/darkEditorial.
+  '--ed-bg': { light: '#FFFFFF', dark: '#120A1C' },
+  '--ed-surface': { light: '#FFFFFF', dark: '#120A1C' },
+  '--ed-surface-container-lowest': { light: '#ffffff', dark: '#0D0715' },
+  '--ed-surface-container-low': { light: '#F9FAFB', dark: '#1A1026' },
+  '--ed-surface-container': { light: '#F3F4F6', dark: '#1F1430' },
+  '--ed-surface-container-high': { light: '#E5E7EB', dark: '#291A3D' },
+  '--ed-surface-container-highest': { light: '#D1D5DB', dark: '#332048' },
+  '--ed-on-surface': { light: '#1A1A1A', dark: '#ECE0F5' },
+  '--ed-on-surface-variant': { light: '#6B7280', dark: '#C9B8D6' },
+  '--ed-primary-container': { light: '#1A1A1A', dark: '#7B4FA2' },
+  '--ed-on-primary': { light: '#ffffff' },
+  '--ed-on-primary-container': { light: '#C9A0DC', dark: '#E0C9F0' },
+  '--ed-primary-fixed': { light: '#F3F4F6', dark: '#2E1A45' },
+  '--ed-surface-tint': { light: '#7E5896', dark: '#9B73B8' },
+  '--ed-secondary': { light: '#7E5896', dark: '#C9A0DC' },
+  '--ed-secondary-container': { light: '#F3F4F6', dark: '#3D2A52' },
+  '--ed-on-secondary-container': { light: '#1A1A1A', dark: '#EAD9F5' },
+  '--ed-tertiary-container': { light: '#7E5896', dark: '#9B73B8' },
+  '--ed-tertiary-fixed': { light: '#F3F4F6', dark: '#241533' },
+  '--ed-on-tertiary-fixed': { light: '#1A1A1A', dark: '#F3EBF9' },
+  '--ed-on-tertiary-container': { light: '#C9A0DC', dark: '#E0C9F0' },
+  '--ed-outline': { light: '#9CA3AF', dark: '#9885A8' },
+  '--ed-outline-variant': { light: '#E5E7EB', dark: '#3A2C48' },
+  '--ed-error': { light: '#ba1a1a', dark: '#FFB4AB' },
+  '--ed-header-tint': { light: '#FCEEE6', dark: '#2B1D2A' },
 };

@@ -5,30 +5,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getVendorById, getVendorReviews, getVendorPackages } from '@/lib/api/vendors';
+import type { VendorListing } from '@/types/vendor';
+import { formatAddress, toUrl } from '@/lib/vendorLinks';
 import { useSavedVendorIds, useToggleSavedVendor, useSavedVendorStatus, useMarkVendorBooked } from '@/hooks/useSavedVendors';
 import { useAddInspirationItem } from '@/hooks/useInspiration';
 import { formatCurrency } from '@opusfesta/lib';
 import { useTheme } from '@/theme/useTheme';
 
-const HERO_HEIGHT = 384;
 const VENDOR_BASE_URL = 'https://opusfesta.com/vendors';
 
-function formatAddress(location: any): string | null {
-  if (!location) return null;
-  if (typeof location.address === 'string' && location.address.trim()) return location.address;
-  const parts = [location.street, location.ward || location.district, location.city, location.region].filter(
-    (p) => typeof p === 'string' && p.trim(),
-  );
-  return parts.length > 0 ? parts.join(', ') : null;
-}
-
-function toUrl(value: string, base?: string): string {
-  if (/^https?:\/\//i.test(value)) return value;
-  if (base) return `${base}${value.replace(/^@/, '')}`;
-  return `https://${value}`;
-}
-
-function buildConnectLinks(vendor: any): { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] {
+function buildConnectLinks(vendor: VendorListing): { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] {
   const contact = vendor?.contact_info ?? {};
   const social = vendor?.social_links ?? {};
   const links: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }[] = [];
@@ -141,10 +127,10 @@ export default function VendorProfileScreen() {
     ? vendor.services_offered.filter((s: unknown) => typeof s === 'string' && s.trim())
     : [];
   const team: { id: string; name: string; role?: string; bio?: string; avatar?: string }[] = Array.isArray(vendor.team)
-    ? vendor.team.filter((m: any) => m?.name)
+    ? vendor.team.filter((m) => m?.name)
     : [];
 
-  const tiers = packages.map((p: any) => ({
+  const tiers = packages.map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description,
@@ -175,11 +161,11 @@ export default function VendorProfileScreen() {
     <View className="flex-1 bg-of-cream">
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
         {/* ═══ 1. Hero Image ═══ */}
-        <View style={{ height: HERO_HEIGHT, overflow: 'hidden' }}>
+        <View className="h-[384px] overflow-hidden">
           {heroImage ? (
             <Image
               source={{ uri: heroImage }}
-              style={{ width: '100%', height: '100%' }}
+              className="w-full h-full"
               resizeMode="cover"
             />
           ) : (
@@ -187,7 +173,7 @@ export default function VendorProfileScreen() {
               colors={['#1A1A1A', '#7E5896', '#C9A0DC']}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={{ fontSize: 72 }}>🌿</Text>
+              <Text className="text-[72px]">🌿</Text>
             </LinearGradient>
           )}
           <LinearGradient
@@ -196,35 +182,21 @@ export default function VendorProfileScreen() {
           />
           {/* Nav buttons */}
           <View
-            style={{
-              position: 'absolute',
-              top: insets.top + 8,
-              left: 16,
-              right: 16,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-            }}
+            className="absolute left-4 right-4 flex-row justify-between"
+            style={{ top: insets.top + 8 }}
           >
             <Pressable
               onPress={() => router.back()}
-              style={{
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: 'rgba(0,0,0,0.2)',
-                alignItems: 'center', justifyContent: 'center',
-              }}
+              className="w-10 h-10 rounded-full items-center justify-center bg-black/20"
             >
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </Pressable>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View className="flex-row gap-2.5">
               {heroImage && (
                 <Pressable
                   onPress={handleSaveToInspiration}
                   disabled={addInspirationItem.isPending}
-                  style={{
-                    width: 40, height: 40, borderRadius: 20,
-                    backgroundColor: 'rgba(0,0,0,0.2)',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
+                  className="w-10 h-10 rounded-full items-center justify-center bg-black/20"
                 >
                   <Ionicons name="images-outline" size={20} color="#fff" />
                 </Pressable>
@@ -232,11 +204,7 @@ export default function VendorProfileScreen() {
               {vendor.slug && (
                 <Pressable
                   onPress={handleShare}
-                  style={{
-                    width: 40, height: 40, borderRadius: 20,
-                    backgroundColor: 'rgba(0,0,0,0.2)',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
+                  className="w-10 h-10 rounded-full items-center justify-center bg-black/20"
                 >
                   <Ionicons name="share-social-outline" size={20} color="#fff" />
                 </Pressable>
@@ -244,11 +212,7 @@ export default function VendorProfileScreen() {
               <Pressable
                 onPress={() => id && !isBooked && markBooked.mutate(id)}
                 disabled={markBooked.isPending || isBooked}
-                style={{
-                  width: 40, height: 40, borderRadius: 20,
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  alignItems: 'center', justifyContent: 'center',
-                }}
+                className="w-10 h-10 rounded-full items-center justify-center bg-black/20"
               >
                 <Ionicons
                   name={isBooked ? 'checkmark-circle' : 'checkmark-circle-outline'}
@@ -259,11 +223,7 @@ export default function VendorProfileScreen() {
               <Pressable
                 onPress={() => id && toggleSaved.mutate({ vendorId: id, isSaved })}
                 disabled={toggleSaved.isPending}
-                style={{
-                  width: 40, height: 40, borderRadius: 20,
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  alignItems: 'center', justifyContent: 'center',
-                }}
+                className="w-10 h-10 rounded-full items-center justify-center bg-black/20"
               >
                 <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={22} color={isSaved ? '#E0558A' : '#fff'} />
               </Pressable>
@@ -272,7 +232,7 @@ export default function VendorProfileScreen() {
         </View>
 
         {/* ═══ 2. Title Card ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: -48 }}>
+        <View className="px-5 -mt-12">
           <View
             className="bg-of-surface rounded-xl p-6"
             style={{
@@ -334,7 +294,7 @@ export default function VendorProfileScreen() {
         </ScrollView>
 
         {/* ═══ 4. About ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+        <View className="px-5 mt-4">
           <SectionTitle>About this Vendor</SectionTitle>
           <Text className="text-sm text-of-muted leading-relaxed">
             {displayDescription || 'This vendor hasn’t added a description yet.'}
@@ -343,7 +303,7 @@ export default function VendorProfileScreen() {
 
         {/* ═══ 5. Details ═══ */}
         {servicesOffered.length > 0 && (
-          <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+          <View className="px-5 mt-10">
             <SectionTitle>Services offered</SectionTitle>
             <View className="gap-2">
               {servicesOffered.map((service, i) => (
@@ -357,26 +317,20 @@ export default function VendorProfileScreen() {
         )}
 
         {/* ═══ 6. Packages & Pricing ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+        <View className="px-5 mt-10">
           <SectionTitle>Packages & Pricing</SectionTitle>
           {tiers.length === 0 ? (
             <EmptyState text="This vendor hasn't published pricing packages yet. Request a quote to get custom pricing." />
           ) : (
             <View className="gap-4">
-              {tiers.map((tier: any) =>
+              {tiers.map((tier) =>
                 tier.popular ? (
                   <View
                     key={tier.id}
-                    className="p-5 rounded-xl relative"
-                    style={{ borderWidth: 2, borderColor: colors.primary, backgroundColor: 'rgba(0,0,0,0.02)' }}
+                    className="p-5 rounded-xl relative border-2 border-of-primary"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.02)' }}
                   >
-                    <View
-                      style={{
-                        position: 'absolute', top: -12, left: 16,
-                        backgroundColor: colors.primary,
-                        paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
-                      }}
-                    >
+                    <View className="absolute -top-3 left-4 bg-of-primary px-3 py-1 rounded-full">
                       <Text className="text-[9px] font-work-sans-bold text-white uppercase tracking-widest">
                         Most Popular
                       </Text>
@@ -384,12 +338,12 @@ export default function VendorProfileScreen() {
                     <View className="flex-row justify-between items-start mt-1">
                       <View className="flex-1 mr-2">
                         <Text className="font-work-sans-bold text-sm text-of-primary">{tier.name}</Text>
-                        <Text className="text-xs" style={{ color: editorial.onSurfaceVariant }}>
+                        <Text className="text-xs text-ed-on-surface-variant">
                           {tier.description}
                         </Text>
                       </View>
                       <Text className="font-work-sans-bold text-of-primary">
-                        {formatCurrency(tier.price)}
+                        {formatCurrency(tier.price ?? 0)}
                       </Text>
                     </View>
                     {tier.features?.length > 0 && (
@@ -415,7 +369,7 @@ export default function VendorProfileScreen() {
                         <Text className="text-xs text-of-muted">{tier.description}</Text>
                       </View>
                       <Text className="font-work-sans-bold text-of-text">
-                        {formatCurrency(tier.price)}
+                        {formatCurrency(tier.price ?? 0)}
                       </Text>
                     </View>
                   </View>
@@ -426,7 +380,7 @@ export default function VendorProfileScreen() {
         </View>
 
         {/* ═══ 7. Availability ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+        <View className="px-5 mt-10">
           <View className="p-6 rounded-2xl bg-of-pale border border-of-border">
             <View className="flex-row items-start gap-4">
               <View className="w-10 h-10 rounded-full bg-of-pale items-center justify-center border border-of-border">
@@ -453,7 +407,7 @@ export default function VendorProfileScreen() {
 
         {/* ═══ 8. Meet the Team ═══ */}
         {team.length > 0 && (
-          <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+          <View className="px-5 mt-10">
             <SectionTitle>Meet the Team</SectionTitle>
             <View className="gap-3">
               {team.map((member) => (
@@ -464,7 +418,7 @@ export default function VendorProfileScreen() {
                 >
                   <View className="w-20 h-20 rounded-full bg-of-pale items-center justify-center overflow-hidden">
                     {member.avatar ? (
-                      <Image source={{ uri: member.avatar }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <Image source={{ uri: member.avatar }} className="w-full h-full" resizeMode="cover" />
                     ) : (
                       <Text className="font-work-sans-bold text-of-primary text-xl">
                         {member.name.charAt(0).toUpperCase()}
@@ -489,7 +443,7 @@ export default function VendorProfileScreen() {
         )}
 
         {/* ═══ 9. Reviews ═══ */}
-        <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+        <View className="px-5 mt-10">
           <View className="flex-row items-center justify-between mb-5">
             <Text className="font-playfair-bold text-xl text-of-text">{reviewCount} reviews</Text>
             {displayRating != null && (
@@ -503,7 +457,7 @@ export default function VendorProfileScreen() {
           {reviews.length === 0 ? (
             <EmptyState text="No reviews yet. Be the first to book and share your experience." />
           ) : (
-            reviews.map((review: any) => (
+            reviews.map((review) => (
               <View
                 key={review.id}
                 className="bg-of-surface rounded-xl p-5 border border-of-border mb-3"
@@ -541,7 +495,7 @@ export default function VendorProfileScreen() {
 
         {/* ═══ 10. Location ═══ */}
         {(displayAddress || displayLocation) && (
-          <View style={{ paddingHorizontal: 20, marginTop: 40 }}>
+          <View className="px-5 mt-10">
             <SectionTitle>Location and service area</SectionTitle>
             <View className="flex-row items-start gap-2 mb-3">
               <Ionicons name="location-sharp" size={18} color={colors.primary} />
@@ -562,7 +516,7 @@ export default function VendorProfileScreen() {
 
         {/* ═══ 11. Connect ═══ */}
         {connectLinks.length > 0 && (
-          <View style={{ paddingHorizontal: 20, marginTop: 40, marginBottom: 48 }}>
+          <View className="px-5 mt-10 mb-12">
             <SectionTitle>Connect with this vendor</SectionTitle>
             <View>
               {connectLinks.map((link, i) => (
@@ -583,7 +537,7 @@ export default function VendorProfileScreen() {
         )}
 
         {/* Bottom spacer for sticky CTA */}
-        <View style={{ height: 100 }} />
+        <View className="h-[100px]" />
       </ScrollView>
 
       {/* ═══ Sticky CTA ═══ */}

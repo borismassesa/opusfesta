@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { StepContainer } from '@/components/onboarding/StepContainer';
 import { shadowSoft } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import { VENUE_STYLES } from '@/constants/onboarding';
@@ -11,7 +11,7 @@ import { useCoupleOnboarding } from './_layout';
 export default function VenueSettingStep() {
   const router = useRouter();
   const { data, setVenueSetting } = useCoupleOnboarding();
-  const { editorial, colors } = useTheme();
+  const { colors } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.venueSetting?.venueSettings ?? []);
 
   const toggle = (key: string) => {
@@ -26,7 +26,7 @@ export default function VenueSettingStep() {
   };
 
   return (
-    <EditorialStepContainer
+    <StepContainer
       title="What's your dream setting?"
       subtitle="Select all that appeal to you."
       currentStep={6}
@@ -35,56 +35,29 @@ export default function VenueSettingStep() {
       onBack={() => router.back()}
       nextDisabled={selected.length === 0}
     >
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 4 }}>
+      <View className="flex-row flex-wrap gap-3.5 mt-1">
         {VENUE_STYLES.map((style) => {
           const isSelected = selected.includes(style.key);
           return (
             <Pressable
               key={style.key}
               onPress={() => toggle(style.key)}
-              style={{ width: '47%' }}
+              className="w-[47%]"
             >
               <View
-                style={[
-                  {
-                    aspectRatio: 1,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    backgroundColor: editorial.surfaceContainerHighest,
-                    borderWidth: isSelected ? 2 : 0,
-                    borderColor: isSelected ? colors.light : 'transparent',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  },
-                  shadowSoft,
-                ]}
+                className={`aspect-square rounded-xl overflow-hidden bg-ed-surface-container-highest items-center justify-center ${
+                  isSelected ? 'border-2 border-of-light' : 'border-0 border-transparent'
+                }`}
+                style={shadowSoft}
               >
-                <Text style={{ fontSize: 48 }}>{style.emoji}</Text>
+                <Text className="text-[48px]">{style.emoji}</Text>
                 {isSelected && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: 'rgba(26,26,26,0.2)',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+                  <View className="absolute inset-0 bg-[rgba(26,26,26,0.2)] items-center justify-center">
                     <Ionicons name="checkmark-circle" size={40} color={colors.light} />
                   </View>
                 )}
               </View>
-              <Text
-                style={{
-                  fontFamily: 'SpaceGrotesk-Bold',
-                  fontSize: 15,
-                  color: editorial.onSurface,
-                  marginTop: 8,
-                }}
-              >
+              <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mt-2">
                 {style.label}
               </Text>
             </Pressable>
@@ -92,9 +65,9 @@ export default function VenueSettingStep() {
         })}
       </View>
 
-      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
+      <Text className="font-work-sans text-xs text-ed-on-surface-variant text-center mt-4">
         You can change these preferences later.
       </Text>
-    </EditorialStepContainer>
+    </StepContainer>
   );
 }

@@ -29,26 +29,15 @@ export function ApprovalBanner({ state }: { state: Extract<VendorApprovalState, 
 
   return (
     <View
-      style={[
-        {
-          flexDirection: 'row',
-          gap: 12,
-          padding: 18,
-          borderRadius: 20,
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          marginBottom: 20,
-        },
-        shadowSoftSm,
-      ]}
+      className="flex-row gap-3 p-[18px] rounded-[20px] bg-ed-surface-container-lowest border border-ed-outline-variant mb-5"
+      style={shadowSoftSm}
     >
       <Ionicons name={copy.icon} size={22} color={editorial.primaryContainer} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 4 }}>
+      <View className="flex-1">
+        <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-1">
           {copy.title}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, lineHeight: 19 }}>
+        <Text className="font-work-sans text-[13px] text-ed-on-surface-variant leading-[19px]">
           {copy.body}
         </Text>
       </View>

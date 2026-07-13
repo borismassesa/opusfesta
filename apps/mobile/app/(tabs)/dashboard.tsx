@@ -1,11 +1,9 @@
 import { View, Text, Pressable } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { useOpusFestaAuth } from '@/lib/auth';
-import { useAuthenticatedSupabase } from '@/lib/supabase';
-import { getDashboardData } from '@/lib/api/events';
+import { useDashboardData } from '@/hooks/useEvents';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { shadowSoftSm, shadowSoftPrimary, VENDOR_CATEGORIES } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
@@ -17,13 +15,9 @@ function iconForCategory(category: string | null | undefined): keyof typeof Ioni
 export default function DashboardScreen() {
   const { editorial } = useTheme();
   const { user } = useOpusFestaAuth();
-  const client = useAuthenticatedSupabase();
   const router = useRouter();
 
-  const { data } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => getDashboardData(client),
-  });
+  const { data } = useDashboardData();
 
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
 
@@ -47,211 +41,104 @@ export default function DashboardScreen() {
   return (
     <ScreenWrapper>
       {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Pressable style={{ padding: 4 }} onPress={() => router.push('/profile-settings')}>
+      <View className="flex-row justify-between items-center mb-6">
+        <Pressable className="p-1" onPress={() => router.push('/profile-settings')}>
           <Ionicons name="menu" size={24} color={editorial.primaryContainer} />
         </Pressable>
-        <Text
-          numberOfLines={1}
-          style={{
-            fontFamily: 'DancingScript-Bold',
-            fontSize: 30,
-            color: editorial.primaryContainer,
-          }}
-        >
+        <Text numberOfLines={1} className="font-dancing-script-bold text-[30px] text-ed-primary-container">
           {displayName}
         </Text>
-        <Pressable style={{ position: 'relative', padding: 4 }} onPress={() => router.push('/notifications')}>
+        <Pressable className="relative p-1" onPress={() => router.push('/notifications')}>
           <Ionicons name="notifications-outline" size={24} color={editorial.primaryContainer} />
           {unreadCount > 0 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: editorial.error,
-              }}
-            />
+            <View className="absolute top-1 right-1 w-2 h-2 rounded-[4px] bg-ed-error" />
           )}
         </Pressable>
       </View>
 
       {/* Countdown Banner */}
-      <View
-        style={[
-          {
-            borderRadius: 24,
-            padding: 24,
-            marginBottom: 28,
-            backgroundColor: editorial.primaryContainer,
-          },
-          shadowSoftPrimary,
-        ]}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <View className="rounded-3xl p-6 mb-7 bg-ed-primary-container" style={shadowSoftPrimary}>
+        <View className="flex-row items-center justify-between">
           <View>
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Bold',
-                fontSize: 10,
-                letterSpacing: 3,
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.7)',
-                marginBottom: 4,
-              }}
-            >
+            <Text className="font-work-sans-bold text-[10px] tracking-[3px] uppercase text-white/70 mb-1">
               The Big Day Countdown
             </Text>
-            <Text
-              style={{
-                fontFamily: 'SpaceGrotesk-Bold',
-                fontSize: 32,
-                color: '#ffffff',
-              }}
-            >
+            <Text className="font-space-grotesk-bold text-[32px] text-white">
               {daysLeft !== null ? `${daysLeft} days left` : 'No date yet'}
             </Text>
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Regular',
-                fontSize: 13,
-                color: 'rgba(255,255,255,0.6)',
-                marginTop: 8,
-              }}
-            >
+            <Text className="font-work-sans text-[13px] text-white/60 mt-2">
               {weddingDate}
             </Text>
           </View>
-          <View
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              width: 64,
-              height: 64,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          <View className="bg-white/15 w-16 h-16 rounded-xl items-center justify-center">
             <Ionicons name="calendar-outline" size={32} color="#fff" />
           </View>
         </View>
       </View>
 
       {/* Budget & Checklist */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <View className="flex-row items-center gap-2 mb-3.5">
         <Ionicons name="checkbox-outline" size={20} color={editorial.primaryContainer} />
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
+        <Text className="font-space-grotesk-bold text-lg text-ed-on-surface">
           Budget &amp; Checklist
         </Text>
       </View>
       <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            padding: 20,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            marginBottom: 28,
-          },
-          shadowSoftSm,
-        ]}
+        className="bg-ed-surface-container-lowest p-5 rounded-[20px] border border-ed-outline-variant mb-7"
+        style={shadowSoftSm}
       >
-        <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
+        <Text className="font-work-sans-medium text-[13px] text-ed-on-surface-variant">
           Budget tracking and a wedding checklist are coming soon.
         </Text>
       </View>
 
       {/* Booked Vendors */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View className="flex-row items-center justify-between mb-3.5">
+        <View className="flex-row items-center gap-2">
           <Ionicons name="storefront-outline" size={20} color={editorial.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
+          <Text className="font-space-grotesk-bold text-lg text-ed-on-surface">
             Booked Vendors
           </Text>
         </View>
         <Pressable>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
+          <Text className="font-work-sans-bold text-[13px] text-ed-primary-container">
             Manage
           </Text>
         </Pressable>
       </View>
       {bookedVendors.length === 0 ? (
         <View
-          style={[
-            {
-              backgroundColor: editorial.surfaceContainerLowest,
-              padding: 20,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            },
-            shadowSoftSm,
-          ]}
+          className="bg-ed-surface-container-lowest p-5 rounded-[20px] border border-ed-outline-variant"
+          style={shadowSoftSm}
         >
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
+          <Text className="font-work-sans-medium text-[13px] text-ed-on-surface-variant">
             No booked vendors yet. Save a vendor as booked from their profile to see it here.
           </Text>
         </View>
       ) : (
-        <View style={{ gap: 12 }}>
-          {bookedVendors.map((booking: any) => (
+        <View className="gap-3">
+          {bookedVendors.map((booking) => (
             <View
               key={booking.id}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 16,
-                  backgroundColor: editorial.surfaceContainerLowest,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: editorial.outlineVariant,
-                },
-                shadowSoftSm,
-              ]}
+              className="flex-row items-center justify-between p-4 bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant"
+              style={shadowSoftSm}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 10,
-                    backgroundColor: editorial.tertiaryFixed,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+              <View className="flex-row items-center gap-3">
+                <View className="w-12 h-12 rounded-[10px] items-center justify-center bg-ed-tertiary-fixed">
                   <Ionicons name={iconForCategory(booking.vendors?.category)} size={22} color={editorial.tertiaryContainer} />
                 </View>
                 <View>
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
+                  <Text className="font-space-grotesk-bold text-sm text-ed-on-surface">
                     {booking.vendors?.business_name ?? 'Vendor'}
                   </Text>
-                  <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                  <Text className="font-work-sans text-xs text-ed-on-surface-variant">
                     {booking.vendors?.category ?? ''}
                   </Text>
                 </View>
               </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 4,
-                  backgroundColor: '#e8f5e9',
-                  borderRadius: 4,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderWidth: 1,
-                  borderColor: '#c8e6c9',
-                }}
-              >
+              <View className="flex-row items-center gap-1 bg-[#e8f5e9] rounded px-2.5 py-1 border border-[#c8e6c9]">
                 <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: '#16a34a' }}>
+                <Text className="font-work-sans-bold text-[11px] text-[#16a34a]">
                   Booked
                 </Text>
               </View>

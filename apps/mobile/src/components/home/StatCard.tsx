@@ -16,45 +16,22 @@ export function StatCard({ icon, value, label, onPress, muted = false }: StatCar
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        flex: 1,
-        backgroundColor: editorial.surfaceContainerLowest,
-        borderRadius: 16,
-        paddingVertical: 14,
-        paddingHorizontal: 10,
-        alignItems: 'flex-start',
-      }}
+      className="flex-1 bg-ed-surface-container-lowest rounded-2xl py-3.5 px-2.5 items-start"
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View className="flex-row items-center gap-2">
         {/* Tinted icon chip — mirrors the checklist goal-card treatment so the stat
             cards read as part of the same system rather than bare dashboard widgets. */}
-        <View
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 13,
-            backgroundColor: editorial.tertiaryFixed,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
+        <View className="w-[26px] h-[26px] rounded-[13px] items-center justify-center bg-ed-tertiary-fixed">
           <Ionicons name={icon} size={15} color={editorial.tertiaryContainer} />
         </View>
         <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 17,
-            color: muted ? editorial.onSurfaceVariant : editorial.onSurface,
-          }}
+          className={`font-space-grotesk-bold text-[17px] ${muted ? 'text-ed-on-surface-variant' : 'text-ed-on-surface'}`}
           numberOfLines={1}
         >
           {value}
         </Text>
       </View>
-      <Text
-        style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.onSurfaceVariant, marginTop: 6 }}
-        numberOfLines={1}
-      >
+      <Text className="font-work-sans text-[11px] text-ed-on-surface-variant mt-1.5" numberOfLines={1}>
         {label}
       </Text>
     </Pressable>

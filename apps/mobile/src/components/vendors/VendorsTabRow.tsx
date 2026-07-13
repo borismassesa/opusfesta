@@ -1,5 +1,4 @@
 import { View, Text, Pressable } from 'react-native';
-import { useTheme } from '@/theme/useTheme';
 
 export type VendorsTabKey = 'find' | 'booked' | 'favorites';
 
@@ -15,37 +14,18 @@ interface VendorsTabRowProps {
 }
 
 export function VendorsTabRow({ activeKey, onChange }: VendorsTabRowProps) {
-  const { editorial } = useTheme();
-
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 22,
-        paddingHorizontal: 20,
-        marginTop: 18,
-        borderBottomWidth: 1,
-        borderBottomColor: editorial.outlineVariant,
-      }}
-    >
+    <View className="flex-row gap-[22px] px-5 mt-[18px] border-b border-ed-outline-variant">
       {TABS.map((tab) => {
         const isActive = tab.key === activeKey;
         return (
           <Pressable
             key={tab.key}
             onPress={() => onChange(tab.key)}
-            style={{
-              paddingBottom: 12,
-              borderBottomWidth: 2,
-              borderBottomColor: isActive ? editorial.onSurface : 'transparent',
-            }}
+            className={`pb-3 border-b-2 ${isActive ? 'border-ed-on-surface' : 'border-transparent'}`}
           >
             <Text
-              style={{
-                fontFamily: isActive ? 'WorkSans-Bold' : 'WorkSans-Regular',
-                fontSize: 14,
-                color: isActive ? editorial.onSurface : editorial.onSurfaceVariant,
-              }}
+              className={`text-sm ${isActive ? 'font-work-sans-bold text-ed-on-surface' : 'font-work-sans text-ed-on-surface-variant'}`}
             >
               {tab.label}
             </Text>

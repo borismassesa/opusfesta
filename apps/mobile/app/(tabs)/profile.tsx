@@ -24,7 +24,7 @@ export default function WebsiteTabScreen() {
   if (isLoading) {
     return (
       <ScreenWrapper>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+        <View className="flex-1 items-center justify-center py-20">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       </ScreenWrapper>
@@ -35,64 +35,26 @@ export default function WebsiteTabScreen() {
   if (!website?.doc) {
     return (
       <ScreenWrapper>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+        <View className="flex-1 items-center justify-center py-10">
           <View
-            style={[
-              {
-                width: 80,
-                height: 80,
-                borderRadius: 12,
-                backgroundColor: editorial.tertiaryFixed,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 24,
-              },
-              shadowSoftSm,
-            ]}
+            className="w-20 h-20 rounded-xl items-center justify-center mb-6 bg-ed-tertiary-fixed"
+            style={shadowSoftSm}
           >
             <Ionicons name="globe-outline" size={40} color={editorial.tertiaryContainer} />
           </View>
-          <Text
-            style={{
-              fontFamily: 'PlayfairDisplay-Bold',
-              fontSize: 22,
-              color: editorial.onSurface,
-              textAlign: 'center',
-              marginBottom: 8,
-            }}
-          >
+          <Text className="font-playfair-bold text-[22px] text-ed-on-surface text-center mb-2">
             Your Wedding Website
           </Text>
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 15,
-              lineHeight: 22,
-              color: editorial.onSurfaceVariant,
-              textAlign: 'center',
-              marginBottom: 32,
-              paddingHorizontal: 32,
-            }}
-          >
+          <Text className="font-work-sans text-[15px] leading-[22px] text-ed-on-surface-variant text-center mb-8 px-8">
             Create a beautiful website to share your wedding details, collect RSVPs, and keep guests informed
           </Text>
           <Pressable
             onPress={() => router.push('/website/create')}
-            style={[
-              {
-                backgroundColor: editorial.primaryContainer,
-                paddingVertical: 16,
-                paddingHorizontal: 32,
-                borderRadius: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-              },
-              shadowSoft,
-            ]}
+            className="bg-ed-primary-container py-4 px-8 rounded-xl flex-row items-center gap-2"
+            style={shadowSoft}
           >
             <Ionicons name="add-circle-outline" size={20} color="#fff" />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: '#fff' }}>
+            <Text className="font-space-grotesk-bold text-base text-white">
               Create Website
             </Text>
           </Pressable>
@@ -123,96 +85,42 @@ export default function WebsiteTabScreen() {
   return (
     <ScreenWrapper>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Text
-          style={{
-            fontFamily: 'PlayfairDisplay-Bold',
-            fontSize: 22,
-            color: editorial.onSurface,
-          }}
-        >
+      <View className="flex-row items-center justify-between mb-6">
+        <Text className="font-playfair-bold text-[22px] text-ed-on-surface">
           My Website
         </Text>
         <Pressable
           onPress={() => router.push('/website/share')}
-          style={[
-            {
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4,
-              backgroundColor: editorial.tertiaryFixed,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 8,
-            },
-            shadowSoftSm,
-          ]}
+          className="flex-row items-center gap-1 bg-ed-tertiary-fixed px-3 py-2 rounded-lg"
+          style={shadowSoftSm}
         >
           <Ionicons name="share-outline" size={16} color={editorial.tertiaryContainer} />
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.tertiaryContainer }}>
+          <Text className="font-work-sans-bold text-xs text-ed-tertiary-container">
             Share
           </Text>
         </Pressable>
       </View>
 
       {/* Stats row */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+      <View className="flex-row gap-3 mb-6">
         <View
-          style={[
-            {
-              flex: 1,
-              backgroundColor: editorial.surfaceContainerLowest,
-              padding: 16,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-              alignItems: 'center',
-            },
-            shadowSoftSm,
-          ]}
+          className="flex-1 bg-ed-surface-container-lowest p-4 rounded-[20px] border border-ed-outline-variant items-center"
+          style={shadowSoftSm}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.primaryContainer }}>
+          <Text className="font-space-grotesk-bold text-xl text-ed-primary-container">
             {visibleCount}
           </Text>
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: editorial.onSurfaceVariant,
-              marginTop: 4,
-            }}
-          >
+          <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant mt-1">
             Pages
           </Text>
         </View>
         <Pressable
           onPress={() => router.push('/planning/guests')}
-          style={[
-            {
-              flex: 1,
-              backgroundColor: editorial.surfaceContainerLowest,
-              padding: 16,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-              alignItems: 'center',
-            },
-            shadowSoftSm,
-          ]}
+          className="flex-1 bg-ed-surface-container-lowest p-4 rounded-[20px] border border-ed-outline-variant items-center"
+          style={shadowSoftSm}
         >
           <Ionicons name="mail-outline" size={20} color={editorial.primaryContainer} />
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: editorial.onSurfaceVariant,
-              marginTop: 4,
-            }}
-          >
+          <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant mt-1">
             RSVPs
           </Text>
         </Pressable>
@@ -220,32 +128,12 @@ export default function WebsiteTabScreen() {
 
       {/* Publish toggle */}
       <View
-        style={[
-          {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: editorial.surfaceContainerLowest,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            marginBottom: 24,
-          },
-          shadowSoftSm,
-        ]}
+        className="flex-row items-center justify-between bg-ed-surface-container-lowest px-4 py-3 rounded-[20px] border border-ed-outline-variant mb-6"
+        style={shadowSoftSm}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: isPublished ? '#16a34a' : editorial.outline,
-            }}
-          />
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 14, color: editorial.onSurface }}>
+        <View className="flex-row items-center gap-2">
+          <View className={`w-2 h-2 rounded-[4px] ${isPublished ? 'bg-[#16a34a]' : 'bg-ed-outline'}`} />
+          <Text className="font-work-sans-medium text-sm text-ed-on-surface">
             {isPublished ? 'Published' : 'Unpublished'}
           </Text>
         </View>
@@ -258,142 +146,62 @@ export default function WebsiteTabScreen() {
       </View>
 
       {/* Preview + Settings buttons */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+      <View className="flex-row gap-3 mb-6">
         <Pressable
           onPress={() => router.push('/website/preview')}
-          style={[
-            {
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              backgroundColor: editorial.primaryContainer,
-              paddingVertical: 14,
-              borderRadius: 12,
-            },
-            shadowSoft,
-          ]}
+          className="flex-1 flex-row items-center justify-center gap-2 bg-ed-primary-container py-3.5 rounded-xl"
+          style={shadowSoft}
         >
           <Ionicons name="eye-outline" size={18} color="#fff" />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: '#fff' }}>Preview</Text>
+          <Text className="font-space-grotesk-bold text-sm text-white">Preview</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push('/website/create?edit=true')}
-          style={[
-            {
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              backgroundColor: editorial.surfaceContainerLowest,
-              paddingVertical: 14,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            },
-            shadowSoftSm,
-          ]}
+          className="flex-1 flex-row items-center justify-center gap-2 bg-ed-surface-container-lowest py-3.5 rounded-[20px] border border-ed-outline-variant"
+          style={shadowSoftSm}
         >
           <Ionicons name="color-palette-outline" size={18} color={editorial.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.primaryContainer }}>
+          <Text className="font-space-grotesk-bold text-sm text-ed-primary-container">
             Theme
           </Text>
         </Pressable>
         <Pressable
           onPress={() => router.push('/website/guestbook-manage')}
-          style={[
-            {
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              backgroundColor: editorial.surfaceContainerLowest,
-              paddingVertical: 14,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            },
-            shadowSoftSm,
-          ]}
+          className="flex-1 flex-row items-center justify-center gap-2 bg-ed-surface-container-lowest py-3.5 rounded-[20px] border border-ed-outline-variant"
+          style={shadowSoftSm}
         >
           <Ionicons name="book-outline" size={18} color={editorial.primaryContainer} />
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.primaryContainer }}>
+          <Text className="font-space-grotesk-bold text-sm text-ed-primary-container">
             Guestbook
           </Text>
         </Pressable>
       </View>
 
       {/* Pages list */}
-      <Text
-        style={{
-          fontFamily: 'SpaceGrotesk-Bold',
-          fontSize: 16,
-          color: editorial.onSurface,
-          marginBottom: 4,
-        }}
-      >
+      <Text className="font-space-grotesk-bold text-base text-ed-on-surface mb-1">
         Pages
       </Text>
-      <Text
-        style={{
-          fontFamily: 'WorkSans-Regular',
-          fontSize: 12,
-          color: editorial.onSurfaceVariant,
-          marginBottom: 12,
-        }}
-      >
+      <Text className="font-work-sans text-xs text-ed-on-surface-variant mb-3">
         Choose which pages show on your public website
       </Text>
-      <View style={{ gap: 8 }}>
+      <View className="gap-2">
         {WEBSITE_PAGES.map((config) => {
           const page = pages.find((p) => p.key === config.key);
           const visible = page?.visible ?? true;
           return (
             <View
               key={config.key}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: editorial.surfaceContainerLowest,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: editorial.outlineVariant,
-                  padding: 16,
-                },
-                shadowSoftSm,
-              ]}
+              className="flex-row items-center bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-4"
+              style={shadowSoftSm}
             >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 8,
-                  backgroundColor: editorial.tertiaryFixed,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 12,
-                }}
-              >
-                <Ionicons name={config.icon as any} size={20} color={editorial.tertiaryContainer} />
+              <View className="w-10 h-10 rounded-lg items-center justify-center mr-3 bg-ed-tertiary-fixed">
+                <Ionicons name={config.icon as keyof typeof Ionicons.glyphMap} size={20} color={editorial.tertiaryContainer} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
+              <View className="flex-1">
+                <Text className="font-space-grotesk-bold text-sm text-ed-on-surface">
                   {config.label}
                 </Text>
-                <Text
-                  style={{
-                    fontFamily: 'WorkSans-Bold',
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    textTransform: 'uppercase',
-                    color: editorial.onSurfaceVariant,
-                    marginTop: 2,
-                  }}
-                >
+                <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant mt-0.5">
                   {visible ? 'Visible' : 'Hidden'}
                 </Text>
               </View>

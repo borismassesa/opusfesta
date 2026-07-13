@@ -27,71 +27,42 @@ export default function InspirationScreen() {
       <Header title="Inspiration" showBack />
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : items.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="images-outline" size={40} color={editorial.outlineVariant} />
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 14,
-              color: editorial.onSurfaceVariant,
-              textAlign: 'center',
-              marginTop: 12,
-            }}
-          >
+          <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center mt-3">
             No inspiration saved yet. Save a vendor's cover photo from their profile to start your board.
           </Text>
         </View>
       ) : (
         <FlatList
           data={items}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={{ gap: GAP }}
           contentContainerStyle={{ gap: GAP, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }: any) => (
+          renderItem={({ item }) => (
             <Pressable
               onPress={() => item.vendor_id && router.push({ pathname: '/vendor/[id]', params: { id: item.vendor_id } })}
               onLongPress={() => handleRemove(item.id)}
-              style={[
-                {
-                  flex: 1,
-                  aspectRatio: 1,
-                  borderRadius: 14,
-                  overflow: 'hidden',
-                  backgroundColor: editorial.surfaceContainerLowest,
-                  borderWidth: 1,
-                  borderColor: editorial.outlineVariant,
-                },
-                shadowSoftSm,
-              ]}
+              className="flex-1 aspect-square rounded-[14px] overflow-hidden bg-ed-surface-container-lowest border border-ed-outline-variant"
+              style={shadowSoftSm}
             >
-              <Image source={{ uri: item.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={{ uri: item.image_url }} className="w-full h-full" resizeMode="cover" />
               <Pressable
                 onPress={() => handleRemove(item.id)}
                 hitSlop={8}
-                style={{
-                  position: 'absolute', top: 6, right: 6,
-                  width: 26, height: 26, borderRadius: 13,
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  alignItems: 'center', justifyContent: 'center',
-                }}
+                className="absolute top-1.5 right-1.5 w-[26px] h-[26px] rounded-[13px] bg-black/40 items-center justify-center"
               >
                 <Ionicons name="close" size={14} color="#fff" />
               </Pressable>
               {item.vendors?.business_name && (
-                <View
-                  style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    paddingHorizontal: 8, paddingVertical: 6,
-                    backgroundColor: 'rgba(0,0,0,0.35)',
-                  }}
-                >
-                  <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: '#fff' }} numberOfLines={1}>
+                <View className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-black/35">
+                  <Text className="font-work-sans-bold text-[11px] text-white" numberOfLines={1}>
                     {item.vendors.business_name}
                   </Text>
                 </View>

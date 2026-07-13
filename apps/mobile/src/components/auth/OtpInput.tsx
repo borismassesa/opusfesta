@@ -69,7 +69,7 @@ export function OtpInput({ length = 6, onComplete, error, onResend, resendCooldo
         maxLength={length}
         accessibilityLabel="Verification code"
         accessibilityValue={{ text: `${code.length} of ${length} digits entered` }}
-        style={{ position: 'absolute', opacity: 0, height: 0 }}
+        className="absolute opacity-0 h-0"
       />
       {error && <Text className="text-xs text-of-danger mt-3">{error}</Text>}
       {onResend && (

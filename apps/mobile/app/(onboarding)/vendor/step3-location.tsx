@@ -39,6 +39,7 @@ export default function VendorStep3() {
 
   return (
     <StepContainer
+      variant="vendor"
       title="Location & contact"
       subtitle="How can couples reach you?"
       currentStep={2}

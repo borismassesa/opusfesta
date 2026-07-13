@@ -11,7 +11,7 @@ import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 export default function BudgetScreen() {
-  const { editorial, colors } = useTheme();
+  const { editorial } = useTheme();
   const { data: profile, isLoading } = useCoupleProfile();
   const updateProfile = useUpdateCoupleProfile();
   const [selected, setSelected] = useState<string | null>(null);
@@ -34,52 +34,29 @@ export default function BudgetScreen() {
       <Header title="Budget" showBack />
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : (
         <>
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 13,
-              color: editorial.onSurfaceVariant,
-              marginBottom: 20,
-              lineHeight: 19,
-            }}
-          >
+          <Text className="font-work-sans text-[13px] text-ed-on-surface-variant mb-5 leading-[19px]">
             Pick the range that best fits your overall wedding budget. This helps us tailor vendor
             recommendations to your price point.
           </Text>
 
-          <View style={{ gap: 10, marginBottom: 20 }}>
+          <View className="gap-2.5 mb-5">
             {BUDGET_RANGES.map((range) => {
               const isSelected = selected === range.key;
               return (
                 <Pressable
                   key={range.key}
                   onPress={() => setSelected(range.key)}
-                  style={[
-                    {
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: 16,
-                      borderRadius: 14,
-                      backgroundColor: isSelected ? colors.light : editorial.surfaceContainerLowest,
-                      borderWidth: 1,
-                      borderColor: isSelected ? colors.light : editorial.outlineVariant,
-                    },
-                    shadowSoftSm,
-                  ]}
+                  className={`flex-row items-center justify-between p-4 rounded-[14px] border ${
+                    isSelected ? 'bg-of-light border-of-light' : 'bg-ed-surface-container-lowest border-ed-outline-variant'
+                  }`}
+                  style={shadowSoftSm}
                 >
-                  <Text
-                    style={{
-                      fontFamily: 'SpaceGrotesk-Bold',
-                      fontSize: 15,
-                      color: editorial.onSurface,
-                    }}
-                  >
+                  <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface">
                     {range.label}
                   </Text>
                   {isSelected && <Ionicons name="checkmark-circle" size={20} color={editorial.onSurface} />}
@@ -89,17 +66,8 @@ export default function BudgetScreen() {
           </View>
 
           {perGuestEstimate != null && (
-            <View
-              style={[
-                {
-                  padding: 14,
-                  borderRadius: 12,
-                  backgroundColor: editorial.surfaceContainerLow,
-                  marginBottom: 20,
-                },
-              ]}
-            >
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
+            <View className="p-3.5 rounded-xl bg-ed-surface-container-low mb-5">
+              <Text className="font-work-sans text-xs text-ed-on-surface-variant">
                 Based on {guestCount} guests, that's roughly {formatCurrency(perGuestEstimate)} per guest.
               </Text>
             </View>

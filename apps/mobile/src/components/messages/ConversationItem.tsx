@@ -2,7 +2,6 @@ import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Avatar } from '../ui/Avatar';
 import { shadowSoftSm } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
 
 interface ConversationItemProps {
   id: string;
@@ -23,7 +22,6 @@ export function ConversationItem({
   unreadCount = 0,
   isOnline = false,
 }: ConversationItemProps) {
-  const { editorial } = useTheme();
   const router = useRouter();
 
   return (
@@ -34,89 +32,31 @@ export function ConversationItem({
           params: { id, vendorName, vendorLogo: vendorLogo ?? '' },
         })
       }
-      style={[
-        {
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          borderRadius: 12,
-          padding: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 14,
-        },
-        shadowSoftSm,
-      ]}
+      className="bg-ed-surface-container-lowest border border-ed-outline-variant rounded-xl p-4 flex-row items-center gap-3.5"
+      style={shadowSoftSm}
     >
-      <View style={{ position: 'relative' }}>
+      <View className="relative">
         <Avatar name={vendorName} imageUrl={vendorLogo} size="md" />
         {isOnline && (
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              right: 0,
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: '#16a34a',
-              borderWidth: 2,
-              borderColor: editorial.surfaceContainerLowest,
-            }}
-          />
+          <View className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-[5px] bg-[#16a34a] border-2 border-ed-surface-container-lowest" />
         )}
       </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text
-            style={{
-              fontFamily: 'SpaceGrotesk-Bold',
-              fontSize: 15,
-              color: editorial.onSurface,
-            }}
-          >
+      <View className="flex-1 min-w-0">
+        <View className="flex-row justify-between items-center">
+          <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface">
             {vendorName}
           </Text>
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 11,
-              color: editorial.onSurfaceVariant,
-            }}
-          >
+          <Text className="font-work-sans text-[11px] text-ed-on-surface-variant">
             {timestamp}
           </Text>
         </View>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 14,
-            color: editorial.onSurfaceVariant,
-            marginTop: 2,
-          }}
-          numberOfLines={1}
-        >
+        <Text className="font-work-sans text-sm text-ed-on-surface-variant mt-0.5" numberOfLines={1}>
           {lastMessage}
         </Text>
       </View>
       {unreadCount > 0 && (
-        <View
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 11,
-            backgroundColor: editorial.primaryContainer,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 10,
-              color: '#fff',
-            }}
-          >
+        <View className="w-[22px] h-[22px] rounded-[11px] items-center justify-center bg-ed-primary-container">
+          <Text className="font-work-sans-bold text-[10px] text-white">
             {unreadCount}
           </Text>
         </View>

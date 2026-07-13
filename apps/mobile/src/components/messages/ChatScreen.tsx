@@ -33,79 +33,40 @@ export function ChatScreen({ threadId, counterpartName }: ChatScreenProps) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }} edges={['top']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+    <SafeAreaView className="flex-1 bg-ed-bg" edges={['top']}>
+      <View className="px-5 pt-2">
         <Header title={counterpartName || 'Messages'} showBack />
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={editorial.primaryContainer} />
         </View>
       ) : (
         <FlatList
           data={messages ?? []}
           keyExtractor={(item) => item.id}
-          style={{ flex: 1, paddingHorizontal: 20 }}
+          className="flex-1 px-5"
           contentContainerStyle={{ gap: 12, paddingBottom: 16 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={{ paddingTop: 40, alignItems: 'center' }}>
-              <Text
-                style={{
-                  fontFamily: 'WorkSans-Regular',
-                  fontSize: 14,
-                  color: editorial.onSurfaceVariant,
-                  textAlign: 'center',
-                }}
-              >
+            <View className="pt-10 items-center">
+              <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center">
                 No messages yet. Say hello!
               </Text>
             </View>
           }
           renderItem={({ item }) => {
             const isMe = item.sender_id === user?.id;
+            const bubbleClass = isMe
+              ? 'max-w-[80%] p-3.5 rounded-xl self-end rounded-br-[4px] bg-ed-primary-container'
+              : 'max-w-[80%] p-3.5 rounded-xl self-start rounded-bl-[4px] bg-ed-surface-container-lowest border border-ed-outline-variant';
             return (
-              <View
-                style={[
-                  {
-                    maxWidth: '80%',
-                    padding: 14,
-                    borderRadius: 12,
-                    ...(isMe
-                      ? {
-                          backgroundColor: editorial.primaryContainer,
-                          alignSelf: 'flex-end',
-                          borderBottomRightRadius: 4,
-                        }
-                      : {
-                          backgroundColor: editorial.surfaceContainerLowest,
-                          alignSelf: 'flex-start',
-                          borderBottomLeftRadius: 4,
-                          borderWidth: 1,
-                          borderColor: editorial.outlineVariant,
-                        }),
-                  },
-                  !isMe ? shadowSoftSm : {},
-                ]}
-              >
-                <Text
-                  style={{
-                    fontFamily: 'WorkSans-Regular',
-                    fontSize: 14,
-                    color: isMe ? '#ffffff' : editorial.onSurface,
-                  }}
-                >
+              <View className={bubbleClass} style={!isMe ? shadowSoftSm : undefined}>
+                <Text className={`font-work-sans text-sm ${isMe ? 'text-white' : 'text-ed-on-surface'}`}>
                   {item.content}
                 </Text>
-                <Text
-                  style={{
-                    fontFamily: 'WorkSans-Regular',
-                    fontSize: 10,
-                    marginTop: 4,
-                    color: isMe ? 'rgba(255,255,255,0.6)' : editorial.onSurfaceVariant,
-                  }}
-                >
+                <Text className={`font-work-sans text-[10px] mt-1 ${isMe ? 'text-white/60' : 'text-ed-on-surface-variant'}`}>
                   {formatTime(item.created_at)}
                 </Text>
               </View>
@@ -115,49 +76,19 @@ export function ChatScreen({ threadId, counterpartName }: ChatScreenProps) {
       )}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View
-          style={{
-            paddingHorizontal: 20,
-            paddingVertical: 12,
-            borderTopWidth: 2,
-            borderTopColor: editorial.outlineVariant,
-            backgroundColor: editorial.surfaceContainerLowest,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
+        <View className="px-5 py-3 border-t-2 border-ed-outline-variant bg-ed-surface-container-lowest flex-row items-center gap-3">
           <TextInput
             value={message}
             onChangeText={setMessage}
             placeholder="Type a message..."
             placeholderTextColor={editorial.outlineVariant}
-            style={{
-              flex: 1,
-              backgroundColor: editorial.surfaceContainerLow,
-              borderRadius: 12,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 14,
-              color: editorial.onSurface,
-            }}
+            className="flex-1 bg-ed-surface-container-low rounded-xl px-4 py-3 font-work-sans text-sm text-ed-on-surface"
           />
           <Pressable
             onPress={handleSend}
             disabled={sendMessage.isPending}
-            style={[
-              {
-                width: 40,
-                height: 40,
-                borderRadius: 8,
-                backgroundColor: editorial.primaryContainer,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: sendMessage.isPending ? 0.6 : 1,
-              },
-              shadowSoftSm,
-            ]}
+            className={`w-10 h-10 rounded-lg items-center justify-center bg-ed-primary-container ${sendMessage.isPending ? 'opacity-60' : 'opacity-100'}`}
+            style={shadowSoftSm}
           >
             <Ionicons name="send" size={18} color="#fff" />
           </Pressable>

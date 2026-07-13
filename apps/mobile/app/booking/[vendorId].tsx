@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { Header } from '@/components/layout/Header';
 import { Input } from '@/components/ui/Input';
@@ -13,10 +12,10 @@ import { Card } from '@/components/ui/Card';
 import { DatePickerField } from '@/components/onboarding/DatePickerField';
 import { BudgetSelector } from '@/components/onboarding/BudgetSelector';
 import { BUDGET_RANGES, type BudgetKey } from '@/constants/onboarding';
-import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { useOpusFestaAuth } from '@/lib/auth';
-import { createBookingInquiry } from '@/lib/api/bookings';
-import { getVendorById } from '@/lib/api/vendors';
+import { useVendor } from '@/hooks/useVendors';
+import { useCreateBookingInquiry } from '@/hooks/useBookings';
+import { getErrorMessage } from '@/lib/errors';
 
 const bookingSchema = z.object({
   eventDate: z.string().min(1, 'Event date is required'),
@@ -30,17 +29,12 @@ type BookingForm = z.infer<typeof bookingSchema>;
 export default function BookingScreen() {
   const { vendorId } = useLocalSearchParams<{ vendorId: string }>();
   const router = useRouter();
-  const client = useAuthenticatedSupabase();
   const { user } = useOpusFestaAuth();
   const [guestCount, setGuestCount] = useState(250);
   const [eventDate, setEventDate] = useState<Date | null>(null);
   const [budgetKey, setBudgetKey] = useState<BudgetKey | null>(null);
 
-  const { data: vendor } = useQuery({
-    queryKey: ['vendor', vendorId],
-    queryFn: () => getVendorById(vendorId!),
-    enabled: !!vendorId,
-  });
+  const { data: vendor } = useVendor(vendorId);
 
   const {
     control,
@@ -57,29 +51,30 @@ export default function BookingScreen() {
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: (data: BookingForm) =>
-      createBookingInquiry(client, {
+  const mutation = useCreateBookingInquiry();
+
+  const onSubmit = (data: BookingForm) => {
+    mutation.mutate(
+      {
         vendor_id: vendorId!,
         name: user?.name ?? '',
         email: user?.email ?? '',
         event_date: data.eventDate,
-        guest_count: data.guestCount,
+        guest_count: guestCount,
         budget_range: data.budgetRange,
         message: data.message,
-      }),
-    onSuccess: () => {
-      Alert.alert('Request sent!', 'The vendor will respond shortly.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    },
-    onError: (err: any) => {
-      Alert.alert('Error', err.message || 'Failed to send request');
-    },
-  });
-
-  const onSubmit = (data: BookingForm) => {
-    mutation.mutate({ ...data, guestCount });
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Request sent!', 'The vendor will respond shortly.', [
+            { text: 'OK', onPress: () => router.back() },
+          ]);
+        },
+        onError: (err) => {
+          Alert.alert('Error', getErrorMessage(err, 'Failed to send request'));
+        },
+      },
+    );
   };
 
   return (

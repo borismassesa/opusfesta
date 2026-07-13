@@ -9,7 +9,7 @@ export function FavoritesTab() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color={editorial.primaryContainer} />
       </View>
     );
@@ -17,15 +17,8 @@ export function FavoritesTab() {
 
   if (savedVendors.length === 0) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 14,
-            color: editorial.onSurfaceVariant,
-            textAlign: 'center',
-          }}
-        >
+      <View className="flex-1 items-center justify-center px-8">
+        <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center">
           No saved vendors yet. Tap the heart on a vendor's profile to save it here.
         </Text>
       </View>
@@ -35,10 +28,10 @@ export function FavoritesTab() {
   return (
     <FlatList
       data={savedVendors}
-      keyExtractor={(item: any) => item.id}
+      keyExtractor={(item) => item.id}
       contentContainerStyle={{ gap: 10 }}
       showsVerticalScrollIndicator={false}
-      renderItem={({ item }: any) => (
+      renderItem={({ item }) => (
         <VendorListItem
           id={item.vendors?.id ?? item.vendor_id}
           name={item.vendors?.business_name ?? 'Vendor'}

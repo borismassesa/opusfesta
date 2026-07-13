@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { StepContainer } from '@/components/onboarding/StepContainer';
 import { shadowSoft, shadowSoftPrimary } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import { GUEST_COUNT_OPTIONS } from '@/constants/onboarding';
@@ -21,7 +21,7 @@ export default function GuestsStep() {
   };
 
   return (
-    <EditorialStepContainer
+    <StepContainer
       title="How many guests are you expecting?"
       subtitle="This helps us recommend venues and catering packages that perfectly fit your celebration's scale."
       currentStep={5}
@@ -30,32 +30,23 @@ export default function GuestsStep() {
       onBack={() => router.back()}
       nextDisabled={!selected}
     >
-      <View style={{ gap: 12, marginTop: 8 }}>
+      <View className="gap-3 mt-2">
         {GUEST_COUNT_OPTIONS.map((opt) => {
           const isSelected = selected === opt.key;
           return (
             <Pressable
               key={opt.key}
               onPress={() => setSelected(opt.key)}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 18,
-                  borderRadius: 12,
-                  backgroundColor: isSelected ? editorial.secondaryContainer : editorial.surfaceContainerLow,
-                  borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? colors.light : 'transparent',
-                },
-                isSelected ? shadowSoftPrimary : shadowSoft,
-              ]}
+              className={`flex-row items-center justify-between p-[18px] rounded-xl ${
+                isSelected ? 'bg-ed-secondary-container border-2 border-of-light' : 'bg-ed-surface-container-low border-0 border-transparent'
+              }`}
+              style={isSelected ? shadowSoftPrimary : shadowSoft}
             >
               <View>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 22, color: isSelected ? editorial.onSecondaryContainer : editorial.onSurface, marginBottom: 2 }}>
+                <Text className={`font-space-grotesk-bold text-[22px] mb-0.5 ${isSelected ? 'text-ed-on-secondary-container' : 'text-ed-on-surface'}`}>
                   {opt.label}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+                <Text className="font-work-sans text-[13px] text-ed-on-surface-variant">
                   {opt.subtitle}
                 </Text>
               </View>
@@ -68,10 +59,10 @@ export default function GuestsStep() {
           );
         })}
 
-        <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 8 }}>
+        <Text className="font-work-sans-medium text-[13px] text-ed-on-surface-variant text-center mt-2">
           You can adjust this guest count later in your event dashboard.
         </Text>
       </View>
-    </EditorialStepContainer>
+    </StepContainer>
   );
 }

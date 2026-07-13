@@ -4,6 +4,7 @@ import { useSignInWithApple } from '@clerk/clerk-expo';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Haptics from 'expo-haptics';
 import { authTheme } from '@/constants/theme';
+import { getErrorMessage, getErrorCode } from '@/lib/errors';
 
 interface AppleSignInButtonProps {
   role?: string;
@@ -36,9 +37,9 @@ export function AppleSignInButton({ role, onSuccess, onError }: AppleSignInButto
         await setActive({ session: createdSessionId });
         onSuccess();
       }
-    } catch (err: any) {
-      if (err?.code === 'ERR_REQUEST_CANCELED') return;
-      onError(err.errors?.[0]?.message || err.message || 'Apple sign-in failed');
+    } catch (err) {
+      if (getErrorCode(err) === 'ERR_REQUEST_CANCELED') return;
+      onError(getErrorMessage(err, 'Apple sign-in failed'));
     } finally {
       setLoading(false);
     }

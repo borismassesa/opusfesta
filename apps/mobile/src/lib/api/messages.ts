@@ -1,6 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getConversations(client: SupabaseClient) {
+export interface ConversationThread {
+  id: string;
+  last_message: string | null;
+  updated_at: string;
+  unread_count: number | null;
+  vendors: { id: string; business_name: string; logo: string | null } | null;
+}
+
+export async function getConversations(client: SupabaseClient): Promise<ConversationThread[]> {
   const { data, error } = await client
     .from('message_threads')
     .select(`
@@ -10,7 +18,7 @@ export async function getConversations(client: SupabaseClient) {
     .order('updated_at', { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as unknown as ConversationThread[];
 }
 
 export async function getMessages(client: SupabaseClient, threadId: string) {

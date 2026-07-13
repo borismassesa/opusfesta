@@ -12,8 +12,8 @@ export default function GuestbookManageScreen() {
   const approve = useApproveGuestbook();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
+      <View className="px-5 pt-4">
         <Header title="Guestbook" showBack />
       </View>
 

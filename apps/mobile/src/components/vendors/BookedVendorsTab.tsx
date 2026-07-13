@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { View, Text, FlatList, ActivityIndicator } from 'react-native';
 import { BROWSE_CATEGORIES } from '@/constants/vendorCategories';
 import { useSavedVendors } from '@/hooks/useSavedVendors';
+import type { SavedVendorRow } from '@/types/vendor';
 import { useTheme } from '@/theme/useTheme';
 import { BookedCategoryRow } from './BookedCategoryRow';
 
@@ -14,7 +15,7 @@ export function BookedVendorsTab({ onFindVendor }: BookedVendorsTabProps) {
   const { data: savedVendors = [], isLoading } = useSavedVendors();
 
   const bookedByCategory = useMemo(() => {
-    const map: Record<string, any> = {};
+    const map: Record<string, SavedVendorRow> = {};
     for (const row of savedVendors) {
       if (row.status !== 'booked') continue;
       const category = row.vendors?.category;
@@ -28,7 +29,7 @@ export function BookedVendorsTab({ onFindVendor }: BookedVendorsTabProps) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color={editorial.primaryContainer} />
       </View>
     );
@@ -41,19 +42,13 @@ export function BookedVendorsTab({ onFindVendor }: BookedVendorsTabProps) {
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={
         <>
-          <View
-            style={{
-              paddingHorizontal: 20,
-              paddingVertical: 14,
-              backgroundColor: editorial.surfaceContainerHigh,
-            }}
-          >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: editorial.onSurfaceVariant }}>
+          <View className="px-5 py-3.5 bg-ed-surface-container-high">
+            <Text className="font-work-sans-bold text-sm text-ed-on-surface-variant">
               {bookedCount} of {BROWSE_CATEGORIES.length} booked
             </Text>
           </View>
-          <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+          <View className="px-5 py-4">
+            <Text className="font-work-sans text-[13px] text-ed-on-surface-variant">
               When you mark vendors as booked, we'll add them to your budget for easy tracking.
             </Text>
           </View>

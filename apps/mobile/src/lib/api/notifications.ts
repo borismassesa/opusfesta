@@ -1,6 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getNotifications(client: SupabaseClient) {
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  read: boolean;
+  href: string | null;
+  created_at: string;
+}
+
+export async function getNotifications(client: SupabaseClient): Promise<NotificationItem[]> {
   const { data, error } = await client
     .from('notifications')
     .select('*')
@@ -8,7 +18,7 @@ export async function getNotifications(client: SupabaseClient) {
     .limit(50);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as NotificationItem[];
 }
 
 export async function getUnreadNotificationCount(client: SupabaseClient) {

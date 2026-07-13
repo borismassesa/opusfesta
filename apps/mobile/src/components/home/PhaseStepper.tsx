@@ -1,5 +1,4 @@
 import { View, Text, Pressable, ScrollView } from 'react-native';
-import { useTheme } from '@/theme/useTheme';
 
 interface PhaseStepperProps {
   sections: { id: string; title: string }[];
@@ -8,8 +7,6 @@ interface PhaseStepperProps {
 }
 
 export function PhaseStepper({ sections, selectedId, onSelect }: PhaseStepperProps) {
-  const { editorial } = useTheme();
-
   return (
     <ScrollView
       horizontal
@@ -19,38 +16,19 @@ export function PhaseStepper({ sections, selectedId, onSelect }: PhaseStepperPro
       {sections.map((section, index) => {
         const active = section.id === selectedId;
         return (
-          <Pressable key={section.id} onPress={() => onSelect(section.id)} style={{ alignItems: 'center', width: 68 }}>
+          <Pressable key={section.id} onPress={() => onSelect(section.id)} className="items-center w-[68px]">
             <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: active ? editorial.primaryContainer : editorial.surfaceContainerLow,
-                borderWidth: active ? 0 : 1,
-                borderColor: editorial.outlineVariant,
-                marginBottom: 6,
-              }}
+              className={`w-9 h-9 rounded-full items-center justify-center mb-1.5 ${
+                active ? 'bg-ed-primary-container border-0' : 'bg-ed-surface-container-low border border-ed-outline-variant'
+              }`}
             >
-              <Text
-                style={{
-                  fontFamily: 'SpaceGrotesk-Bold',
-                  fontSize: 14,
-                  color: active ? '#ffffff' : editorial.onSurfaceVariant,
-                }}
-              >
+              <Text className={`font-space-grotesk-bold text-sm ${active ? 'text-white' : 'text-ed-on-surface-variant'}`}>
                 {index + 1}
               </Text>
             </View>
             <Text
               numberOfLines={2}
-              style={{
-                fontFamily: 'WorkSans-Bold',
-                fontSize: 9,
-                textAlign: 'center',
-                color: active ? editorial.onSurface : editorial.onSurfaceVariant,
-              }}
+              className={`font-work-sans-bold text-[9px] text-center ${active ? 'text-ed-on-surface' : 'text-ed-on-surface-variant'}`}
             >
               {section.title}
             </Text>

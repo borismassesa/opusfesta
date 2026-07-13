@@ -2,16 +2,14 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { StepContainer } from '@/components/onboarding/StepContainer';
 import { shadowSoft } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
 import { DESIGN_STYLES } from '@/constants/onboarding';
 import { useCoupleOnboarding } from './_layout';
 
 export default function DesignStyleStep() {
   const router = useRouter();
   const { data, setDesignStyle } = useCoupleOnboarding();
-  const { editorial } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.designStyle?.designStyles ?? []);
 
   const toggle = (key: string) => {
@@ -26,7 +24,7 @@ export default function DesignStyleStep() {
   };
 
   return (
-    <EditorialStepContainer
+    <StepContainer
       title="What design style"
       titleAccent="speaks to you?"
       subtitle="Select all the aesthetics that match your dream celebration vision."
@@ -36,62 +34,33 @@ export default function DesignStyleStep() {
       onBack={() => router.back()}
       nextDisabled={selected.length === 0}
     >
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 4 }}>
+      <View className="flex-row flex-wrap gap-3.5 mt-1">
         {DESIGN_STYLES.map((style) => {
           const isSelected = selected.includes(style.key);
           return (
             <Pressable
               key={style.key}
               onPress={() => toggle(style.key)}
-              style={{ width: '47%' }}
+              className="w-[47%]"
             >
               <View
-                style={[
-                  {
-                    aspectRatio: 0.8,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    backgroundColor: editorial.surfaceContainerHighest,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  },
-                  shadowSoft,
-                ]}
+                className="aspect-[0.8] rounded-xl overflow-hidden bg-ed-surface-container-highest items-center justify-center"
+                style={shadowSoft}
               >
-                <Text style={{ fontSize: 48 }}>{style.emoji}</Text>
+                <Text className="text-[48px]">{style.emoji}</Text>
                 {isSelected && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 10,
-                      right: 10,
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: editorial.tertiaryContainer,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+                  <View className="absolute top-2.5 right-2.5 w-7 h-7 rounded-[14px] items-center justify-center bg-ed-tertiary-container">
                     <Ionicons name="checkmark" size={16} color="#fff" />
                   </View>
                 )}
               </View>
-              <Text
-                style={{
-                  fontFamily: 'SpaceGrotesk-Bold',
-                  fontSize: 15,
-                  color: editorial.onSurface,
-                  marginTop: 8,
-                  paddingLeft: 2,
-                }}
-              >
+              <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mt-2 pl-0.5">
                 {style.label}
               </Text>
             </Pressable>
           );
         })}
       </View>
-    </EditorialStepContainer>
+    </StepContainer>
   );
 }

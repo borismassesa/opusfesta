@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApprovalBanner } from '@/components/vendor/ApprovalBanner';
@@ -22,38 +22,27 @@ export default function LeadsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-of-cream" edges={['top']}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-        <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 16 }}>
+      <View className="px-5 pt-2">
+        <Text className="font-dancing-script-bold text-[28px] text-ed-primary-container mb-4">
           Leads
         </Text>
 
         {locked && <ApprovalBanner state={approvalState} />}
 
         {!locked && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+            <View className="flex-row gap-2">
               {LEAD_FILTERS.map((option) => {
                 const active = filter === option.key;
                 return (
                   <Pressable
                     key={option.key}
                     onPress={() => setFilter(option.key)}
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      backgroundColor: active ? editorial.primaryContainer : editorial.surfaceContainerLowest,
-                      borderWidth: 1,
-                      borderColor: active ? editorial.primaryContainer : editorial.outlineVariant,
-                    }}
+                    className={`px-4 py-2 rounded-[20px] border ${
+                      active ? 'bg-ed-primary-container border-ed-primary-container' : 'bg-ed-surface-container-lowest border-ed-outline-variant'
+                    }`}
                   >
-                    <Text
-                      style={{
-                        fontFamily: 'WorkSans-Bold',
-                        fontSize: 12,
-                        color: active ? '#fff' : editorial.onSurfaceVariant,
-                      }}
-                    >
+                    <Text className={`font-work-sans-bold text-xs ${active ? 'text-white' : 'text-ed-on-surface-variant'}`}>
                       {option.label}
                     </Text>
                   </Pressable>
@@ -67,21 +56,13 @@ export default function LeadsScreen() {
       {!locked && (
         <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 0, gap: 12 }}>
           {isLoading ? (
-            <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ marginTop: 40 }} />
+            <ActivityIndicator size="small" color={editorial.primaryContainer} className="mt-10" />
           ) : (leads ?? []).length === 0 ? (
             <View
-              style={[
-                {
-                  backgroundColor: editorial.surfaceContainerLowest,
-                  padding: 20,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: editorial.outlineVariant,
-                },
-                shadowSoftSm,
-              ]}
+              className="bg-ed-surface-container-lowest p-5 rounded-[20px] border border-ed-outline-variant"
+              style={shadowSoftSm}
             >
-              <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
+              <Text className="font-work-sans-medium text-[13px] text-ed-on-surface-variant">
                 No leads here yet.
               </Text>
             </View>
@@ -91,35 +72,27 @@ export default function LeadsScreen() {
               return (
                 <Pressable
                   key={lead.id}
-                  onPress={() => router.push(`/(vendor-tabs)/leads/${lead.id}` as any)}
-                  style={[
-                    {
-                      padding: 16,
-                      backgroundColor: editorial.surfaceContainerLowest,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: editorial.outlineVariant,
-                    },
-                    shadowSoftSm,
-                  ]}
+                  onPress={() => router.push(`/(vendor-tabs)/leads/${lead.id}` as Href)}
+                  className="p-4 bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant"
+                  style={shadowSoftSm}
                 >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1, marginRight: 12 }}>
-                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface }}>
+                  <View className="flex-row justify-between items-start">
+                    <View className="flex-1 mr-3">
+                      <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface">
                         {lead.name}
                       </Text>
-                      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2, textTransform: 'capitalize' }}>
+                      <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5 capitalize">
                         {lead.event_type}
                         {lead.event_date ? ` · ${new Date(lead.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
                       </Text>
                       {lead.budget && (
-                        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                        <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5">
                           Budget: {lead.budget}
                         </Text>
                       )}
                     </View>
-                    <View style={{ backgroundColor: style.bg, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 }}>
-                      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: style.fg }}>{style.label}</Text>
+                    <View className="rounded px-2.5 py-1" style={{ backgroundColor: style.bg }}>
+                      <Text className="font-work-sans-bold text-[11px]" style={{ color: style.fg }}>{style.label}</Text>
                     </View>
                   </View>
                 </Pressable>
@@ -130,7 +103,7 @@ export default function LeadsScreen() {
       )}
 
       {locked && (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="mail-outline" size={32} color={editorial.outline} />
         </View>
       )}

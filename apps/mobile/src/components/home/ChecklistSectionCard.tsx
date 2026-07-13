@@ -18,35 +18,15 @@ export function ChecklistSectionCard({ icon, title, doneCount, totalCount, onPre
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 14,
-        },
-        shadowSoftSm,
-      ]}
+      className="flex-row items-center gap-3 bg-ed-surface-container-lowest rounded-2xl border border-ed-outline-variant p-3.5"
+      style={shadowSoftSm}
     >
-      <View
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 10,
-          backgroundColor: editorial.tertiaryFixed,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Ionicons name={icon as any} size={22} color={editorial.tertiaryContainer} />
+      <View className="w-12 h-12 rounded-[10px] items-center justify-center bg-ed-tertiary-fixed">
+        <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={22} color={editorial.tertiaryContainer} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface }}>{title}</Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+      <View className="flex-1">
+        <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface">{title}</Text>
+        <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5">
           {allDone ? 'All done' : `${doneCount}/${totalCount} tasks`}
         </Text>
       </View>

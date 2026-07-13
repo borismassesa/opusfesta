@@ -1,10 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CoupleProfile } from '@/types/couple';
 
 // There is no standalone `events` table — a couple's wedding is represented
 // by their single `couple_profiles` row (one per user, enforced by a unique
 // constraint on user_id). We normalize it to `name`/`date`/`location` so
 // existing callers don't need to know about the underlying column names.
-function toEventShape(profile: Record<string, any> | null) {
+function toEventShape(profile: CoupleProfile | null) {
   if (!profile) return null;
   const name = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || null;
   const location = [profile.city, profile.region].filter(Boolean).join(', ') || null;
@@ -33,6 +34,13 @@ export async function getEventById(client: SupabaseClient, id: string) {
   return toEventShape(data);
 }
 
+export interface CoupleBooking {
+  id: string;
+  status: string | null;
+  created_at: string;
+  vendors: { id: string; business_name: string; logo: string | null; category: string } | null;
+}
+
 export async function getDashboardData(client: SupabaseClient) {
   const [profileRes, bookingsRes] = await Promise.all([
     client
@@ -56,6 +64,6 @@ export async function getDashboardData(client: SupabaseClient) {
 
   return {
     event: toEventShape(profileRes.data),
-    bookings: bookingsRes.data ?? [],
+    bookings: (bookingsRes.data ?? []) as unknown as CoupleBooking[],
   };
 }

@@ -1,6 +1,5 @@
 import { Pressable, Text } from 'react-native';
 import { shadowSoftSm } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
 
 interface CategoryPillProps {
   label: string;
@@ -13,30 +12,17 @@ export function CategoryPill({
   active = false,
   onPress,
 }: CategoryPillProps) {
-  const { editorial } = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        {
-          borderRadius: 9999,
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          borderWidth: active ? 1.5 : 1,
-          backgroundColor: active ? editorial.primaryContainer : editorial.surfaceContainerLowest,
-          borderColor: active ? editorial.primaryContainer : editorial.outlineVariant,
-        },
-        active ? shadowSoftSm : {},
-      ]}
+      className={
+        active
+          ? 'rounded-full px-4 py-2 border-[1.5px] bg-ed-primary-container border-ed-primary-container'
+          : 'rounded-full px-4 py-2 border border-ed-outline-variant bg-ed-surface-container-lowest'
+      }
+      style={active ? shadowSoftSm : undefined}
     >
-      <Text
-        style={{
-          fontFamily: 'WorkSans-Bold',
-          fontSize: 13,
-          letterSpacing: 0.5,
-          color: active ? editorial.onPrimary : editorial.onSurfaceVariant,
-        }}
-      >
+      <Text className={`font-work-sans-bold text-[13px] tracking-[0.5px] ${active ? 'text-ed-on-primary' : 'text-ed-on-surface-variant'}`}>
         {label}
       </Text>
     </Pressable>

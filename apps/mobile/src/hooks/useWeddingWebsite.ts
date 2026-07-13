@@ -10,13 +10,14 @@ import {
   unpublishWebsite,
 } from '@/lib/api/wedding-website';
 import type { BuilderMeta, SiteDoc, WebsitePresetId } from '@/types/site-doc';
+import type { CoupleProfile } from '@/types/couple';
 
 /** Reuses useCoupleProfile()'s ['couple-profile'] cache entry — the site
  *  doc lives on the same row, so there's no separate query key to keep in
  *  sync. */
 export function useWeddingWebsite() {
   const query = useCoupleProfile();
-  const profile = query.data as Record<string, any> | null | undefined;
+  const profile = query.data as CoupleProfile | null | undefined;
 
   return {
     ...query,

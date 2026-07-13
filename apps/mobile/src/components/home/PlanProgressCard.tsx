@@ -10,9 +10,6 @@ interface PlanProgressCardProps {
   onPress: () => void;
 }
 
-const COLLAGE_SIZE = 88;
-const PHOTO_SIZE = COLLAGE_SIZE * 0.7;
-
 export function PlanProgressCard({ daysLeft, photos, onPress }: PlanProgressCardProps) {
   const { editorial } = useTheme();
   const previewPhotos = photos.slice(0, 3);
@@ -20,33 +17,18 @@ export function PlanProgressCard({ daysLeft, photos, onPress }: PlanProgressCard
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 18,
-          borderRadius: 24,
-          padding: 20,
-          marginBottom: 24,
-          backgroundColor: editorial.primaryContainer,
-        },
-        shadowSoftPrimary,
-      ]}
+      className="flex-row items-center gap-[18px] rounded-3xl p-5 mb-6 bg-ed-primary-container"
+      style={shadowSoftPrimary}
     >
-      <View style={{ width: COLLAGE_SIZE, height: COLLAGE_SIZE }}>
+      <View className="w-[88px] h-[88px]">
         {previewPhotos.length > 0 ? (
           previewPhotos.map((uri, i) => (
             <Image
               key={`${uri}-${i}`}
               source={{ uri }}
               resizeMode="cover"
+              className="absolute w-[61.6px] h-[61.6px] rounded-lg border-[3px] border-white"
               style={{
-                position: 'absolute',
-                width: PHOTO_SIZE,
-                height: PHOTO_SIZE,
-                borderRadius: 8,
-                borderWidth: 3,
-                borderColor: '#fff',
                 top: i * 8,
                 left: i * 10,
                 transform: [{ rotate: `${(i - 1) * 8}deg` }],
@@ -56,27 +38,21 @@ export function PlanProgressCard({ daysLeft, photos, onPress }: PlanProgressCard
         ) : (
           <LinearGradient
             colors={[editorial.secondaryContainer, editorial.tertiaryFixed]}
-            style={{
-              width: COLLAGE_SIZE,
-              height: COLLAGE_SIZE,
-              borderRadius: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 88, height: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center' }}
           >
             <Ionicons name="heart-outline" size={30} color={editorial.tertiaryContainer} />
           </LinearGradient>
         )}
       </View>
 
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+      <View className="flex-1">
+        <View className="flex-row items-center gap-1.5 mb-1.5">
+          <Text className="font-work-sans-bold text-[13px] text-white/80">
             Your progress
           </Text>
           <Ionicons name="arrow-forward" size={13} color="rgba(255,255,255,0.8)" />
         </View>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: '#ffffff' }}>
+        <Text className="font-space-grotesk-bold text-2xl text-white">
           {daysLeft !== null ? `${daysLeft} days to go` : 'No date yet'}
         </Text>
       </View>

@@ -40,12 +40,16 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
 
-  const borderColor = error ? authTheme.danger : focused ? authTheme.borderFocus : authTheme.border;
+  const borderClass = error
+    ? 'border-[1.5px] border-of-danger'
+    : focused
+      ? 'border-[1.5px] border-of-light'
+      : 'border border-of-line';
 
   return (
-    <View style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'WorkSans-SemiBold', fontSize: 13, color: authTheme.ink }}>{label}</Text>
+    <View className="gap-1.5">
+      <View className="flex-row justify-between items-center">
+        <Text className="font-work-sans-semibold text-[13px] text-of-ink">{label}</Text>
         {rightLabel && (
           <Pressable
             onPress={onRightPress}
@@ -53,22 +57,13 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
             accessibilityLabel={rightLabel}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ fontFamily: 'WorkSans-SemiBold', fontSize: 13, color: authTheme.accent }}>
+            <Text className="font-work-sans-semibold text-[13px] text-of-accent">
               {rightLabel}
             </Text>
           </Pressable>
         )}
       </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: authTheme.bg,
-          borderRadius: authTheme.radius,
-          borderWidth: focused || error ? 1.5 : 1,
-          borderColor,
-        }}
-      >
+      <View className={`flex-row items-center bg-of-white rounded-lg ${borderClass}`}>
         <TextInput
           ref={ref}
           value={value}
@@ -82,14 +77,7 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           accessibilityLabel={accessibilityLabel ?? label}
-          style={{
-            flex: 1,
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 16,
-            color: authTheme.ink,
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-          }}
+          className="flex-1 font-work-sans text-base text-of-ink px-4 py-3.5"
           {...(secureTextEntry ? { textContentType: 'password' } : {})}
         />
         {secureTextEntry && (
@@ -98,16 +86,16 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
             accessibilityRole="button"
             accessibilityLabel={visible ? 'Hide password' : 'Show password'}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={{ paddingHorizontal: 14, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            className="px-3.5 h-11 items-center justify-center"
           >
             <Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textSecondary} />
           </Pressable>
         )}
       </View>
       {error ? (
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: authTheme.danger }}>{error}</Text>
+        <Text className="font-work-sans text-xs text-of-danger">{error}</Text>
       ) : hint ? (
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: authTheme.textSecondary }}>{hint}</Text>
+        <Text className="font-work-sans text-xs text-of-muted">{hint}</Text>
       ) : null}
     </View>
   );

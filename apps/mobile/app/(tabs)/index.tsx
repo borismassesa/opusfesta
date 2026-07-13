@@ -21,7 +21,6 @@ import { useAdviceIdeas } from '@/hooks/useAdviceIdeas';
 import { getFeaturedVendors } from '@/lib/api/vendors';
 import { BROWSE_CATEGORIES } from '@/constants/vendorCategories';
 import { BUDGET_RANGES, CITIES } from '@/constants/onboarding';
-import { purpleTints } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 // Which checklist phase should be highlighted by default, based on how close
@@ -65,8 +64,8 @@ export default function HomeScreen() {
   const activePhase = perPhase.find((p) => p.id === activePhaseId) ?? perPhase[0];
 
   const attendingCount = guests
-    .filter((g: any) => g.rsvp_status === 'attending')
-    .reduce((sum: number, g: any) => sum + (g.party_size ?? 1), 0);
+    .filter((g) => g.rsvp_status === 'attending')
+    .reduce((sum, g) => sum + (g.party_size ?? 1), 0);
 
   // "undisclosed" ("Prefer not to say") reads as unset for a goal-budget stat — show "--" like the other empty stats.
   const budgetLabel =
@@ -75,59 +74,28 @@ export default function HomeScreen() {
       : BUDGET_RANGES.find((r) => r.key === profile.budget_range)?.label ?? '--';
 
   const stickyHeader = (
-    <View
-      style={{
-        backgroundColor: editorial.headerTint,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 12,
-      }}
-    >
-      <Pressable onPress={() => router.push('/profile-settings')} style={{ padding: 4 }}>
+    <View className="bg-ed-header-tint flex-row items-center gap-2.5 px-5 pt-2 pb-3">
+      <Pressable onPress={() => router.push('/profile-settings')} className="p-1">
         <Ionicons name="settings-outline" size={22} color={editorial.onSurface} />
       </Pressable>
 
       <Pressable
         onPress={() => router.push('/search')}
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 24,
-          borderWidth: 1,
-          borderColor: purpleTints[100],
-          paddingHorizontal: 14,
-          height: 40,
-        }}
+        className="flex-1 flex-row items-center gap-2 bg-ed-surface-container-lowest rounded-3xl border border-[#F0E2F7] px-3.5 h-10"
       >
         <Ionicons name="sparkles" size={16} color={editorial.tertiaryContainer} />
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+        <Text className="font-work-sans text-[13px] text-ed-on-surface-variant">
           Ask anything
         </Text>
       </Pressable>
 
-      <Pressable onPress={() => router.push('/saved-vendors')} style={{ padding: 4 }}>
+      <Pressable onPress={() => router.push('/saved-vendors')} className="p-1">
         <Ionicons name="heart-outline" size={22} color={editorial.onSurface} />
       </Pressable>
-      <Pressable onPress={() => router.push('/notifications')} style={{ position: 'relative', padding: 4 }}>
+      <Pressable onPress={() => router.push('/notifications')} className="relative p-1">
         <Ionicons name="notifications-outline" size={22} color={editorial.onSurface} />
         {unreadCount > 0 && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: editorial.error,
-            }}
-          />
+          <View className="absolute top-1 right-1 w-2 h-2 rounded-[4px] bg-ed-error" />
         )}
       </Pressable>
     </View>
@@ -136,52 +104,40 @@ export default function HomeScreen() {
   return (
     <ScreenWrapper backgroundColor={editorial.headerTint} stickyHeader={stickyHeader}>
       {/* Warm header zone — couple block, stat cards (icon row is now the sticky header above) */}
-      <View
-        style={{
-          backgroundColor: editorial.headerTint,
-          marginHorizontal: -20,
-          marginTop: -8,
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          paddingBottom: 20,
-          borderBottomLeftRadius: 28,
-          borderBottomRightRadius: 28,
-          marginBottom: 24,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+      <View className="bg-ed-header-tint -mx-5 -mt-2 px-5 pt-2 pb-5 rounded-b-[28px] mb-6">
+        <View className="flex-row items-center gap-3.5 mb-[18px]">
           <CoupleAvatar imageUrl={profile?.avatar_url} name={profile?.partner1_name} />
-          <View style={{ flex: 1 }}>
+          <View className="flex-1">
             {profile?.partner1_name || profile?.partner2_name ? (
               <CoupleNames partner1={profile?.partner1_name} partner2={profile?.partner2_name} size="sm" align="left" />
             ) : (
-              <Text style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 22, color: editorial.onSurface }}>
+              <Text className="font-playfair-bold text-[22px] text-ed-on-surface">
                 Welcome
               </Text>
             )}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <View className="flex-row items-center mt-1">
               {missingCity ? (
                 <Text
                   onPress={() => router.push('/wedding-details')}
-                  style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, textDecorationLine: 'underline' }}
+                  className="font-work-sans-bold text-xs text-ed-primary-container underline"
                 >
                   Add city
                 </Text>
               ) : (
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                <Text className="font-work-sans-bold text-xs text-ed-on-surface-variant">
                   {cityLabel}
                 </Text>
               )}
-              <Text style={{ fontSize: 12, color: editorial.onSurfaceVariant, marginHorizontal: 6 }}>•</Text>
+              <Text className="text-xs text-ed-on-surface-variant mx-1.5">•</Text>
               {missingDate ? (
                 <Text
                   onPress={() => router.push('/wedding-details')}
-                  style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, textDecorationLine: 'underline' }}
+                  className="font-work-sans-bold text-xs text-ed-primary-container underline"
                 >
                   Add date
                 </Text>
               ) : (
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
+                <Text className="font-work-sans-bold text-xs text-ed-on-surface-variant">
                   {dateText}
                 </Text>
               )}
@@ -189,7 +145,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View className="flex-row gap-2.5">
           <StatCard
             icon="wallet-outline"
             value={budgetLabel}
@@ -213,21 +169,13 @@ export default function HomeScreen() {
       </View>
 
       {/* Jump right in */}
-      <Text
-        style={{
-          fontFamily: 'SpaceGrotesk-Bold',
-          fontSize: 18,
-          letterSpacing: -0.3,
-          color: editorial.onSurface,
-          marginBottom: 14,
-        }}
-      >
+      <Text className="font-space-grotesk-bold text-lg tracking-[-0.3px] text-ed-on-surface mb-3.5">
         Jump right in
       </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 28 }}
+        className="mb-7"
         contentContainerStyle={{ gap: 12 }}
       >
         {BROWSE_CATEGORIES.map((cat) => (
@@ -241,16 +189,16 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Your plan */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, letterSpacing: -0.3, color: editorial.onSurface }}>
+      <View className="flex-row justify-between items-center mb-3.5">
+        <Text className="font-space-grotesk-bold text-lg tracking-[-0.3px] text-ed-on-surface">
           Your plan
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurfaceVariant }}>
+        <Text className="font-work-sans-bold text-xs text-ed-on-surface-variant">
           {doneGoalCount}/{totalGoalCount} goals
         </Text>
       </View>
 
-      <View style={{ marginBottom: 18 }}>
+      <View className="mb-[18px]">
         <PhaseStepper
           sections={perPhase.map((p) => ({ id: p.id, title: p.label }))}
           selectedId={activePhaseId}
@@ -259,7 +207,7 @@ export default function HomeScreen() {
       </View>
 
       {activePhase && (
-        <View style={{ gap: 10, marginBottom: 12 }}>
+        <View className="gap-2.5 mb-3">
           {activePhase.goals.map((goal) => (
             <ChecklistSectionCard
               key={goal.id}
@@ -273,15 +221,8 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <Pressable onPress={() => router.push('/planning/checklist')} style={{ marginBottom: 28 }}>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Bold',
-            fontSize: 12,
-            color: editorial.primaryContainer,
-            textDecorationLine: 'underline',
-          }}
-        >
+      <Pressable onPress={() => router.push('/planning/checklist')} className="mb-7">
+        <Text className="font-work-sans-bold text-xs text-ed-primary-container underline">
           View full checklist
         </Text>
       </Pressable>
@@ -289,24 +230,16 @@ export default function HomeScreen() {
       {/* Ideas & advice */}
       {adviceIdeas.length > 0 && (
         <>
-          <Text
-            style={{
-              fontFamily: 'SpaceGrotesk-Bold',
-              fontSize: 18,
-              letterSpacing: -0.3,
-              color: editorial.onSurface,
-              marginBottom: 14,
-            }}
-          >
+          <Text className="font-space-grotesk-bold text-lg tracking-[-0.3px] text-ed-on-surface mb-3.5">
             Ideas & advice
           </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: 28 }}
+            className="mb-7"
             contentContainerStyle={{ gap: 14 }}
           >
-            {adviceIdeas.map((post: any) => (
+            {adviceIdeas.map((post) => (
               <AdviceCard
                 key={post.id}
                 slug={post.slug}
@@ -320,15 +253,7 @@ export default function HomeScreen() {
       )}
 
       {/* Featured vendors */}
-      <Text
-        style={{
-          fontFamily: 'SpaceGrotesk-Bold',
-          fontSize: 18,
-          letterSpacing: -0.3,
-          color: editorial.onSurface,
-          marginBottom: 14,
-        }}
-      >
+      <Text className="font-space-grotesk-bold text-lg tracking-[-0.3px] text-ed-on-surface mb-3.5">
         Featured vendors
       </Text>
       {featuredVendors.length > 0 ? (
@@ -337,7 +262,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 14 }}
         >
-          {featuredVendors.map((vendor: any) => (
+          {featuredVendors.map((vendor) => (
             <VendorCard
               key={vendor.id}
               id={vendor.id}
@@ -352,7 +277,7 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
       ) : (
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant }}>
+        <Text className="font-work-sans text-sm text-ed-on-surface-variant">
           No featured vendors yet — check back soon.
         </Text>
       )}

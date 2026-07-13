@@ -50,19 +50,8 @@ export function CategoryVendorCard({
   return (
     <Pressable
       onPress={() => router.push(`/vendor/${id}`)}
-      style={[
-        {
-          width: CARD_WIDTH,
-          marginHorizontal: 20,
-          marginBottom: 24,
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 16,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-        },
-        shadowSoft,
-      ]}
+      className="mx-5 mb-6 bg-ed-surface-container-lowest rounded-2xl overflow-hidden border border-ed-outline-variant"
+      style={[{ width: CARD_WIDTH }, shadowSoft]}
     >
       <View style={{ height: IMAGE_HEIGHT }}>
         {photos.length > 0 ? (
@@ -81,31 +70,16 @@ export function CategoryVendorCard({
             colors={[editorial.secondaryContainer, editorial.tertiaryFixed]}
             style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 40 }}>🏛️</Text>
+            <Text className="text-[40px]">🏛️</Text>
           </LinearGradient>
         )}
 
         {photos.length > 1 && (
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              left: 0,
-              right: 0,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 5,
-            }}
-          >
+          <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-[5px]">
             {photos.map((_, i) => (
               <View
                 key={i}
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: i === activeIndex ? '#fff' : 'rgba(255,255,255,0.5)',
-                }}
+                className={`w-1.5 h-1.5 rounded-[3px] ${i === activeIndex ? 'bg-white' : 'bg-white/50'}`}
               />
             ))}
           </View>
@@ -114,46 +88,36 @@ export function CategoryVendorCard({
         <Pressable
           onPress={() => toggleSaved.mutate({ vendorId: id, isSaved })}
           disabled={toggleSaved.isPending}
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/35 items-center justify-center"
         >
           <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={18} color={isSaved ? '#E0558A' : '#fff'} />
         </Pressable>
       </View>
 
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+      <View className="p-4">
+        <View className="flex-row items-center justify-between mb-1">
           <Text
-            style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: editorial.onSurface, flex: 1 }}
+            className="font-space-grotesk-bold text-base text-ed-on-surface flex-1"
             numberOfLines={1}
           >
             {name}
           </Text>
           {rating != null && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 8 }}>
+            <View className="flex-row items-center gap-[3px] ml-2">
               <Ionicons name="star" size={13} color="#C4920A" />
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, color: editorial.onSurface }}>{rating}</Text>
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
+              <Text className="font-space-grotesk-bold text-[13px] text-ed-on-surface">{rating}</Text>
+              <Text className="font-work-sans text-xs text-ed-on-surface-variant">
                 ({reviewCount})
               </Text>
             </View>
           )}
         </View>
         {location && (
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginBottom: 6 }}>
+          <Text className="font-work-sans text-[13px] text-ed-on-surface-variant mb-1.5">
             {location}
           </Text>
         )}
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurface }}>
+        <Text className="font-work-sans-bold text-[13px] text-ed-on-surface">
           {formatCompactCurrencyRange(priceMin, priceMax)}
         </Text>
       </View>

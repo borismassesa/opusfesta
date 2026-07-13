@@ -23,22 +23,11 @@ export default function SearchScreen() {
 
   return (
     <ScreenWrapper scrollable={false}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+      <View className="flex-row items-center gap-2.5 mb-5">
+        <Pressable onPress={() => router.back()} className="p-1">
           <Ionicons name="arrow-back" size={22} color={editorial.primaryContainer} />
         </Pressable>
-        <View
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: editorial.surfaceContainerLow,
-            borderRadius: 24,
-            paddingHorizontal: 14,
-            height: 44,
-          }}
-        >
+        <View className="flex-1 flex-row items-center gap-2 bg-ed-surface-container-low rounded-3xl px-3.5 h-11">
           <Ionicons name="sparkles" size={16} color={editorial.tertiaryContainer} />
           <TextInput
             value={input}
@@ -46,7 +35,7 @@ export default function SearchScreen() {
             placeholder="Search vendors"
             placeholderTextColor={editorial.onSurfaceVariant}
             autoFocus
-            style={{ flex: 1, fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface }}
+            className="flex-1 font-work-sans text-sm text-ed-on-surface"
           />
           {input.length > 0 && (
             <Pressable onPress={() => setInput('')}>
@@ -57,31 +46,23 @@ export default function SearchScreen() {
       </View>
 
       {isFetching ? (
-        <View style={{ paddingTop: 40, alignItems: 'center' }}>
+        <View className="pt-10 items-center">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : showEmpty ? (
-        <View style={{ paddingTop: 40, alignItems: 'center', paddingHorizontal: 32 }}>
+        <View className="pt-10 items-center px-8">
           <Ionicons name="search-outline" size={36} color={editorial.outlineVariant} />
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 14,
-              color: editorial.onSurfaceVariant,
-              textAlign: 'center',
-              marginTop: 12,
-            }}
-          >
+          <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center mt-3">
             No vendors found for "{query}"
           </Text>
         </View>
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }: any) => (
+          renderItem={({ item }) => (
             <VendorCard
               id={item.id}
               name={item.business_name}

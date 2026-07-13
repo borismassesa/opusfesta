@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,121 +16,61 @@ export default function CongratsScreen() {
   const names = partner2 ? `${partner1} & ${partner2}` : partner1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
       {/* Decorative blurs */}
-      <View style={{ position: 'absolute', top: -40, left: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(66,20,104,0.06)' }} />
-      <View style={{ position: 'absolute', top: '25%', right: -60, width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(219,180,254,0.15)' }} />
+      <View className="absolute -top-10 -left-10 w-[200px] h-[200px] rounded-full bg-[rgba(66,20,104,0.06)]" />
+      <View className="absolute -right-[60px] w-[240px] h-[240px] rounded-full bg-[rgba(219,180,254,0.15)]" style={{ top: '25%' }} />
 
       <Pressable
         onPress={() => router.push('/(onboarding)/couple/step2-planning-stage')}
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }}
+        className="flex-1 items-center justify-center px-7"
       >
         {/* Hero image placeholder */}
         <View
-          style={[
-            {
-              width: '100%',
-              height: 220,
-              borderRadius: 12,
-              backgroundColor: editorial.surfaceContainerHighest,
-              marginBottom: 32,
-              overflow: 'hidden',
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-            shadowSoft,
-          ]}
+          className="w-full h-[220px] rounded-xl bg-ed-surface-container-highest mb-8 overflow-hidden items-center justify-center"
+          style={shadowSoft}
         >
           <Ionicons name="sparkles" size={64} color={editorial.onPrimaryContainer} style={{ opacity: 0.4 }} />
         </View>
 
         {/* Label */}
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 11,
-            letterSpacing: 4,
-            textTransform: 'uppercase',
-            color: editorial.onSecondaryContainer,
-            marginBottom: 12,
-          }}
-        >
+        <Text className="font-space-grotesk-bold text-[11px] tracking-[4px] uppercase text-ed-on-secondary-container mb-3">
           The Journey Begins
         </Text>
 
         {/* Headline */}
-        <Text
-          style={{
-            fontFamily: 'PlayfairDisplay-Bold',
-            fontSize: 32,
-            lineHeight: 36,
-            color: editorial.onSurface,
-            textAlign: 'center',
-          }}
-        >
+        <Text className="font-playfair-bold text-[32px] leading-9 text-ed-on-surface text-center">
           {names},{'\n'}
-          <Text style={{ color: editorial.onPrimaryContainer }}>congratulations!</Text>
+          <Text className="text-ed-on-primary-container">congratulations!</Text>
         </Text>
 
         {/* Body */}
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 17,
-            lineHeight: 26,
-            color: editorial.onSurfaceVariant,
-            textAlign: 'center',
-            marginTop: 16,
-            maxWidth: 340,
-          }}
-        >
+        <Text className="font-work-sans text-[17px] leading-[26px] text-ed-on-surface-variant text-center mt-4 max-w-[340px]">
           Let's build your wedding plan together. Your unique celebration deserves a curated masterpiece.
         </Text>
 
         {/* CTA */}
         <Pressable
           onPress={() => router.push('/(onboarding)/couple/step2-planning-stage')}
-          style={[
-            {
-              backgroundColor: editorial.primaryContainer,
-              paddingVertical: 18,
-              paddingHorizontal: 40,
-              borderRadius: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-              marginTop: 32,
-            },
-            shadowSoft,
-          ]}
+          className="bg-ed-primary-container py-[18px] px-10 rounded-xl flex-row items-center gap-2.5 mt-8"
+          style={shadowSoft}
         >
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onPrimary }}>
+          <Text className="font-space-grotesk-bold text-xl text-ed-on-primary">
             Let's Go
           </Text>
           <Ionicons name="arrow-forward" size={22} color={editorial.onPrimary} />
         </Pressable>
 
         {/* Decorative chips */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+        <View className="flex-row gap-2.5 mt-6">
           {['Traditional', 'Gala', 'Destination'].map((label) => (
             <View
               key={label}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                backgroundColor: label === 'Traditional' ? editorial.tertiaryFixed : label === 'Destination' ? '#f0dbff' : editorial.surfaceContainerHigh,
-                borderRadius: 20,
-              }}
+              className={`px-4 py-2 rounded-[20px] ${
+                label === 'Traditional' ? 'bg-ed-tertiary-fixed' : label === 'Destination' ? 'bg-[#f0dbff]' : 'bg-ed-surface-container-high'
+              }`}
             >
-              <Text
-                style={{
-                  fontFamily: 'WorkSans-SemiBold',
-                  fontSize: 10,
-                  letterSpacing: 2,
-                  textTransform: 'uppercase',
-                  color: editorial.onSurfaceVariant,
-                }}
-              >
+              <Text className="font-work-sans-semibold text-[10px] tracking-[2px] uppercase text-ed-on-surface-variant">
                 {label}
               </Text>
             </View>

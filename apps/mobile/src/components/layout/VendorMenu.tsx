@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { shadowSoft } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -47,7 +46,6 @@ interface VendorMenuProps {
  */
 export function VendorMenu({ visible, onClose }: VendorMenuProps) {
   const router = useRouter();
-  const { editorial } = useTheme();
   const animValue = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(false);
 
@@ -67,7 +65,7 @@ export function VendorMenu({ visible, onClose }: VendorMenuProps) {
         useNativeDriver: true,
       }).start(() => setMounted(false));
     }
-  }, [visible]);
+  }, [visible, animValue]);
 
   if (!mounted) return null;
 
@@ -112,35 +110,17 @@ export function VendorMenu({ visible, onClose }: VendorMenuProps) {
             <Pressable
               onPress={() => {
                 onClose();
-                router.push(item.route as any);
+                router.push(item.route as Href);
               }}
-              style={{ alignItems: 'center' }}
+              className="items-center"
             >
               <View
-                style={[
-                  {
-                    width: 60,
-                    height: 60,
-                    borderRadius: 12,
-                    backgroundColor: editorial.primaryContainer,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  },
-                  shadowSoft,
-                ]}
+                className="w-[60px] h-[60px] rounded-xl items-center justify-center bg-ed-primary-container"
+                style={shadowSoft}
               >
                 <Ionicons name={item.icon} size={26} color="#fff" />
               </View>
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontFamily: 'WorkSans-Bold',
-                  color: '#fff',
-                  textAlign: 'center',
-                  marginTop: 8,
-                }}
-                numberOfLines={2}
-              >
+              <Text className="text-[11px] font-work-sans-bold text-white text-center mt-2" numberOfLines={2}>
                 {item.label}
               </Text>
             </Pressable>

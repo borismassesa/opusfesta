@@ -1,5 +1,4 @@
 import { View, Text, Pressable } from 'react-native';
-import { useTheme } from '@/theme/useTheme';
 import { getMonthGridDates } from '@/lib/calendarMonth';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -14,30 +13,29 @@ interface MonthGridProps {
   selectedDate?: string | null;
 }
 
-export function MonthGrid({ year, monthIndex, statusByDate, onSelectDate, selectedDate }: MonthGridProps) {
-  const { editorial } = useTheme();
-  const cells = getMonthGridDates(year, monthIndex);
+const STATUS_CLASSES: Record<DayStatus, { bg: string; fg: string }> = {
+  open: { bg: 'bg-transparent', fg: 'text-ed-on-surface' },
+  'manually-blocked': { bg: 'bg-[#FCE8E6]', fg: 'text-ed-error' },
+  booked: { bg: 'bg-ed-primary-container', fg: 'text-white' },
+};
 
-  const STATUS_COLOR: Record<DayStatus, { bg: string; fg: string }> = {
-    open: { bg: 'transparent', fg: editorial.onSurface },
-    'manually-blocked': { bg: '#FCE8E6', fg: editorial.error },
-    booked: { bg: editorial.primaryContainer, fg: '#ffffff' },
-  };
+export function MonthGrid({ year, monthIndex, statusByDate, onSelectDate, selectedDate }: MonthGridProps) {
+  const cells = getMonthGridDates(year, monthIndex);
 
   return (
     <View>
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+      <View className="flex-row mb-2">
         {WEEKDAY_LABELS.map((label, i) => (
-          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: editorial.onSurfaceVariant }}>{label}</Text>
+          <View key={i} className="flex-1 items-center">
+            <Text className="font-work-sans-bold text-[11px] text-ed-on-surface-variant">{label}</Text>
           </View>
         ))}
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      <View className="flex-row flex-wrap">
         {cells.map((cell) => {
           const status = statusByDate[cell.date] ?? 'open';
-          const colors = STATUS_COLOR[status];
+          const cls = STATUS_CLASSES[status];
           const isSelected = selectedDate === cell.date;
 
           return (
@@ -45,28 +43,14 @@ export function MonthGrid({ year, monthIndex, statusByDate, onSelectDate, select
               key={cell.date}
               disabled={!cell.inCurrentMonth}
               onPress={() => onSelectDate(cell.date)}
-              style={{ width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center', padding: 2 }}
+              className="w-[14.2857%] aspect-square items-center justify-center p-0.5"
             >
               <View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: colors.bg,
-                  borderWidth: isSelected ? 2 : 0,
-                  borderColor: editorial.onSurface,
-                  opacity: cell.inCurrentMonth ? 1 : 0.25,
-                }}
+                className={`w-[34px] h-[34px] rounded-[10px] items-center justify-center ${cls.bg} ${
+                  isSelected ? 'border-2 border-ed-on-surface' : 'border-0'
+                } ${cell.inCurrentMonth ? 'opacity-100' : 'opacity-25'}`}
               >
-                <Text
-                  style={{
-                    fontFamily: 'WorkSans-Medium',
-                    fontSize: 13,
-                    color: cell.inCurrentMonth ? colors.fg : editorial.onSurfaceVariant,
-                  }}
-                >
+                <Text className={`font-work-sans-medium text-[13px] ${cell.inCurrentMonth ? cls.fg : 'text-ed-on-surface-variant'}`}>
                   {cell.day}
                 </Text>
               </View>

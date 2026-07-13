@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Redirect, Tabs, type ErrorBoundaryProps } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { View, Platform, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { shadowSoft } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
@@ -77,7 +77,7 @@ export default function TabLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -90,7 +90,7 @@ export default function TabLayout() {
             height: 84,
             paddingBottom: 16,
             paddingTop: 10,
-            overflow: 'visible' as any,
+            overflow: 'visible',
           },
           tabBarLabelStyle: {
             fontSize: 10,
@@ -99,7 +99,7 @@ export default function TabLayout() {
             textTransform: 'uppercase',
           },
           tabBarItemStyle: {
-            overflow: 'visible' as any,
+            overflow: 'visible',
           },
         }}
       >
@@ -111,7 +111,11 @@ export default function TabLayout() {
               title: tab.title,
               ...(tab.center
                 ? {
-                    tabBarButton: ({ ref, ...props }: any) => (
+                    // React Navigation's BottomTabBarButtonProps lives in
+                    // @react-navigation/bottom-tabs — a transitive dep not
+                    // resolvable from here — and props are spread onto Pressable.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    tabBarButton: ({ ref: _ref, ...props }: any) => (
                       <Pressable
                         {...props}
                         onPress={() => setMenuOpen((prev) => !prev)}
@@ -120,7 +124,7 @@ export default function TabLayout() {
                           alignItems: 'center',
                           justifyContent: 'flex-start',
                           paddingTop: 10,
-                          overflow: 'visible' as any,
+                          overflow: 'visible',
                         }}
                       >
                         <View

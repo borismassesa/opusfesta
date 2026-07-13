@@ -15,10 +15,20 @@ interface ButtonProps {
   className?: string;
 }
 
-const sizeConfig: Record<ButtonSize, { py: number; px: number; fontSize: number }> = {
-  sm: { py: 8, px: 16, fontSize: 14 },
-  md: { py: 16, px: 28, fontSize: 16 },
-  lg: { py: 20, px: 32, fontSize: 18 },
+// Static per-size padding/text classes (fixed scale, not runtime values).
+const sizeClasses: Record<ButtonSize, { container: string; text: string }> = {
+  sm: { container: 'py-2 px-4', text: 'text-sm' },
+  md: { container: 'py-4 px-7', text: 'text-base' },
+  lg: { container: 'py-5 px-8', text: 'text-lg' },
+};
+
+// Editorial Romance buttons: pill-shaped, flat fill, no shadow — the shared
+// OF web system (opus_website hero CTA is a flat lavender pill, color transition only).
+const variantClasses: Record<ButtonVariant, { container: string; text: string }> = {
+  primary: { container: 'bg-ed-primary-container', text: 'text-ed-on-primary' },
+  outline: { container: 'bg-transparent border-[1.5px] border-ed-primary-container', text: 'text-ed-primary-container' },
+  ghost: { container: 'bg-transparent', text: 'text-ed-primary-container' },
+  danger: { container: 'bg-transparent border-[1.5px] border-ed-error', text: 'text-ed-error' },
 };
 
 export function Button({
@@ -31,32 +41,8 @@ export function Button({
   className = '',
 }: ButtonProps) {
   const { editorial } = useTheme();
-
-  // Editorial Romance buttons: pill-shaped, flat fill, no shadow — the shared
-  // OF web system (opus_website hero CTA is a flat lavender pill, color transition only).
-  const variantConfig: Record<ButtonVariant, { bg: string; text: string; border?: string }> = {
-    primary: {
-      bg: editorial.primaryContainer,
-      text: editorial.onPrimary,
-    },
-    outline: {
-      bg: 'transparent',
-      text: editorial.primaryContainer,
-      border: editorial.primaryContainer,
-    },
-    ghost: {
-      bg: 'transparent',
-      text: editorial.primaryContainer,
-    },
-    danger: {
-      bg: 'transparent',
-      text: editorial.error,
-      border: editorial.error,
-    },
-  };
-
-  const v = variantConfig[variant];
-  const s = sizeConfig[size];
+  const v = variantClasses[variant];
+  const s = sizeClasses[size];
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -67,18 +53,7 @@ export function Button({
     <Pressable
       onPress={handlePress}
       disabled={disabled || loading}
-      className={className}
-      style={{
-        backgroundColor: v.bg,
-        paddingVertical: s.py,
-        paddingHorizontal: s.px,
-        borderRadius: 9999,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexDirection: 'row',
-        opacity: disabled ? 0.5 : 1,
-        ...(v.border ? { borderWidth: 1.5, borderColor: v.border } : {}),
-      }}
+      className={`${className} ${v.container} ${s.container} rounded-full items-center justify-center flex-row ${disabled ? 'opacity-50' : 'opacity-100'}`}
     >
       {loading ? (
         <ActivityIndicator
@@ -86,14 +61,7 @@ export function Button({
           size="small"
         />
       ) : (
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: s.fontSize,
-            color: v.text,
-            letterSpacing: 0.5,
-          }}
-        >
+        <Text className={`font-space-grotesk-bold tracking-[0.5px] ${v.text} ${s.text}`}>
           {title}
         </Text>
       )}

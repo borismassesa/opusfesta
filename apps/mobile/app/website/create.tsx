@@ -11,9 +11,10 @@ import { useCreateWebsite, useSaveWebsiteMeta, useWeddingWebsite } from '@/hooks
 import { WEBSITE_THEMES } from '@/constants/wedding-sections';
 import { useTheme } from '@/theme/useTheme';
 import type { WebsiteTheme } from '@/types/wedding-website';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function CreateWebsiteScreen() {
-  const { editorial, colors } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const { data: profile } = useCoupleProfile();
@@ -43,14 +44,14 @@ export default function CreateWebsiteScreen() {
         await createWebsite.mutateAsync({ partnerA, partnerB, presetId, welcome });
       }
       router.back();
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Something went wrong');
+    } catch (err) {
+      Alert.alert('Error', getErrorMessage(err, 'Something went wrong'));
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
+      <View className="flex-1 px-5 pt-4">
         <Header title={isEdit ? 'Edit Theme' : 'Create Website'} showBack />
 
         {/* Theme picker */}
@@ -68,18 +69,8 @@ export default function CreateWebsiteScreen() {
                   isSelected ? 'border-of-primary bg-of-pale' : 'border-of-border bg-of-surface'
                 }`}
               >
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: colors.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 14,
-                  }}
-                >
-                  <Text style={{ fontSize: 22 }}>{t.emoji}</Text>
+                <View className="w-12 h-12 rounded-xl items-center justify-center mr-3.5 bg-of-primary">
+                  <Text className="text-[22px]">{t.emoji}</Text>
                 </View>
                 <View className="flex-1">
                   <Text

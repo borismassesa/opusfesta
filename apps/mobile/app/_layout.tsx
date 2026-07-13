@@ -64,7 +64,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutInner() {
-  const { editorial, colors } = useTheme();
+  const { colors } = useTheme();
   const [fontStartupTimedOut, setFontStartupTimedOut] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     'PlayfairDisplay-SemiBold': require('../assets/fonts/PlayfairDisplay-SemiBold.ttf'),
@@ -99,10 +99,10 @@ function RootLayoutInner() {
 
   if (!canRenderApp) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
+      <View className="flex-1 items-center justify-center bg-ed-bg">
         <ThemedStatusBar />
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={{ marginTop: 12, fontSize: 14, color: editorial.onSurfaceVariant }}>Preparing app…</Text>
+        <Text className="mt-3 text-sm text-ed-on-surface-variant">Preparing app…</Text>
       </View>
     );
   }
@@ -125,7 +125,7 @@ function RootLayoutInner() {
     <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
       <QueryClientProvider client={queryClient}>
         <ThemedStatusBar />
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           <DeepLinkListener />
           <Slot />
         </View>

@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint": "ESLINT_USE_FLAT_CONFIG=true eslint .",
     "type-check": "tsc --noEmit",
     "test": "npm run test:node && npm run test:jest",
     "test:node": "tsx --test $(find src -name '*.test.ts')",

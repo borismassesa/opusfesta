@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert, TextInput, type StyleProp, type ViewStyle } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '@opusfesta/lib';
@@ -16,13 +16,13 @@ import type { InquiryRow } from '@/types/vendor';
 function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   const { editorial } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+    <View className="flex-row items-start gap-2.5 mb-3.5">
       <Ionicons name={icon} size={16} color={editorial.onSurfaceVariant} style={{ marginTop: 2 }} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant }}>
+      <View className="flex-1">
+        <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant">
           {label}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, marginTop: 2 }}>{value}</Text>
+        <Text className="font-work-sans text-sm text-ed-on-surface mt-0.5">{value}</Text>
       </View>
     </View>
   );
@@ -31,22 +31,13 @@ function DetailRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMa
 function ProposalField({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
   const { editorial } = useTheme();
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginBottom: 4 }}>
+    <View className="mb-3">
+      <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant mb-1">
         {label}
       </Text>
       <TextInput
         placeholderTextColor={editorial.onSurfaceVariant}
-        style={{
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 12,
-          fontFamily: 'WorkSans-Regular',
-          fontSize: 14,
-          color: editorial.onSurface,
-        }}
+        className="bg-ed-surface-container-lowest rounded-xl border border-ed-outline-variant p-3 font-work-sans text-sm text-ed-on-surface"
         {...props}
       />
     </View>
@@ -54,28 +45,18 @@ function ProposalField({ label, ...props }: { label: string } & React.ComponentP
 }
 
 function ProposalSummaryRow({ label, value }: { label: string; value: string }) {
-  const { editorial } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-      <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant }}>{label}</Text>
-      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.onSurface, flexShrink: 1, textAlign: 'right' }}>{value}</Text>
+    <View className="flex-row justify-between mb-2">
+      <Text className="font-work-sans-medium text-xs text-ed-on-surface-variant">{label}</Text>
+      <Text className="font-work-sans-bold text-xs text-ed-on-surface shrink text-right">{value}</Text>
     </View>
   );
 }
 
+const CARD_CLASS = 'bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-4 mb-5';
+
 function ProposalSection({ lead }: { lead: InquiryRow }) {
   const { editorial } = useTheme();
-  const cardStyle: StyleProp<ViewStyle> = [
-    {
-      backgroundColor: editorial.surfaceContainerLowest,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: editorial.outlineVariant,
-      padding: 16,
-      marginBottom: 20,
-    },
-    shadowSoftSm,
-  ];
   const sendMutation = useSendProposal();
   const acceptMutation = useAcceptCounter();
   const { myRole } = useCurrentVendor();
@@ -128,7 +109,7 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
   };
 
   const heading = (
-    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
+    <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-2">
       Proposal
     </Text>
   );
@@ -138,16 +119,16 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
       return (
         <>
           {heading}
-          <View style={cardStyle}>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginBottom: 12 }}>
+          <View className={CARD_CLASS} style={shadowSoftSm}>
+            <Text className="font-work-sans text-[13px] text-ed-on-surface-variant mb-3">
               Send a formal quote with a price and event details. The couple can accept it or counter.
             </Text>
             <Pressable
               onPress={() => setComposing(true)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+              className="flex-row items-center gap-1.5 self-start"
             >
               <Ionicons name="document-text-outline" size={16} color={editorial.primaryContainer} />
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
+              <Text className="font-work-sans-bold text-[13px] text-ed-primary-container">
                 Compose proposal
               </Text>
             </Pressable>
@@ -159,23 +140,23 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
     return (
       <>
         {heading}
-        <View style={cardStyle}>
+        <View className={CARD_CLASS} style={shadowSoftSm}>
           <ProposalField label="Amount (TZS)" value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ''))} placeholder="5000000" keyboardType="number-pad" />
           <ProposalField label="Package" value={packageName} onChangeText={setPackageName} placeholder="Full day coverage" />
           <ProposalField label="Event date" value={eventDate} onChangeText={setEventDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
           <ProposalField label="Venue" value={venue} onChangeText={setVenue} placeholder="Venue or area" />
           <ProposalField label="Guest count" value={guestCount} onChangeText={(v) => setGuestCount(v.replace(/[^0-9]/g, ''))} placeholder="250" keyboardType="number-pad" />
           <ProposalField label="Details" value={details} onChangeText={setDetails} placeholder="What's included" multiline />
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-            <Pressable onPress={() => setComposing(false)} style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: editorial.outlineVariant }}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Cancel</Text>
+          <View className="flex-row gap-3 mt-1">
+            <Pressable onPress={() => setComposing(false)} className="flex-1 rounded-xl py-3 items-center border border-ed-outline-variant">
+              <Text className="font-work-sans-bold text-[13px] text-ed-on-surface-variant">Cancel</Text>
             </Pressable>
             <Pressable
               disabled={sendMutation.isPending}
               onPress={submit}
-              style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: editorial.primaryContainer, opacity: sendMutation.isPending ? 0.5 : 1 }}
+              className={`flex-1 rounded-xl py-3 items-center bg-ed-primary-container ${sendMutation.isPending ? 'opacity-50' : 'opacity-100'}`}
             >
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>
+              <Text className="font-work-sans-bold text-[13px] text-white">
                 {sendMutation.isPending ? 'Sending…' : 'Send proposal'}
               </Text>
             </Pressable>
@@ -190,55 +171,55 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
   return (
     <>
       {heading}
-      <View style={cardStyle}>
+      <View className={CARD_CLASS} style={shadowSoftSm}>
         <ProposalSummaryRow label="Amount" value={formatCurrency(lead.proposal_invoice_amount ?? 0)} />
         {lead.proposal_package && <ProposalSummaryRow label="Package" value={lead.proposal_package} />}
         {lead.proposal_event_date && <ProposalSummaryRow label="Event date" value={lead.proposal_event_date} />}
         {lead.proposal_venue && <ProposalSummaryRow label="Venue" value={lead.proposal_venue} />}
         {lead.proposal_guest_count != null && <ProposalSummaryRow label="Guests" value={String(lead.proposal_guest_count)} />}
         {lead.proposal_invoice_details && (
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, marginTop: 4 }}>
+          <Text className="font-work-sans text-[13px] text-ed-on-surface-variant mt-1">
             {lead.proposal_invoice_details}
           </Text>
         )}
 
         {lead.proposal_status === 'sent' && (
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 10 }}>
+          <Text className="font-work-sans-medium text-xs text-ed-on-surface-variant mt-2.5">
             Sent — waiting for the couple's response.
           </Text>
         )}
 
         {lead.proposal_status === 'accepted' && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+          <View className="flex-row items-center gap-1.5 mt-2.5">
             <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: '#16a34a' }}>
+            <Text className="font-work-sans-bold text-xs text-[#16a34a]">
               Accepted — see Bookings for next steps.
             </Text>
           </View>
         )}
 
         {lead.proposal_status === 'declined' && (
-          <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 10 }}>
+          <Text className="font-work-sans-medium text-xs text-ed-on-surface-variant mt-2.5">
             The couple declined this proposal.
           </Text>
         )}
 
         {lead.proposal_status === 'countered' && (
           <>
-            <View style={{ backgroundColor: editorial.tertiaryFixed, borderRadius: 12, padding: 12, marginTop: 12 }}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant }}>
+            <View className="bg-ed-tertiary-fixed rounded-xl p-3 mt-3">
+              <Text className="font-work-sans-bold text-[10px] tracking-[1px] uppercase text-ed-on-surface-variant">
                 Counter offer
               </Text>
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface, marginTop: 4 }}>
+              <Text className="font-space-grotesk-bold text-lg text-ed-on-surface mt-1">
                 {formatCurrency(lead.proposal_counter_amount ?? 0)}
               </Text>
               {lead.proposal_counter_message && (
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurface, marginTop: 6, lineHeight: 18 }}>
+                <Text className="font-work-sans text-[13px] text-ed-on-surface mt-1.5 leading-[18px]">
                   {lead.proposal_counter_message}
                 </Text>
               )}
             </View>
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+            <View className="flex-row gap-3 mt-3">
               <Pressable
                 onPress={() => {
                   setAmount(lead.proposal_counter_amount != null ? String(lead.proposal_counter_amount) : '');
@@ -249,17 +230,17 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
                   setDetails(lead.proposal_invoice_details ?? '');
                   setComposing(true);
                 }}
-                style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: editorial.outlineVariant }}
+                className="flex-1 rounded-xl py-3 items-center border border-ed-outline-variant"
               >
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Revise</Text>
+                <Text className="font-work-sans-bold text-[13px] text-ed-on-surface-variant">Revise</Text>
               </Pressable>
               {canAccept && (
                 <Pressable
                   disabled={acceptMutation.isPending}
                   onPress={handleAcceptCounter}
-                  style={{ flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: editorial.onSurface, opacity: acceptMutation.isPending ? 0.5 : 1 }}
+                  className={`flex-1 rounded-xl py-3 items-center bg-ed-on-surface ${acceptMutation.isPending ? 'opacity-50' : 'opacity-100'}`}
                 >
-                  <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>
+                  <Text className="font-work-sans-bold text-[13px] text-white">
                     {acceptMutation.isPending ? 'Accepting…' : 'Accept counter'}
                   </Text>
                 </Pressable>
@@ -274,17 +255,6 @@ function ProposalSection({ lead }: { lead: InquiryRow }) {
 
 function ThreadSection({ lead }: { lead: InquiryRow }) {
   const { editorial } = useTheme();
-  const cardStyle: StyleProp<ViewStyle> = [
-    {
-      backgroundColor: editorial.surfaceContainerLowest,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: editorial.outlineVariant,
-      padding: 16,
-      marginBottom: 20,
-    },
-    shadowSoftSm,
-  ];
   const { data: messages, isLoading } = useInquiryMessages(lead.id);
   const sendMutation = useSendInquiryMessage();
   const [draft, setDraft] = useState('');
@@ -320,14 +290,14 @@ function ThreadSection({ lead }: { lead: InquiryRow }) {
 
   return (
     <>
-      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, marginBottom: 8 }}>
+      <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface mb-2">
         Conversation
       </Text>
-      <View style={cardStyle}>
+      <View className={CARD_CLASS} style={shadowSoftSm}>
         {isLoading ? (
-          <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ paddingVertical: 20 }} />
+          <ActivityIndicator size="small" color={editorial.primaryContainer} className="py-5" />
         ) : thread.length === 0 ? (
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant }}>
+          <Text className="font-work-sans text-[13px] text-ed-on-surface-variant">
             No messages yet.
           </Text>
         ) : (
@@ -336,19 +306,14 @@ function ThreadSection({ lead }: { lead: InquiryRow }) {
             return (
               <View
                 key={message.id}
-                style={{
-                  alignSelf: mine ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                  backgroundColor: mine ? editorial.tertiaryFixed : editorial.surfaceContainerLow,
-                  borderRadius: 14,
-                  padding: 12,
-                  marginBottom: 8,
-                }}
+                className={`max-w-[85%] rounded-[14px] p-3 mb-2 ${
+                  mine ? 'self-end bg-ed-tertiary-fixed' : 'self-start bg-ed-surface-container-low'
+                }`}
               >
-                <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 0.5, color: editorial.onSurfaceVariant, marginBottom: 2 }}>
+                <Text className="font-work-sans-bold text-[10px] tracking-[0.5px] text-ed-on-surface-variant mb-0.5">
                   {mine ? 'You' : message.sender_name}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface, lineHeight: 19 }}>
+                <Text className="font-work-sans text-sm text-ed-on-surface leading-[19px]">
                   {message.content}
                 </Text>
               </View>
@@ -357,36 +322,19 @@ function ThreadSection({ lead }: { lead: InquiryRow }) {
         )}
 
         {canCompose && (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
+          <View className="flex-row items-end gap-2 mt-2">
             <TextInput
               value={draft}
               onChangeText={setDraft}
               placeholder="Write a message…"
               placeholderTextColor={editorial.onSurfaceVariant}
               multiline
-              style={{
-                flex: 1,
-                backgroundColor: editorial.surfaceContainerLow,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontFamily: 'WorkSans-Regular',
-                fontSize: 14,
-                color: editorial.onSurface,
-                maxHeight: 100,
-              }}
+              className="flex-1 bg-ed-surface-container-low rounded-[14px] border border-ed-outline-variant px-3 py-2.5 font-work-sans text-sm text-ed-on-surface max-h-[100px]"
             />
             <Pressable
               disabled={!draft.trim() || sendMutation.isPending}
               onPress={submit}
-              style={{
-                backgroundColor: editorial.primaryContainer,
-                borderRadius: 12,
-                padding: 10,
-                opacity: !draft.trim() || sendMutation.isPending ? 0.5 : 1,
-              }}
+              className={`bg-ed-primary-container rounded-xl p-2.5 ${!draft.trim() || sendMutation.isPending ? 'opacity-50' : 'opacity-100'}`}
             >
               <Ionicons name="send" size={16} color="#fff" />
             </Pressable>
@@ -407,7 +355,7 @@ export default function LeadDetailScreen() {
   if (isLoading || !lead) {
     return (
       <ScreenWrapper>
-        <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ marginTop: 60 }} />
+        <ActivityIndicator size="small" color={editorial.primaryContainer} className="mt-[60px]" />
       </ScreenWrapper>
     );
   }
@@ -433,31 +381,19 @@ export default function LeadDetailScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <Pressable onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+      <View className="flex-row items-center mb-5">
+        <Pressable onPress={() => router.back()} className="p-1 mr-2">
           <Ionicons name="chevron-back" size={24} color={editorial.primaryContainer} />
         </Pressable>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, color: editorial.onSurface, flex: 1 }} numberOfLines={1}>
+        <Text className="font-space-grotesk-bold text-xl text-ed-on-surface flex-1" numberOfLines={1}>
           {lead.name}
         </Text>
-        <View style={{ backgroundColor: style.bg, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: style.fg }}>{style.label}</Text>
+        <View className="rounded px-2.5 py-1" style={{ backgroundColor: style.bg }}>
+          <Text className="font-work-sans-bold text-[11px]" style={{ color: style.fg }}>{style.label}</Text>
         </View>
       </View>
 
-      <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            padding: 18,
-            marginBottom: 20,
-          },
-          shadowSoftSm,
-        ]}
-      >
+      <View className="bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-[18px] mb-5" style={shadowSoftSm}>
         <DetailRow icon="mail-outline" label="Email" value={lead.email} />
         {lead.phone && <DetailRow icon="call-outline" label="Phone" value={lead.phone} />}
         <DetailRow icon="sparkles-outline" label="Event type" value={lead.event_type} />
@@ -478,33 +414,20 @@ export default function LeadDetailScreen() {
       <ThreadSection lead={lead} />
 
       {lead.status !== 'accepted' && lead.status !== 'declined' && lead.status !== 'closed' && (
-        <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View className="flex-row gap-3">
           <Pressable
             disabled={statusMutation.isPending}
             onPress={() => handleDecide('declined')}
-            style={{
-              flex: 1,
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            }}
+            className="flex-1 rounded-[14px] py-3.5 items-center border border-ed-outline-variant"
           >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: editorial.onSurfaceVariant }}>Decline</Text>
+            <Text className="font-work-sans-bold text-sm text-ed-on-surface-variant">Decline</Text>
           </Pressable>
           <Pressable
             disabled={statusMutation.isPending}
             onPress={() => handleDecide('accepted')}
-            style={{
-              flex: 1,
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: 'center',
-              backgroundColor: editorial.onSurface,
-            }}
+            className="flex-1 rounded-[14px] py-3.5 items-center bg-ed-on-surface"
           >
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: '#fff' }}>Accept</Text>
+            <Text className="font-work-sans-bold text-sm text-white">Accept</Text>
           </Pressable>
         </View>
       )}

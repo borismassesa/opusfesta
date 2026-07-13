@@ -8,6 +8,7 @@ import { shadowSoft } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import { CoupleNames } from '@/components/ui/CoupleNames';
 import { useCoupleOnboarding } from './_layout';
+import { getErrorMessage } from '@/lib/errors';
 
 const SETUP_TASKS = [
   'Setting up your profile',
@@ -44,7 +45,7 @@ export default function CompleteScreen() {
         useNativeDriver: true,
       }),
     ).start();
-  }, []);
+  }, [spinAnim]);
 
   const callOnboardingFunction = async (payload: Record<string, unknown>, attempt = 1): Promise<void> => {
     const token = await getToken({ template: 'supabase' });
@@ -98,8 +99,8 @@ export default function CompleteScreen() {
       });
       await user?.reload();
       router.replace('/');
-    } catch (err: any) {
-      setSubmitError(err.message || 'Something went wrong. Please try again.');
+    } catch (err) {
+      setSubmitError(getErrorMessage(err, 'Something went wrong. Please try again.'));
     }
   };
 
@@ -134,43 +135,36 @@ export default function CompleteScreen() {
     const timeout = setTimeout(submit, SETUP_TASKS.length * taskDelay + 1200);
 
     return () => clearTimeout(timeout);
+    // Intentionally keyed on `attempt` only: this drives the one-shot setup
+    // animation + submission. `submit` is redefined each render, and the anim
+    // refs are stable, so re-running on anything but a retry would replay the
+    // whole sequence and resubmit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
 
   if (submitError) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+      <SafeAreaView className="flex-1 bg-ed-bg">
+        <View className="flex-1 items-center justify-center px-6">
           <View
-            style={[
-              {
-                width: '100%',
-                maxWidth: 360,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: '#FCA5A5',
-                backgroundColor: '#FEF2F2',
-                padding: 20,
-              },
-              shadowSoft,
-            ]}
+            className="w-full max-w-[360px] rounded-2xl border border-[#FCA5A5] bg-[#FEF2F2] p-5"
+            style={shadowSoft}
           >
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.error }}>
+            <Text className="font-space-grotesk-bold text-lg text-ed-error">
               Couldn't finish setting up your plan
             </Text>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.error, marginTop: 8, lineHeight: 20 }}>
+            <Text className="font-work-sans text-sm mt-2 leading-5 text-ed-error">
               {submitError}
             </Text>
             <Pressable
               onPress={() => setAttempt((a) => a + 1)}
-              style={[
-                { marginTop: 16, backgroundColor: editorial.primaryContainer, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-                shadowSoft,
-              ]}
+              className="mt-4 py-3.5 rounded-xl items-center bg-ed-primary-container"
+              style={shadowSoft}
             >
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: '#fff' }}>Try again</Text>
+              <Text className="font-space-grotesk-bold text-[15px] text-white">Try again</Text>
             </Pressable>
-            <Pressable onPress={() => router.back()} style={{ marginTop: 12, alignItems: 'center' }}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.onSurfaceVariant }}>Go back</Text>
+            <Pressable onPress={() => router.back()} className="mt-3 items-center">
+              <Text className="font-work-sans-bold text-[13px] text-ed-on-surface-variant">Go back</Text>
             </Pressable>
           </View>
         </View>
@@ -184,14 +178,14 @@ export default function CompleteScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
       {/* Decorative blurs */}
-      <View style={{ position: 'absolute', top: '-10%', left: '-10%', width: 200, height: 200, borderRadius: 100, backgroundColor: editorial.tertiaryFixed, opacity: 0.2 }} />
-      <View style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: 240, height: 240, borderRadius: 120, backgroundColor: editorial.primaryFixed, opacity: 0.1 }} />
+      <View className="absolute w-[200px] h-[200px] rounded-full bg-ed-tertiary-fixed" style={{ top: '-10%', left: '-10%', opacity: 0.2 }} />
+      <View className="absolute w-[240px] h-[240px] rounded-full bg-ed-primary-fixed" style={{ bottom: '-10%', right: '-10%', opacity: 0.1 }} />
 
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+      <View className="flex-1 items-center justify-center px-6">
         {/* Spinning ring with icon */}
-        <View style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center', marginBottom: 32 }}>
+        <View className="w-40 h-40 items-center justify-center mb-8">
           <Animated.View
             style={{
               position: 'absolute',
@@ -205,25 +199,16 @@ export default function CompleteScreen() {
             }}
           />
           <View
-            style={[
-              {
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                backgroundColor: editorial.surfaceContainerLowest,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-              shadowSoft,
-            ]}
+            className="w-[100px] h-[100px] rounded-full items-center justify-center bg-ed-surface-container-lowest"
+            style={shadowSoft}
           >
             <Ionicons name="sparkles" size={48} color={editorial.onPrimaryContainer} />
           </View>
           {/* Floating accents */}
-          <View style={[{ position: 'absolute', top: 0, right: 16, backgroundColor: editorial.secondaryContainer, padding: 8, borderRadius: 14 }, shadowSoft]}>
+          <View className="absolute top-0 right-4 bg-ed-secondary-container p-2 rounded-[14px]" style={shadowSoft}>
             <Ionicons name="heart" size={16} color={editorial.onSecondaryContainer} />
           </View>
-          <View style={[{ position: 'absolute', bottom: 24, left: 0, backgroundColor: editorial.primaryFixed, padding: 8, borderRadius: 14 }, shadowSoft]}>
+          <View className="absolute bottom-6 left-0 bg-ed-primary-fixed p-2 rounded-[14px]" style={shadowSoft}>
             <Ionicons name="sparkles-outline" size={16} color={editorial.primaryContainer} />
           </View>
         </View>
@@ -237,34 +222,15 @@ export default function CompleteScreen() {
         />
 
         {/* Header */}
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 22,
-            letterSpacing: -0.6,
-            textTransform: 'uppercase',
-            color: editorial.onSurface,
-            textAlign: 'center',
-            marginBottom: 8,
-          }}
-        >
+        <Text className="font-space-grotesk-bold text-[22px] tracking-[-0.6px] uppercase text-ed-on-surface text-center mb-2">
           Creating your wedding plan
         </Text>
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Medium',
-            fontSize: 15,
-            color: editorial.onSurfaceVariant,
-            textAlign: 'center',
-            maxWidth: 320,
-            marginBottom: 32,
-          }}
-        >
+        <Text className="font-work-sans-medium text-[15px] text-ed-on-surface-variant text-center max-w-[320px] mb-8">
           We're curating the finest East African vendors and experiences to match your unique vision.
         </Text>
 
         {/* Task Checklist */}
-        <View style={{ width: '100%', gap: 10, paddingHorizontal: 16 }}>
+        <View className="w-full gap-2.5 px-4">
           {SETUP_TASKS.map((task, index) => {
             const isComplete = completedTasks > index;
             const isActive = completedTasks === index;
@@ -283,30 +249,19 @@ export default function CompleteScreen() {
               >
                 <Animated.View style={{ transform: [{ scale: checkAnims[index] }] }}>
                   <View
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: isComplete ? editorial.primaryContainer : editorial.surfaceContainerHighest,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
+                    className={`w-7 h-7 rounded-[14px] items-center justify-center ${
+                      isComplete ? 'bg-ed-primary-container' : 'bg-ed-surface-container-highest'
+                    }`}
                   >
                     {isComplete && <Ionicons name="checkmark" size={16} color="#fff" />}
                   </View>
                 </Animated.View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontFamily: 'SpaceGrotesk-Bold',
-                      fontSize: 16,
-                      color: editorial.onSurface,
-                    }}
-                  >
+                <View className="flex-1">
+                  <Text className="font-space-grotesk-bold text-base text-ed-on-surface">
                     {task}
                   </Text>
                   {isActive && (
-                    <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                    <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5">
                       Tailoring matches to your budget and style.
                     </Text>
                   )}
@@ -317,15 +272,7 @@ export default function CompleteScreen() {
         </View>
 
         {/* Brand watermark */}
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 16,
-            color: editorial.onSurface,
-            opacity: 0.2,
-            marginTop: 32,
-          }}
-        >
+        <Text className="font-space-grotesk-bold text-base text-ed-on-surface mt-8" style={{ opacity: 0.2 }}>
           OpusFesta
         </Text>
       </View>

@@ -20,33 +20,20 @@ export function Header({
   const { editorial } = useTheme();
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+    <View className="flex-row items-center justify-between mb-5">
+      <View className="flex-row items-center gap-3 flex-1">
         {showBack && (
-          <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+          <Pressable onPress={() => router.back()} className="p-1">
             <Ionicons name="arrow-back" size={22} color={editorial.primaryContainer} />
           </Pressable>
         )}
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           {subtitle && (
-            <Text
-              style={{
-                fontFamily: 'WorkSans-Regular',
-                fontSize: 13,
-                color: editorial.onSurfaceVariant,
-              }}
-            >
+            <Text className="font-work-sans text-[13px] text-ed-on-surface-variant">
               {subtitle}
             </Text>
           )}
-          <Text
-            style={{
-              fontFamily: 'PlayfairDisplay-Bold',
-              fontSize: 24,
-              color: editorial.onSurface,
-            }}
-            numberOfLines={1}
-          >
+          <Text className="font-playfair-bold text-2xl text-ed-on-surface" numberOfLines={1}>
             {title}
           </Text>
         </View>

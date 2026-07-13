@@ -82,7 +82,7 @@ export default function VendorCalendarScreen() {
 
   return (
     <ScreenWrapper scrollable={false}>
-      <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 16 }}>
+      <Text className="font-dancing-script-bold text-[28px] text-ed-primary-container mb-4">
         Calendar
       </Text>
 
@@ -90,47 +90,39 @@ export default function VendorCalendarScreen() {
 
       {!locked && (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Pressable onPress={() => goToMonth(-1)} style={{ padding: 8 }}>
+          <View className="flex-row items-center justify-between mb-4">
+            <Pressable onPress={() => goToMonth(-1)} className="p-2">
               <Ionicons name="chevron-back" size={20} color={editorial.primaryContainer} />
             </Pressable>
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 17, color: editorial.onSurface }}>
+            <Text className="font-space-grotesk-bold text-[17px] text-ed-on-surface">
               {formatMonthTitle(year, monthIndex)}
             </Text>
-            <Pressable onPress={() => goToMonth(1)} style={{ padding: 8 }}>
+            <Pressable onPress={() => goToMonth(1)} className="p-2">
               <Ionicons name="chevron-forward" size={20} color={editorial.primaryContainer} />
             </Pressable>
           </View>
 
           <View
-            style={[
-              {
-                backgroundColor: editorial.surfaceContainerLowest,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                padding: 16,
-              },
-              shadowSoftSm,
-            ]}
+            className="bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-4"
+            style={shadowSoftSm}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ paddingVertical: 40 }} />
+              <ActivityIndicator size="small" color={editorial.primaryContainer} className="py-10" />
             ) : (
               <MonthGrid year={year} monthIndex={monthIndex} statusByDate={statusByDate} onSelectDate={handleSelectDate} />
             )}
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: editorial.primaryContainer }} />
-              <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant }}>Booked</Text>
+          <View className="flex-row gap-4 mt-4 flex-wrap">
+            <View className="flex-row items-center gap-1.5">
+              <View className="w-3 h-3 rounded-[4px] bg-ed-primary-container" />
+              <Text className="font-work-sans-medium text-xs text-ed-on-surface-variant">Booked</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: '#FCE8E6' }} />
-              <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant }}>Blocked by you</Text>
+            <View className="flex-row items-center gap-1.5">
+              <View className="w-3 h-3 rounded-[4px] bg-[#FCE8E6]" />
+              <Text className="font-work-sans-medium text-xs text-ed-on-surface-variant">Blocked by you</Text>
             </View>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant }}>
+            <Text className="font-work-sans text-xs text-ed-on-surface-variant">
               {readOnly ? 'View only' : 'Tap a date to toggle'}
             </Text>
           </View>

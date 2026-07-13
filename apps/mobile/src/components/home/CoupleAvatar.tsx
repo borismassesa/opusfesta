@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/ui/Avatar';
 import { uploadToBucket } from '@/lib/storage';
 import { useUpdateCoupleProfile } from '@/hooks/useCoupleProfile';
-import { useTheme } from '@/theme/useTheme';
 
 interface CoupleAvatarProps {
   imageUrl?: string | null;
@@ -14,7 +13,6 @@ interface CoupleAvatarProps {
 }
 
 export function CoupleAvatar({ imageUrl, name }: CoupleAvatarProps) {
-  const { editorial } = useTheme();
   const { getToken } = useAuth();
   const { user } = useUser();
   const updateProfile = useUpdateCoupleProfile();
@@ -39,23 +37,9 @@ export function CoupleAvatar({ imageUrl, name }: CoupleAvatarProps) {
   };
 
   return (
-    <Pressable onPress={pickAndUpload} disabled={uploading} style={{ position: 'relative' }}>
+    <Pressable onPress={pickAndUpload} disabled={uploading} className="relative">
       <Avatar imageUrl={imageUrl} name={name} size="lg" />
-      <View
-        style={{
-          position: 'absolute',
-          bottom: -2,
-          right: -2,
-          width: 26,
-          height: 26,
-          borderRadius: 13,
-          backgroundColor: editorial.primaryContainer,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 2,
-          borderColor: editorial.headerTint,
-        }}
-      >
+      <View className="absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-[13px] items-center justify-center border-2 bg-ed-primary-container border-ed-header-tint">
         {uploading ? (
           <ActivityIndicator size="small" color="#ffffff" />
         ) : (

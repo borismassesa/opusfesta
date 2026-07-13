@@ -12,26 +12,18 @@ import { uploadToBucket } from '@/lib/storage';
 import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import type { VendorPackage } from '@/types/vendor';
+import { getErrorMessage } from '@/lib/errors';
 
 function Field({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
   const { editorial } = useTheme();
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginBottom: 6 }}>
+    <View className="mb-4">
+      <Text className="font-work-sans-bold text-[11px] tracking-[1px] uppercase text-ed-on-surface-variant mb-1.5">
         {label}
       </Text>
       <TextInput
         placeholderTextColor={editorial.onSurfaceVariant}
-        style={{
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 14,
-          fontFamily: 'WorkSans-Regular',
-          fontSize: 14,
-          color: editorial.onSurface,
-        }}
+        className="bg-ed-surface-container-lowest rounded-[14px] border border-ed-outline-variant p-3.5 font-work-sans text-sm text-ed-on-surface"
         {...props}
       />
     </View>
@@ -39,9 +31,8 @@ function Field({ label, ...props }: { label: string } & React.ComponentProps<typ
 }
 
 function SectionTitle({ children }: { children: string }) {
-  const { editorial } = useTheme();
   return (
-    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: editorial.onSurface, marginBottom: 12, marginTop: 8 }}>
+    <Text className="font-space-grotesk-bold text-base text-ed-on-surface mb-3 mt-2">
       {children}
     </Text>
   );
@@ -54,35 +45,26 @@ function StorefrontReadOnly({ vendorId, businessName }: { vendorId: string; busi
   const { editorial } = useTheme();
   return (
     <ScreenWrapper>
-      <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 20 }}>
+      <Text className="font-dancing-script-bold text-[28px] text-ed-primary-container mb-5">
         Storefront
       </Text>
       <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            padding: 20,
-            alignItems: 'center',
-          },
-          shadowSoftSm,
-        ]}
+        className="bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-5 items-center"
+        style={shadowSoftSm}
       >
         <Ionicons name="lock-closed-outline" size={28} color={editorial.onSurfaceVariant} style={{ marginBottom: 10 }} />
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface, textAlign: 'center' }}>
+        <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface text-center">
           View-only access
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 6 }}>
+        <Text className="font-work-sans text-[13px] text-ed-on-surface-variant text-center mt-1.5">
           Only the account owner or a manager can edit the {businessName} storefront.
         </Text>
         <Pressable
           onPress={() => router.push(`/vendor/${vendorId}`)}
-          style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          className="mt-4 flex-row items-center gap-1.5"
         >
           <Ionicons name="storefront-outline" size={16} color={editorial.primaryContainer} />
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
+          <Text className="font-work-sans-bold text-[13px] text-ed-primary-container">
             View public profile
           </Text>
         </Pressable>
@@ -123,12 +105,16 @@ export default function StorefrontScreen() {
     setPhone(vendor.contact_info?.phone ?? '');
     setEmail(vendor.contact_info?.email ?? '');
     setInstagram(vendor.contact_info?.instagram ?? '');
+    // Seed the editable form once per vendor identity. Depending on the whole
+    // `vendor` object would clobber in-progress edits whenever any field
+    // refetches, so we intentionally key on the id only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendor?.id]);
 
   if (vendorLoading || !vendor) {
     return (
       <ScreenWrapper>
-        <ActivityIndicator size="small" color={editorial.primaryContainer} style={{ marginTop: 60 }} />
+        <ActivityIndicator size="small" color={editorial.primaryContainer} className="mt-[60px]" />
       </ScreenWrapper>
     );
   }
@@ -182,8 +168,8 @@ export default function StorefrontScreen() {
       setCover(uploadedCover);
       setGallery(uploadedGallery);
       Alert.alert('Saved', 'Your storefront has been updated.');
-    } catch (err: any) {
-      Alert.alert('Something went wrong', err?.message ?? 'Please try again.');
+    } catch (err) {
+      Alert.alert('Something went wrong', getErrorMessage(err, 'Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -210,23 +196,23 @@ export default function StorefrontScreen() {
 
   return (
     <ScreenWrapper>
-      <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 28, color: editorial.primaryContainer, marginBottom: 20 }}>
+      <Text className="font-dancing-script-bold text-[28px] text-ed-primary-container mb-5">
         Storefront
       </Text>
 
       <SectionTitle>Photos</SectionTitle>
-      <View style={{ flexDirection: 'row', gap: 24, marginBottom: 20 }}>
+      <View className="flex-row gap-6 mb-5">
         <View>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: editorial.onSurfaceVariant, marginBottom: 8, textAlign: 'center' }}>Logo</Text>
+          <Text className="font-work-sans-bold text-[11px] text-ed-on-surface-variant mb-2 text-center">Logo</Text>
           <PhotoUploader photos={logo} onPhotosChange={setLogo} maxPhotos={1} circular label="Add logo" />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: editorial.onSurfaceVariant, marginBottom: 8 }}>Cover photo</Text>
+        <View className="flex-1">
+          <Text className="font-work-sans-bold text-[11px] text-ed-on-surface-variant mb-2">Cover photo</Text>
           <PhotoUploader photos={cover} onPhotosChange={setCover} maxPhotos={1} />
         </View>
       </View>
-      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 11, color: editorial.onSurfaceVariant, marginBottom: 8 }}>Gallery</Text>
-      <View style={{ marginBottom: 20 }}>
+      <Text className="font-work-sans-bold text-[11px] text-ed-on-surface-variant mb-2">Gallery</Text>
+      <View className="mb-5">
         <PhotoUploader photos={gallery} onPhotosChange={setGallery} maxPhotos={10} />
       </View>
 
@@ -238,18 +224,7 @@ export default function StorefrontScreen() {
         onChangeText={setDescription}
         placeholder="Tell couples about your business"
         multiline
-        style={{
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 14,
-          fontFamily: 'WorkSans-Regular',
-          fontSize: 14,
-          color: editorial.onSurface,
-          minHeight: 90,
-          textAlignVertical: 'top',
-        }}
+        style={{ minHeight: 90, textAlignVertical: 'top' }}
       />
 
       <SectionTitle>Contact info</SectionTitle>
@@ -262,53 +237,31 @@ export default function StorefrontScreen() {
       {(vendor.packages ?? []).map((pkg) => (
         <View
           key={pkg.id}
-          style={[
-            {
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: editorial.surfaceContainerLowest,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-              padding: 14,
-              marginBottom: 10,
-            },
-            shadowSoftSm,
-          ]}
+          className="flex-row items-center justify-between bg-ed-surface-container-lowest rounded-2xl border border-ed-outline-variant p-3.5 mb-2.5"
+          style={shadowSoftSm}
         >
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>{pkg.name}</Text>
-            <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer, marginTop: 2 }}>
+          <View className="flex-1 mr-3">
+            <Text className="font-space-grotesk-bold text-sm text-ed-on-surface">{pkg.name}</Text>
+            <Text className="font-work-sans-bold text-xs text-ed-primary-container mt-0.5">
               {formatCurrency(pkg.price)}
             </Text>
           </View>
-          <Pressable onPress={() => handleRemovePackage(pkg.id)} style={{ padding: 6 }}>
+          <Pressable onPress={() => handleRemovePackage(pkg.id)} className="p-1.5">
             <Ionicons name="trash-outline" size={18} color={editorial.onSurfaceVariant} />
           </Pressable>
         </View>
       ))}
 
       <View
-        style={[
-          {
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: editorial.outlineVariant,
-            padding: 14,
-            marginBottom: 24,
-            gap: 10,
-          },
-          shadowSoftSm,
-        ]}
+        className="bg-ed-surface-container-lowest rounded-2xl border border-ed-outline-variant p-3.5 mb-6 gap-2.5"
+        style={shadowSoftSm}
       >
         <TextInput
           value={newPackage.name}
           onChangeText={(v) => setNewPackage((p) => ({ ...p, name: v }))}
           placeholder="Package name"
           placeholderTextColor={editorial.onSurfaceVariant}
-          style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface }}
+          className="font-work-sans text-sm text-ed-on-surface"
         />
         <TextInput
           value={newPackage.price}
@@ -316,43 +269,33 @@ export default function StorefrontScreen() {
           placeholder="Price (TZS)"
           placeholderTextColor={editorial.onSurfaceVariant}
           keyboardType="number-pad"
-          style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface }}
+          className="font-work-sans text-sm text-ed-on-surface"
         />
         <TextInput
           value={newPackage.description}
           onChangeText={(v) => setNewPackage((p) => ({ ...p, description: v }))}
           placeholder="What's included"
           placeholderTextColor={editorial.onSurfaceVariant}
-          style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurface }}
+          className="font-work-sans text-sm text-ed-on-surface"
         />
         <Pressable
           onPress={handleAddPackage}
           disabled={!newPackage.name.trim() || !newPackage.price.trim() || updatePackages.isPending}
-          style={{
-            alignSelf: 'flex-start',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            opacity: !newPackage.name.trim() || !newPackage.price.trim() || updatePackages.isPending ? 0.5 : 1,
-          }}
+          className={`self-start flex-row items-center gap-1.5 ${
+            !newPackage.name.trim() || !newPackage.price.trim() || updatePackages.isPending ? 'opacity-50' : 'opacity-100'
+          }`}
         >
           <Ionicons name="add-circle-outline" size={18} color={editorial.primaryContainer} />
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>Add package</Text>
+          <Text className="font-work-sans-bold text-[13px] text-ed-primary-container">Add package</Text>
         </Pressable>
       </View>
 
       <Pressable
         disabled={saving}
         onPress={handleSave}
-        style={{
-          backgroundColor: editorial.primaryContainer,
-          borderRadius: 14,
-          paddingVertical: 14,
-          alignItems: 'center',
-          opacity: saving ? 0.5 : 1,
-        }}
+        className={`bg-ed-primary-container rounded-[14px] py-3.5 items-center ${saving ? 'opacity-50' : 'opacity-100'}`}
       >
-        <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 14, color: '#fff' }}>
+        <Text className="font-work-sans-bold text-sm text-white">
           {saving ? 'Saving…' : 'Save changes'}
         </Text>
       </Pressable>

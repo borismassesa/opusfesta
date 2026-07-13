@@ -1,13 +1,11 @@
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { ApprovalBanner } from '@/components/vendor/ApprovalBanner';
 import { useOpusFestaAuth } from '@/lib/auth';
-import { useAuthenticatedSupabase } from '@/lib/supabase';
 import { useCurrentVendor } from '@/hooks/useCurrentVendor';
-import { getVendorDashboardStats } from '@/lib/api/vendorProfile';
+import { useVendorDashboardStats } from '@/hooks/useVendorProfile';
 import { shadowSoftSm, shadowSoftPrimary } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
@@ -20,20 +18,15 @@ const STAT_TILES: { key: string; label: string; icon: keyof typeof Ionicons.glyp
 
 export default function VendorHomeScreen() {
   const { user } = useOpusFestaAuth();
-  const client = useAuthenticatedSupabase();
   const router = useRouter();
   const { vendor, approvalState, isLoading: vendorLoading } = useCurrentVendor();
   const { editorial } = useTheme();
 
-  const { data, isLoading: statsLoading } = useQuery({
-    queryKey: ['vendor-dashboard', vendor?.id],
-    queryFn: () => getVendorDashboardStats(client, vendor!.id),
-    enabled: !!vendor?.id,
-  });
+  const { data, isLoading: statsLoading } = useVendorDashboardStats(vendor?.id);
 
   if (vendorLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
+      <View className="flex-1 items-center justify-center bg-ed-bg">
         <ActivityIndicator size="small" color={editorial.primaryContainer} />
       </View>
     );
@@ -44,16 +37,16 @@ export default function VendorHomeScreen() {
 
   return (
     <ScreenWrapper>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <View className="flex-row justify-between items-center mb-6">
         <View>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: editorial.onSurfaceVariant }}>
+          <Text className="font-work-sans-bold text-[10px] tracking-[2px] uppercase text-ed-on-surface-variant">
             Welcome back
           </Text>
-          <Text style={{ fontFamily: 'DancingScript-Bold', fontSize: 30, color: editorial.primaryContainer }} numberOfLines={1}>
+          <Text className="font-dancing-script-bold text-[30px] text-ed-primary-container" numberOfLines={1}>
             {vendor?.business_name ?? user?.name ?? 'Your business'}
           </Text>
         </View>
-        <Pressable style={{ padding: 4 }} onPress={() => router.push('/(vendor-tabs)/storefront' as any)}>
+        <Pressable className="p-1" onPress={() => router.push('/(vendor-tabs)/storefront')}>
           <Ionicons name="settings-outline" size={24} color={editorial.primaryContainer} />
         </Pressable>
       </View>
@@ -64,67 +57,47 @@ export default function VendorHomeScreen() {
 
       {isLive && (
         <>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
+          <View className="flex-row flex-wrap gap-3 mb-7">
             {STAT_TILES.map((tile) => (
               <View
                 key={tile.key}
-                style={[
-                  {
-                    flexBasis: '47%',
-                    flexGrow: 1,
-                    backgroundColor: editorial.surfaceContainerLowest,
-                    borderRadius: 20,
-                    borderWidth: 1,
-                    borderColor: editorial.outlineVariant,
-                    padding: 18,
-                  },
-                  shadowSoftSm,
-                ]}
+                className="basis-[47%] grow bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-[18px]"
+                style={shadowSoftSm}
               >
                 <Ionicons name={tile.icon} size={20} color={editorial.primaryContainer} />
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: editorial.onSurface, marginTop: 10 }}>
-                  {statsLoading ? '—' : String((stats as any)[tile.key] ?? 0)}
+                <Text className="font-space-grotesk-bold text-2xl text-ed-on-surface mt-2.5">
+                  {statsLoading ? '—' : String((stats as Record<string, number>)[tile.key] ?? 0)}
                 </Text>
-                <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+                <Text className="font-work-sans-medium text-xs text-ed-on-surface-variant mt-0.5">
                   {tile.label}
                 </Text>
               </View>
             ))}
           </View>
 
-          <View
-            style={[
-              {
-                borderRadius: 24,
-                padding: 22,
-                marginBottom: 24,
-                backgroundColor: editorial.primaryContainer,
-              },
-              shadowSoftPrimary,
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>
+          <View className="rounded-3xl p-[22px] mb-6 bg-ed-primary-container" style={shadowSoftPrimary}>
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="font-work-sans-bold text-[10px] tracking-[2px] uppercase text-white/70">
                 Leads waiting on you
               </Text>
             </View>
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 30, color: '#fff' }}>
+            <Text className="font-space-grotesk-bold text-[30px] text-white">
               {statsLoading ? '—' : `${data?.pendingLeadCount ?? 0} new`}
             </Text>
-            <Pressable onPress={() => router.push('/(vendor-tabs)/leads' as any)} style={{ marginTop: 10 }}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: '#fff' }}>View leads →</Text>
+            <Pressable onPress={() => router.push('/(vendor-tabs)/leads')} className="mt-2.5">
+              <Text className="font-work-sans-bold text-[13px] text-white">View leads →</Text>
             </Pressable>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View className="flex-row items-center justify-between mb-3.5">
+            <View className="flex-row items-center gap-2">
               <Ionicons name="briefcase-outline" size={20} color={editorial.primaryContainer} />
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, color: editorial.onSurface }}>
+              <Text className="font-space-grotesk-bold text-lg text-ed-on-surface">
                 Upcoming bookings
               </Text>
             </View>
-            <Pressable onPress={() => router.push('/(vendor-tabs)/bookings' as any)}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 13, color: editorial.primaryContainer }}>
+            <Pressable onPress={() => router.push('/(vendor-tabs)/bookings')}>
+              <Text className="font-work-sans-bold text-[13px] text-ed-primary-container">
                 See all
               </Text>
             </Pressable>
@@ -132,41 +105,25 @@ export default function VendorHomeScreen() {
 
           {(data?.upcomingBookings ?? []).length === 0 ? (
             <View
-              style={[
-                {
-                  backgroundColor: editorial.surfaceContainerLowest,
-                  padding: 20,
-                  borderRadius: 20,
-                  borderWidth: 1,
-                  borderColor: editorial.outlineVariant,
-                },
-                shadowSoftSm,
-              ]}
+              className="bg-ed-surface-container-lowest p-5 rounded-[20px] border border-ed-outline-variant"
+              style={shadowSoftSm}
             >
-              <Text style={{ fontFamily: 'WorkSans-Medium', fontSize: 13, color: editorial.onSurfaceVariant }}>
+              <Text className="font-work-sans-medium text-[13px] text-ed-on-surface-variant">
                 No upcoming bookings yet. Accepted leads will show up here.
               </Text>
             </View>
           ) : (
-            <View style={{ gap: 12 }}>
-              {(data?.upcomingBookings ?? []).map((booking: any) => (
+            <View className="gap-3">
+              {(data?.upcomingBookings ?? []).map((booking) => (
                 <View
                   key={booking.id}
-                  style={[
-                    {
-                      padding: 16,
-                      backgroundColor: editorial.surfaceContainerLowest,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: editorial.outlineVariant,
-                    },
-                    shadowSoftSm,
-                  ]}
+                  className="p-4 bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant"
+                  style={shadowSoftSm}
                 >
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
+                  <Text className="font-space-grotesk-bold text-sm text-ed-on-surface">
                     {new Date(booking.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </Text>
-                  <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2, textTransform: 'capitalize' }}>
+                  <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5 capitalize">
                     {booking.stage}
                   </Text>
                 </View>

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '@/theme/useTheme';
 import { VendorsHeader } from '@/components/vendors/VendorsHeader';
 import { VendorsTabRow, type VendorsTabKey } from '@/components/vendors/VendorsTabRow';
 import { FindVendorsTab } from '@/components/vendors/FindVendorsTab';
@@ -10,7 +9,6 @@ import { BookedVendorsTab } from '@/components/vendors/BookedVendorsTab';
 import { FavoritesTab } from '@/components/vendors/FavoritesTab';
 
 export default function CategoriesScreen() {
-  const { editorial } = useTheme();
   const router = useRouter();
   const { category: deepLinkCategory } = useLocalSearchParams<{ category?: string }>();
   const [activeTab, setActiveTab] = useState<VendorsTabKey>('find');
@@ -20,10 +18,10 @@ export default function CategoriesScreen() {
   // tapping its tile does, rather than filtering this screen in place.
   useEffect(() => {
     if (deepLinkCategory) router.replace(`/(tabs)/categories/${deepLinkCategory}`);
-  }, [deepLinkCategory]);
+  }, [deepLinkCategory, router]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
       <VendorsHeader onHeartPress={() => setActiveTab('favorites')} />
       <VendorsTabRow activeKey={activeTab} onChange={setActiveTab} />
 
@@ -34,7 +32,7 @@ export default function CategoriesScreen() {
         />
       )}
       {activeTab === 'favorites' && (
-        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+        <View className="flex-1 px-5 pt-4">
           <FavoritesTab />
         </View>
       )}

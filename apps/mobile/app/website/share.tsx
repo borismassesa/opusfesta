@@ -9,7 +9,7 @@ import { useTheme } from '@/theme/useTheme';
 const BASE_URL = 'https://opuspass.opusfesta.com/w';
 
 export default function ShareScreen() {
-  const { editorial, colors } = useTheme();
+  const { colors } = useTheme();
   const { data: website } = useWeddingWebsite();
   const url = website?.publicSlug ? `${BASE_URL}/${website.publicSlug}` : '';
 
@@ -33,8 +33,8 @@ export default function ShareScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
+      <View className="flex-1 px-5 pt-4">
         <Header title="Share Website" showBack />
 
         {/* URL display */}

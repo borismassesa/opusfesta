@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { StepContainer } from '@/components/onboarding/StepContainer';
 import { shadowSoft } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import { VENDOR_NEED_ITEMS } from '@/constants/onboarding';
@@ -11,7 +11,7 @@ import { useCoupleOnboarding } from './_layout';
 export default function VendorNeedsStep() {
   const router = useRouter();
   const { data, setVendorNeeds } = useCoupleOnboarding();
-  const { editorial, colors } = useTheme();
+  const { editorial } = useTheme();
   const [selected, setSelected] = useState<string[]>(data.vendorNeeds?.vendorNeeds ?? []);
 
   const toggle = (key: string) => {
@@ -26,7 +26,7 @@ export default function VendorNeedsStep() {
   };
 
   return (
-    <EditorialStepContainer
+    <StepContainer
       title="What vendors"
       titleAccent="do you need?"
       subtitle="Select all you're looking for. You can update this later."
@@ -36,50 +36,31 @@ export default function VendorNeedsStep() {
       onBack={() => router.back()}
       nextDisabled={selected.length === 0}
     >
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 }}>
+      <View className="flex-row flex-wrap gap-3 mt-1">
         {VENDOR_NEED_ITEMS.map((item) => {
           const isSelected = selected.includes(item.key);
           return (
             <Pressable
               key={item.key}
               onPress={() => toggle(item.key)}
-              style={[
-                {
-                  width: '47%',
-                  padding: 16,
-                  borderRadius: 12,
-                  backgroundColor: isSelected ? editorial.tertiaryFixed : editorial.surfaceContainerLow,
-                  borderWidth: isSelected ? 2 : 0,
-                  borderColor: isSelected ? colors.light : 'transparent',
-                },
-                shadowSoft,
-              ]}
+              className={`w-[47%] p-4 rounded-xl ${
+                isSelected ? 'bg-ed-tertiary-fixed border-2 border-of-light' : 'bg-ed-surface-container-low border-0 border-transparent'
+              }`}
+              style={shadowSoft}
             >
               {isSelected && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    width: 22,
-                    height: 22,
-                    borderRadius: 11,
-                    backgroundColor: colors.light,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+                <View className="absolute top-2 right-2 w-[22px] h-[22px] rounded-[11px] items-center justify-center bg-of-light">
                   <Ionicons name="checkmark" size={14} color={editorial.onSurface} />
                 </View>
               )}
-              <View style={{ marginBottom: 10 }}>
+              <View className="mb-2.5">
                 <Ionicons
-                  name={item.icon as any}
+                  name={item.icon as keyof typeof Ionicons.glyphMap}
                   size={32}
                   color={editorial.tertiaryContainer}
                 />
               </View>
-              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 15, color: editorial.onSurface }}>
+              <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface">
                 {item.label}
               </Text>
             </Pressable>
@@ -87,9 +68,9 @@ export default function VendorNeedsStep() {
         })}
       </View>
 
-      <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, textAlign: 'center', marginTop: 16 }}>
+      <Text className="font-work-sans text-xs text-ed-on-surface-variant text-center mt-4">
         You can always modify these preferences in your planning dashboard.
       </Text>
-    </EditorialStepContainer>
+    </StepContainer>
   );
 }

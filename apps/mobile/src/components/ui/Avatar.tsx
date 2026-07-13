@@ -1,6 +1,5 @@
 import { View, Text, Image } from 'react-native';
 import { shadowSoftSm } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
 
 type AvatarSize = 'sm' | 'md' | 'lg';
 
@@ -11,10 +10,10 @@ interface AvatarProps {
   className?: string;
 }
 
-const sizeMap: Record<AvatarSize, { dim: number; fontSize: number }> = {
-  sm: { dim: 36, fontSize: 12 },
-  md: { dim: 44, fontSize: 14 },
-  lg: { dim: 80, fontSize: 28 },
+const sizeClasses: Record<AvatarSize, { dim: string; text: string }> = {
+  sm: { dim: 'w-9 h-9', text: 'text-xs' },
+  md: { dim: 'w-11 h-11', text: 'text-sm' },
+  lg: { dim: 'w-20 h-20', text: 'text-[28px]' },
 };
 
 function getInitials(name?: string): string {
@@ -33,41 +32,23 @@ export function Avatar({
   size = 'md',
   className = '',
 }: AvatarProps) {
-  const { editorial } = useTheme();
-  const s = sizeMap[size];
+  const s = sizeClasses[size];
 
   if (imageUrl) {
     return (
       <Image
         source={{ uri: imageUrl }}
-        className={className}
-        style={{ width: s.dim, height: s.dim, borderRadius: s.dim / 2 }}
+        className={`${className} ${s.dim} rounded-full`}
       />
     );
   }
 
   return (
     <View
-      className={className}
-      style={[
-        {
-          width: s.dim,
-          height: s.dim,
-          borderRadius: s.dim / 2,
-          backgroundColor: editorial.secondaryContainer,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        shadowSoftSm,
-      ]}
+      className={`${className} ${s.dim} rounded-full bg-ed-secondary-container items-center justify-center`}
+      style={shadowSoftSm}
     >
-      <Text
-        style={{
-          fontFamily: 'SpaceGrotesk-Bold',
-          fontSize: s.fontSize,
-          color: editorial.tertiaryContainer,
-        }}
-      >
+      <Text className={`font-space-grotesk-bold ${s.text} text-ed-tertiary-container`}>
         {getInitials(name)}
       </Text>
     </View>

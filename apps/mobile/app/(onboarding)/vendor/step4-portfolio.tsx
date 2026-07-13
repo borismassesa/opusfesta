@@ -6,6 +6,7 @@ import { StepContainer } from '@/components/onboarding/StepContainer';
 import { PhotoUploader } from '@/components/onboarding/PhotoUploader';
 import { uploadToBucket } from '@/lib/storage';
 import { useVendorOnboarding } from './_layout';
+import { getErrorMessage } from '@/lib/errors';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000;
@@ -103,8 +104,8 @@ export default function VendorStep4() {
 
       await user?.reload();
       router.replace('/');
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Something went wrong. Please try again.');
+    } catch (err) {
+      Alert.alert('Error', getErrorMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -112,6 +113,7 @@ export default function VendorStep4() {
 
   return (
     <StepContainer
+      variant="vendor"
       title="Show your work"
       subtitle="Upload at least 1 photo to go live — add more later"
       currentStep={3}

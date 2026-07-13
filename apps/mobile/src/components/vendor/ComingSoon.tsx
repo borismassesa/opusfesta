@@ -7,12 +7,12 @@ export function ComingSoon({ icon, title, body }: { icon: keyof typeof Ionicons.
   const { editorial } = useTheme();
   return (
     <ScreenWrapper>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 24 }}>
+      <View className="flex-1 items-center justify-center pt-20 px-6">
         <Ionicons name={icon} size={40} color={editorial.primaryContainer} />
-        <Text style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 20, color: editorial.onSurface, marginTop: 16, textAlign: 'center' }}>
+        <Text className="font-playfair-bold text-xl text-ed-on-surface mt-4 text-center">
           {title}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+        <Text className="font-work-sans text-sm text-ed-on-surface-variant mt-2 text-center leading-5">
           {body}
         </Text>
       </View>

@@ -14,46 +14,23 @@ export function EditorialProgress({ currentStep, totalSteps, label }: EditorialP
   const percentLabel = `${Math.round(progress)}% Complete`;
 
   return (
-    <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 11,
-            letterSpacing: 2,
-            textTransform: 'uppercase',
-            color: editorial.onSurfaceVariant,
-          }}
-        >
+    <View className="px-5 mb-6">
+      <View className="flex-row justify-between items-end mb-2">
+        <Text className="font-space-grotesk-bold text-[11px] tracking-[2px] uppercase text-ed-on-surface-variant">
           Step {String(currentStep).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
         </Text>
         <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: label ? 12 : 16,
-            color: label ? editorial.primaryContainer : editorial.tertiaryContainer,
-          }}
+          className={`font-space-grotesk-bold ${label ? 'text-xs text-ed-primary-container' : 'text-base text-ed-tertiary-container'}`}
         >
           {label || percentLabel}
         </Text>
       </View>
-      <View
-        style={{
-          height: 10,
-          backgroundColor: editorial.surfaceContainerHighest,
-          borderRadius: 5,
-          overflow: 'hidden',
-        }}
-      >
+      <View className="h-2.5 bg-ed-surface-container-highest rounded-full overflow-hidden">
         <LinearGradient
           colors={[editorial.primaryContainer, editorial.surfaceTint]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{
-            height: '100%',
-            width: `${progress}%`,
-            borderRadius: 5,
-          }}
+          style={{ height: '100%', width: `${progress}%`, borderRadius: 9999 }}
         />
       </View>
     </View>

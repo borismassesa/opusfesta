@@ -14,58 +14,23 @@ export function VendorsHeader({ onHeartPress }: VendorsHeaderProps) {
   const { data: savedVendorIds = [] } = useSavedVendorIds();
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 8,
-      }}
-    >
-      <Text style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 22, color: editorial.onSurface }}>Vendors</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <View className="flex-row items-center justify-between px-5 pt-2">
+      <Text className="font-playfair-bold text-[22px] text-ed-on-surface">Vendors</Text>
+      <View className="flex-row items-center gap-2.5">
         <Pressable
           onPress={() => router.push('/(tabs)/messages')}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: editorial.surfaceContainerLowest,
-          }}
+          className="w-10 h-10 rounded-full items-center justify-center bg-ed-surface-container-lowest"
         >
           <Ionicons name="mail-outline" size={19} color={editorial.onSurface} />
         </Pressable>
         <Pressable
           onPress={onHeartPress}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: editorial.surfaceContainerLowest,
-          }}
+          className="w-10 h-10 rounded-full items-center justify-center bg-ed-surface-container-lowest"
         >
           <Ionicons name="heart-outline" size={19} color={editorial.onSurface} />
           {savedVendorIds.length > 0 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: -2,
-                right: -2,
-                minWidth: 18,
-                height: 18,
-                borderRadius: 9,
-                paddingHorizontal: 4,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#C4426B',
-              }}
-            >
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, color: '#fff' }}>
+            <View className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-[9px] px-1 items-center justify-center bg-[#C4426B]">
+              <Text className="font-work-sans-bold text-[10px] text-white">
                 {savedVendorIds.length}
               </Text>
             </View>

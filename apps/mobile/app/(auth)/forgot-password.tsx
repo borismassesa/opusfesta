@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthInput } from '@/components/auth/AuthInput';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { AuthHeader } from '@/components/auth/AuthHeader';
-import { authTheme } from '@/constants/theme';
+import { getErrorMessage } from '@/lib/errors';
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -29,30 +29,30 @@ export default function ForgotPasswordScreen() {
     try {
       await signIn.create({ strategy: 'reset_password_email_code', identifier: email });
       router.push({ pathname: '/(auth)/reset-password', params: { email } });
-    } catch (err: any) {
-      setError(err.errors?.[0]?.message || 'Could not send reset code');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not send reset code'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+    <SafeAreaView className="flex-1 bg-of-white">
       <AuthHeader onBack={() => router.back()} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 8 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 26, color: authTheme.ink, marginBottom: 8 }}>
+          <Text className="font-work-sans-bold text-[26px] text-of-ink mb-2">
             Reset your password
           </Text>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 15, color: authTheme.textSecondary, marginBottom: 28 }}>
+          <Text className="font-work-sans text-[15px] text-of-muted mb-7">
             Enter the email associated with your account and we'll send you a reset code.
           </Text>
 
-          <View style={{ gap: 18 }}>
+          <View className="gap-[18px]">
             <AuthInput
               label="Email Address"
               value={email}
@@ -65,7 +65,7 @@ export default function ForgotPasswordScreen() {
             />
 
             {error ? (
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: authTheme.danger }}>{error}</Text>
+              <Text className="font-work-sans text-[13px] text-of-danger">{error}</Text>
             ) : null}
 
             <AuthButton

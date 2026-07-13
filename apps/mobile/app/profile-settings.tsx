@@ -1,5 +1,5 @@
 import { View, Text, Pressable, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,58 +27,27 @@ const APPEARANCE_OPTIONS: { value: ThemePreference; label: string; icon: IonIcon
 function AppearanceToggle() {
   const { editorial, preference, setPreference } = useTheme();
   return (
-    <View style={{ marginBottom: 28 }}>
-      <Text
-        style={{
-          fontFamily: 'WorkSans-Bold',
-          fontSize: 11,
-          letterSpacing: 2,
-          textTransform: 'uppercase',
-          color: editorial.onSurfaceVariant,
-          marginBottom: 10,
-          marginLeft: 2,
-        }}
-      >
+    <View className="mb-7">
+      <Text className="font-work-sans-bold text-[11px] tracking-[2px] uppercase text-ed-on-surface-variant mb-2.5 ml-0.5">
         Appearance
       </Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          backgroundColor: editorial.surfaceContainer,
-          borderRadius: 14,
-          padding: 4,
-          gap: 4,
-        }}
-      >
+      <View className="flex-row bg-ed-surface-container rounded-[14px] p-1 gap-1">
         {APPEARANCE_OPTIONS.map((option) => {
           const active = preference === option.value;
           return (
             <Pressable
               key={option.value}
               onPress={() => setPreference(option.value)}
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                paddingVertical: 10,
-                borderRadius: 10,
-                backgroundColor: active ? editorial.primaryContainer : 'transparent',
-              }}
+              className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-[10px] ${
+                active ? 'bg-ed-primary-container' : 'bg-transparent'
+              }`}
             >
               <Ionicons
                 name={option.icon}
                 size={16}
                 color={active ? editorial.onPrimary : editorial.onSurfaceVariant}
               />
-              <Text
-                style={{
-                  fontFamily: 'WorkSans-SemiBold',
-                  fontSize: 13,
-                  color: active ? editorial.onPrimary : editorial.onSurfaceVariant,
-                }}
-              >
+              <Text className={`font-work-sans-semibold text-[13px] ${active ? 'text-white' : 'text-ed-on-surface-variant'}`}>
                 {option.label}
               </Text>
             </Pressable>
@@ -111,28 +80,28 @@ export default function ProfileSettingsScreen() {
       return;
     }
     if (item.route) {
-      router.push(item.route as any);
+      router.push(item.route as Href);
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
+      <View className="flex-1 px-5 pt-4">
         {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
-          <Pressable onPress={() => router.back()} style={{ padding: 4, marginRight: 12 }}>
+        <View className="flex-row items-center mb-8">
+          <Pressable onPress={() => router.back()} className="p-1 mr-3">
             <Ionicons name="chevron-back" size={24} color={editorial.onSurface} />
           </Pressable>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 20, color: editorial.onSurface }}>Profile</Text>
+          <Text className="font-work-sans-bold text-xl text-ed-on-surface">Profile</Text>
         </View>
 
         {/* User card */}
-        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+        <View className="items-center mb-8">
           <Avatar name={user?.name ?? undefined} imageUrl={user?.imageUrl} size="lg" />
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 20, color: editorial.onSurface, marginTop: 14 }}>
+          <Text className="font-work-sans-bold text-xl text-ed-on-surface mt-3.5">
             {user?.name ?? 'Your Profile'}
           </Text>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant, marginTop: 4 }}>
+          <Text className="font-work-sans text-sm text-ed-on-surface-variant mt-1">
             {user?.email}
           </Text>
         </View>
@@ -141,18 +110,12 @@ export default function ProfileSettingsScreen() {
         <AppearanceToggle />
 
         {/* Menu items */}
-        <View style={{ gap: 2 }}>
+        <View className="gap-0.5">
           {MENU_ITEMS.map((item) => (
             <Pressable
               key={item.label}
               onPress={() => handlePress(item)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: editorial.outlineVariant,
-              }}
+              className="flex-row items-center py-4 border-b border-ed-outline-variant"
             >
               <Ionicons
                 name={item.icon}
@@ -160,14 +123,7 @@ export default function ProfileSettingsScreen() {
                 color={item.danger ? editorial.error : colors.primary}
                 style={{ marginRight: 14 }}
               />
-              <Text
-                style={{
-                  flex: 1,
-                  fontFamily: 'WorkSans-Medium',
-                  fontSize: 15,
-                  color: item.danger ? editorial.error : editorial.onSurface,
-                }}
-              >
+              <Text className={`flex-1 font-work-sans-medium text-[15px] ${item.danger ? 'text-ed-error' : 'text-ed-on-surface'}`}>
                 {item.label}
               </Text>
               {!item.danger && (

@@ -48,7 +48,7 @@ export default function VendorTabLayout() {
   if (onboarding.status === 'couple') return <Redirect href="/(tabs)" />;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -61,7 +61,7 @@ export default function VendorTabLayout() {
             height: 84,
             paddingBottom: 16,
             paddingTop: 10,
-            overflow: 'visible' as any,
+            overflow: 'visible',
           },
           tabBarLabelStyle: {
             fontSize: 10,
@@ -70,7 +70,7 @@ export default function VendorTabLayout() {
             textTransform: 'uppercase',
           },
           tabBarItemStyle: {
-            overflow: 'visible' as any,
+            overflow: 'visible',
           },
         }}
       >
@@ -85,7 +85,11 @@ export default function VendorTabLayout() {
               title: tab.title,
               ...(tab.center
                 ? {
-                    tabBarButton: ({ ref, ...props }: any) => (
+                    // React Navigation's BottomTabBarButtonProps lives in
+                    // @react-navigation/bottom-tabs — a transitive dep not
+                    // resolvable from here — and props are spread onto Pressable.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    tabBarButton: ({ ref: _ref, ...props }: any) => (
                       <Pressable
                         {...props}
                         onPress={() => setMenuOpen((prev) => !prev)}
@@ -94,7 +98,7 @@ export default function VendorTabLayout() {
                           alignItems: 'center',
                           justifyContent: 'flex-start',
                           paddingTop: 10,
-                          overflow: 'visible' as any,
+                          overflow: 'visible',
                         }}
                       >
                         <View

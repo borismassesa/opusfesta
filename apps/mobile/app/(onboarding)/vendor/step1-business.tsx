@@ -28,6 +28,7 @@ export default function VendorStep1() {
 
   return (
     <StepContainer
+      variant="vendor"
       title="Your business"
       subtitle="Tell us about your wedding services"
       currentStep={0}

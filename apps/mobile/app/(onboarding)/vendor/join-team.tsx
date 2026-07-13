@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useRedeemInviteCode } from '@/hooks/useVendorTeam';
+import { getErrorMessage } from '@/lib/errors';
 
 // Redeeming patches Clerk publicMetadata server-side (userType 'vendor',
 // onboardingComplete true) — reload the Clerk user and bounce through the
@@ -30,7 +31,7 @@ export default function JoinTeamScreen() {
             { text: 'Continue', onPress: () => router.replace('/') },
           ]);
         },
-        onError: (err: any) => Alert.alert('Could not join', err?.message ?? 'Check the code and try again.'),
+        onError: (err) => Alert.alert('Could not join', getErrorMessage(err, 'Check the code and try again.')),
       }
     );
   };
@@ -60,8 +61,9 @@ export default function JoinTeamScreen() {
       <Pressable
         disabled={redeemMutation.isPending || code.trim().length < 6}
         onPress={submit}
-        className="bg-of-primary rounded-2xl py-4 items-center"
-        style={{ opacity: redeemMutation.isPending || code.trim().length < 6 ? 0.5 : 1 }}
+        className={`bg-of-primary rounded-2xl py-4 items-center ${
+          redeemMutation.isPending || code.trim().length < 6 ? 'opacity-50' : 'opacity-100'
+        }`}
       >
         <Text className="font-work-sans-bold text-base text-white">
           {redeemMutation.isPending ? 'Joining…' : 'Join team'}

@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
 import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
+import type { NotificationItem } from '@/lib/api/notifications';
 
 type IonIcon = keyof typeof Ionicons.glyphMap;
 
@@ -33,9 +34,9 @@ export default function NotificationsScreen() {
   const markAllRead = useMarkAllNotificationsRead();
   const { editorial } = useTheme();
 
-  const hasUnread = notifications.some((n: any) => !n.read);
+  const hasUnread = notifications.some((n) => !n.read);
 
-  const handlePress = (item: any) => {
+  const handlePress = (item: NotificationItem) => {
     // `href` is minted by OpusPass (web) server actions and points at web
     // routes — not valid inside mobile's own route table, so we only mark
     // read here rather than navigating.
@@ -50,7 +51,7 @@ export default function NotificationsScreen() {
         rightAction={
           hasUnread ? (
             <Pressable onPress={() => markAllRead.mutate()}>
-              <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 12, color: editorial.primaryContainer }}>
+              <Text className="font-work-sans-bold text-xs text-ed-primary-container">
                 Mark all read
               </Text>
             </Pressable>
@@ -59,74 +60,48 @@ export default function NotificationsScreen() {
       />
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : notifications.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+        <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="notifications-outline" size={40} color={editorial.outlineVariant} />
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 14,
-              color: editorial.onSurfaceVariant,
-              textAlign: 'center',
-              marginTop: 12,
-            }}
-          >
+          <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center mt-3">
             No notifications yet. We'll let you know when something needs your attention.
           </Text>
         </View>
       ) : (
         <FlatList
           data={notifications}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={{ gap: 8, paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }: any) => (
+          renderItem={({ item }) => (
             <Pressable
               onPress={() => handlePress(item)}
-              style={[
-                {
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  padding: 14,
-                  borderRadius: 12,
-                  backgroundColor: item.read ? editorial.surfaceContainerLowest : editorial.surfaceContainerLow,
-                  borderWidth: 1,
-                  borderColor: editorial.outlineVariant,
-                },
-                shadowSoftSm,
-              ]}
+              className={`flex-row items-start gap-3 p-3.5 rounded-xl border border-ed-outline-variant ${
+                item.read ? 'bg-ed-surface-container-lowest' : 'bg-ed-surface-container-low'
+              }`}
+              style={shadowSoftSm}
             >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: editorial.tertiaryFixed,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+              <View className="w-9 h-9 rounded-full items-center justify-center bg-ed-tertiary-fixed">
                 <Ionicons name={TYPE_ICON[item.type] ?? 'notifications-outline'} size={18} color={editorial.tertiaryContainer} />
               </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View className="flex-1">
+                <View className="flex-row items-center gap-1.5">
                   {!item.read && (
-                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: editorial.error }} />
+                    <View className="w-1.5 h-1.5 rounded-[3px] bg-ed-error" />
                   )}
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface, flex: 1 }}>
+                  <Text className="font-space-grotesk-bold text-sm text-ed-on-surface flex-1">
                     {item.title}
                   </Text>
                 </View>
                 {item.body && (
-                  <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 3 }}>
+                  <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-[3px]">
                     {item.body}
                   </Text>
                 )}
-                <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 11, color: editorial.outlineVariant, marginTop: 4 }}>
+                <Text className="font-work-sans text-[11px] text-ed-outline-variant mt-1">
                   {timeAgo(item.created_at)}
                 </Text>
               </View>

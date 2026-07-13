@@ -52,6 +52,6 @@ export function useMarkVendorBooked() {
 
 export function useSavedVendorStatus(vendorId: string | undefined) {
   const { data: savedVendors = [] } = useSavedVendors();
-  const row = savedVendors.find((r: any) => r.vendor_id === vendorId);
+  const row = savedVendors.find((r) => r.vendor_id === vendorId);
   return row?.status as 'saved' | 'contacted' | 'booked' | 'archived' | undefined;
 }

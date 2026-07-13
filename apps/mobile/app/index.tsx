@@ -13,7 +13,7 @@ export default function IndexScreen() {
   const onboarding = useOnboardingState();
   const [timedOut, setTimedOut] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const { editorial, colors } = useTheme();
+  const { colors } = useTheme();
 
   useEffect(() => {
     if (isLoaded) return;
@@ -34,7 +34,7 @@ export default function IndexScreen() {
     }
 
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: editorial.bg }}>
+      <View className="flex-1 items-center justify-center bg-ed-bg">
         <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, Pressable, Platform, Modal, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { shadowSoftSm, radii } from '@/constants/theme';
+import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 
 interface DatePickerFieldProps {
@@ -61,28 +61,11 @@ export function DatePickerField({
         onPress={openPicker}
         accessibilityRole="button"
         accessibilityLabel={value ? formatValue(value) : placeholder}
-        style={[
-          {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            backgroundColor: editorial.surfaceContainerLowest,
-            borderRadius: radii.input,
-            paddingHorizontal: 14,
-            paddingVertical: 14,
-          },
-          shadowSoftSm,
-        ]}
+        className="flex-row items-center gap-2.5 bg-ed-surface-container-lowest rounded-input px-3.5 py-3.5"
+        style={shadowSoftSm}
       >
         <Ionicons name="calendar-outline" size={18} color={editorial.onSurfaceVariant} />
-        <Text
-          style={{
-            fontFamily: 'WorkSans-Regular',
-            fontSize: 16,
-            color: value ? editorial.onSurface : editorial.onSurfaceVariant,
-            flex: 1,
-          }}
-        >
+        <Text className={`font-work-sans text-base flex-1 ${value ? 'text-ed-on-surface' : 'text-ed-on-surface-variant'}`}>
           {value ? formatValue(value) : placeholder}
         </Text>
       </Pressable>
@@ -103,38 +86,22 @@ export function DatePickerField({
       {Platform.OS === 'ios' && (
         <Modal visible={show} transparent animationType="slide" onRequestClose={() => setShow(false)}>
           {/* Anchor the sheet to the bottom; scrim fills the space above it. */}
-          <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <View className="flex-1 justify-end">
             {/* Scrim tinted with purpleTints[900] (#2A1245) at 40% rather than raw black */}
             <Pressable
-              style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(42,18,69,0.4)' }]}
+              style={StyleSheet.absoluteFill}
+              className="bg-[rgba(42,18,69,0.4)]"
               onPress={() => setShow(false)}
             />
-            <View
-              style={{
-                backgroundColor: editorial.surfaceContainerLowest,
-                borderTopLeftRadius: radii.card,
-                borderTopRightRadius: radii.card,
-                paddingBottom: 24,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: editorial.outlineVariant,
-                }}
-              >
+            <View className="bg-ed-surface-container-lowest rounded-t-card pb-6">
+              <View className="flex-row justify-between items-center px-4 py-3 border-b border-ed-outline-variant">
                 <Pressable onPress={() => setShow(false)} accessibilityRole="button">
-                  <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 16, color: editorial.onSurfaceVariant }}>
+                  <Text className="font-work-sans text-base text-ed-on-surface-variant">
                     Cancel
                   </Text>
                 </Pressable>
                 <Pressable onPress={confirmIos} accessibilityRole="button">
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 16, color: editorial.primaryContainer }}>
+                  <Text className="font-space-grotesk-bold text-base text-ed-primary-container">
                     Done
                   </Text>
                 </Pressable>

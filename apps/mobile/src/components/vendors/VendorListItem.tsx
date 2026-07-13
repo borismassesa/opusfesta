@@ -4,7 +4,6 @@ import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { StarRating } from '../ui/StarRating';
 import { shadowSoftSm } from '@/constants/theme';
-import { useTheme } from '@/theme/useTheme';
 
 interface VendorListItemProps {
   id: string;
@@ -25,35 +24,23 @@ export function VendorListItem({
   logo,
   verified = false,
 }: VendorListItemProps) {
-  const { editorial } = useTheme();
   const router = useRouter();
 
   return (
     <Pressable
       onPress={() => router.push(`/vendor/${id}`)}
-      style={[
-        {
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          padding: 14,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 14,
-        },
-        shadowSoftSm,
-      ]}
+      className="bg-ed-surface-container-lowest rounded-[20px] border border-ed-outline-variant p-3.5 flex-row items-center gap-3.5"
+      style={shadowSoftSm}
     >
       <Avatar name={name} imageUrl={logo} size="md" />
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: editorial.onSurface }}>
+      <View className="flex-1">
+        <Text className="font-space-grotesk-bold text-sm text-ed-on-surface">
           {name}
         </Text>
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, color: editorial.onSurfaceVariant, marginTop: 2 }}>
+        <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-0.5">
           {category} {location ? `· ${location}` : ''}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+        <View className="flex-row items-center gap-2 mt-1">
           <StarRating rating={rating} />
           {verified && <Badge label="Verified" variant="success" />}
         </View>

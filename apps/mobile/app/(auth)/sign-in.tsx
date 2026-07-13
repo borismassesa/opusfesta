@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
+import type { SignInSecondFactor, AttemptSecondFactorParams } from '@clerk/types';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +12,7 @@ import { AuthHeader } from '@/components/auth/AuthHeader';
 import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { authTheme } from '@/constants/theme';
+import { getErrorMessage } from '@/lib/errors';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -36,7 +38,7 @@ export default function SignInScreen() {
 
   const emailError = email.length > 0 && !isValidEmail(email) ? 'Enter a valid email' : undefined;
 
-  const prepareSecondFactor = async (strategy: 'phone_code' | 'email_code', factors: any[]) => {
+  const prepareSecondFactor = async (strategy: 'phone_code' | 'email_code', factors: SignInSecondFactor[]) => {
     if (!signIn) return;
     if (strategy === 'phone_code') {
       const factor = factors.find((f) => f.strategy === 'phone_code');
@@ -72,8 +74,8 @@ export default function SignInScreen() {
       } else {
         setError('Sign in could not be completed. Please try again.');
       }
-    } catch (err: any) {
-      setError(err.errors?.[0]?.message || 'Sign in failed');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Sign in failed'));
     } finally {
       setLoading(false);
     }
@@ -84,15 +86,15 @@ export default function SignInScreen() {
     setLoading(true);
     setError('');
     try {
-      const result = await signIn.attemptSecondFactor({ strategy: secondFactor, code } as any);
+      const result = await signIn.attemptSecondFactor({ strategy: secondFactor, code } as AttemptSecondFactorParams);
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/');
       } else {
         setError('That code didn\'t work. Please try again.');
       }
-    } catch (err: any) {
-      setError(err.errors?.[0]?.message || 'Verification failed');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Verification failed'));
     } finally {
       setLoading(false);
     }
@@ -112,8 +114,8 @@ export default function SignInScreen() {
         await setOAuthActive({ session: createdSessionId });
         router.replace('/');
       }
-    } catch (err: any) {
-      setError(err.errors?.[0]?.message || 'Google sign in failed');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Google sign in failed'));
     } finally {
       setLoading(false);
     }
@@ -121,13 +123,13 @@ export default function SignInScreen() {
 
   if (secondFactor) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
+      <SafeAreaView className="flex-1 bg-of-white">
         <AuthHeader onBack={() => setSecondFactor(null)} />
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 24 }}>
-          <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 24, color: authTheme.ink, marginBottom: 8 }}>
+        <View className="flex-1 px-6 pt-6">
+          <Text className="font-work-sans-bold text-2xl text-of-ink mb-2">
             Two-factor verification
           </Text>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: authTheme.textSecondary, marginBottom: 24 }}>
+          <Text className="font-work-sans text-sm text-of-muted mb-6">
             {secondFactor === 'totp' && 'Enter the 6-digit code from your authenticator app.'}
             {secondFactor === 'phone_code' && 'We sent a 6-digit code to your phone.'}
             {secondFactor === 'email_code' && `We sent a 6-digit code to ${email}.`}
@@ -135,7 +137,7 @@ export default function SignInScreen() {
           </Text>
 
           {secondFactor === 'backup_code' ? (
-            <View style={{ gap: 18 }}>
+            <View className="gap-[18px]">
               <AuthInput
                 label="Backup Code"
                 value={backupCode}
@@ -160,15 +162,7 @@ export default function SignInScreen() {
                 resendCooldownSeconds={30}
               />
               {loading && (
-                <Text
-                  style={{
-                    fontFamily: 'WorkSans-Regular',
-                    fontSize: 14,
-                    color: authTheme.textSecondary,
-                    textAlign: 'center',
-                    marginTop: 16,
-                  }}
-                >
+                <Text className="font-work-sans text-sm text-of-muted text-center mt-4">
                   Verifying...
                 </Text>
               )}
@@ -180,51 +174,36 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: authTheme.bg }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <SafeAreaView className="flex-1 bg-of-white">
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Header bar */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 8, marginBottom: 32 }}>
+          <View className="flex-row items-center pt-2 mb-8">
             <Pressable
               onPress={() => router.back()}
               accessibilityRole="button"
               accessibilityLabel="Go back"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={{ padding: 4 }}
+              className="p-1"
             >
               <Ionicons name="arrow-back" size={24} color={authTheme.ink} />
             </Pressable>
           </View>
 
           {/* Header */}
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 28,
-              color: authTheme.ink,
-              marginBottom: 8,
-            }}
-          >
+          <Text className="font-work-sans-bold text-[28px] text-of-ink mb-2">
             Welcome Back.
           </Text>
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 15,
-              lineHeight: 22,
-              color: authTheme.textSecondary,
-              marginBottom: 32,
-            }}
-          >
+          <Text className="font-work-sans text-[15px] leading-[22px] text-of-muted mb-8">
             Curating your next great celebration begins here.
           </Text>
 
           {/* Form */}
-          <View style={{ gap: 18 }}>
+          <View className="gap-[18px]">
             <AuthInput
               label="Email Address"
               value={email}
@@ -247,7 +226,7 @@ export default function SignInScreen() {
             />
 
             {error ? (
-              <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 13, color: authTheme.danger }}>{error}</Text>
+              <Text className="font-work-sans text-[13px] text-of-danger">{error}</Text>
             ) : null}
 
             <AuthButton
@@ -259,25 +238,16 @@ export default function SignInScreen() {
           </View>
 
           {/* Divider */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 28 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: authTheme.border }} />
-            <Text
-              style={{
-                fontFamily: 'WorkSans-SemiBold',
-                fontSize: 11,
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                color: authTheme.textSecondary,
-                marginHorizontal: 16,
-              }}
-            >
+          <View className="flex-row items-center my-7">
+            <View className="flex-1 h-px bg-of-line" />
+            <Text className="font-work-sans-semibold text-[11px] tracking-[1px] uppercase text-of-muted mx-4">
               Or continue with
             </Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: authTheme.border }} />
+            <View className="flex-1 h-px bg-of-line" />
           </View>
 
           {/* Social Buttons */}
-          <View style={{ gap: 12 }}>
+          <View className="gap-3">
             <AuthButton
               variant="outline"
               label="Continue with Google"
@@ -289,11 +259,11 @@ export default function SignInScreen() {
           </View>
 
           {/* Footer */}
-          <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 32 }}>
-            <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: authTheme.textSecondary }}>
+          <View className="items-center mt-10 mb-8">
+            <Text className="font-work-sans text-sm text-of-muted">
               Don't have an account?{' '}
               <Text
-                style={{ fontFamily: 'WorkSans-SemiBold', color: authTheme.accent }}
+                className="font-work-sans-semibold text-of-accent"
                 onPress={() => router.push('/(auth)/sign-up')}
               >
                 Sign up

@@ -6,6 +6,7 @@ import { StarRating } from '../ui/StarRating';
 import { formatCurrency } from '@opusfesta/lib';
 import { shadowSoft } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
+import type { VendorPriceRange } from '@/types/vendor';
 
 interface VendorCardProps {
   id: string;
@@ -14,7 +15,7 @@ interface VendorCardProps {
   location?: string;
   rating?: number;
   ratingCount?: number;
-  priceRange?: { min?: number; max?: number };
+  priceRange?: VendorPriceRange | null;
   coverImage?: string | null;
   logo?: string | null;
   compact?: boolean;
@@ -23,7 +24,6 @@ interface VendorCardProps {
 export function VendorCard({
   id,
   name,
-  category,
   location,
   rating = 0,
   ratingCount = 0,
@@ -37,22 +37,13 @@ export function VendorCard({
   return (
     <Pressable
       onPress={() => router.push(`/vendor/${id}`)}
-      style={[
-        {
-          backgroundColor: editorial.surfaceContainerLowest,
-          borderRadius: 24,
-          borderWidth: 1,
-          borderColor: editorial.outlineVariant,
-          overflow: 'hidden',
-          width: compact ? '100%' : 224,
-        },
-        shadowSoft,
-      ]}
+      className={`bg-ed-surface-container-lowest rounded-[24px] border border-ed-outline-variant overflow-hidden ${compact ? 'w-full' : 'w-[224px]'}`}
+      style={shadowSoft}
     >
       {coverImage ? (
         <Image
           source={{ uri: coverImage }}
-          style={{ width: '100%', height: 144 }}
+          className="w-full h-36"
           resizeMode="cover"
         />
       ) : (
@@ -60,34 +51,20 @@ export function VendorCard({
           colors={[editorial.secondaryContainer, editorial.tertiaryFixed]}
           style={{ width: '100%', height: 144, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ fontSize: 32 }}>📸</Text>
+          <Text className="text-[32px]">📸</Text>
         </LinearGradient>
       )}
 
-      <View style={{ padding: 14 }}>
-        <Text
-          style={{
-            fontFamily: 'SpaceGrotesk-Bold',
-            fontSize: 15,
-            color: editorial.onSurface,
-          }}
-          numberOfLines={1}
-        >
+      <View className="p-3.5">
+        <Text className="font-space-grotesk-bold text-[15px] text-ed-on-surface" numberOfLines={1}>
           {name}
         </Text>
         {location && (
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 12,
-              color: editorial.onSurfaceVariant,
-              marginTop: 4,
-            }}
-          >
+          <Text className="font-work-sans text-xs text-ed-on-surface-variant mt-1">
             {location}
           </Text>
         )}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <View className="flex-row justify-between items-center mt-2">
           <StarRating rating={rating} count={ratingCount} />
           {priceRange?.min && (
             <Badge label={`From ${formatCurrency(priceRange.min)}`} />

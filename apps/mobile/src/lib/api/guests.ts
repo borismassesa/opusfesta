@@ -1,4 +1,32 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Guest, RsvpStatus } from '@/types/guest';
+
+// Shape of the joined guest_contacts row as returned by the query below. The
+// generic (untyped) Supabase client hands back `any` rows, so we describe the
+// fields we actually read here instead of leaking `any` into the mapper.
+interface GuestInvitationRow {
+  id: string;
+  event_id: string;
+  rsvp_status: RsvpStatus | null;
+  party_size: number | null;
+  meal_choice: string | null;
+  dietary_notes: string | null;
+  guest_message: string | null;
+  responded_at: string | null;
+}
+
+interface GuestContactRow {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  group_tag: string | null;
+  max_party_size: number | null;
+  public_token: string | null;
+  last_invited_at: string | null;
+  invite_count: number | null;
+  guest_invitations: GuestInvitationRow[] | null;
+}
 
 // Guest list / RSVP reuses OpusPass's data layer (guest_contacts,
 // guest_invitations, wedding_events) instead of a mobile-only table — see
@@ -39,7 +67,7 @@ export async function getOrCreateDefaultEvent(client: SupabaseClient, userId: st
   return created;
 }
 
-export async function getGuestList(client: SupabaseClient, eventId: string) {
+export async function getGuestList(client: SupabaseClient, eventId: string): Promise<Guest[]> {
   const { data, error } = await client
     .from('guest_contacts')
     .select(
@@ -49,8 +77,8 @@ export async function getGuestList(client: SupabaseClient, eventId: string) {
 
   if (error) throw error;
 
-  return (data ?? []).map((guest: any) => {
-    const invite = (guest.guest_invitations ?? []).find((inv: any) => inv.event_id === eventId) ?? null;
+  return ((data ?? []) as GuestContactRow[]).map((guest) => {
+    const invite = (guest.guest_invitations ?? []).find((inv) => inv.event_id === eventId) ?? null;
     return {
       id: guest.id,
       full_name: guest.full_name,

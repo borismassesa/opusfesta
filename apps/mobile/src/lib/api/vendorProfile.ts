@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { VendorRow, VendorPackage } from '@/types/vendor';
+import type { VendorRow, VendorPackage, VendorStats } from '@/types/vendor';
 
 const MY_VENDOR_COLUMNS = `
   id, user_id, slug, business_name, category, bio, description, logo,
@@ -64,7 +64,23 @@ export async function getMyVendor(client: SupabaseClient): Promise<MyVendor | nu
   return { vendor: memberVendor as VendorRow, myRole: membership.role as VendorMemberRole };
 }
 
-export async function getVendorDashboardStats(client: SupabaseClient, vendorId: string) {
+export interface VendorDashboardBooking {
+  id: string;
+  event_date: string;
+  stage: string;
+}
+
+export interface VendorDashboardStats {
+  stats: VendorStats;
+  pendingLeadCount: number;
+  totalLeadCount: number;
+  upcomingBookings: VendorDashboardBooking[];
+}
+
+export async function getVendorDashboardStats(
+  client: SupabaseClient,
+  vendorId: string,
+): Promise<VendorDashboardStats> {
   const [{ data: vendor, error: vendorError }, { data: inquiries, error: inquiriesError }, { data: bookings, error: bookingsError }] =
     await Promise.all([
       client.from('vendors').select('stats').eq('id', vendorId).single(),
@@ -81,11 +97,13 @@ export async function getVendorDashboardStats(client: SupabaseClient, vendorId: 
   if (bookingsError) throw bookingsError;
 
   const today = new Date().toISOString().slice(0, 10);
+  const inquiryRows = (inquiries ?? []) as { id: string; status: string }[];
+  const bookingRows = (bookings ?? []) as VendorDashboardBooking[];
   return {
-    stats: vendor?.stats ?? {},
-    pendingLeadCount: (inquiries ?? []).filter((i) => i.status === 'pending').length,
-    totalLeadCount: (inquiries ?? []).length,
-    upcomingBookings: (bookings ?? []).filter((b) => b.event_date >= today).slice(0, 3),
+    stats: (vendor?.stats ?? {}) as VendorStats,
+    pendingLeadCount: inquiryRows.filter((i) => i.status === 'pending').length,
+    totalLeadCount: inquiryRows.length,
+    upcomingBookings: bookingRows.filter((b) => b.event_date >= today).slice(0, 3),
   };
 }
 

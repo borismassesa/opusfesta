@@ -16,21 +16,10 @@ export function ProgressBar({
   const clampedProgress = Math.min(100, Math.max(0, progress));
 
   return (
-    <View
-      className={className}
-      style={{
-        height: 6,
-        backgroundColor: editorial.surfaceContainerHigh,
-        borderRadius: 3,
-      }}
-    >
+    <View className={`${className} h-1.5 rounded-[3px] bg-ed-surface-container-high`}>
       <View
-        style={{
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: color || editorial.primaryContainer,
-          width: `${clampedProgress}%`,
-        }}
+        className="h-1.5 rounded-[3px]"
+        style={{ backgroundColor: color || editorial.primaryContainer, width: `${clampedProgress}%` }}
       />
     </View>
   );

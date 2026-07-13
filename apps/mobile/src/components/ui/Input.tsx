@@ -15,55 +15,23 @@ export const Input = forwardRef<TextInput, InputProps>(
     return (
       <View className={containerClassName}>
         {label && (
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Bold',
-              fontSize: 11,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              color: editorial.onSurfaceVariant,
-              marginBottom: 6,
-              marginLeft: 2,
-            }}
-          >
+          <Text className="font-work-sans-bold text-[11px] tracking-[2px] uppercase text-ed-on-surface-variant mb-1.5 ml-0.5">
             {label}
           </Text>
         )}
         <View
-          style={[
-            {
-              backgroundColor: editorial.surfaceContainerLowest,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: editorial.outlineVariant,
-            },
-            error
-              ? { borderWidth: 1.5, borderColor: editorial.error }
-              : shadowSoftSm,
-          ]}
+          className={`bg-ed-surface-container-lowest rounded-[14px] border ${error ? 'border-[1.5px] border-ed-error' : 'border-ed-outline-variant'}`}
+          style={error ? undefined : shadowSoftSm}
         >
           <TextInput
             ref={ref}
             placeholderTextColor={editorial.outlineVariant}
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 16,
-              color: editorial.onSurface,
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-            }}
+            className="font-work-sans text-base text-ed-on-surface px-4 py-3.5"
             {...props}
           />
         </View>
         {error && (
-          <Text
-            style={{
-              fontFamily: 'WorkSans-Regular',
-              fontSize: 12,
-              color: editorial.error,
-              marginTop: 4,
-            }}
-          >
+          <Text className="font-work-sans text-xs text-ed-error mt-1">
             {error}
           </Text>
         )}

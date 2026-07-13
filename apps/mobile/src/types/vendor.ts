@@ -10,6 +10,106 @@ export type VendorOnboardingStatus =
   | 'in_progress'
   | 'pending_review';
 
+export interface VendorLocation {
+  city?: string;
+  address?: string;
+  street?: string;
+  ward?: string;
+  district?: string;
+  region?: string;
+}
+
+export interface VendorPriceRange {
+  min?: number;
+  max?: number;
+}
+
+export interface VendorStats {
+  viewCount?: number;
+  inquiryCount?: number;
+  saveCount?: number;
+  averageRating?: number;
+  reviewCount?: number;
+}
+
+export interface VendorContactInfo {
+  whatsapp?: string;
+  phone?: string;
+  email?: string;
+  instagram?: string;
+}
+
+export interface VendorTeamMember {
+  id: string;
+  name: string;
+  role?: string;
+  bio?: string;
+  avatar?: string;
+}
+
+/**
+ * A vendor as returned by the public listing/detail queries (VENDOR_COLUMNS in
+ * src/lib/api/vendors.ts). JSON columns (location, price_range, stats, …) are
+ * loosely shaped in the DB, so their fields are optional here.
+ */
+export interface VendorListing {
+  id: string;
+  slug: string;
+  user_id: string;
+  business_name: string;
+  category: string;
+  subcategories: string[] | null;
+  bio: string | null;
+  description: string | null;
+  logo: string | null;
+  cover_image: string | null;
+  gallery_urls: string[] | null;
+  location: VendorLocation | null;
+  price_range: VendorPriceRange | null;
+  verified: boolean | null;
+  tier: string | null;
+  stats: VendorStats | null;
+  contact_info: VendorContactInfo | null;
+  social_links: Record<string, string> | null;
+  years_in_business: number | null;
+  team_size: number | null;
+  services_offered: string[] | null;
+  team: VendorTeamMember[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SavedVendorStatus = 'saved' | 'contacted' | 'booked' | 'archived';
+
+/** A `saved_vendors` row joined with the summary columns of its vendor. */
+export interface SavedVendorRow {
+  id: string;
+  user_id: string;
+  vendor_id: string;
+  status: SavedVendorStatus | null;
+  created_at: string;
+  vendors: {
+    id: string;
+    business_name: string;
+    logo: string | null;
+    category: string;
+    cover_image: string | null;
+    location: VendorLocation | null;
+    price_range: VendorPriceRange | null;
+    stats: VendorStats | null;
+  } | null;
+}
+
+/** A package/tier as stored in the vendors.packages JSON column. */
+export interface VendorPackageDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  is_featured?: boolean;
+  features?: string[];
+}
+
 export interface VendorPackage {
   id: string;
   name: string;
@@ -128,6 +228,20 @@ export interface VendorBookingRow {
   cancellation_reason: string | null;
   cancelled_at: string | null;
   created_at: string;
+}
+
+export interface VendorReview {
+  id: string;
+  vendor_id: string;
+  rating: number;
+  title: string | null;
+  content: string | null;
+  event_type: string | null;
+  created_at: string;
+  user: {
+    name: string;
+    avatar: string | null;
+  };
 }
 
 export interface VendorAvailabilityDay {

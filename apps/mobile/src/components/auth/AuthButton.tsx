@@ -40,35 +40,17 @@ export function AuthButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={[
-        {
-          backgroundColor: isPrimary ? authTheme.ink : authTheme.bg,
-          borderRadius: authTheme.radius,
-          borderWidth: isPrimary ? 0 : 1,
-          borderColor: authTheme.border,
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          opacity: isDisabled ? 0.5 : 1,
-        },
-        style,
-      ]}
+      className={`rounded-lg py-3.5 px-5 flex-row items-center justify-center gap-2 ${isDisabled ? 'opacity-50' : 'opacity-100'} ${
+        isPrimary ? 'bg-of-ink border-0' : 'bg-of-white border border-of-line'
+      }`}
+      style={style}
     >
       {loading ? (
         <ActivityIndicator color={isPrimary ? authTheme.bg : authTheme.ink} size="small" />
       ) : (
         <>
           {icon}
-          <Text
-            style={{
-              fontFamily: 'WorkSans-SemiBold',
-              fontSize: 16,
-              color: isPrimary ? authTheme.bg : authTheme.ink,
-            }}
-          >
+          <Text className={`font-work-sans-semibold text-base ${isPrimary ? 'text-of-white' : 'text-of-ink'}`}>
             {label}
           </Text>
         </>

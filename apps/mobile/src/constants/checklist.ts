@@ -7,6 +7,8 @@
 // checked off locally (AsyncStorage, see useChecklist.ts) and "widget" tasks derive their
 // completion from couple_profiles, same as the web client.
 
+import type { CoupleProfile } from '@/types/couple';
+
 export type ChecklistWidget = 'date' | 'budget' | 'guest_count' | 'location' | 'categories';
 
 export type ChecklistTask = {
@@ -276,7 +278,7 @@ export const CHECKLIST_TOTAL_TASKS = CHECKLIST_PHASES.reduce(
 
 export const CHECKLIST_TOTAL_GOALS = CHECKLIST_PHASES.reduce((sum, phase) => sum + phase.goals.length, 0);
 
-export function isWidgetTaskComplete(widget: ChecklistWidget, profile: any): boolean {
+export function isWidgetTaskComplete(widget: ChecklistWidget, profile: CoupleProfile | null | undefined): boolean {
   switch (widget) {
     case 'date':
       return !!(profile?.wedding_date || profile?.date_undecided);

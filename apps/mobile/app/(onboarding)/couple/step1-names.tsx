@@ -3,7 +3,7 @@ import { View, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { EditorialStepContainer } from '@/components/onboarding/EditorialStepContainer';
+import { StepContainer } from '@/components/onboarding/StepContainer';
 import { shadowSoftSm } from '@/constants/theme';
 import { useTheme } from '@/theme/useTheme';
 import { CoupleNames } from '@/components/ui/CoupleNames';
@@ -14,18 +14,18 @@ function EditorialField({ label, value, onChangeText, placeholder }: {
 }) {
   const { editorial } = useTheme();
   return (
-    <View style={{ gap: 6 }}>
-      <Text style={{ fontFamily: 'WorkSans-Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: editorial.onSurfaceVariant, marginLeft: 2 }}>
+    <View className="gap-1.5">
+      <Text className="font-work-sans-bold text-[10px] tracking-[2px] uppercase text-ed-on-surface-variant ml-0.5">
         {label}
       </Text>
-      <View style={[{ backgroundColor: editorial.surfaceContainerLowest, borderRadius: 14, borderWidth: 1, borderColor: editorial.outlineVariant }, shadowSoftSm]}>
+      <View className="bg-ed-surface-container-lowest rounded-[14px] border border-ed-outline-variant" style={shadowSoftSm}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={editorial.outlineVariant}
           autoCapitalize="words"
-          style={{ fontFamily: 'WorkSans-Medium', fontSize: 16, color: editorial.onSurface, paddingHorizontal: 16, paddingVertical: 14 }}
+          className="font-work-sans-medium text-base text-ed-on-surface px-4 py-3.5"
         />
       </View>
     </View>
@@ -56,7 +56,7 @@ export default function CoupleStep1() {
   };
 
   return (
-    <EditorialStepContainer
+    <StepContainer
       title="Let's start with your names"
       subtitle="We'll use these to personalize your wedding planning dashboard and invitations."
       currentStep={1}
@@ -66,58 +66,58 @@ export default function CoupleStep1() {
       onNext={handleNext}
       nextDisabled={!canProceed}
     >
-      <View style={{ gap: 24, marginTop: 8 }}>
+      <View className="gap-6 mt-2">
         {/* About You */}
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View className="gap-3">
+          <View className="flex-row items-center gap-2">
             <Ionicons name="person" size={20} color={editorial.tertiaryContainer} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, textTransform: 'uppercase', letterSpacing: 1, color: editorial.onSurface }}>
+            <Text className="font-space-grotesk-bold text-lg uppercase tracking-[1px] text-ed-on-surface">
               About You
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
+          <View className="flex-row gap-3">
+            <View className="flex-1">
               <EditorialField label="Your first name" value={firstName} onChangeText={setFirstName} placeholder="e.g. Amara" />
             </View>
-            <View style={{ flex: 1 }}>
+            <View className="flex-1">
               <EditorialField label="Your last name" value={lastName} onChangeText={setLastName} placeholder="e.g. Mbeki" />
             </View>
           </View>
         </View>
 
         {/* Live romantic preview — the couple's names in script as they type */}
-        <View style={{ alignItems: 'center', paddingVertical: 4, minHeight: 64, justifyContent: 'center' }}>
+        <View className="items-center py-1 min-h-[64px] justify-center">
           {firstName.trim() || partnerFirst.trim() ? (
             <CoupleNames partner1={firstName} partner2={partnerFirst} size="md" />
           ) : (
-            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: editorial.tertiaryFixed, alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}>
+            <View className="w-[72px] h-[72px] rounded-full items-center justify-center bg-ed-tertiary-fixed opacity-70">
               <Ionicons name="infinite" size={40} color={editorial.tertiaryContainer} />
             </View>
           )}
         </View>
 
         {/* Your Partner */}
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View className="gap-3">
+          <View className="flex-row items-center gap-2">
             <Ionicons name="heart" size={20} color={editorial.secondary} />
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 18, textTransform: 'uppercase', letterSpacing: 1, color: editorial.onSurface }}>
+            <Text className="font-space-grotesk-bold text-lg uppercase tracking-[1px] text-ed-on-surface">
               Your Partner
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
+          <View className="flex-row gap-3">
+            <View className="flex-1">
               <EditorialField label="Partner's first name" value={partnerFirst} onChangeText={setPartnerFirst} placeholder="e.g. Kwame" />
             </View>
-            <View style={{ flex: 1 }}>
+            <View className="flex-1">
               <EditorialField label="Partner's last name" value={partnerLast} onChangeText={setPartnerLast} placeholder="e.g. Osei" />
             </View>
           </View>
         </View>
 
-        <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 12, fontStyle: 'italic', color: editorial.onSurfaceVariant, marginTop: 8 }}>
+        <Text className="font-work-sans text-xs italic text-ed-on-surface-variant mt-2">
           Don't worry, you can change these later in your profile settings.
         </Text>
       </View>
-    </EditorialStepContainer>
+    </StepContainer>
   );
 }

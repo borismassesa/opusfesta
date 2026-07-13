@@ -1,5 +1,4 @@
 import { View, Text } from 'react-native';
-import { useTheme } from '@/theme/useTheme';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'count';
 
@@ -9,40 +8,24 @@ interface BadgeProps {
   className?: string;
 }
 
+// success/warning keep fixed semantic status colors; default/count follow theme.
+const variantClasses: Record<BadgeVariant, { bg: string; text: string }> = {
+  default: { bg: 'bg-ed-tertiary-fixed', text: 'text-ed-tertiary-container' },
+  success: { bg: 'bg-[#dcfce7]', text: 'text-[#16a34a]' },
+  warning: { bg: 'bg-[#fff7ed]', text: 'text-[#C4920A]' },
+  count: { bg: 'bg-ed-primary-container', text: 'text-white' },
+};
+
 export function Badge({
   label,
   variant = 'default',
   className = '',
 }: BadgeProps) {
-  const { editorial } = useTheme();
-
-  // success/warning keep fixed semantic status colors; default/count follow theme.
-  const variantConfig: Record<BadgeVariant, { bg: string; text: string }> = {
-    default: { bg: editorial.tertiaryFixed, text: editorial.tertiaryContainer },
-    success: { bg: '#dcfce7', text: '#16a34a' },
-    warning: { bg: '#fff7ed', text: '#C4920A' },
-    count: { bg: editorial.primaryContainer, text: '#ffffff' },
-  };
-
-  const v = variantConfig[variant];
+  const v = variantClasses[variant];
 
   return (
-    <View
-      className={className}
-      style={{
-        borderRadius: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        backgroundColor: v.bg,
-      }}
-    >
-      <Text
-        style={{
-          fontFamily: 'WorkSans-Bold',
-          fontSize: 11,
-          color: v.text,
-        }}
-      >
+    <View className={`${className} rounded-[20px] px-3 py-1 ${v.bg}`}>
+      <Text className={`font-work-sans-bold text-[11px] ${v.text}`}>
         {label}
       </Text>
     </View>

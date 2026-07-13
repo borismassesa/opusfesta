@@ -22,23 +22,14 @@ export default function CategoryResultsScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: editorial.bg }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          paddingBottom: 16,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-          <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
+    <SafeAreaView className="flex-1 bg-ed-bg">
+      <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
+        <View className="flex-row items-center gap-3 flex-1">
+          <Pressable onPress={() => router.back()} className="p-1">
             <Ionicons name="chevron-back" size={24} color={editorial.onSurface} />
           </Pressable>
           <Text
-            style={{ fontFamily: 'PlayfairDisplay-Bold', fontSize: 22, color: editorial.onSurface, flex: 1 }}
+            className="font-playfair-bold text-[22px] text-ed-on-surface flex-1"
             numberOfLines={1}
           >
             {label}
@@ -46,36 +37,29 @@ export default function CategoryResultsScreen() {
         </View>
         <Pressable
           onPress={() => router.push('/saved-vendors')}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: editorial.surfaceContainerLowest,
-          }}
+          className="w-10 h-10 rounded-full items-center justify-center bg-ed-surface-container-lowest"
         >
           <Ionicons name="heart-outline" size={19} color={editorial.onSurface} />
         </Pressable>
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={editorial.primaryContainer} />
         </View>
       ) : vendors.length === 0 ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-          <Text style={{ fontFamily: 'WorkSans-Regular', fontSize: 14, color: editorial.onSurfaceVariant, textAlign: 'center' }}>
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="font-work-sans text-sm text-ed-on-surface-variant text-center">
             No vendors found in this category yet.
           </Text>
         </View>
       ) : (
         <FlatList
           data={vendors}
-          keyExtractor={(item: any) => item.id}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 32 }}
-          renderItem={({ item }: any) => (
+          renderItem={({ item }) => (
             <CategoryVendorCard
               id={item.id}
               name={item.business_name}
@@ -84,7 +68,7 @@ export default function CategoryResultsScreen() {
               reviewCount={item.stats?.reviewCount ?? 0}
               priceMin={item.price_range?.min ?? null}
               priceMax={item.price_range?.max ?? null}
-              images={item.gallery_urls?.length ? item.gallery_urls : [item.cover_image].filter(Boolean)}
+              images={item.gallery_urls?.length ? item.gallery_urls : item.cover_image ? [item.cover_image] : []}
             />
           )}
         />

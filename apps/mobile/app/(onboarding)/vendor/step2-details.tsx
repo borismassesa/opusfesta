@@ -26,6 +26,7 @@ export default function VendorStep2() {
 
   return (
     <StepContainer
+      variant="vendor"
       title="Service details"
       subtitle="Help couples understand what you offer"
       currentStep={1}
