@@ -17,4 +17,9 @@ export class StubSmsProvider implements SmsProvider {
     })
     return { ok: true, dryRun: true }
   }
+
+  async sendText(to: string, body: string): Promise<SmsSendResult> {
+    console.warn('[sms:stub] would send text', { to, body })
+    return { ok: true, dryRun: true }
+  }
 }

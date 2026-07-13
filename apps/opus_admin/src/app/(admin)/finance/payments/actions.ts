@@ -231,3 +231,45 @@ export async function rejectInvitationPayment(formData: FormData): Promise<void>
   ])
   revalidatePath('/finance/payments')
 }
+
+/**
+ * Grant or revoke send credits (invite or entrance-pass pool) for a couple's
+ * event, on top of what they purchased. Never edits invitation_orders — see
+ * entitlement_adjustments (migration 20260711000003): every adjustment is its
+ * own audit-trailed row with a required reason and the acting admin's email.
+ * To reverse one, add an opposite-sign adjustment rather than editing/deleting.
+ */
+export async function adjustEntitlementCredits(formData: FormData): Promise<void> {
+  await requirePermission('finance.write')
+
+  const userId = clean(formData.get('userId'))
+  const eventId = clean(formData.get('eventId'))
+  const kind = clean(formData.get('kind'))
+  const direction = clean(formData.get('direction'))
+  const quantityRaw = clean(formData.get('quantity'))
+  const reason = clean(formData.get('reason'))
+
+  if (!userId || !eventId) throw new Error('Missing user or event — this order must be approved and assigned to an event first.')
+  if (kind !== 'invite' && kind !== 'entrance_pass') throw new Error('Invalid credit kind.')
+  if (direction !== 'grant' && direction !== 'revoke') throw new Error('Invalid adjustment direction.')
+  const quantity = Number(quantityRaw)
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new Error('Enter a whole number of credits greater than zero.')
+  }
+  if (!reason) throw new Error('Add a reason for this adjustment — it becomes part of the audit trail.')
+
+  const delta = direction === 'grant' ? quantity : -quantity
+  const adminEmail = (await getCallerEmail()) ?? 'admin'
+  const supabase = createSupabaseAdminClient()
+  const { error } = await supabase.from('entitlement_adjustments').insert({
+    user_id: userId,
+    event_id: eventId,
+    kind,
+    delta,
+    reason,
+    admin_email: adminEmail,
+  })
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/finance/payments')
+}

@@ -1,5 +1,13 @@
 import 'server-only'
-import type { EntrancePassSend, InviteSend, LinkRequestKind, LinkSend, SendResult, WhatsAppProvider } from './types'
+import type {
+  EntrancePassSend,
+  InviteSend,
+  LinkRequestKind,
+  LinkSend,
+  SendResult,
+  ThankYouSend,
+  WhatsAppProvider,
+} from './types'
 
 // Dry-run provider used until a live Meta WABA + approved template exist. Logs
 // what WOULD be sent and returns a synthetic wamid, so the whole pipeline
@@ -42,6 +50,16 @@ export class StubWhatsAppProvider implements WhatsAppProvider {
       contact: send.contactFirstName,
       header: send.headerImageUrl,
       token: send.token,
+    })
+    return { ok: true, wamid: this.fakeWamid(), dryRun: true }
+  }
+
+  async sendThankYou(send: ThankYouSend): Promise<SendResult> {
+    console.warn('[whatsapp:stub] would send thank-you', {
+      to: send.to,
+      guest: send.guestFirstName,
+      event: `${send.eventCategory} ya ${send.coupleName}`,
+      header: send.headerImageUrl,
     })
     return { ok: true, wamid: this.fakeWamid(), dryRun: true }
   }

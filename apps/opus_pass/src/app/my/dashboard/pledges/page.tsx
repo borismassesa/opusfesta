@@ -7,7 +7,6 @@ import {
   coupleDisplayName,
   getMyPledgeToken,
   getMyPledgePageConfig,
-  getEventOrderLinks,
   getEventPackageTierId,
   type PledgeScope,
 } from '@/lib/dashboard/queries'
@@ -23,7 +22,17 @@ import { isEmailConfigured } from '@/lib/email'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import PledgesManager from './PledgesManager'
 
-/** How many catalog designs to offer as free pledge-card templates. */
+/** Only designs from this catalog category are offered as pledge-card templates. */
+const PLEDGE_CARD_CATEGORY = 'Kadi za Michango'
+
+/** No "Kadi za Michango" designs are in the catalog yet — Save the Date cards
+ *  make a reasonable stand-in cover (portrait, name/date-forward) until real
+ *  pledge-card designs are uploaded. Remove this fallback once they exist.
+ *  Matches the live catalog's category value (plural — see CATEGORY_SW in
+ *  lib/cms/invitations-products.ts). */
+const PLEDGE_CARD_FALLBACK_CATEGORY = 'Save the Dates'
+
+/** Safety cap on how many designs to offer as free pledge-card templates. */
 const PLEDGE_CARD_CATALOG_SIZE = 10
 
 export const dynamic = 'force-dynamic'
@@ -66,31 +75,29 @@ export default async function PledgesPage({
     ? { eventId: selectedEventId, includeUnassigned: selectedEventId === oldestEventId }
     : {}
 
-  const [pledges, guests, profile, pledgeToken, pledgePageConfig, orderLinks, copy, packageTierId, catalogProducts] =
+  const [pledges, guests, profile, pledgeToken, pledgePageConfig, copy, packageTierId, catalogProducts] =
     await Promise.all([
       getPledges(pledgeScope),
       getGuestsWithInvitations(),
       getCoupleProfile(),
       getMyPledgeToken(),
-      getMyPledgePageConfig(),
-      getEventOrderLinks(),
+      getMyPledgePageConfig(selectedEventId),
       loadDashboardCopy('pledges', locale),
       selectedEventId ? getEventPackageTierId(selectedEventId) : Promise.resolve(null),
       loadInvitationProducts(locale),
     ])
-  // A curated slice of the invitation catalog, offered as ready-made pledge
+  // Only "Kadi za Michango" catalog designs are offered as ready-made pledge
   // page covers — Elegant/Signature couples can use any of these for free.
-  const pledgeCardCatalog = catalogProducts
-    .filter((p) => p.imageUrl)
+  // Falls back to Save the Date designs while the catalog has none yet.
+  const michangoDesigns = catalogProducts.filter((p) => p.category === PLEDGE_CARD_CATEGORY && p.imageUrl)
+  const pledgeCardSource = michangoDesigns.length
+    ? michangoDesigns
+    : catalogProducts.filter((p) => p.category === PLEDGE_CARD_FALLBACK_CATEGORY && p.imageUrl)
+  const pledgeCardCatalog = pledgeCardSource
     .slice(0, PLEDGE_CARD_CATALOG_SIZE)
     .map((p) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl! }))
   const stats = pledgeStatsFrom(pledges)
-  // The first paid card design (if any) linked to this event — offered as a
-  // one-click pledge-card cover so couples don't have to buy a second design
-  // just for the pledge page.
-  const purchasedCard =
-    (selectedEventId ? orderLinks.byEvent[selectedEventId] : undefined)?.find((o) => o.cardImageUrl) ?? null
-  const hasUnassignedOrder = orderLinks.unassigned.length > 0
+  const pledgedContactIds = new Set(pledges.map((p) => p.guest_contact_id))
   return (
     <PledgesManager
       initialPledges={pledges}
@@ -104,6 +111,8 @@ export default async function PledgesPage({
         phone: g.phone,
         whatsapp_phone: g.whatsapp_phone,
         email: g.email,
+        pledgeInviteSentAt: g.pledge_invite_sent_at,
+        hasPledged: pledgedContactIds.has(g.id),
       }))}
       coupleName={coupleDisplayName(profile)}
       paymentInstructions={profile?.pledge_payment_instructions ?? null}
@@ -114,8 +123,6 @@ export default async function PledgesPage({
       pledgeToken={pledgeToken}
       pledgeCoverImageUrl={pledgePageConfig.coverImageUrl ?? null}
       pledgeCoverIsFullTemplate={pledgePageConfig.coverIsFullTemplate ?? false}
-      purchasedCard={purchasedCard ? { cardName: purchasedCard.cardName, cardImageUrl: purchasedCard.cardImageUrl } : null}
-      hasUnassignedOrder={hasUnassignedOrder}
       packageTierId={packageTierId}
       pledgeCardCatalog={pledgeCardCatalog}
       copy={copy}

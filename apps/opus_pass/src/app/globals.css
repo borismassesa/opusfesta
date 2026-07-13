@@ -287,3 +287,14 @@ svg {
 [data-shadcn-scope] [data-slot='slider-thumb'] {
   border-color: #C9A0DC;
 }
+
+/* Ported from apps/wedding_website's index.css — hides the filter-chip row's
+   scrollbar on the public guestbook page (/guestbook/[slug]) while keeping it
+   swipeable on mobile. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

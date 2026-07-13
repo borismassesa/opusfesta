@@ -74,6 +74,20 @@ export function inviteUrl(origin: string, slug: string): string {
   return `${origin.replace(/\/$/, '')}${invitePath(slug)}`
 }
 
+/**
+ * Path to the couple's public guestbook — deliberately independent of the
+ * wedding-website builder/publish state (unlike /w/<slug>), so guests can
+ * leave a message even if the couple never builds or publishes a site.
+ */
+export function guestbookPath(slug: string): string {
+  return `/guestbook/${slug}`
+}
+
+/** Absolute public-guestbook URL given a runtime origin. */
+export function guestbookUrl(origin: string, slug: string): string {
+  return `${origin.replace(/\/$/, '')}${guestbookPath(slug)}`
+}
+
 /** Bilingual (SW/EN) broadcast message for the public, forwardable invite link. */
 export function publicInviteMessage(coupleNames: string, link: string): string {
   return (

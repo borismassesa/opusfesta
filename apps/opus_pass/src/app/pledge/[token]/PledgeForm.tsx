@@ -1,19 +1,14 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Send, CheckCircle2, Wallet } from 'lucide-react'
+import { Send, CheckCircle2 } from 'lucide-react'
 import { submitPublicPledge } from './actions'
 import { useT } from '@/components/providers/UIStringsProvider'
-import {
-  resolvePledgePage,
-  COVER_TONES,
-  accentInk,
-  PLEDGE_PREVIEW_MESSAGE,
-  PLEDGE_PREVIEW_READY,
-  type PledgePageConfig,
-  type PledgePaymentMethod,
-} from '@/lib/dashboard/pledge-page'
+import { LocaleToggle } from '@/components/LocaleToggle'
+import Logo from '@/components/ui/Logo'
+import type { Locale } from '@/lib/cms/localized'
+import { resolvePledgePage, COVER_TONES, accentInk, type PledgePageConfig } from '@/lib/dashboard/pledge-page'
 
 interface Props {
   token: string
@@ -22,9 +17,11 @@ interface Props {
   coupleName: string
   weddingDate: string | null
   city: string | null
-  paymentInstructions: string | null
-  paymentMethods: PledgePaymentMethod[]
   config: PledgePageConfig
+  /** Guest's chosen language (from the opuspass_locale cookie) — picks which
+   *  built-in default copy to fall back to when the couple hasn't customized
+   *  their pledge page text. */
+  locale: Locale
 }
 
 /** Wedding date as DD.MM.YYYY, the elegant "save the date" format. */
@@ -35,8 +32,10 @@ function dotDate(value: string | null): string | null {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
 }
 
+// 16px minimum on the inputs — anything smaller makes iOS Safari auto-zoom
+// the whole page on focus, which is jarring on a form this long.
 const fieldClass =
-  'block w-full rounded-xl border border-black/[0.12] bg-white px-4 py-3 text-[15px] text-[#1A1A1A] placeholder:text-[#1A1A1A]/30 transition focus:border-[#C9A0DC] focus:outline-none focus:ring-2 focus:ring-[#C9A0DC]/25'
+  'block w-full rounded-xl border border-black/[0.12] bg-white px-4 py-3 text-base text-[#1A1A1A] placeholder:text-[#1A1A1A]/30 transition focus:border-[#C9A0DC] focus:outline-none focus:ring-2 focus:ring-[#C9A0DC]/25'
 
 export default function PledgeForm({
   token,
@@ -44,9 +43,8 @@ export default function PledgeForm({
   coupleName,
   weddingDate,
   city,
-  paymentInstructions,
-  paymentMethods,
   config,
+  locale,
 }: Props) {
   const t = useT('forms-pledge')
   const [name, setName] = useState('')
@@ -58,24 +56,13 @@ export default function PledgeForm({
   const [done, setDone] = useState(false)
   const [pending, startTransition] = useTransition()
 
-  // Live preview: when embedded in the customize editor, apply config pushed via
-  // postMessage so edits show in real time without saving.
-  const [override, setOverride] = useState<PledgePageConfig | null>(null)
-  useEffect(() => {
-    function onMessage(e: MessageEvent) {
-      if (e.origin !== window.location.origin) return
-      if (e.data?.type === PLEDGE_PREVIEW_MESSAGE) setOverride(e.data.config ?? {})
-    }
-    window.addEventListener('message', onMessage)
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: PLEDGE_PREVIEW_READY }, window.location.origin)
-    }
-    return () => window.removeEventListener('message', onMessage)
-  }, [])
-
-  const cfg = resolvePledgePage(override ?? config)
+  const cfg = resolvePledgePage(config, locale)
   const tone = COVER_TONES[cfg.coverTone]
   const hasCover = Boolean(cfg.coverImageUrl)
+  // A pledge card template already has the couple's names/date designed
+  // into the image itself — overlaying our own dynamic text on top of it
+  // (as we do for a plain uploaded photo) would duplicate/collide with it.
+  const isFullTemplate = hasCover && cfg.coverIsFullTemplate
   const onAccent = accentInk(cfg.accent)
 
   const dateStr = dotDate(weddingDate)
@@ -127,100 +114,154 @@ export default function PledgeForm({
 
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
-      {/* ── Decorative cover — "save the date" ── */}
-      <aside
-        className="relative flex min-h-[360px] flex-col justify-center overflow-hidden px-8 py-14 sm:min-h-[420px] lg:sticky lg:top-0 lg:h-screen lg:px-14"
-        style={{ ...coverStyle, color: ink }}
-      >
-        {!hasCover ? (
-          <>
-            <Sprig className="pointer-events-none absolute -left-5 -top-8 w-32 opacity-90 sm:w-44" style={{ color: leaf }} />
-            <Sprig
-              className="pointer-events-none absolute -bottom-10 -right-5 w-32 rotate-180 opacity-90 sm:w-44"
-              style={{ color: leaf }}
-            />
-          </>
-        ) : null}
+      <Logo className="fixed left-4 top-4 z-10 drop-shadow-sm sm:left-6 sm:top-6" />
+      <LocaleToggle className="fixed right-4 top-4 z-10 shadow-sm sm:right-6 sm:top-6" />
 
-        <span className="absolute left-8 top-8 text-sm font-bold tracking-tight lg:left-14" style={{ color: soft }}>
-          OpusPass
-        </span>
-
-        <div className="relative text-center">
-          <p className="font-serif text-[11px] uppercase tracking-[0.3em] sm:text-xs" style={{ color: soft }}>
-            {cfg.eyebrow}
-          </p>
-
-          <div className="mt-6 space-y-2.5">
-            {parts.length >= 2 ? (
-              <>
-                <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
-                  {parts[0]}
-                </p>
-                <p className="font-serif text-sm uppercase tracking-[0.3em]" style={{ color: soft }}>
-                  and
-                </p>
-                <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
-                  {parts[1]}
-                </p>
-              </>
-            ) : (
-              <p className="font-serif text-4xl uppercase leading-tight tracking-[0.08em] sm:text-5xl">
-                {coupleName}
-              </p>
-            )}
-          </div>
-
-          <div className="mx-auto mt-7 flex items-center justify-center gap-2.5">
-            <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
-            <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: rule }} />
-            <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
-          </div>
-
-          {dateStr ? (
-            <p className="mt-5 font-serif text-2xl tracking-[0.12em] sm:text-[26px]">{dateStr}</p>
+      {/* ── Cover: the applied pledge card template, uncropped and scrollable
+          on its own so a tall design is never cut off; falls back to the
+          decorative "save the date" panel with dynamic text when there's no
+          full template. ── */}
+      {isFullTemplate ? (
+        <aside className="flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#F1F4EB] to-[#EDF0E7] px-5 py-8 sm:px-10 sm:py-14 lg:sticky lg:top-0 lg:h-screen lg:min-h-0 lg:px-16 lg:py-16">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cfg.coverImageUrl!}
+            alt={coupleName}
+            className="max-h-[65vh] w-auto max-w-full rounded-2xl object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)] sm:max-h-[75vh] lg:max-h-[calc(100vh-8rem)]"
+          />
+        </aside>
+      ) : (
+        <aside
+          className="relative flex min-h-[360px] flex-col justify-center overflow-hidden px-8 py-14 sm:min-h-[420px] lg:sticky lg:top-0 lg:h-screen lg:px-14"
+          style={{ ...coverStyle, color: ink }}
+        >
+          {!hasCover ? (
+            <>
+              <Sprig className="pointer-events-none absolute -left-5 -top-8 w-32 opacity-90 sm:w-44" style={{ color: leaf }} />
+              <Sprig
+                className="pointer-events-none absolute -bottom-10 -right-5 w-32 rotate-180 opacity-90 sm:w-44"
+                style={{ color: leaf }}
+              />
+            </>
           ) : null}
-          {city ? (
-            <p className="mt-2 text-[11px] uppercase tracking-[0.25em]" style={{ color: soft }}>
-              {city}
+
+          <div className="relative text-center">
+            <p className="font-serif text-[11px] uppercase tracking-[0.3em] sm:text-xs" style={{ color: soft }}>
+              {cfg.eyebrow}
             </p>
-          ) : null}
-        </div>
-      </aside>
+
+            <div className="mt-6 space-y-2.5">
+              {parts.length >= 2 ? (
+                <>
+                  <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
+                    {parts[0]}
+                  </p>
+                  <p className="font-serif text-sm uppercase tracking-[0.3em]" style={{ color: soft }}>
+                    {locale === 'sw' ? 'na' : 'and'}
+                  </p>
+                  <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
+                    {parts[1]}
+                  </p>
+                </>
+              ) : (
+                <p className="font-serif text-4xl uppercase leading-tight tracking-[0.08em] sm:text-5xl">
+                  {coupleName}
+                </p>
+              )}
+            </div>
+
+            <div className="mx-auto mt-7 flex items-center justify-center gap-2.5">
+              <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
+              <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: rule }} />
+              <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
+            </div>
+
+            {dateStr ? (
+              <p className="mt-5 font-serif text-2xl tracking-[0.12em] sm:text-[26px]">{dateStr}</p>
+            ) : null}
+            {city ? (
+              <p className="mt-2 text-[11px] uppercase tracking-[0.25em]" style={{ color: soft }}>
+                {city}
+              </p>
+            ) : null}
+          </div>
+        </aside>
+      )}
 
       {/* ── Form ── */}
-      <main className="flex justify-center px-5 py-10 sm:px-8 lg:px-14 lg:py-16">
+      <main
+        className={`flex justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-14 lg:py-16 ${
+          done ? 'lg:min-h-screen lg:items-center' : ''
+        }`}
+      >
         <div className="w-full max-w-lg">
           {done ? (
-            <div className="text-center lg:py-10">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-[#3f6b1f]" />
-              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">{t('success_heading')}</h2>
+            <div className="text-center">
+              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#9FE870]/30">
+                <CheckCircle2 className="h-8 w-8 text-[#3f6b1f]" />
+              </span>
+              <h2 className="mt-5 font-serif text-3xl text-[#1A1A1A] sm:text-4xl">{t('success_heading')}</h2>
               <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[#1A1A1A]/60">
                 {t('success_body', { coupleName })}
               </p>
-              {paymentMethods.length || paymentInstructions?.trim() ? (
-                <PayCard methods={paymentMethods} instructions={paymentInstructions} title={t('pay_title')} />
-              ) : null}
+
+              <dl className="mx-auto mt-6 max-w-sm space-y-2.5 rounded-2xl border border-black/[0.08] bg-black/[0.02] p-4 text-left text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[#1A1A1A]/50">{t('label_amount')}</dt>
+                  <dd className="font-semibold text-[#1A1A1A]">
+                    {t('amount_currency')} {Number(amount || 0).toLocaleString('en-US')}
+                  </dd>
+                </div>
+                {promisedDate ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-[#1A1A1A]/50">{t('label_promised_date')}</dt>
+                    <dd className="font-semibold text-[#1A1A1A]">{dotDate(promisedDate)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setName('')
+                  setPhone('')
+                  setEmail('')
+                  setAmount('')
+                  setPromisedDate('')
+                  setMessage('')
+                  setDone(false)
+                }}
+                className="mt-7 text-sm font-semibold text-[#1A1A1A]/50 underline-offset-4 hover:text-[#1A1A1A] hover:underline"
+              >
+                {t('send_another')}
+              </button>
             </div>
           ) : (
             <>
-              <h2 className="text-center font-serif leading-tight text-[#1A1A1A]">
-                <span className="block text-3xl sm:text-[34px]">{coupleName}</span>
-                <span className="mt-1 block text-2xl text-[#1A1A1A]/80 sm:text-[26px]">{cfg.headingLine2}</span>
+              <h2 className="text-center leading-tight text-[#1A1A1A]">
+                <span
+                  className="block text-[2rem] leading-none sm:text-4xl lg:text-5xl"
+                  style={{ fontFamily: 'var(--font-dancing), cursive' }}
+                >
+                  {coupleName}
+                </span>
+                <div className="mx-auto mt-3 flex items-center justify-center gap-2.5" aria-hidden>
+                  <span className="h-px w-8" style={{ backgroundColor: cfg.accent, opacity: 0.5 }} />
+                  <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: cfg.accent }} />
+                  <span className="h-px w-8" style={{ backgroundColor: cfg.accent, opacity: 0.5 }} />
+                </div>
+                <span className="mt-3 block font-serif text-2xl text-[#1A1A1A]/80 sm:text-[26px]">
+                  {cfg.headingLine2}
+                </span>
               </h2>
-              <p className="mx-auto mt-3 max-w-md text-center text-[15px] leading-relaxed text-[#1A1A1A]/60">
+              <p className="mx-auto mt-4 max-w-sm text-center text-[15px] leading-relaxed text-[#1A1A1A]/55">
                 {cfg.intro}
               </p>
-
-              {paymentMethods.length || paymentInstructions?.trim() ? (
-                <PayCard methods={paymentMethods} instructions={paymentInstructions} title={t('pay_title')} />
-              ) : null}
 
               <form onSubmit={submit} className="mt-8 space-y-5">
                 <Field label={t('label_name')} required accent={cfg.accent}>
                   <input
                     required
-                    autoFocus
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t('placeholder_name')}
@@ -355,44 +396,3 @@ function Field({
   )
 }
 
-function PayCard({
-  methods,
-  instructions,
-  title,
-}: {
-  methods: PledgePaymentMethod[]
-  instructions: string | null
-  title: string
-}) {
-  const filled = methods.filter((m) => m.label?.trim() || m.value?.trim())
-  return (
-    <div className="mt-6 rounded-2xl border border-[#9FE870]/40 bg-[#F3FAEC] p-4 text-left">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#9FE870]/30 text-[#3f6b1f]">
-          <Wallet className="h-3.5 w-3.5" />
-        </span>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#3f6b1f]">{title}</p>
-      </div>
-      {filled.length ? (
-        <ul className="mt-3 space-y-2.5">
-          {filled.map((m, i) => (
-            <li key={i} className="text-sm leading-snug">
-              <span className="text-[#1A1A1A]/75">
-                {m.label?.trim() ? <span className="font-semibold text-[#1A1A1A]">{m.label.trim()}</span> : null}
-                {m.label?.trim() && m.value?.trim() ? ', ' : ''}
-                {m.value?.trim() ? (
-                  <span className="font-bold tracking-wide text-[#3f6b1f]">{m.value.trim()}</span>
-                ) : null}
-              </span>
-              {m.name?.trim() ? <div className="text-xs italic text-[#1A1A1A]/60">{m.name.trim()}</div> : null}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#1A1A1A]/75">
-          {(instructions ?? '').trim()}
-        </p>
-      )}
-    </div>
-  )
-}

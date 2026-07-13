@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2, ListFilter } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2, ListFilter, HeartHandshake } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -176,6 +176,15 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Couple dashboard Send invites page — heading, card context, send funnel, public-link and personal-invite modes, guest table and all toasts — bilingual.',
+  },
+  {
+    key: 'dashboard-thank-you',
+    label: 'Dashboard — Thank you',
+    icon: HeartHandshake,
+    href: '/cms/opus-pass/site-ui/dashboard-thank-you',
+    status: 'live',
+    description:
+      'Couple dashboard Thank You page — heading, thank-you card picker (with unlock request for Classic/Essential), guest table, confirm dialog, preview/test send and results drawer — bilingual.',
   },
   {
     key: 'dashboard-event-scope',

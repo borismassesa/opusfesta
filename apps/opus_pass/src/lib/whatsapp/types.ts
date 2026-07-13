@@ -90,6 +90,45 @@ export const ENTRANCE_PASS_TEMPLATE = {
   buttons: [] as const,
 } as const
 
+/**
+ * Thank-you template spec — a one-way, post-event message to guests who
+ * confirmed "attending". Header is an IMAGE like INVITE_TEMPLATE: the
+ * couple's chosen card design (from the invitation catalog) or a generic
+ * banner when none is picked — no buttons (nothing to reply to).
+ *
+ * Draft copy — Boris to finalize wording and submit as `opuspass_thank_you`
+ * for Meta approval before WHATSAPP_TEMPLATE_NAME_THANK_YOU can be set.
+ */
+export const THANK_YOU_TEMPLATE = {
+  header: 'IMAGE' as const,
+  /** Body placeholders, in order: {{1}} guest first name, {{2}} couple name,
+   *  {{3}} event category (Swahili noun, e.g. "harusi"). */
+  body:
+    'Habari {{1}} 💚\n\n' +
+    'Asante kwa kuwa sehemu ya *{{3}}* ya *{{2}}*. Uwepo wako uliifanya siku hiyo kuwa maalum zaidi.\n\n' +
+    'Tunakushukuru kwa mapenzi na baraka zenu.',
+  footer: 'Sent by OpusPass',
+  buttons: [] as const,
+} as const
+
+/** A business-initiated post-event thank-you delivery, sent to guests who
+ *  confirmed "attending". */
+export interface ThankYouSend {
+  /** Recipient in E.164-ish digits (e.g. 255712345678). */
+  to: string
+  /** Guest first name interpolated into the template body ({{1}}). */
+  guestFirstName: string
+  /** Couple/honoree name interpolated into the template body ({{2}}). */
+  coupleName: string
+  /** Event category (Swahili noun, e.g. "harusi") interpolated ({{3}}). */
+  eventCategory: string
+  /** Absolute URL of the couple's chosen card design, or a generic banner
+   *  when none is picked yet (template image header). */
+  headerImageUrl: string
+  /** Template language code, e.g. 'sw' or 'en'. */
+  languageCode?: string
+}
+
 /** A business-initiated entrance-pass delivery, sent after RSVP confirms. */
 export interface EntrancePassSend {
   /** Recipient in E.164-ish digits (e.g. 255712345678). */
@@ -186,5 +225,6 @@ export interface WhatsAppProvider {
   sendInvite(send: InviteSend): Promise<SendResult>
   sendEntrancePass(send: EntrancePassSend): Promise<SendResult>
   sendLinkRequest(kind: LinkRequestKind, send: LinkSend): Promise<SendResult>
+  sendThankYou(send: ThankYouSend): Promise<SendResult>
   sendText(to: string, body: string): Promise<SendResult>
 }

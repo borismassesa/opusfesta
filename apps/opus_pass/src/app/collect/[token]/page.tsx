@@ -109,6 +109,7 @@ export default async function CollectorPage({ params }: PageProps) {
         dressCode={couple.dressCode}
         rsvpContact={couple.rsvpContact}
         config={couple.config}
+        locale={locale}
       />
     </UIStringsProvider>
   )

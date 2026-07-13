@@ -20,4 +20,7 @@ export interface SmsProvider {
   /** True when a real gateway is configured (else dry-run stub). */
   readonly live: boolean
   sendLinkRequest(send: SmsLinkSend): Promise<SmsSendResult>
+  /** Free-form text — used for reminder nudges, whose content (owing amount,
+   *  due date) varies per pledge and doesn't fit the fixed link-request shape. */
+  sendText(to: string, body: string): Promise<SmsSendResult>
 }

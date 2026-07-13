@@ -30,6 +30,7 @@ export type UiArea =
   | 'dashboard-events'
   | 'dashboard-seating'
   | 'dashboard-send'
+  | 'dashboard-thank-you'
   | 'dashboard-event-scope'
 
 // One CMS page row per area; section_key is always 'copy'.
@@ -60,6 +61,7 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'dashboard-events': 'opus-pass-ui-dashboard-events',
   'dashboard-seating': 'opus-pass-ui-dashboard-seating',
   'dashboard-send': 'opus-pass-ui-dashboard-send',
+  'dashboard-thank-you': 'opus-pass-ui-dashboard-thank-you',
   'dashboard-event-scope': 'opus-pass-ui-dashboard-event-scope',
 }
 
@@ -723,6 +725,8 @@ export interface FormsPledgeStrings {
   // Success state (emoji stored in the string)
   success_heading: string
   success_body: string // uses {coupleName}
+  // Link back to a blank form, shown under the success state
+  send_another: string
   // Payment card
   pay_title: string
 }
@@ -738,10 +742,12 @@ export interface DashboardChromeStrings {
   nav_pledges: string
   nav_guests: string
   nav_invitations: string
+  nav_thank_you: string
   nav_orders: string
   nav_rsvps: string
   nav_website: string
   nav_seating: string
+  nav_guestbook: string
   // Sidebar + drawer controls (titles / aria-labels)
   collapse_expand: string
   collapse_collapse: string
@@ -954,6 +960,7 @@ export interface DashboardSendStrings {
   no_design_cta: string
   no_design_pick_cta: string
   card_purchased: string
+  entrance_purchased: string
   fact_package: string
   fact_design: string
   fact_invites_paid: string
@@ -1001,6 +1008,7 @@ export interface DashboardSendStrings {
   entrance_title: string
   entrance_desc: string
   entrance_best_for: string
+  entrance_quota_label: string
   // Guest table
   guest_list: string
   guest_count: string // {n}
@@ -1116,6 +1124,79 @@ export interface DashboardSendStrings {
   toast_order_assigned: string
 }
 
+// The "Thank You" tab: a post-event bulk WhatsApp broadcast to guests
+// confirmed attending, included with Elegant/Signature packages.
+export interface DashboardThankYouStrings {
+  heading: string
+  subheading: string
+  // Event switcher
+  event_switcher_label: string
+  // Thank-you card picker (WhatsApp header image, from the invitation
+  // catalog) — sending is available to every tier, only the free template
+  // picker is gated (Classic/Essential unlock it the same way Pledges does).
+  card_heading: string
+  card_desc: string
+  card_uploaded_label: string
+  card_remove: string
+  card_none: string
+  card_use: string
+  card_applied: string
+  card_applied_toast: string
+  card_apply_failed: string
+  card_removed_toast: string
+  card_remove_failed: string
+  card_locked_badge: string
+  card_unlock_cta: string // {fee}
+  card_unlock_message: string // {couple} {fee}
+  // Guest table
+  search_placeholder: string
+  search_aria: string
+  select_all_aria: string
+  selected_count: string // {n}
+  send_to_selected: string
+  preview_test: string
+  empty_search: string
+  empty_none: string
+  th_guest: string
+  th_contact: string
+  th_status: string
+  th_send: string
+  status_thanked: string
+  status_notsent: string
+  no_phone: string
+  row_send: string
+  row_resend: string
+  // Toasts + bulk-send summary verbs
+  toast_nothing_sent: string
+  send_verb_dryrun: string
+  send_verb_sent: string
+  send_failed_n: string // {n}
+  send_no_phone: string // {n}
+  // Bulk-send confirm dialog
+  confirm_title: string
+  confirm_body: string // {n}
+  confirm_cancel: string
+  confirm_confirm: string
+  // Message preview + test send
+  preview_title: string
+  preview_note: string
+  preview_close: string
+  test_label: string
+  test_placeholder: string
+  test_send: string
+  test_dryrun_note: string
+  toast_test_sent: string
+  toast_test_dryrun: string
+  toast_test_failed: string
+  // Send report drawer
+  results_title: string
+  results_sent: string
+  results_failed: string
+  results_skipped: string
+  results_retry: string
+  results_close: string
+}
+
 // Shared "which event are you working on?" chooser + switcher used by the
 // event-scoped dashboard pages (Pledges, Send invites, Guest list, RSVPs,
 // Seat collection) — see @/components/dashboard/EventScope.
@@ -1152,6 +1233,7 @@ export type UiStringsByArea = {
   'dashboard-events': DashboardEventsStrings
   'dashboard-seating': DashboardSeatingStrings
   'dashboard-send': DashboardSendStrings
+  'dashboard-thank-you': DashboardThankYouStrings
   'dashboard-event-scope': DashboardEventScopeStrings
 }
 
@@ -1720,8 +1802,9 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     error_amount: 'Please enter the amount you can pledge',
     error_submit: 'Could not save your pledge',
     send_pending: 'Sending…',
-    success_heading: 'Asante sana! 💚',
+    success_heading: 'Thank you! 💚',
     success_body: '{coupleName} have received your pledge. They’ll be in touch with the details.',
+    send_another: 'Send another pledge',
     pay_title: 'How to pay',
   },
   'dashboard-chrome': {
@@ -1730,10 +1813,12 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     nav_pledges: 'Pledges',
     nav_guests: 'Guest list',
     nav_invitations: 'Send invites',
+    nav_thank_you: 'Thank you',
     nav_orders: 'Orders',
     nav_rsvps: 'RSVPs',
     nav_website: 'Wedding website',
     nav_seating: 'Seat collection',
+    nav_guestbook: 'Guestbook',
     collapse_expand: 'Expand sidebar',
     collapse_collapse: 'Collapse sidebar',
     menu_open: 'Open menu',
@@ -1916,6 +2001,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     no_design_cta: 'Browse card designs',
     no_design_pick_cta: 'Pick your paid design',
     card_purchased: 'Card purchased',
+    entrance_purchased: 'Entrance passes ready',
     fact_package: 'Package',
     fact_design: 'Design',
     fact_invites_paid: 'Invites paid',
@@ -1960,8 +2046,9 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     entrance_tag: 'Entrance Passes',
     entrance_title: 'Send tickets to confirmed guests',
     entrance_desc:
-      'Guests who confirmed attending get a personal ticket image with their own scannable QR code, sent free over WhatsApp — separate from invites, and only once they’ve said yes.',
+      'Guests who confirmed attending get a personal Entrance Pass Ticket with their own scannable QR code, sent over WhatsApp only once they’ve said yes.',
     entrance_best_for: 'Guests who already RSVP’d yes. Real check-in QR codes.',
+    entrance_quota_label: 'Entrance passes',
     guest_list: 'Guest list',
     guest_count: '{n} guests',
     search_placeholder: 'Search name or number…',
@@ -2043,7 +2130,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_settings_saved: 'Invitation details saved',
     add_number: 'Add number',
     save_number: 'Save',
-    row_send: 'Send',
+    row_send: 'Send Invites',
     row_resend: 'Resend',
     row_send_pass: 'Send Pass',
     entrance_status_sent: 'Sent',
@@ -2067,6 +2154,67 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     unassigned_guests: '{n} invites',
     unassigned_assign: 'Use for {event}',
     toast_order_assigned: 'Design assigned to this event',
+  },
+  'dashboard-thank-you': {
+    heading: 'Thank You',
+    subheading: 'Send a thank-you message to everyone who attended, one tap for your whole guest list.',
+    event_switcher_label: 'Sending for',
+    card_heading: 'Thank-you card',
+    card_desc: 'Give your thank-you message a designed look: pick a card below.',
+    card_uploaded_label: 'Using your uploaded photo',
+    card_remove: 'Remove',
+    card_none: 'No catalog designs available yet.',
+    card_use: 'Use this card',
+    card_applied: 'Applied',
+    card_applied_toast: 'Thank-you card applied',
+    card_apply_failed: 'Could not apply this card',
+    card_removed_toast: 'Thank-you card removed',
+    card_remove_failed: 'Could not remove this card',
+    card_locked_badge: 'Locked',
+    card_unlock_cta: 'Request to unlock (TZS {fee})',
+    card_unlock_message: "Hi, I'd like to unlock thank-you card templates for {couple} (one-time TZS {fee} fee).",
+    search_placeholder: 'Search guests…',
+    search_aria: 'Search guests',
+    select_all_aria: 'Select all guests',
+    selected_count: '{n} selected',
+    send_to_selected: 'Send Thank You',
+    preview_test: 'Preview & test',
+    empty_search: 'No guests match your search.',
+    empty_none: 'No guests have confirmed attending this event yet.',
+    th_guest: 'Guest',
+    th_contact: 'Contact',
+    th_status: 'Status',
+    th_send: 'Send',
+    status_thanked: 'Thanked',
+    status_notsent: 'Not sent',
+    no_phone: 'No phone number',
+    row_send: 'Send',
+    row_resend: 'Resend',
+    toast_nothing_sent: "Nothing to send: check the guests you've selected have a phone number.",
+    send_verb_dryrun: 'queued (test mode)',
+    send_verb_sent: 'sent',
+    send_failed_n: '{n} failed',
+    send_no_phone: '{n} skipped (no phone)',
+    confirm_title: 'Send thank-you messages?',
+    confirm_body: "You're about to send a thank-you message to {n} guests.",
+    confirm_cancel: 'Cancel',
+    confirm_confirm: 'Send now',
+    preview_title: 'Preview & test send',
+    preview_note: 'Send a copy to your own WhatsApp to see exactly what guests will receive.',
+    preview_close: 'Close',
+    test_label: 'Send a test to',
+    test_placeholder: '+255 7XX XXX XXX',
+    test_send: 'Send test',
+    test_dryrun_note: 'WhatsApp isn’t connected yet — test sends are logged, not delivered.',
+    toast_test_sent: 'Test message sent',
+    toast_test_dryrun: 'Test queued (WhatsApp not connected yet)',
+    toast_test_failed: 'Could not send test message',
+    results_title: 'Send results',
+    results_sent: 'sent',
+    results_failed: 'failed',
+    results_skipped: 'skipped',
+    results_retry: 'Retry failed',
+    results_close: 'Close',
   },
   'dashboard-event-scope': {
     chooser_title: 'Choose an event',
