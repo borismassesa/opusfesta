@@ -4,18 +4,26 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, XCircle, ExternalLink, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useSetPageHeading } from '@/components/PageHeading'
+import EmptyState from '../_shared/EmptyState'
+import StatusPill, { type StatusVariant } from '../_shared/StatusPill'
 import { reviewCategoryRequest } from './actions'
 import type { CategoryRequestRow } from './page'
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-800 border-amber-200',
-  approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  rejected: 'bg-gray-100 text-gray-500 border-gray-200',
+const STATUS_VARIANT: Record<string, StatusVariant> = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
 }
 
 export default function CategoryRequestsClient({ requests }: { requests: CategoryRequestRow[] }) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useSetPageHeading({
+    title: 'Category Requests',
+    subtitle: 'Vendors who selected "Something else" during onboarding.',
+  })
 
   const act = (id: string, status: 'approved' | 'rejected') => {
     setError(null)
@@ -30,24 +38,27 @@ export default function CategoryRequestsClient({ requests }: { requests: Categor
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Category Requests</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Vendors who selected "Something else" during onboarding. Approve to promote the label to a real category via{' '}
-          <Link href="/operations/categories" className="underline hover:no-underline">Vendor Categories</Link>.
-        </p>
-      </div>
+      <p className="text-sm text-gray-500">
+        Approve to promote the label to a real category via{' '}
+        <Link href="/operations/categories" className="font-semibold text-[#7E5896] hover:underline">
+          Vendor Categories
+        </Link>
+        .
+      </p>
 
       {error && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       )}
 
       {pending.length === 0 && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-12 text-center">
-          <Tag className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">No pending category requests.</p>
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-white">
+          <EmptyState
+            icon={<Tag className="h-5 w-5" />}
+            title="No pending category requests"
+            body="New requests show up here as vendors pick “Something else” during onboarding."
+          />
         </div>
       )}
 
@@ -69,7 +80,7 @@ export default function CategoryRequestsClient({ requests }: { requests: Categor
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{title}</h2>
+      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">{title}</h2>
       {children}
     </div>
   )
@@ -85,69 +96,66 @@ function RequestTable({
   onAct: (id: string, status: 'approved' | 'rejected') => void
 }) {
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-200">
+        <thead className="border-b border-gray-100 bg-gray-50/60">
           <tr>
             {['Business', 'Requested label', 'Submitted', 'Status', ''].map((h) => (
-              <th key={h} className="text-left text-xs font-semibold text-gray-500 px-4 py-3">{h}</th>
+              <th key={h} className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {requests.map((req) => (
-            <tr key={req.id} className="hover:bg-gray-50">
-              <td className="px-4 py-3">
+            <tr key={req.id} className="transition-colors hover:bg-gray-50/60">
+              <td className="px-5 py-3.5">
                 {req.vendors ? (
                   <Link
                     href={`/operations/vendors/${req.vendor_id}`}
-                    className="flex items-center gap-1 font-medium text-gray-900 hover:underline"
+                    className="inline-flex items-center gap-1 font-semibold text-gray-900 hover:text-[#5B2D8E] hover:underline"
                   >
                     {req.vendors.business_name}
-                    <ExternalLink className="w-3 h-3 text-gray-400" />
+                    <ExternalLink className="h-3 w-3 text-gray-400" />
                   </Link>
                 ) : (
                   <span className="text-gray-400 italic">Unknown</span>
                 )}
                 {req.vendors?.vendor_code && (
-                  <span className="text-xs text-gray-400 font-mono">{req.vendors.vendor_code}</span>
+                  <div className="font-mono text-xs text-gray-400">{req.vendors.vendor_code}</div>
                 )}
               </td>
-              <td className="px-4 py-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#F0DFF6] text-[#7E5896] rounded-full text-xs font-semibold">
-                  <Tag className="w-3 h-3" />
+              <td className="px-5 py-3.5">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F0DFF6] px-2.5 py-1 text-xs font-semibold text-[#7E5896]">
+                  <Tag className="h-3 w-3" />
                   {req.requested_label}
                 </span>
               </td>
-              <td className="px-4 py-3 text-gray-500 text-xs">
+              <td className="px-5 py-3.5 text-xs text-gray-500">
                 {new Date(req.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}
               </td>
-              <td className="px-4 py-3">
-                <span className={cn(
-                  'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border capitalize',
-                  STATUS_STYLES[req.status] ?? STATUS_STYLES.pending,
-                )}>
-                  {req.status}
-                </span>
+              <td className="px-5 py-3.5">
+                <StatusPill variant={STATUS_VARIANT[req.status] ?? 'pending'} />
               </td>
-              <td className="px-4 py-3">
+              <td className="px-5 py-3.5">
                 {req.status === 'pending' && (
-                  <div className="flex items-center gap-2 justify-end">
+                  <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => onAct(req.id, 'approved')}
                       disabled={isPending}
                       title="Approve — add to Vendor Categories CMS"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                     </button>
                     <button
                       onClick={() => onAct(req.id, 'rejected')}
                       disabled={isPending}
                       title="Reject"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 text-gray-600 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-100 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <XCircle className="w-3.5 h-3.5" /> Reject
+                      <XCircle className="h-3.5 w-3.5" /> Reject
                     </button>
                   </div>
                 )}
