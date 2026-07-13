@@ -23,6 +23,8 @@ import {
   Store,
   MessageCircle,
   ChevronUp,
+  BookHeart,
+  HeartHandshake,
   type LucideIcon,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
@@ -58,9 +60,11 @@ const NAV: NavItem[] = [
   { href: '/my/dashboard/pledges', labelKey: 'nav_pledges', icon: HandCoins },
   { href: '/my/dashboard/guests', labelKey: 'nav_guests', icon: Users },
   { href: '/my/dashboard/invitations', labelKey: 'nav_invitations', icon: Send },
+  { href: '/my/dashboard/thank-you', labelKey: 'nav_thank_you', icon: HeartHandshake },
   { href: '/my/dashboard/orders', labelKey: 'nav_orders', icon: Receipt },
   { href: '/my/dashboard/rsvps', labelKey: 'nav_rsvps', icon: ClipboardCheck },
   { href: '/my/dashboard/website', labelKey: 'nav_website', icon: Globe },
+  { href: '/my/dashboard/guestbook', labelKey: 'nav_guestbook', icon: BookHeart },
   { href: '/my/dashboard/seating', labelKey: 'nav_seating', icon: Armchair },
   // Vendor inquiries (quote requests + conversations) now render inside the
   // dashboard; the data is read from the shared marketplace tables.
