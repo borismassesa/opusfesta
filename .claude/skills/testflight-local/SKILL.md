@@ -99,6 +99,7 @@ Narrate each phase as it runs so the user knows what's happening:
 | `asc xcode version bump --type build` | Increments `CFBundleVersion` in the Xcode project | ~10s |
 | `asc xcode archive --overwrite` | Compiles and archives in Release (`--overwrite` replaces a stale `/tmp/<Scheme>.xcarchive`) | 5–15 min |
 | `asc xcode export … --wait` | Exports a signed IPA and uploads it straight to TestFlight (`destination: upload`), then polls until the build appears in App Store Connect | 3–10 min |
+| Tag the release (git) | Annotated, app-prefixed tag on the shipped commit — always, never skipped | ~5s |
 
 Signing is **automatic** (`signingStyle: automatic`, team `FWL2W5X58S` in
 `apps/<app>/ios/ExportOptions.plist`). Both the archive and export steps forward the App Store
@@ -128,16 +129,49 @@ App Store Connect takes a few minutes to ingest an upload, so the build may not 
 list immediately. That lag is **not** a failure — say so plainly rather than reporting a problem.
 Re-check until `Processing` reads `VALID`.
 
-## Tagging
+## Tag the Release (always)
 
-This repo does **not** tag TestFlight builds by default — see the `release` skill. Don't
-introduce tagging unless the user asks for it.
+**Every successful TestFlight upload gets a tag.** This is the release record for this repo —
+tagging happens here, at the upload, not at the `expo.version` bump (see the `release` skill).
+Do not skip it, and do not ask whether to tag; only ask before *pushing* it.
 
-If they do ask: use an **app-prefixed** annotated tag (`opuspass-v0.1.0-build2`), since both apps
-share one tag namespace and a bare `v<version>` wouldn't say which app it belongs to. Check
-`git tag -l` first. And check the working tree — a tag claims the commit contains the shipped
-code, so if the build included uncommitted or untracked files, say so and offer to commit first
-rather than tagging a tree that never shipped. Never push a tag without asking.
+Tag only after `** EXPORT SUCCEEDED **` / `Upload succeeded` — never on a failed or
+still-running build.
+
+1. **Get the version and build number.** The archive step prints a JSON line right after
+   `** ARCHIVE SUCCEEDED **`:
+
+   ```
+   {"archive_path":"/tmp/OpusPass.xcarchive","bundle_id":"...","version":"0.1.0","build_number":"2",...}
+   ```
+
+   If that line isn't in the captured output, fall back to
+   `asc xcode version view --project-dir apps/<app>/ios`.
+
+2. **Check the working tree first.** A tag claims this commit contains the shipped code. If the
+   build included uncommitted or untracked files, tagging HEAD points the tag at a tree that never
+   shipped. Surface that and offer to commit first — do not tag blindly.
+
+3. **Create an annotated, app-prefixed tag:**
+
+   ```bash
+   git tag -a "<app>-v<version>-build<build>" -m "<App> TestFlight build <build> (<version>)"
+   ```
+
+   Examples: `opuspass-v0.1.0-build2`, `of_mobile-v1.9.0-build3`.
+
+   The **app prefix is required** — both apps share one tag namespace and version independently,
+   so a bare `v<version>` wouldn't say which app it belongs to. Version **and** build number are
+   both required, since one marketing version ships as several TestFlight builds. Run `git tag -l`
+   first to avoid collisions. (Historical note: `v1.8.0-build2` predates the second app and is
+   of_mobile; it's the only unprefixed tag.)
+
+4. **Create the tag locally, then ask before pushing.** Pushing is shared and visible, and a
+   pushed tag on a broken build is awkward to retract. Report the tag you created and wait.
+
+   ```bash
+   git push origin "<app>-v<version>-build<build>"
+   ```
 
 ## Troubleshooting
 

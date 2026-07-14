@@ -102,5 +102,8 @@ Store notes, TestFlight checklist, and the admin release brief.
   **build number** — EAS manages that separately. This skill only touches the semver
   `expo.version` field, which EAS does not auto-manage.
 - The TestFlight **build number** is a different thing again, bumped by `testflight-local`.
-- No git tags are used in this repo for releases; don't introduce tagging unless asked. If asked,
-  tags must be app-prefixed (`opuspass-v0.1.0-build2`), since both apps share one tag namespace.
+- **Do not tag here.** Every release *is* tagged in this repo, but the tag is created by
+  `testflight-local` after a successful TestFlight upload — that's the moment something actually
+  ships, and the tag carries the build number (`opuspass-v0.1.0-build2`) as well as the version.
+  A version bump on its own has shipped nothing yet, so it gets no tag. Bumping `expo.version`
+  here and tagging at upload are two halves of one release: bump, then build, then tag.
