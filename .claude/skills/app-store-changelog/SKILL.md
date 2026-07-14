@@ -24,7 +24,7 @@ Accept optional arguments `from-version to-version` (e.g. `/app-store-changelog 
 
 - Both supplied → use as git range.
 - One supplied → treat as `to-version`, auto-detect `from-version`.
-- Neither → auto-detect both from git log and `apps/mobile/app.json`.
+- Neither → auto-detect both from git log and `apps/of_mobile/app.json`.
 
 ---
 
@@ -32,7 +32,7 @@ Accept optional arguments `from-version to-version` (e.g. `/app-store-changelog 
 
 ```bash
 # Current version
-cat apps/mobile/app.json | grep '"version"'
+cat apps/of_mobile/app.json | grep '"version"'
 
 # Find the previous version-bump commit
 git log --oneline --grep="bump\|version" -i | head -10
@@ -64,7 +64,7 @@ Group commits into themes: **New Features**, **Design & UI**, **Vendor & Studio 
 
 ## Output A — App Store "What's New" (mobile consumer app only)
 
-Only include changes visible to end users in the consumer mobile app (`apps/mobile`).
+Only include changes visible to end users in the consumer mobile app (`apps/of_mobile`).
 
 - Plain prose, no markdown, no bullet symbols — App Store renders plain text literally.
 - Lead with the most impactful change.
@@ -149,7 +149,7 @@ No headers, no bullet points, no tables in the output — just the role name bol
 
 ## Additional Resources
 
-- `apps/mobile/app.json` — current mobile version
+- `apps/of_mobile/app.json` — current mobile version
 - `supabase/` — schema changes (useful context for finance/admin briefs)
 - `apps/opus_admin/` — admin panel changes
 - `apps/vendors_portal/` — vendor-facing changes

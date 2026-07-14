@@ -1,0 +1,66 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - ".github/workflows/deploy-supabase-functions.yml"
+  workflow_dispatch:
+    inputs:
+      function:
+        description: "Single function to deploy (leave blank to deploy all)"
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-supabase-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Determine which functions changed
+        id: changed
+        run: |
+          set -euo pipefail
+          manual="${{ github.event.inputs.function }}"
+          if [ -n "$manual" ]; then
+            echo "functions=$manual" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch: deploying '$manual'"
+            exit 0
+          fi
+          # On push, deploy only functions whose files changed in this commit range.
+          base="${{ github.event.before }}"
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="HEAD~1"
+          fi
+          fns=$(git diff --name-only "$base" HEAD -- 'supabase/functions/**' \
+            | sed -nE 's#^supabase/functions/([^/]+)/.*#\1#p' \
+            | sort -u | tr '\n' ' ')
+          echo "functions=$fns" >> "$GITHUB_OUTPUT"
+          echo "Changed functions: ${fns:-<none>}"
+
+      - name: Deploy functions
+        if: steps.changed.outputs.functions != ''
+        run: |
+          set -euo pipefail
+          for fn in ${{ steps.changed.outputs.functions }}; do
+            echo "::group::Deploying $fn"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+            echo "::endgroup::"
+          done

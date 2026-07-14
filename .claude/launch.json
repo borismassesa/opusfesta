@@ -11,9 +11,10 @@
     {
       "name": "mobile",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web", "--port", "8082"],
-      "port": 8082,
-      "cwd": "apps/mobile"
+      "runtimeArgs": ["expo", "start", "--web", "--port", "8092"],
+      "port": 8092,
+      "autoPort": true,
+      "cwd": "apps/of_mobile"
     },
     {
       "name": "website",
