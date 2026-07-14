@@ -80,15 +80,61 @@ cat > "$EXPORT_OPTIONS" <<'PLIST'
 </plist>
 PLIST
 
-# 2. Bump build number
-echo "==> Bumping build number..."
-asc xcode version bump --type build --project-dir "$MOBILE_DIR/ios"
+# 2. Marketing version. app.json's expo.version is the single source of truth — it is bumped
+# per-commit by the git-commit convention, so this script never changes it, only ships it.
+# It reaches the binary through `expo prebuild`, which writes Info.plist. So on --skip-prebuild
+# the generated Info.plist can be stale: bail rather than silently upload the wrong version.
+MARKETING_VERSION="$(node -p "require('$MOBILE_DIR/app.json').expo.version")"
+INFO_PLIST="$MOBILE_DIR/ios/$SCHEME/Info.plist"
+if [[ "$SKIP_PREBUILD" == true ]]; then
+  if [[ ! -f "$INFO_PLIST" ]]; then
+    echo "Error: $INFO_PLIST not found — ios/ is gitignored, so a fresh clone has no native" >&2
+    echo "project. Re-run without --skip-prebuild to generate it." >&2
+    exit 1
+  fi
+  BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")"
+  if [[ "$BUILT_VERSION" != "$MARKETING_VERSION" ]]; then
+    echo "Error: app.json is at $MARKETING_VERSION but the generated iOS project is at $BUILT_VERSION." >&2
+    echo "Only 'expo prebuild' propagates the version into Info.plist, so --skip-prebuild would" >&2
+    echo "upload $BUILT_VERSION. Re-run without --skip-prebuild." >&2
+    exit 1
+  fi
+fi
 
-# 3. Check version and build before archiving
+# 3. Build number: derive from App Store Connect, not from the local Xcode counter.
+# `prebuild --clean` regenerates the project and resets CFBundleVersion (neither app sets
+# expo.ios.buildNumber), so a local `version bump --type build` restarts at 1 and collides with
+# a build number already used for this version. Apple requires the build number to be unique
+# within a marketing version, so take the highest ASC has for THIS version and add one.
+echo "==> Resolving next build number from App Store Connect (version $MARKETING_VERSION)..."
+NEXT_BUILD="$(
+  asc builds list --app "$APP_ID" --platform IOS --version "$MARKETING_VERSION" --output json 2>/dev/null \
+    | node -e '
+        let raw = "";
+        process.stdin.on("data", c => raw += c);
+        process.stdin.on("end", () => {
+          let builds = [];
+          try { builds = (JSON.parse(raw).data || []); } catch {}
+          const highest = builds
+            .map(b => parseInt(b.attributes?.version, 10))
+            .filter(Number.isInteger)
+            .reduce((a, b) => Math.max(a, b), 0);
+          console.log(highest + 1);
+        });
+      '
+)"
+if [[ -z "$NEXT_BUILD" ]]; then
+  echo "Error: could not resolve the next build number from App Store Connect." >&2
+  exit 1
+fi
+echo "==> Setting build number to $NEXT_BUILD"
+asc xcode version edit --build-number "$NEXT_BUILD" --project-dir "$MOBILE_DIR/ios"
+
+# 4. Check version and build before archiving
 echo "==> Current version info:"
 asc xcode version view --project-dir "$MOBILE_DIR/ios"
 
-# 4. Archive
+# 5. Archive
 # expo prebuild regenerates the Xcode project with no DEVELOPMENT_TEAM/provisioning
 # style set (app.json has no ios.appleTeamId), so archiving needs the same auth-key
 # flags as export to let xcodebuild resolve signing automatically.
@@ -111,7 +157,7 @@ asc xcode archive \
   --xcodebuild-flag="DEVELOPMENT_TEAM=FWL2W5X58S" \
   --xcodebuild-flag="CODE_SIGN_STYLE=Automatic"
 
-# 5. Export IPA and upload directly to TestFlight
+# 6. Export IPA and upload directly to TestFlight
 # The auth-key flags let xcodebuild authenticate the upload and mint a distribution
 # cert + App Store profile on the fly — no Apple ID needs to be signed into Xcode.
 echo "==> Exporting and uploading to TestFlight..."

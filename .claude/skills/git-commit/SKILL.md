@@ -128,8 +128,9 @@ semver:
 node -e "const fs=require('fs');const p='app.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.expo.version='NEW_VERSION';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');"
 ```
 
-If the version has drifted behind several unbumped commits, use the `release` skill instead — it
-computes the bump across the whole range.
+**This is the only place `expo.version` is bumped.** `testflight-local` deliberately does not
+touch it — it owns the build number and nothing else. So if a user-facing change lands without a
+bump here, it ships under the old version number. Don't skip the bump on a `feat`/`fix`.
 
 ## Safety Rules
 

@@ -24,6 +24,27 @@ user which app they mean — never infer it from the working directory alone.
 team/credential. The shared credential name (`"Beeli"`) refers to the *account*, not the app
 being built. Everything else derives from `--app`: workspace, archive path, ExportOptions.
 
+## Two version numbers — know which is which
+
+| Number | Where it lives | Who sets it |
+|---|---|---|
+| Marketing version (`0.1.0`) | `app.json` → `expo.version` → `CFBundleShortVersionString` | The **`git-commit`** convention, bumped inline on each user-facing `feat`/`fix`. **This script never touches it.** |
+| Build number (`2`) | `CFBundleVersion` in the Xcode project | **This script**, and nothing else. |
+
+The script ships whatever version `app.json` says — it does not judge or bump it. Two consequences
+it now enforces automatically, both of which used to fail silently:
+
+- **The marketing version only reaches the binary through `expo prebuild`**, which regenerates
+  `Info.plist`. So if `app.json` has been bumped since `ios/` was last generated, `--skip-prebuild`
+  would upload the **old** version string. The script compares the two and bails, telling you to
+  run a full build.
+- **The build number is derived from App Store Connect, not from the local counter.**
+  `prebuild --clean` regenerates the project and resets `CFBundleVersion` (neither app sets
+  `expo.ios.buildNumber`), so the old `asc xcode version bump --type build` restarted at 1 and
+  collided with a build number Apple already had. The script now asks ASC for the highest build of
+  the current marketing version and sets one above it. Apple only requires uniqueness *within* a
+  version, so a fresh version correctly starts at build 1.
+
 ## Prerequisites Check
 
 ### 1. Check asc is installed
@@ -96,7 +117,8 @@ Narrate each phase as it runs so the user knows what's happening:
 | `expo prebuild --clean` | Regenerates the native iOS project from Expo config | 1–2 min |
 | `pod install` | Syncs CocoaPods dependencies | 1–3 min |
 | Write `ExportOptions.plist` | Regenerated on **every** run — it's gitignored and wiped by `prebuild --clean` | instant |
-| `asc xcode version bump --type build` | Increments `CFBundleVersion` in the Xcode project | ~10s |
+| Version guard | On `--skip-prebuild`, bails if `app.json`'s version has moved past the generated `Info.plist` (see below) | instant |
+| Resolve build number | Queries App Store Connect for the highest build of this marketing version and sets one above it | ~3s |
 | `asc xcode archive --overwrite` | Compiles and archives in Release (`--overwrite` replaces a stale `/tmp/<Scheme>.xcarchive`) | 5–15 min |
 | `asc xcode export … --wait` | Exports a signed IPA and uploads it straight to TestFlight (`destination: upload`), then polls until the build appears in App Store Connect | 3–10 min |
 | Tag the release (git) | Annotated, app-prefixed tag on the shipped commit — always, never skipped | ~5s |
@@ -132,7 +154,8 @@ Re-check until `Processing` reads `VALID`.
 ## Tag the Release (always)
 
 **Every successful TestFlight upload gets a tag.** This is the release record for this repo —
-tagging happens here, at the upload, not at the `expo.version` bump (see the `release` skill).
+tagging happens here, at the upload — not at the `expo.version` bump, which rides along inside
+ordinary feature commits and ships nothing on its own.
 Do not skip it, and do not ask whether to tag; only ask before *pushing* it.
 
 Tag only after `** EXPORT SUCCEEDED **` / `Upload succeeded` — never on a failed or
