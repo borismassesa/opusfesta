@@ -2,17 +2,32 @@
 # Local TestFlight drop via asc CLI — faster than waiting in the EAS queue.
 # Requires: brew install asc
 # Auth (one-time): asc auth login --name "Beeli" --key-id KEY_ID --issuer-id ISSUER_ID --private-key /path/to/AuthKey.p8 --network
-# Usage: ./scripts/testflight-local.sh [--skip-prebuild]
+# Usage: ./scripts/testflight-local.sh [--app of_mobile|opus_pass_mobile] [--skip-prebuild]
 
 set -euo pipefail
 
-MOBILE_DIR="$(cd "$(dirname "$0")/../apps/of_mobile" && pwd)"
-WORKSPACE="$MOBILE_DIR/ios/OpusFesta.xcworkspace"
-SCHEME="OpusFesta"
-ARCHIVE_PATH="/tmp/OpusFesta.xcarchive"
-IPA_PATH="/tmp/OpusFesta.ipa"
+APP="of_mobile"
+SKIP_PREBUILD=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --app) APP="${2:-}"; shift 2 ;;
+    --skip-prebuild) SKIP_PREBUILD=true; shift ;;
+    *) echo "Unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+# Xcode scheme/workspace names are set by `expo prebuild` from app.json's expo.name.
+case "$APP" in
+  of_mobile)        SCHEME="OpusFesta"; APP_ID="6786090250" ;;
+  opus_pass_mobile) SCHEME="OpusPass";  APP_ID="${OPUSPASS_APP_ID:-6790724087}" ;;
+  *) echo "Unknown app: $APP (expected of_mobile or opus_pass_mobile)" >&2; exit 1 ;;
+esac
+
+MOBILE_DIR="$(cd "$(dirname "$0")/../apps/$APP" && pwd)"
+WORKSPACE="$MOBILE_DIR/ios/$SCHEME.xcworkspace"
+ARCHIVE_PATH="/tmp/$SCHEME.xcarchive"
+IPA_PATH="/tmp/$SCHEME.ipa"
 EXPORT_OPTIONS="$MOBILE_DIR/ios/ExportOptions.plist"
-APP_ID="6786090250"
 
 # App Store Connect API key — forwarded to xcodebuild at export so the upload and
 # automatic distribution signing authenticate without an Apple ID signed into Xcode.
@@ -24,12 +39,7 @@ ASC_KEY_PATH="${ASC_KEY_PATH:-$HOME/.appstoreconnect/AuthKey_${ASC_KEY_ID}.p8}"
 # Poll timeout for --wait (build discovery in App Store Connect after upload).
 export ASC_TIMEOUT="${ASC_TIMEOUT:-90s}"
 
-SKIP_PREBUILD=false
-for arg in "$@"; do
-  [[ "$arg" == "--skip-prebuild" ]] && SKIP_PREBUILD=true
-done
-
-echo "==> OpusFesta local TestFlight build"
+echo "==> $SCHEME local TestFlight build ($APP)"
 
 # 0. Pull production env vars (EXPO_PUBLIC_*) from EAS. Expo automatically
 # prefers .env.production over .env during the Release-configuration JS bundle
@@ -45,8 +55,15 @@ if [[ "$SKIP_PREBUILD" == false ]]; then
   echo "==> Running expo prebuild..."
   cd "$MOBILE_DIR"
   npx expo prebuild --platform ios --clean
-  # Restore ExportOptions.plist wiped by --clean
-  cat > "$EXPORT_OPTIONS" <<'PLIST'
+  cd "$MOBILE_DIR/ios"
+  pod install
+else
+  echo "==> Skipping prebuild (--skip-prebuild)"
+fi
+
+# 1b. ExportOptions.plist is not tracked in git and is wiped by `prebuild --clean`,
+# so regenerate it on every run rather than only after a prebuild.
+cat > "$EXPORT_OPTIONS" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -62,11 +79,6 @@ if [[ "$SKIP_PREBUILD" == false ]]; then
 </dict>
 </plist>
 PLIST
-  cd "$MOBILE_DIR/ios"
-  pod install
-else
-  echo "==> Skipping prebuild (--skip-prebuild)"
-fi
 
 # 2. Bump build number
 echo "==> Bumping build number..."
