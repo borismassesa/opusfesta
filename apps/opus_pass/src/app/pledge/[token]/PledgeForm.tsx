@@ -122,7 +122,7 @@ export default function PledgeForm({
           decorative "save the date" panel with dynamic text when there's no
           full template. ── */}
       {isFullTemplate ? (
-        <aside className="flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#F1F4EB] to-[#EDF0E7] px-5 py-8 sm:px-10 sm:py-14 lg:sticky lg:top-0 lg:h-screen lg:min-h-0 lg:px-16 lg:py-16">
+        <aside className="flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#F1F4EB] to-[#EDF0E7] px-5 pb-8 pt-24 sm:px-10 sm:py-14 lg:sticky lg:top-0 lg:h-screen lg:min-h-0 lg:px-16 lg:py-16">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={cfg.coverImageUrl!}
