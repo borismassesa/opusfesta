@@ -21,6 +21,27 @@ export function formatCurrency(amount: number, currency: string = 'TZS'): string
 }
 
 /**
+ * Format a price range as an abbreviated currency string, e.g. "TZS 1.2M - 5M".
+ * Falls back to a single "From <amount>" when only a minimum is known.
+ */
+export function formatCompactCurrencyRange(
+  min: number | null | undefined,
+  max: number | null | undefined,
+  currency: string = 'TZS',
+): string {
+  const compact = (amount: number) =>
+    amount >= 1_000_000 ? `${(amount / 1_000_000).toFixed(1)}M` : `${(amount / 1_000).toFixed(0)}k`;
+
+  if (min && max) {
+    return `${currency} ${compact(min)} – ${compact(max)}`;
+  }
+  if (min) {
+    return `From ${formatCurrency(min, currency)}`;
+  }
+  return '';
+}
+
+/**
  * Format phone number for Tanzania
  */
 export function formatPhoneNumber(phone: string): string {
