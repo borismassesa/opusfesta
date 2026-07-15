@@ -7,6 +7,7 @@ import { eventTypeLabel, eventTypeLabelSw } from './types'
 import { toTzs } from './currency'
 import { resolveEventCover, type PledgePageConfig, type PledgePaymentMethod } from './pledge-page'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
+import { parseTemplateCardItemId, type TemplateCardType } from './pledge-card-templates'
 import type { SiteDoc } from '@/lib/builder/types'
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import type {
@@ -1317,6 +1318,7 @@ export interface WhatsAppEntitlement {
 }
 
 interface PaidOrderItem {
+  id?: string
   name?: string
   guests?: number
   image?: string
@@ -1362,6 +1364,35 @@ export async function fetchPaidOrdersForCouple(
     .or(ors.join(','))
     .order('paid_at', { ascending: false })
   return (data ?? []) as PaidOrderRow[]
+}
+
+/** Which pledge-card / thank-you-card template designs this couple has
+ *  already bought (via the per-template checkout — see
+ *  templateCardItemId()). Paid orders aren't scoped to a single event
+ *  (a couple could buy a design before assigning it), so a purchase counts
+ *  for every one of the couple's events, not just the one active at
+ *  purchase time. Returns an empty set for a signed-out caller. */
+export async function getPurchasedTemplateIds(
+  templateType: TemplateCardType,
+): Promise<Set<string>> {
+  const user = await getDashboardUser()
+  if (!user) return new Set()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const ids = new Set<string>()
+  for (const order of orders) {
+    for (const item of order.items ?? []) {
+      if (!item.id) continue
+      const parsed = parseTemplateCardItemId(item.id)
+      if (parsed && parsed.type === templateType) ids.add(parsed.templateId)
+    }
+  }
+  return ids
 }
 
 export interface PaidOrderSummary {

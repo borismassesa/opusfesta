@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import {
@@ -22,7 +23,7 @@ import {
   BarChart3,
   Download,
   Send,
-  Palette,
+  Lock,
   ExternalLink,
   Target,
   Wallet,
@@ -55,9 +56,12 @@ import {
 import { PAYMENT_PROVIDERS, type PledgePaymentMethod } from '@/lib/dashboard/pledge-page'
 import {
   PLEDGE_TEMPLATE_FREE_TIER_IDS,
-  PLEDGE_TEMPLATE_UNLOCK_FEE,
+  TEMPLATE_CARD_PRICE,
   type PledgeCardCatalogItem,
 } from '@/lib/dashboard/pledge-card-templates'
+import TemplatePurchaseModal, { type TemplatePurchaseTarget } from '@/components/dashboard/TemplatePurchaseModal'
+import Confetti from '@/components/invitations/Confetti'
+import { getLastOrder, setLastOrder } from '@/lib/cart-storage'
 import {
   pledgeUrl,
   pledgeReminderMessage,
@@ -69,7 +73,11 @@ import {
 } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { PledgesDashboardCopy } from '@/lib/cms/dashboard-copy'
-import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
+import type {
+  DashboardEventScopeStrings,
+  CheckoutFormStrings,
+  CheckoutPaymentStrings,
+} from '@/lib/cms/ui-strings-fallback'
 import { EventSwitcher } from '@/components/dashboard/EventScope'
 import type {
   AttendanceAnswer,
@@ -264,6 +272,11 @@ export default function PledgesManager({
   pledgeCoverIsFullTemplate,
   packageTierId,
   pledgeCardCatalog,
+  purchasedTemplateIds,
+  contactEmail,
+  contactPhone,
+  checkoutFormStrings,
+  checkoutPaymentStrings,
   copy,
   whatsappLive,
   emailLive,
@@ -292,6 +305,12 @@ export default function PledgesManager({
   packageTierId: string | null
   /** Curated invitation-catalog designs offered as free pledge-card templates. */
   pledgeCardCatalog: PledgeCardCatalogItem[]
+  /** Template ids this couple has already bought individually (Classic/Essential). */
+  purchasedTemplateIds: string[]
+  contactEmail: string
+  contactPhone: string | null
+  checkoutFormStrings: CheckoutFormStrings
+  checkoutPaymentStrings: CheckoutPaymentStrings
   copy: PledgesDashboardCopy
   whatsappLive: boolean
   emailLive: boolean
@@ -877,6 +896,11 @@ export default function PledgesManager({
           selectedEventId={selectedEventId}
           packageTierId={packageTierId}
           pledgeCardCatalog={pledgeCardCatalog}
+          purchasedTemplateIds={purchasedTemplateIds}
+          contactEmail={contactEmail}
+          contactPhone={contactPhone}
+          checkoutFormStrings={checkoutFormStrings}
+          checkoutPaymentStrings={checkoutPaymentStrings}
         />
       ) : null}
 
@@ -1736,6 +1760,11 @@ function InviteSection({
   selectedEventId,
   packageTierId,
   pledgeCardCatalog,
+  purchasedTemplateIds,
+  contactEmail,
+  contactPhone,
+  checkoutFormStrings,
+  checkoutPaymentStrings,
 }: {
   shareLink: string | null
   coupleName: string
@@ -1750,7 +1779,14 @@ function InviteSection({
   selectedEventId: string | null
   packageTierId: string | null
   pledgeCardCatalog: PledgeCardCatalogItem[]
+  purchasedTemplateIds: string[]
+  contactEmail: string
+  contactPhone: string | null
+  checkoutFormStrings: CheckoutFormStrings
+  checkoutPaymentStrings: CheckoutPaymentStrings
 }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [contactSearch, setContactSearch] = useState('')
   // `${contactId}:${channel}` of the in-flight per-row send, if any.
   const [sendingKey, setSendingKey] = useState<string | null>(null)
@@ -1792,6 +1828,61 @@ function InviteSection({
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
   const hasFreeTemplateAccess = Boolean(packageTierId && PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(packageTierId))
 
+  // Templates bought individually (Classic/Essential) — starts from the
+  // server-fetched paid orders, then grows optimistically the moment a
+  // purchase resolves so the picker unlocks without a full page reload.
+  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set(purchasedTemplateIds))
+  const [purchaseTarget, setPurchaseTarget] = useState<TemplatePurchaseTarget | null>(null)
+  const canUseTemplate = (t: PledgeCardCatalogItem) => hasFreeTemplateAccess || purchasedIds.has(t.id)
+  // Fires the confetti overlay — a fresh timestamp key so it can re-trigger
+  // (and remount) on a second purchase in the same session.
+  const [celebrateAt, setCelebrateAt] = useState<number | null>(null)
+
+  // After a card-redirect purchase, Selcom bounces the buyer back here with
+  // `?purchase_ref=...` — confirm it landed and unlock the design without the
+  // couple needing to do anything else.
+  useEffect(() => {
+    const ref = searchParams.get('purchase_ref')
+    if (!ref) return
+    let cancelled = false
+    ;(async () => {
+      for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
+        try {
+          const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`, { cache: 'no-store' })
+          if (res.ok) {
+            const data = (await res.json()) as { status: string }
+            if (data.status === 'paid') {
+              // Promote the local order snapshot (recorded by TemplatePurchaseModal
+              // before the Selcom card redirect) so it shows paid on Orders.
+              const stored = getLastOrder()
+              if (stored && stored.ref === ref) setLastOrder({ ...stored, paymentStatus: 'paid' })
+              toast.success('Card design unlocked')
+              setCelebrateAt(Date.now())
+              router.refresh()
+              break
+            }
+            if (data.status === 'failed' || data.status === 'expired') {
+              toast.error('That payment did not go through')
+              break
+            }
+          }
+        } catch {
+          /* transient — retry */
+        }
+        await new Promise((r) => setTimeout(r, 2500))
+      }
+      if (!cancelled) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('purchase_ref')
+        router.replace(`${url.pathname}${url.search}`)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   /** The channel to actually send this contact on: their explicit override
    *  from the dropdown if it's still usable (they might have picked Email,
    *  then we should keep honoring it even though phone also exists), else
@@ -1820,7 +1911,7 @@ function InviteSection({
     setApplyingTemplateId(item.id)
     startCoverSave(async () => {
       try {
-        await applyPledgeCardTemplate(selectedEventId, item.imageUrl)
+        await applyPledgeCardTemplate(selectedEventId, item.imageUrl, item.id)
         setCover({ url: item.imageUrl, isTemplate: true })
         setAppliedTemplateId(item.id)
         toast.success('Pledge card template applied')
@@ -2068,28 +2159,17 @@ function InviteSection({
         {/* Pledge card templates: the primary path, so it comes first. Real
             designs pulled from the invitation catalog, filtered to the
             "Kadi za Michango" category. Free for Elegant/Signature;
-            Classic/Essential unlock via a flat one-time fee (WhatsApp
-            request today — no live payment wired yet). */}
+            Classic/Essential buy individual designs at TEMPLATE_CARD_PRICE
+            each through the same Selcom/M-Pesa checkout the invitation
+            product uses (see TemplatePurchaseModal). */}
         <div className="space-y-3">
-          {!hasFreeTemplateAccess ? (
-            <a
-              href={`https://wa.me/255799242471?text=${encodeURIComponent(
-                `Hi, I'd like to unlock pledge card templates for ${coupleName} (one-time TZS ${PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()} fee).`,
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#1A1A1A] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-black/90"
-            >
-              <MessageCircle className="h-3.5 w-3.5" /> Request to unlock — TZS {PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()}
-            </a>
-          ) : null}
-
           {pledgeCardCatalog.length ? (
             <div className="relative">
               <div className="-mx-1 grid grid-flow-col auto-cols-[42%] gap-2.5 overflow-x-auto px-1 pb-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] sm:auto-cols-[31%] md:auto-cols-[23%] lg:auto-cols-[calc((100%-5*0.625rem)/6)] [&::-webkit-scrollbar]:hidden">
                 {pledgeCardCatalog.map((t) => {
                   const isApplying = applyingTemplateId === t.id && savingCover
                   const isApplied = appliedTemplateId === t.id || (cover.isTemplate && cover.url === t.imageUrl)
+                  const usable = canUseTemplate(t)
                   return (
                     <div
                       key={t.id}
@@ -2097,15 +2177,14 @@ function InviteSection({
                       className={cn(
                         'snap-start space-y-1.5 rounded-xl border p-2',
                         isApplied ? 'border-[#9FE870] ring-1 ring-[#9FE870]' : 'border-black/[0.12]',
-                        !hasFreeTemplateAccess && 'opacity-60',
                       )}
                     >
                       <div className="relative aspect-[5/7] w-full overflow-hidden rounded-lg bg-black/[0.04]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={t.imageUrl} alt={t.name} className="h-full w-full object-contain" />
-                        {!hasFreeTemplateAccess ? (
+                        {!usable ? (
                           <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-[10px] font-semibold text-white/95">
-                            <Palette className="h-3.5 w-3.5" />
+                            <Lock className="h-3.5 w-3.5" />
                             Locked
                           </span>
                         ) : isApplied ? (
@@ -2117,7 +2196,7 @@ function InviteSection({
                       <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-[#1A1A1A]" title={t.name}>
                         {t.name}
                       </p>
-                      {hasFreeTemplateAccess ? (
+                      {usable ? (
                         <button
                           type="button"
                           disabled={savingCover}
@@ -2143,7 +2222,22 @@ function InviteSection({
                             'Use this template'
                           )}
                         </button>
-                      ) : null}
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPurchaseTarget({
+                              templateId: t.id,
+                              templateName: t.name,
+                              templateImageUrl: t.imageUrl,
+                              templateType: 'pledge_card',
+                            })
+                          }
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-[#1A1A1A] bg-[#1A1A1A] px-2 py-1 text-[10.5px] font-semibold text-white transition hover:bg-black/85"
+                        >
+                          Purchase — TZS {TEMPLATE_CARD_PRICE.toLocaleString()}
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -2160,6 +2254,30 @@ function InviteSection({
           )}
         </div>
       </Card>
+
+      {purchaseTarget ? (
+        <TemplatePurchaseModal
+          target={purchaseTarget}
+          price={TEMPLATE_CARD_PRICE}
+          eventId={selectedEventId}
+          contact={{ name: coupleName, email: contactEmail, phone: contactPhone }}
+          returnPath={`/my/dashboard/pledges${selectedEventId ? `?event=${selectedEventId}` : ''}`}
+          formStrings={checkoutFormStrings}
+          paymentStrings={checkoutPaymentStrings}
+          onClose={() => setPurchaseTarget(null)}
+          onPurchaseSubmitted={(result) => {
+            if (result.status === 'paid') {
+              setPurchasedIds((prev) => new Set(prev).add(purchaseTarget.templateId))
+            }
+            if (result.status === 'paid' || result.status === 'processing') {
+              setCelebrateAt(Date.now())
+            }
+            setPurchaseTarget(null)
+          }}
+        />
+      ) : null}
+
+      {celebrateAt ? <Confetti key={celebrateAt} /> : null}
 
       {cover.isTemplate ? (
       <>

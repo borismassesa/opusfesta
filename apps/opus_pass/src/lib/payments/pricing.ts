@@ -1,5 +1,6 @@
 import 'server-only'
 import { loadPackagesContent } from '@/lib/cms/packages'
+import { TEMPLATE_CARD_PRICE } from '@/lib/dashboard/pledge-card-templates'
 import type { InitiateItem } from './types'
 
 // Authoritative amount calculation. The browser sends each line's `total`, but
@@ -38,6 +39,15 @@ export async function priceOrder(items: InitiateItem[]): Promise<PricingResult> 
   const priced: PricedItem[] = items.map((item) => {
     const authPerGuest = item.tierId ? tierPrice.get(item.tierId) : undefined
     const clientTotal = Math.max(0, Math.round(Number(item.total) || 0))
+
+    // Flat-price line (a single card-template unlock, not a guest-tier
+    // invitation) — the price is a fixed constant, never the client's number.
+    if (item.kind === 'template_unlock') {
+      if (clientTotal !== TEMPLATE_CARD_PRICE) {
+        adjustments.push({ id: item.id, clientTotal, serverTotal: TEMPLATE_CARD_PRICE })
+      }
+      return { ...item, total: TEMPLATE_CARD_PRICE }
+    }
 
     // Recompute only when we have a known tier AND a guest count.
     if (authPerGuest != null && item.guests != null) {

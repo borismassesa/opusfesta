@@ -8,8 +8,10 @@ import {
   getMyPledgeToken,
   getMyPledgePageConfig,
   getEventPackageTierId,
+  getPurchasedTemplateIds,
   type PledgeScope,
 } from '@/lib/dashboard/queries'
+import { getDashboardUser } from '@/lib/dashboard/auth'
 import { resolveEventScope } from '@/lib/dashboard/event-scope'
 import { EventChooser } from '@/components/dashboard/EventScope'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
@@ -75,17 +77,33 @@ export default async function PledgesPage({
     ? { eventId: selectedEventId, includeUnassigned: selectedEventId === oldestEventId }
     : {}
 
-  const [pledges, guests, profile, pledgeToken, pledgePageConfig, copy, packageTierId, catalogProducts] =
-    await Promise.all([
-      getPledges(pledgeScope),
-      getGuestsWithInvitations(),
-      getCoupleProfile(),
-      getMyPledgeToken(),
-      getMyPledgePageConfig(selectedEventId),
-      loadDashboardCopy('pledges', locale),
-      selectedEventId ? getEventPackageTierId(selectedEventId) : Promise.resolve(null),
-      loadInvitationProducts(locale),
-    ])
+  const [
+    pledges,
+    guests,
+    profile,
+    dashboardUser,
+    pledgeToken,
+    pledgePageConfig,
+    copy,
+    packageTierId,
+    catalogProducts,
+    purchasedTemplateIds,
+    checkoutFormStrings,
+    checkoutPaymentStrings,
+  ] = await Promise.all([
+    getPledges(pledgeScope),
+    getGuestsWithInvitations(),
+    getCoupleProfile(),
+    getDashboardUser(),
+    getMyPledgeToken(),
+    getMyPledgePageConfig(selectedEventId),
+    loadDashboardCopy('pledges', locale),
+    selectedEventId ? getEventPackageTierId(selectedEventId) : Promise.resolve(null),
+    loadInvitationProducts(locale),
+    getPurchasedTemplateIds('pledge_card'),
+    loadUiStrings('checkout-form', locale),
+    loadUiStrings('checkout-payment', locale),
+  ])
   // Only "Kadi za Michango" catalog designs are offered as ready-made pledge
   // page covers — Elegant/Signature couples can use any of these for free.
   // Falls back to Save the Date designs while the catalog has none yet.
@@ -125,6 +143,11 @@ export default async function PledgesPage({
       pledgeCoverIsFullTemplate={pledgePageConfig.coverIsFullTemplate ?? false}
       packageTierId={packageTierId}
       pledgeCardCatalog={pledgeCardCatalog}
+      purchasedTemplateIds={Array.from(purchasedTemplateIds)}
+      contactEmail={dashboardUser?.email ?? ''}
+      contactPhone={profile?.whatsapp_phone ?? null}
+      checkoutFormStrings={checkoutFormStrings}
+      checkoutPaymentStrings={checkoutPaymentStrings}
       copy={copy}
       whatsappLive={getWhatsAppProvider().live}
       emailLive={isEmailConfigured()}

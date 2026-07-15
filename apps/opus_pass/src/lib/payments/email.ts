@@ -97,7 +97,7 @@ function heroImageHtml(order: OrderRow): string {
       </td></tr>`
 }
 
-function emailShell(args: { preheader: string; heading: string; body: string }): string {
+function emailShell(args: { preheader: string; heading: string; body: string; eyebrow?: string }): string {
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#FAFAF8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1A1A1A;">
@@ -108,7 +108,7 @@ function emailShell(args: { preheader: string; heading: string; body: string }):
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#fff;border:1px solid #e6e6e6;border-radius:14px;overflow:hidden;">
             <tr>
               <td style="padding:24px 28px 0;">
-                <p style="margin:0 0 16px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#7E5896;">OpusFesta Invitations</p>
+                <p style="margin:0 0 16px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#7E5896;">${escapeHtml(args.eyebrow ?? 'OpusFesta Invitations')}</p>
                 <h1 style="margin:0;font-size:24px;line-height:1.25;font-weight:650;color:#1A1A1A;">${escapeHtml(args.heading)}</h1>
               </td>
             </tr>
@@ -131,6 +131,13 @@ function emailShell(args: { preheader: string; heading: string; body: string }):
 function isValidTzPhone(phone: string | null): boolean {
   const digits = (phone ?? '').replace(/\D/g, '')
   return /^255\d{9}$/.test(digits) || /^0\d{9}$/.test(digits)
+}
+
+// A single pledge/thank-you card design unlock, not a guest-tier invitation
+// order — the "invitation" copy in these emails would be wrong (there's no
+// tier/guest count, and nothing "moves into design"; it just unlocks).
+function isTemplateOrder(order: OrderRow): boolean {
+  return order.items[0]?.kind === 'template_unlock'
 }
 
 function formatDateTime(iso: string | null): string {
@@ -331,13 +338,15 @@ export async function sendManualPaymentSubmittedEmails(order: OrderRow): Promise
   customerSent: boolean
   adminSent: boolean
 }> {
+  const isTemplate = isTemplateOrder(order)
   const customerHtml = emailShell({
+    eyebrow: isTemplate ? 'OpusPass' : 'OpusFesta Invitations',
     preheader: `Invoice ${order.ref} is under payment review.`,
     heading: 'Your payment invoice is under review',
     body: `
       ${heroImageHtml(order)}
       <tr><td style="padding:16px 28px 0;color:#333;font-size:15px;line-height:1.65;">
-        We received your Lipa Namba payment details. The OpusFesta team will confirm the transaction before your invitation order moves into design.
+        We received your Lipa Namba payment details. The OpusFesta team will confirm the transaction before your ${isTemplate ? 'design unlocks' : 'invitation order moves into design'}.
       </td></tr>
       <tr><td style="padding:18px 28px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #F0DFF6;background:#FCF7FF;border-radius:10px;padding:8px 14px;">
@@ -364,9 +373,9 @@ export async function sendManualPaymentSubmittedEmails(order: OrderRow): Promise
     }),
     send({
       to: adminRecipients(),
-      subject: `Invitation payment submitted - ${order.ref}`,
+      subject: `${isTemplate ? 'Template' : 'Invitation'} payment submitted - ${order.ref}`,
       html: adminHtml,
-      text: `Review invitation payment ${order.ref}\nAmount: ${formatTzs(order.amount_total)}\nPayer: ${order.payer_name ?? ''}\nPhone: ${order.payer_phone ?? ''}\nReference: ${order.payment_reference ?? ''}`,
+      text: `Review ${isTemplate ? 'template' : 'invitation'} payment ${order.ref}\nAmount: ${formatTzs(order.amount_total)}\nPayer: ${order.payer_name ?? ''}\nPhone: ${order.payer_phone ?? ''}\nReference: ${order.payment_reference ?? ''}`,
     }),
   ])
 

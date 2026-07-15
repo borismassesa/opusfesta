@@ -25,8 +25,9 @@ export interface PledgePageConfig {
   /** Optional cover background image URL (overrides the tone gradient). Legacy
    *  pre-multi-event field — don't read this directly off the raw stored
    *  config; go through resolveEventCover() below, which prefers the matching
-   *  eventCovers entry and falls back to this field for couples who set a
-   *  cover before per-event covers existed. */
+   *  eventCovers entry and falls back to this field only for couples who
+   *  have never used the per-event picker at all (set a cover before
+   *  per-event covers existed and haven't touched it since). */
   coverImageUrl?: string | null
   /** True when coverImageUrl is a fully pre-designed template (names/date/venue
    *  already baked into the artwork) — suppresses the text overlay so nothing
@@ -47,10 +48,19 @@ export const EVENTLESS_COVER_KEY = '_default'
 /** Resolve the cover that applies to a specific event from the couple's raw
  *  stored pledge_page config. Falls back to the legacy top-level
  *  coverImageUrl/coverIsFullTemplate fields when there's no per-event entry
- *  yet — those predate per-event covers, and couples who set a custom cover
- *  before per-event scoping shipped still have it saved only in those two
- *  fields (no eventCovers entry, no backfill migration). Without this
- *  fallback their cover would silently revert to the default gradient. */
+ *  yet AND the couple has never used the per-event picker at all — those
+ *  fields predate per-event covers, and couples who set a custom cover
+ *  before per-event scoping shipped still have it saved only there (no
+ *  eventCovers entry, no backfill migration). Without this fallback their
+ *  cover would silently revert to the default gradient.
+ *
+ *  Once a couple has at least one eventCovers entry, though, they're on the
+ *  per-event flow — a *different* event that lacks its own entry is a
+ *  genuinely new/unconfigured event, not a legacy single-event setup, and
+ *  must NOT inherit the legacy field's now-unrelated cover (that field could
+ *  hold a design applied to a since-superseded event, or nothing meaningful
+ *  at all). Regression guard: this previously leaked a stale/foreign cover
+ *  — with a real, guest-shareable pledge link — onto brand-new events. */
 export function resolveEventCover(
   stored: PledgePageConfig | null | undefined,
   eventId: string | null,
@@ -58,7 +68,8 @@ export function resolveEventCover(
   const key = eventId ?? EVENTLESS_COVER_KEY
   const cover = stored?.eventCovers?.[key]
   if (cover) return { coverImageUrl: cover.coverImageUrl ?? null, coverIsFullTemplate: Boolean(cover.coverIsFullTemplate) }
-  if (stored?.coverImageUrl) {
+  const hasAnyEventCover = Boolean(stored?.eventCovers && Object.keys(stored.eventCovers).length > 0)
+  if (!hasAnyEventCover && stored?.coverImageUrl) {
     return { coverImageUrl: stored.coverImageUrl, coverIsFullTemplate: Boolean(stored.coverIsFullTemplate) }
   }
   return { coverImageUrl: null, coverIsFullTemplate: false }
