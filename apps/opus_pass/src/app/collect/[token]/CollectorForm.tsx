@@ -5,6 +5,8 @@ import { toast } from 'sonner'
 import { Send, CheckCircle2 } from 'lucide-react'
 import { submitCollectorEntry } from './actions'
 import { useT } from '@/components/providers/UIStringsProvider'
+import { LocaleToggle } from '@/components/LocaleToggle'
+import type { Locale } from '@/lib/cms/localized'
 import {
   resolveCollectorPage,
   accentInk,
@@ -25,6 +27,10 @@ interface Props {
   dressCode: string | null
   rsvpContact: string | null
   config: PledgePageConfig
+  /** Guest's chosen language (from the opuspass_locale cookie) — picks which
+   *  built-in default copy to fall back to when the couple hasn't customized
+   *  their collector page text. */
+  locale: Locale
 }
 
 /** Same palette InvitationVisual uses for the 'save-the-date' treatment. */
@@ -72,6 +78,7 @@ export default function CollectorForm({
   dressCode,
   rsvpContact,
   config,
+  locale,
 }: Props) {
   const t = useT('forms-collect')
   const [name, setName] = useState('')
@@ -94,9 +101,12 @@ export default function CollectorForm({
     return () => window.removeEventListener('message', onMessage)
   }, [])
 
-  const cfg = resolveCollectorPage(override ?? config)
+  const cfg = resolveCollectorPage(override ?? config, locale)
+  // Collector covers are always a plain uploaded photo (never a pre-designed
+  // template like the Pledges card picker) — always overlay the couple's
+  // real name/date/venue text on top, regardless of any stored
+  // coverIsFullTemplate flag left over from a shared config shape.
   const hasCover = Boolean(cfg.coverImageUrl)
-  const isFullTemplate = hasCover && cfg.coverIsFullTemplate
   const onAccent = accentInk(cfg.accent)
 
   const dateStr = dotDate(startsAt ?? weddingDate)
@@ -110,17 +120,11 @@ export default function CollectorForm({
   const ink = '#FFFFFF'
   const soft = 'rgba(255,255,255,0.82)'
   const rule = 'rgba(255,255,255,0.6)'
-  const coverStyle: React.CSSProperties = isFullTemplate
-    ? {
-        backgroundImage: `url("${cfg.coverImageUrl}")`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
-    : {
-        backgroundImage: `linear-gradient(rgba(20,12,28,0.42),rgba(20,12,28,0.55)), url("${cfg.coverImageUrl}")`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
+  const coverStyle: React.CSSProperties = {
+    backgroundImage: `linear-gradient(rgba(20,12,28,0.42),rgba(20,12,28,0.55)), url("${cfg.coverImageUrl}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -144,60 +148,60 @@ export default function CollectorForm({
 
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
+      <LocaleToggle className="fixed right-4 top-4 z-10 shadow-sm sm:right-6 sm:top-6" />
+
       {/* ── Decorative cover ── */}
       <aside
         className="relative flex min-h-[360px] flex-col justify-center overflow-hidden px-8 py-14 sm:min-h-[420px] lg:sticky lg:top-0 lg:h-screen lg:px-14"
         style={hasCover ? { ...coverStyle, color: ink } : undefined}
       >
         {hasCover ? (
-          isFullTemplate ? null : (
-            <>
-              <span className="absolute left-8 top-8 text-sm font-bold tracking-tight lg:left-14" style={{ color: soft }}>
-                OpusPass
-              </span>
+          <>
+            <span className="absolute left-8 top-8 text-sm font-bold tracking-tight lg:left-14" style={{ color: soft }}>
+              OpusPass
+            </span>
 
-              <div className="relative text-center">
-                <p className="font-serif text-[11px] uppercase tracking-[0.3em] sm:text-xs" style={{ color: soft }}>
-                  {cfg.eyebrow}
-                </p>
+            <div className="relative text-center">
+              <p className="font-serif text-[11px] uppercase tracking-[0.3em] sm:text-xs" style={{ color: soft }}>
+                {cfg.eyebrow}
+              </p>
 
-                <div className="mt-6 space-y-2.5">
-                  {parts.length >= 2 ? (
-                    <>
-                      <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
-                        {parts[0]}
-                      </p>
-                      <p className="font-serif text-sm uppercase tracking-[0.3em]" style={{ color: soft }}>
-                        and
-                      </p>
-                      <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
-                        {parts[1]}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="font-serif text-4xl uppercase leading-tight tracking-[0.08em] sm:text-5xl">
-                      {coupleName}
+              <div className="mt-6 space-y-2.5">
+                {parts.length >= 2 ? (
+                  <>
+                    <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
+                      {parts[0]}
                     </p>
-                  )}
-                </div>
-
-                <div className="mx-auto mt-7 flex items-center justify-center gap-2.5">
-                  <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
-                  <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: rule }} />
-                  <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
-                </div>
-
-                {dateStr ? (
-                  <p className="mt-5 font-serif text-2xl tracking-[0.12em] sm:text-[26px]">{dateStr}</p>
-                ) : null}
-                {city ? (
-                  <p className="mt-2 text-[11px] uppercase tracking-[0.25em]" style={{ color: soft }}>
-                    {city}
+                    <p className="font-serif text-sm uppercase tracking-[0.3em]" style={{ color: soft }}>
+                      {locale === 'sw' ? 'na' : 'and'}
+                    </p>
+                    <p className="font-serif text-4xl uppercase leading-none tracking-[0.1em] sm:text-5xl">
+                      {parts[1]}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-serif text-4xl uppercase leading-tight tracking-[0.08em] sm:text-5xl">
+                    {coupleName}
                   </p>
-                ) : null}
+                )}
               </div>
-            </>
-          )
+
+              <div className="mx-auto mt-7 flex items-center justify-center gap-2.5">
+                <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
+                <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: rule }} />
+                <span className="h-px w-12" style={{ backgroundColor: rule, opacity: 0.6 }} />
+              </div>
+
+              {dateStr ? (
+                <p className="mt-5 font-serif text-2xl tracking-[0.12em] sm:text-[26px]">{dateStr}</p>
+              ) : null}
+              {city ? (
+                <p className="mt-2 text-[11px] uppercase tracking-[0.25em]" style={{ color: soft }}>
+                  {city}
+                </p>
+              ) : null}
+            </div>
+          </>
         ) : (
           <SaveTheDate
             names={coupleName}
@@ -224,11 +228,23 @@ export default function CollectorForm({
             </div>
           ) : (
             <>
-              <h2 className="text-center font-serif leading-tight text-[#1A1A1A]">
-                <span className="block text-3xl sm:text-[34px]">{coupleName}</span>
-                <span className="mt-1 block text-2xl text-[#1A1A1A]/80 sm:text-[26px]">{cfg.headingLine2}</span>
+              <h2 className="text-center leading-tight text-[#1A1A1A]">
+                <span
+                  className="block text-[2rem] leading-none sm:text-4xl lg:text-5xl"
+                  style={{ fontFamily: 'var(--font-dancing), cursive' }}
+                >
+                  {coupleName}
+                </span>
+                <div className="mx-auto mt-3 flex items-center justify-center gap-2.5" aria-hidden>
+                  <span className="h-px w-8" style={{ backgroundColor: cfg.accent, opacity: 0.5 }} />
+                  <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: cfg.accent }} />
+                  <span className="h-px w-8" style={{ backgroundColor: cfg.accent, opacity: 0.5 }} />
+                </div>
+                <span className="mt-3 block font-serif text-2xl text-[#1A1A1A]/80 sm:text-[26px]">
+                  {cfg.headingLine2}
+                </span>
               </h2>
-              <p className="mx-auto mt-3 max-w-md text-center text-[15px] leading-relaxed text-[#1A1A1A]/60">
+              <p className="mx-auto mt-4 max-w-md text-center text-[15px] leading-relaxed text-[#1A1A1A]/55">
                 {cfg.intro}
               </p>
 

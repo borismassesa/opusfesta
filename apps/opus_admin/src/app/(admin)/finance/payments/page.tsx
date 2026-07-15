@@ -6,23 +6,30 @@ import {
   ChevronDown,
   Clock,
   Mail,
+  Minus,
   Phone,
+  Plus,
   ReceiptText,
   Search,
+  Send,
   Smartphone,
+  Ticket,
   XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { getAdminAccessRole, hasPermission, isAdminDashboardRole } from '@/lib/admin-auth'
-import { approveInvitationPayment, rejectInvitationPayment } from './actions'
+import { approveInvitationPayment, rejectInvitationPayment, adjustEntitlementCredits } from './actions'
 import {
   getInvitationPayments,
   getInvitationPaymentSummary,
+  getEventCreditUsage,
   PAYMENTS_PAGE_SIZE,
   type InvitationPayment,
   type InvitationPaymentStatus,
   type PaymentFilter,
+  type EventCreditUsage,
+  type PoolUsage,
 } from './queries'
 import PaymentsHeading from './PaymentsHeading'
 
@@ -237,7 +244,172 @@ function ReviewForm({ payment, canWrite }: { payment: InvitationPayment; canWrit
   )
 }
 
-function PaymentCard({ payment, canWrite }: { payment: InvitationPayment; canWrite: boolean }) {
+function poolPct(pool: PoolUsage): number {
+  return pool.purchased > 0 ? Math.min(100, Math.round((pool.used / pool.purchased) * 100)) : 0
+}
+
+function AdjustForm({
+  userId,
+  eventId,
+  kind,
+  label,
+}: {
+  userId: string
+  eventId: string
+  kind: 'invite' | 'entrance_pass'
+  label: string
+}) {
+  const idBase = `${eventId}-${kind}`
+  return (
+    <details className="mt-2 text-xs">
+      <summary className="cursor-pointer font-medium text-[#7E5896] [&::-webkit-details-marker]:hidden">
+        Adjust {label.toLowerCase()}
+      </summary>
+      <form className="mt-2 space-y-2 rounded-lg border border-gray-200 bg-gray-50/60 p-2.5">
+        <input type="hidden" name="userId" value={userId} />
+        <input type="hidden" name="eventId" value={eventId} />
+        <input type="hidden" name="kind" value={kind} />
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            name="quantity"
+            min={1}
+            step={1}
+            defaultValue={1}
+            required
+            aria-label="Credit quantity"
+            className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-[#7E5896] focus:ring-2 focus:ring-[#F0DFF6]"
+          />
+          <label htmlFor={`reason-${idBase}`} className="sr-only">
+            Reason
+          </label>
+          <input
+            id={`reason-${idBase}`}
+            type="text"
+            name="reason"
+            required
+            placeholder="Reason (required, kept on the audit trail)"
+            className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-[#7E5896] focus:ring-2 focus:ring-[#F0DFF6]"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            type="submit"
+            name="direction"
+            value="revoke"
+            formAction={adjustEntitlementCredits}
+            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
+          >
+            <Minus className="h-3.5 w-3.5" /> Revoke
+          </button>
+          <button
+            type="submit"
+            name="direction"
+            value="grant"
+            formAction={adjustEntitlementCredits}
+            className="inline-flex items-center gap-1 rounded-lg bg-[#7E5896] px-2.5 py-1.5 font-semibold text-white transition hover:bg-[#6c4884]"
+          >
+            <Plus className="h-3.5 w-3.5" /> Grant
+          </button>
+        </div>
+      </form>
+    </details>
+  )
+}
+
+function PoolCard({
+  icon,
+  label,
+  pool,
+  userId,
+  eventId,
+  kind,
+  canWrite,
+}: {
+  icon: ReactNode
+  label: string
+  pool: PoolUsage
+  userId: string
+  eventId: string
+  kind: 'invite' | 'entrance_pass'
+  canWrite: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+      <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <span className="inline-flex items-center gap-1.5 text-[#7E5896]">
+          {icon}
+          <span className="text-gray-500">{label}</span>
+        </span>
+        <span className="normal-case tracking-normal text-gray-900">
+          {pool.used}/{pool.purchased}
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
+        <div className="h-full bg-[#7E5896]" style={{ width: `${poolPct(pool)}%` }} />
+      </div>
+      <p className="mt-1.5 text-xs text-gray-500">
+        {pool.remaining} remaining
+        {pool.adjustment !== 0 ? (
+          <span className={pool.adjustment > 0 ? 'text-emerald-600' : 'text-rose-600'}>
+            {' '}
+            · {pool.adjustment > 0 ? '+' : ''}
+            {pool.adjustment} admin adjustment
+          </span>
+        ) : null}
+      </p>
+      {canWrite ? <AdjustForm userId={userId} eventId={eventId} kind={kind} label={label} /> : null}
+    </div>
+  )
+}
+
+function CreditUsagePanel({
+  payment,
+  usage,
+  canWrite,
+}: {
+  payment: InvitationPayment
+  usage: EventCreditUsage | null
+  canWrite: boolean
+}) {
+  if (payment.status !== 'paid') return null
+  if (!payment.userId) {
+    return (
+      <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 text-xs text-gray-500">
+        Guest checkout — no dashboard account to meter credits against.
+      </div>
+    )
+  }
+  if (!payment.eventId) {
+    return (
+      <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
+        Not yet assigned to an event — the couple must assign this design before its credits count toward anything.
+      </div>
+    )
+  }
+  if (!usage) return null
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+        Send credits {usage.eventName ? `· ${usage.eventName}` : ''}
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <PoolCard icon={<Send className="h-3.5 w-3.5" />} label="Invites" pool={usage.invite} userId={payment.userId} eventId={payment.eventId} kind="invite" canWrite={canWrite} />
+        <PoolCard icon={<Ticket className="h-3.5 w-3.5" />} label="Entrance passes" pool={usage.entrancePass} userId={payment.userId} eventId={payment.eventId} kind="entrance_pass" canWrite={canWrite} />
+      </div>
+    </div>
+  )
+}
+
+function PaymentCard({
+  payment,
+  canWrite,
+  usage,
+}: {
+  payment: InvitationPayment
+  canWrite: boolean
+  usage: EventCreditUsage | null
+}) {
   // Expanded by default while it still needs review; collapsed once reviewed so
   // the queue stays scannable. Native <details> — no client JS needed.
   const open = payment.status === 'processing' || payment.status === 'pending'
@@ -294,6 +466,7 @@ function PaymentCard({ payment, canWrite }: { payment: InvitationPayment; canWri
             <Detail icon={<ReceiptText className="h-4 w-4" />} label="Reference" value={payment.paymentReference || '—'} meta="Lipa Namba 350298654" />
           </div>
           <ItemList payment={payment} />
+          <CreditUsagePanel payment={payment} usage={usage} canWrite={canWrite} />
         </div>
         <ReviewForm payment={payment} canWrite={canWrite} />
       </div>
@@ -362,6 +535,16 @@ export default async function InvitationPaymentsPage({
     hasPermission('finance.write'),
   ])
   const capped = payments.length === PAYMENTS_PAGE_SIZE
+
+  // Usage only makes sense once a payment is approved AND assigned to an
+  // event — everything else short-circuits inside CreditUsagePanel itself.
+  const usageEntries = await Promise.all(
+    payments.map(async (payment) => {
+      if (payment.status !== 'paid' || !payment.userId || !payment.eventId) return null
+      return [payment.id, await getEventCreditUsage(payment.userId, payment.eventId)] as const
+    }),
+  )
+  const usageByPaymentId = new Map(usageEntries.filter((e): e is [string, EventCreditUsage] => e !== null))
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
@@ -433,7 +616,7 @@ export default async function InvitationPaymentsPage({
         <>
           <div className="space-y-4">
             {payments.map((payment) => (
-              <PaymentCard key={payment.id} payment={payment} canWrite={canWrite} />
+              <PaymentCard key={payment.id} payment={payment} canWrite={canWrite} usage={usageByPaymentId.get(payment.id) ?? null} />
             ))}
           </div>
           {capped && (

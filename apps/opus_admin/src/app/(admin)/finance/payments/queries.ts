@@ -25,6 +25,10 @@ export type InvitationPayment = {
   id: string
   ref: string
   status: InvitationPaymentStatus
+  userId: string | null
+  /** Which of the buyer's events this order's quota is assigned to — null
+   *  until the couple assigns it (see OpusPass event-scoped credits). */
+  eventId: string | null
   currency: string
   subtotal: number
   discount: number
@@ -52,6 +56,8 @@ type InvitationPaymentRow = {
   id: string
   ref: string
   status: InvitationPaymentStatus
+  user_id: string | null
+  event_id: string | null
   currency: string
   subtotal: string | number
   discount: string | number
@@ -76,7 +82,7 @@ type InvitationPaymentRow = {
 }
 
 const COLUMNS = `
-  id, ref, status, currency, subtotal, discount, amount_total,
+  id, ref, status, user_id, event_id, currency, subtotal, discount, amount_total,
   contact_name, contact_email, contact_phone, items, payment_method,
   payer_phone, payer_name, payment_reference, payment_label,
   payment_submitted_at, paid_at, reviewed_at, reviewed_by, review_note,
@@ -103,6 +109,8 @@ function mapPayment(row: InvitationPaymentRow): InvitationPayment {
     id: row.id,
     ref: row.ref,
     status: row.status,
+    userId: row.user_id,
+    eventId: row.event_id,
     currency: row.currency,
     subtotal: Number(row.subtotal),
     discount: Number(row.discount),
@@ -204,5 +212,80 @@ export async function getInvitationPaymentSummary(): Promise<{
     paid: paidRes.count ?? 0,
     failed: failedRes.count ?? 0,
     reviewValue,
+  }
+}
+
+// ── OpusPass send-credit usage (invites + entrance passes) ─────────────────
+//
+// Mirrors the pool math in apps/opus_pass/src/lib/dashboard/queries.ts'
+// getWhatsAppEntitlement (kept in sync manually — no shared package between
+// the two apps, see project convention). Scoped by (user_id, event_id): a
+// couple's quota is per event, aggregated across every paid order assigned
+// to it, not per individual order.
+
+export type PoolUsage = { basePurchased: number; adjustment: number; purchased: number; used: number; remaining: number }
+export type EventCreditUsage = {
+  eventName: string | null
+  invite: PoolUsage
+  entrancePass: PoolUsage
+}
+
+type CreditOrderRow = { items: { guests?: number }[] | null }
+
+/** Every paid order's `items[].guests`, summed, for one (user, event) pair. */
+async function getBasePurchased(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+  eventId: string,
+): Promise<number> {
+  const { data } = await supabase
+    .from('invitation_orders')
+    .select('items')
+    .eq('user_id', userId)
+    .eq('event_id', eventId)
+    .eq('status', 'paid')
+  let total = 0
+  for (const row of (data ?? []) as CreditOrderRow[]) {
+    for (const item of row.items ?? []) {
+      if (typeof item.guests === 'number' && item.guests > 0) total += Math.floor(item.guests)
+    }
+  }
+  return total
+}
+
+export async function getEventCreditUsage(userId: string, eventId: string): Promise<EventCreditUsage> {
+  const supabase = createSupabaseAdminClient()
+
+  const [{ data: event }, basePurchased, { data: consumed }, { data: adjustments }] = await Promise.all([
+    supabase.from('wedding_events').select('name').eq('id', eventId).maybeSingle<{ name: string | null }>(),
+    getBasePurchased(supabase, userId, eventId),
+    supabase
+      .from('credit_consumptions')
+      .select('guest_contact_id, kind')
+      .eq('user_id', userId)
+      .or(`event_id.eq.${eventId},event_id.is.null`)
+      .in('kind', ['invite', 'entrance_pass']),
+    supabase.from('entitlement_adjustments').select('kind, delta').eq('user_id', userId).eq('event_id', eventId),
+  ])
+
+  const consumedRows = (consumed ?? []) as { guest_contact_id: string | null; kind: string }[]
+  const usedCount = (kind: string) =>
+    new Set(consumedRows.filter((r) => r.kind === kind).map((r) => r.guest_contact_id).filter(Boolean)).size
+
+  const adjustmentRows = (adjustments ?? []) as { kind: string; delta: number }[]
+  const adjustmentTotal = (kind: string) =>
+    adjustmentRows.filter((r) => r.kind === kind).reduce((sum, r) => sum + r.delta, 0)
+
+  const pool = (kind: 'invite' | 'entrance_pass'): PoolUsage => {
+    const adjustment = adjustmentTotal(kind)
+    const purchased = Math.max(0, basePurchased + adjustment)
+    const used = usedCount(kind)
+    return { basePurchased, adjustment, purchased, used, remaining: Math.max(0, purchased - used) }
+  }
+
+  return {
+    eventName: event?.name ?? null,
+    invite: pool('invite'),
+    entrancePass: pool('entrance_pass'),
   }
 }

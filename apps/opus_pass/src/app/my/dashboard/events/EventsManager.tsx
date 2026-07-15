@@ -67,8 +67,6 @@ type FormState = {
   allow_rsvp: boolean
   dress_code: string
   description: string
-  collect_meal_choice: boolean
-  meal_options: string[]
 }
 
 const EMPTY_FORM: FormState = {
@@ -86,8 +84,6 @@ const EMPTY_FORM: FormState = {
   allow_rsvp: false,
   dress_code: '',
   description: '',
-  collect_meal_choice: false,
-  meal_options: [],
 }
 
 // ------------------------------------------------------------------- helpers
@@ -129,8 +125,6 @@ function fromEvent(e: WeddingEvent): FormState {
     allow_rsvp: e.allow_rsvp,
     dress_code: e.dress_code ?? '',
     description: e.description ?? '',
-    collect_meal_choice: e.collect_meal_choice,
-    meal_options: e.meal_options,
   }
 }
 
@@ -151,8 +145,6 @@ function toPayload(f: FormState): EventInput {
     dress_code: f.dress_code.trim() || null,
     is_public: f.is_public,
     allow_rsvp: f.allow_rsvp,
-    collect_meal_choice: f.collect_meal_choice,
-    meal_options: f.collect_meal_choice ? f.meal_options.filter((m) => m.trim()) : [],
   }
 }
 
@@ -169,15 +161,16 @@ function formatStartsAt(iso: string | null): string | null {
   })
 }
 
-function formatWhen(date: string): string | null {
-  if (!date) return null
-  const local = new Date(`${date}T00:00`)
-  if (Number.isNaN(local.getTime())) return null
-  return local.toLocaleDateString('en-GB', {
+function formatWhen(date: string, time: string): string | null {
+  const iso = combineLocal(date, time)
+  if (!iso) return null
+  return new Date(iso).toLocaleString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -385,14 +378,40 @@ export default function EventsManager({
               <CounterRow value={form.name.length} max={NAME_MAX} hint={strings.hint_max_100} />
             </Field>
 
-            <Field label={strings.field_start_date}>
-              <input
-                type="date"
-                className={inputClass}
-                value={form.startDate}
-                onChange={(e) => set('startDate', e.target.value)}
-              />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={strings.field_start_date}>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.startDate}
+                  onChange={(e) => set('startDate', e.target.value)}
+                />
+              </Field>
+              <Field label={strings.field_start_time}>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={form.startTime}
+                  onChange={(e) => set('startTime', e.target.value)}
+                />
+              </Field>
+              <Field label={strings.field_end_date}>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.endDate}
+                  onChange={(e) => set('endDate', e.target.value)}
+                />
+              </Field>
+              <Field label={strings.field_end_time}>
+                <input
+                  type="time"
+                  className={inputClass}
+                  value={form.endTime}
+                  onChange={(e) => set('endTime', e.target.value)}
+                />
+              </Field>
+            </div>
           </div>
 
           {/* Event location */}
@@ -756,7 +775,7 @@ function PreviewCard({
   editing: WeddingEvent | null
   strings: DashboardEventsStrings
 }) {
-  const when = formatWhen(form.startDate)
+  const when = formatWhen(form.startDate, form.startTime)
   const whereParts = [form.venue_name, form.city].filter(Boolean)
   return (
     <Card className="overflow-hidden p-0">
@@ -814,23 +833,6 @@ function PreviewCard({
               {strings.preview_note_label}
             </p>
             <p className="mt-1 text-sm text-[#1A1A1A]/75">{form.description}</p>
-          </div>
-        ) : null}
-        {form.collect_meal_choice && form.meal_options.length ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              {strings.preview_meal_label}
-            </p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {form.meal_options.map((m) => (
-                <span
-                  key={m}
-                  className="rounded-full bg-black/[0.05] px-2.5 py-0.5 text-xs text-[#1A1A1A]/80"
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
           </div>
         ) : null}
       </div>

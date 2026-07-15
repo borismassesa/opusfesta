@@ -12,7 +12,6 @@ import {
   Smartphone,
   Copy,
   ArrowRight,
-  ExternalLink,
   BellRing,
   Eye,
   X,
@@ -24,10 +23,12 @@ import {
   Check,
   Ticket,
   ChevronDown,
+  ImagePlus,
+  Send,
+  CheckCheck,
+  CalendarCheck,
 } from 'lucide-react'
 import {
-  enablePublicSharing,
-  setPublicSharing,
   sendWhatsAppInvites,
   sendWhatsAppTestInvite,
   sendEntrancePasses,
@@ -45,7 +46,6 @@ import {
 import {
   whatsappShareUrl,
   smsShareUrl,
-  publicInviteMessage,
   inviteMessage,
   reminderMessage,
   firstNameOf,
@@ -154,19 +154,24 @@ export default function SendInvitesView({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { event, funnel, quota, publicLink, whatsappLive, guests, events, selectedEventId, unassignedOrders } = data
+  const { event, funnel, quota, entranceQuota, whatsappLive, guests, events, selectedEventId, unassignedOrders } = data
   const eventId = selectedEventId ?? undefined
 
   const [pending, startTransition] = useTransition()
-  const [copied, setCopied] = useState(false)
   const [filter, setFilter] = useState<'all' | 'notsent' | 'awaiting' | 'attending'>('all')
+  // Sub-filter within the (always-attending) Pass Ticket tab — separate from
+  // `filter` above so switching tabs never leaks one tab's filter state into
+  // the other.
+  const [ticketFilter, setTicketFilter] = useState<'all' | 'notsent' | 'sent'>('all')
   const [sendTab, setSendTab] = useState<'cards' | 'ticket'>('cards')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendingRow, setSendingRow] = useState<string | null>(null)
-  /** Guests sent an entrance pass this session — not persisted, resets on reload
-   *  (the backend doesn't track per-guest entrance-pass sends yet). */
+  /** Optimistic overlay on the server's per-guest ticket status — marks a row
+   *  "Sent" the instant its send succeeds, before router.refresh() re-queries
+   *  the persisted whatsapp_messages ledger. */
   const [entranceSentIds, setEntranceSentIds] = useState<Set<string>>(new Set())
+  const ticketSent = (g: SendGuestRow) => g.entrancePassSent || entranceSentIds.has(g.id)
   const [confirmSend, setConfirmSend] = useState<PendingSend | null>(null)
   const [report, setReport] = useState<WhatsAppSendSummary | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -175,6 +180,20 @@ export default function SendInvitesView({
   const [phoneEdit, setPhoneEdit] = useState<{ id: string; value: string } | null>(null)
   const [confirmEntranceSend, setConfirmEntranceSend] = useState<{ ids?: string[]; recipients: number } | null>(null)
   const [entrancePreviewOpen, setEntrancePreviewOpen] = useState(false)
+  // Per-guest channel override for the Digital Cards tab (WhatsApp/SMS only —
+  // entrance passes are image attachments, so tickets stay WhatsApp-only with
+  // no picker). Same custom-dropdown pattern as the pledges guest table: a
+  // native <select> can't render icon components inside its options.
+  const [channelChoice, setChannelChoice] = useState<Record<string, 'whatsapp' | 'sms'>>({})
+  const [channelMenuOpenId, setChannelMenuOpenId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!channelMenuOpenId) return
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-channel-menu]')) setChannelMenuOpenId(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [channelMenuOpenId])
   // Inline guest-list editing: one row at a time, plus an add-guest row.
   const [rowEdit, setRowEdit] = useState<{ id: string; name: string; phone: string; askDelete: boolean } | null>(null)
   const [newGuest, setNewGuest] = useState<{ name: string; phone: string } | null>(null)
@@ -200,6 +219,17 @@ export default function SendInvitesView({
   const notSentCount = useMemo(() => guests.filter((g) => g.status === 'none').length, [guests])
   const awaitingCount = useMemo(() => guests.filter((g) => isAwaiting(g.status)).length, [guests])
   const attendingCount = useMemo(() => guests.filter((g) => g.status === 'attending').length, [guests])
+  // Ticket-sent status is already tracked (entrancePassSent / entranceSentIds
+  // — same real ledger the row badges already read from), just not yet
+  // exposed as filter tabs the way invite status is.
+  const ticketNotSentCount = useMemo(
+    () => guests.filter((g) => g.status === 'attending' && !(g.entrancePassSent || entranceSentIds.has(g.id))).length,
+    [guests, entranceSentIds],
+  )
+  const ticketSentCount = useMemo(
+    () => guests.filter((g) => g.status === 'attending' && (g.entrancePassSent || entranceSentIds.has(g.id))).length,
+    [guests, entranceSentIds],
+  )
 
   // Pass Ticket tab only ever sends to confirmed guests — the guest list
   // beneath it is always scoped to "attending", regardless of whatever
@@ -212,13 +242,19 @@ export default function SendInvitesView({
       if (effectiveFilter === 'notsent' && g.status !== 'none') return false
       if (effectiveFilter === 'awaiting' && !isAwaiting(g.status)) return false
       if (effectiveFilter === 'attending' && g.status !== 'attending') return false
+      if (sendTab === 'ticket') {
+        const sent = g.entrancePassSent || entranceSentIds.has(g.id)
+        if (ticketFilter === 'notsent' && sent) return false
+        if (ticketFilter === 'sent' && !sent) return false
+      }
       if (q && !`${g.name} ${g.phone ?? ''} ${g.whatsappPhone ?? ''}`.toLowerCase().includes(q)) {
         return false
       }
       return true
     })
-  }, [guests, effectiveFilter, search])
+  }, [guests, effectiveFilter, search, sendTab, ticketFilter, entranceSentIds])
   const pct = quota.purchased > 0 ? Math.min(100, Math.round((quota.used / quota.purchased) * 100)) : 0
+  const epct = entranceQuota.purchased > 0 ? Math.min(100, Math.round((entranceQuota.used / entranceQuota.purchased) * 100)) : 0
 
   // The webhook flips statuses (delivered, viewed, RSVP taps) server-side;
   // refetch periodically so the table reflects them without a manual reload.
@@ -276,41 +312,6 @@ export default function SendInvitesView({
     })
   }
 
-  function toggleSharing() {
-    startTransition(async () => {
-      try {
-        if (publicLink.enabled) {
-          await setPublicSharing(false)
-        } else {
-          await enablePublicSharing()
-        }
-        router.refresh()
-      } catch {
-        toast.error(strings.toast_sharing_error)
-      }
-    })
-  }
-
-  async function copyLink() {
-    if (!publicLink.url) return
-    await navigator.clipboard.writeText(publicLink.url)
-    setCopied(true)
-    toast.success(strings.toast_link_copied)
-    setTimeout(() => setCopied(false), 1800)
-  }
-
-  function shareLink(channel: 'whatsapp' | 'sms' | 'qr') {
-    if (!publicLink.url) return
-    const msg = publicInviteMessage(event.coupleName, publicLink.url)
-    if (channel === 'whatsapp') {
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
-    } else if (channel === 'sms') {
-      window.open(`sms:?&body=${encodeURIComponent(msg)}`, '_blank')
-    } else {
-      window.open(publicLink.url, '_blank', 'noopener,noreferrer')
-    }
-  }
-
   /** Stage a bulk send: show recipients + credit cost, send on confirm. */
   function stageBulkSend(ids?: string[], { reminder = false }: { reminder?: boolean } = {}) {
     const pool = ids ? guests.filter((g) => ids.includes(g.id)) : guests
@@ -366,7 +367,9 @@ export default function SendInvitesView({
 
   /** Stage sending the entrance-pass ticket to attending guests — a separate,
    *  simpler confirm flow from the invite send: no {{2}}/{{3}} to approve
-   *  (the ticket's copy is generated server-side) and no credit cost. */
+   *  (the ticket's copy is generated server-side). Draws from its own credit
+   *  pool, same size as the invite quota — first ticket per guest consumes a
+   *  credit, re-sends are free. */
   function stageEntranceSend(ids?: string[]) {
     // Guard against a stale selection from another tab (e.g. checked on
     // "All", then switched to "Attending" and clicked send) — only guests
@@ -391,13 +394,21 @@ export default function SendInvitesView({
     setEntrancePreviewOpen(false)
     startTransition(async () => {
       const res = await sendEntrancePasses(ids, eventId)
-      if (res.sent === 0 && res.failed === 0 && res.skipped === 0) {
+      if (res.sent === 0 && res.failed === 0 && res.skipped === 0 && res.blocked === 0) {
         toast.error(strings.toast_nothing_sent)
         setSelected(new Set())
         return
       }
+      if (res.sent > 0) {
+        setEntranceSentIds((prev) => {
+          const next = new Set(prev)
+          for (const r of res.results) if (r.outcome === 'sent') next.add(r.id)
+          return next
+        })
+      }
       const parts = [`${res.sent} ${res.dryRun ? strings.send_verb_dryrun : strings.send_verb_sent}`]
       if (res.failed > 0) parts.push(fmt(strings.send_failed_n, { n: res.failed }))
+      if (res.blocked > 0) parts.push(fmt(strings.send_over_quota, { n: res.blocked }))
       if (res.skipped > 0) parts.push(fmt(strings.send_no_phone, { n: res.skipped }))
       const summaryLine = parts.join(' · ')
       if (res.sent > 0) toast.success(summaryLine)
@@ -424,6 +435,16 @@ export default function SendInvitesView({
     runBulkSend(ids)
   }
 
+  /** The channel to actually send this guest's invite on (Digital Cards tab
+   *  only): their dropdown override if it's still usable, else the
+   *  server-computed default. */
+  function effectiveChannel(g: SendGuestRow): 'whatsapp' | 'sms' {
+    const chosen = channelChoice[g.id]
+    if (chosen === 'whatsapp' && (g.whatsappPhone || g.phone)) return 'whatsapp'
+    if (chosen === 'sms' && (g.phone || g.whatsappPhone)) return 'sms'
+    return g.channel
+  }
+
   /** Per-row send on the Pass Ticket tab — the guest's entrance-pass ticket,
    *  NOT the invite template the same button position sends on invite tabs. */
   function sendPassRow(g: SendGuestRow) {
@@ -435,6 +456,7 @@ export default function SendInvitesView({
         if (res.sent > 0) setEntranceSentIds((prev) => new Set(prev).add(g.id))
         if (res.sent > 0 && res.dryRun) toast.success(`1 ${strings.send_verb_dryrun}`)
         else if (res.sent > 0) toast.success(fmt(strings.toast_pass_sent, { name: first }))
+        else if (res.blocked > 0) toast.error(fmt(strings.send_over_quota, { n: res.blocked }))
         else if (res.skipped > 0) toast.error(fmt(strings.send_no_phone, { n: res.skipped }))
         else {
           const detail = res.results[0]?.error
@@ -499,7 +521,7 @@ export default function SendInvitesView({
     const guestLike = { full_name: g.name, phone: g.phone, whatsapp_phone: g.whatsappPhone }
     const url = channel === 'whatsapp' ? whatsappShareUrl(guestLike, msg) : smsShareUrl(guestLike, msg)
     window.open(url, '_blank', 'noopener,noreferrer')
-    recordSend(g.id, channel).catch(() => {})
+    recordSend(g.id, channel, eventId).catch(() => {})
     if (reminding)
       toast.success(fmt(strings.toast_reminder_ready, { name: firstNameOf(g.name) }))
   }
@@ -648,13 +670,14 @@ export default function SendInvitesView({
 
       <div className="head">
         <div>
-          <h1>{strings.heading}</h1>
-          <p className="sub">{event.hasPaidOrder ? strings.subheading : strings.no_design_subheading}</p>
-        </div>
-        <div className="headacts">
-          <button className="btn ghost" onClick={() => setPreviewOpen(true)}>
-            <Eye size={15} /> {strings.preview_button}
-          </button>
+          <h1>{sendTab === 'ticket' ? strings.entrance_title : strings.heading}</h1>
+          <p className="sub">
+            {sendTab === 'ticket'
+              ? strings.entrance_desc
+              : event.hasPaidOrder
+                ? strings.subheading
+                : strings.no_design_subheading}
+          </p>
         </div>
       </div>
 
@@ -727,219 +750,198 @@ export default function SendInvitesView({
 
       {/* Event context */}
       <div className="ctx">
-        <div className={`ccard${event.cardImageUrl || event.cardTreatment ? '' : ' noDesign'}`}>
-          {event.cardImageUrl ? (
-            <Image
-              src={event.cardImageUrl}
-              alt={`${event.coupleName} invitation card`}
-              fill
-              sizes="132px"
-              quality={90}
-              className="object-cover"
-            />
-          ) : event.cardTreatment ? (
-            <InvitationVisual treatment={event.cardTreatment} />
+        <div className="ctxbody">
+          {sendTab === 'ticket' ? (
+            <div className="ccard ticket">
+              <Image
+                src="/entrance-pass/signature.png"
+                alt={strings.entrance_tag}
+                fill
+                sizes="260px"
+                className="object-cover"
+              />
+            </div>
           ) : (
-            <a href={unassignedOrders.length > 0 ? '#unassigned-orders' : '/invitations/catalog'} className="ci noDesign">
-              <span>{strings.card_fallback_label}</span>
-              <b>{unassignedOrders.length > 0 ? strings.no_design_pick_cta : strings.no_design_cta}</b>
-            </a>
-          )}
-        </div>
-        <div className="cinfo">
-          <h3>{headingName}</h3>
-          <div className="row">
-            {event.dateLabel ? <span>📅 {event.dateLabel}</span> : null}
-            {event.venue ? <span>📍 {event.venue}</span> : null}
-            {!event.hasPaidOrder && showCategoryPill ? (
-              <span className="catpill">{event.eventTypeLabel}</span>
-            ) : null}
-            {event.hasPaidOrder ? (
-              <span className="badge">✓ {event.cardTier ? fmt(strings.card_purchased_tier, { tier: event.cardTier }) : strings.card_purchased}</span>
-            ) : null}
-          </div>
-
-          {event.hasPaidOrder ? (
-            <>
-              <div className="pmeta">
-                {showCategoryPill ? (
-                  <span className="catpill">{event.eventTypeLabel}</span>
-                ) : null}
-                {event.cardTier ? (
-                  <span className="fact"><i>{strings.fact_package}</i>{event.cardTier}</span>
-                ) : null}
-                {event.cardName ? (
-                  <span className="fact"><i>{strings.fact_design}</i>{event.cardName}</span>
-                ) : null}
-                <span className="fact">
-                  <i>{strings.fact_invites_paid}</i>
-                  {fmt(strings.fact_to_share, { n: quota.purchased })}
-                </span>
-              </div>
-
-              {event.addOns.length > 0 ? (
-                <div className="addons">
-                  <span className="al">{strings.addons_label}</span>
-                  {event.addOns.map((a) => (
-                    <span key={a} className="ao">{a}</span>
-                  ))}
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-        <Link href="/my/dashboard/events" className="chg">{strings.manage_events}</Link>
-      </div>
-
-      {/* Funnel + quota */}
-      <div className="funnel">
-        <div className="fc"><div className="n">{funnel.invited}</div><div className="l">{strings.funnel_invited}</div></div>
-        <div className="fc"><div className="n">{funnel.delivered}</div><div className="l"><span className="ar">→</span> {strings.funnel_delivered}</div></div>
-        <div className="fc"><div className="n">{funnel.viewed}</div><div className="l"><span className="ar">→</span> {strings.funnel_viewed}</div></div>
-        <div className="fc"><div className="n">{funnel.rsvpd}</div><div className="l"><span className="ar">→</span> {strings.funnel_rsvpd}</div></div>
-        <div className="fc quota">
-          <div className="top"><span>{strings.quota_label}</span><span><b>{quota.used}</b> {fmt(strings.quota_used_suffix, { m: quota.purchased })}</span></div>
-          <div className="bar"><i style={{ width: `${pct}%` }} /></div>
-          <div className="ft">{fmt(strings.quota_remaining, { n: quota.remaining })} · <Link href="/invitations/catalog">{strings.quota_topup}</Link></div>
-        </div>
-      </div>
-
-      {/* Two modes: Targeted is the product's core, Broadcast is secondary */}
-      <div className="modes">
-        {sendTab === 'cards' ? (
-        <>
-        <section className="mode primary">
-          <div className="hrow"><div><div className="tag">{strings.targeted_tag}</div><h2>{strings.targeted_title}</h2></div></div>
-          <p>{strings.targeted_desc}</p>
-          {editingSettings ? (
-            <div className="vars">
-              <div className="vlegend">{strings.settings_legend}</div>
-              <div className="vgrid two">
-                <label className="vfield">
-                  <span>{strings.field_host_label}</span>
-                  <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
-                </label>
-                <CategoryField
-                  value={eventCat}
-                  onChange={setEventCat}
-                  label={strings.field_category_label}
-                  otherLabel={strings.field_category_other}
+            <div className={`ccard${event.cardImageUrl || event.cardTreatment ? '' : ' noDesign'}`}>
+              {event.cardImageUrl ? (
+                <Image
+                  src={event.cardImageUrl}
+                  alt={`${event.coupleName} invitation card`}
+                  fill
+                  sizes="92px"
+                  quality={90}
+                  className="object-cover"
                 />
-              </div>
-              <div className="vsave">
-                <p className="mutedp">{strings.settings_required_note}</p>
-                <div className="vbtns">
-                  {data.sendSettings.confirmed ? (
-                    <button
-                      className="btn ghost"
-                      disabled={pending}
-                      title={strings.preview_close}
-                      onClick={() => {
-                        setHostName(data.sendSettings.hostName)
-                        setEventCat(data.sendSettings.eventCategory)
-                        setEditingSettings(false)
-                      }}
-                    ><X size={14} /></button>
-                  ) : null}
-                  <button className="btn solid" disabled={pending || !settingsValid} onClick={saveSettings}>
-                    <Check size={14} /> {strings.save_number}
+              ) : event.cardTreatment ? (
+                <InvitationVisual treatment={event.cardTreatment} />
+              ) : (
+                <a href={unassignedOrders.length > 0 ? '#unassigned-orders' : '/invitations/catalog'} className="ci noDesign">
+                  <ImagePlus size={20} />
+                  <b>{unassignedOrders.length > 0 ? strings.no_design_pick_cta : strings.no_design_cta}</b>
+                </a>
+              )}
+            </div>
+          )}
+          <div className="cinfo">
+            <div className="cinfo-head">
+              <h3>{headingName}</h3>
+              {sendTab === 'cards' && !editingSettings ? (
+                <div className="ctxhead">
+                  <button className="btn ghost" disabled={pending} onClick={() => setEditingSettings(true)}>
+                    <Pencil size={13} /> {strings.settings_edit}
+                  </button>
+                  <button className="btn ghost" onClick={() => setPreviewOpen(true)}>
+                    <Eye size={15} /> {strings.preview_button}
                   </button>
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div className="vars saved">
-              <div className="vlegend ok"><Check size={13} /> {strings.settings_legend}</div>
-              <div className="vsummary">
-                <span className="vchip"><i>{strings.field_host_label}</i>{hostName}</span>
-                <span className="vchip"><i>{strings.field_category_label}</i>{capitalize(eventCat)}</span>
-                <button className="btn ghost vedit" disabled={pending} onClick={() => setEditingSettings(true)}>
-                  <Pencil size={13} /> {strings.settings_edit}
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="chips">
-            <button
-              className="btn pri lg"
-              disabled={pending || notSentCount === 0}
-              onClick={() => stageBulkSend(guests.filter((g) => g.status === 'none').map((g) => g.id))}
-            >
-              <MessageCircle size={16} /> {fmt(strings.send_all_notsent, { n: notSentCount })}
-            </button>
-            {awaitingCount > 0 ? (
-              <button className="chip remind" disabled={pending} onClick={remindAwaiting}>
-                <BellRing size={15} />{fmt(strings.remind_awaiting, { n: awaitingCount })}
-              </button>
-            ) : null}
-            <button className="chip" onClick={() => setPreviewOpen(true)}>
-              <Eye size={15} />{strings.preview_button}
-            </button>
-          </div>
-          {!whatsappLive ? (
-            <div className="connect">
-              <span className="dp">{strings.dryrun_pill}</span>
-              <span>{strings.dryrun_note}</span>
-            </div>
-          ) : null}
-          <div className="note"><span className="k">{strings.best_for}</span><span>{strings.targeted_best_for}</span></div>
-        </section>
-
-        <section className="mode">
-          <div className="hrow">
-            <div><div className="tag">{strings.broadcast_tag}</div><h2>{strings.broadcast_title}</h2></div>
-            <button
-              className={`tg ${publicLink.enabled ? 'on' : 'off'}`}
-              onClick={toggleSharing}
-              disabled={pending}
-              title={publicLink.enabled ? strings.sharing_on : strings.sharing_off}
-              aria-label={strings.sharing_toggle_aria}
-            ><i /></button>
-          </div>
-          <p>{strings.broadcast_desc}</p>
-
-          {publicLink.enabled && publicLink.url ? (
-            <>
-              <div className="linkbox">
-                <code>{publicLink.url.replace(/^https?:\/\//, '')}</code>
-                <button className="copybtn" onClick={copyLink}>{copied ? strings.copy_done : strings.copy}</button>
-              </div>
-              <div className="chips">
-                <button className="chip wa" onClick={() => shareLink('whatsapp')}><MessageCircle size={15} />{strings.chip_whatsapp}</button>
-                <button className="chip sms" onClick={() => shareLink('sms')}><Smartphone size={15} />{strings.chip_sms}</button>
-                <button className="chip copy" onClick={copyLink}><Copy size={15} />{strings.chip_copy_link}</button>
-                <button className="chip qr" onClick={() => shareLink('qr')}><ExternalLink size={15} />{strings.chip_open}</button>
-              </div>
-            </>
-          ) : (
-            <div className="linkbox off"><code>{strings.link_off_placeholder}</code></div>
-          )}
-
-          <div className="note"><span className="k">{strings.best_for}</span><span>{strings.broadcast_best_for}</span></div>
-        </section>
-        </>
-        ) : (
-        <section className="mode entrance">
-          <div className="hrow"><div><div className="tag">{strings.entrance_tag}</div><h2>{strings.entrance_title}</h2></div></div>
-          <p>{strings.entrance_desc}</p>
-          {attendingCount > 0 ? (
-            <div className="chips">
-              <button className="btn amber lg" disabled={pending} onClick={() => stageEntranceSend()}>
-                <Ticket size={16} /> {fmt(strings.send_entrance_passes, { n: attendingCount })}
-              </button>
-              {entrancePreviewGuest ? (
-                <button className="chip" onClick={() => setEntrancePreviewOpen(true)}>
-                  <Eye size={15} />{strings.entrance_preview_button}
-                </button>
+              ) : sendTab === 'ticket' ? (
+                <div className="ctxhead">
+                  <button
+                    className="btn ghost"
+                    disabled={!entrancePreviewGuest}
+                    onClick={() => setEntrancePreviewOpen(true)}
+                  >
+                    <Eye size={15} /> {strings.entrance_preview_button}
+                  </button>
+                </div>
               ) : null}
             </div>
-          ) : (
-            <div className="empty">{strings.empty_attending}</div>
-          )}
-          <div className="note"><span className="k">{strings.best_for}</span><span>{strings.entrance_best_for}</span></div>
-        </section>
-        )}
+            <div className="row">
+              {event.dateLabel ? <span>📅 {event.dateLabel}</span> : null}
+              {event.venue ? <span>📍 {event.venue}</span> : null}
+              {sendTab === 'ticket' ? (
+                entranceQuota.purchased > 0 ? (
+                  <span className="badge">✓ {strings.entrance_purchased}</span>
+                ) : null
+              ) : (
+                <>
+                  {!event.hasPaidOrder && showCategoryPill ? (
+                    <span className="catpill">{event.eventTypeLabel}</span>
+                  ) : null}
+                  {event.hasPaidOrder ? (
+                    <span className="badge">✓ {strings.card_purchased}</span>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            {sendTab === 'cards' && event.hasPaidOrder ? (
+              <>
+                <div className="pmeta">
+                  {showCategoryPill ? (
+                    <span className="catpill">{event.eventTypeLabel}</span>
+                  ) : null}
+                  {event.cardTier ? (
+                    <span className="fact"><i>{strings.fact_package}</i>{event.cardTier}</span>
+                  ) : null}
+                  {event.cardName ? (
+                    <span className="fact"><i>{strings.fact_design}</i>{event.cardName}</span>
+                  ) : null}
+                  <span className="fact">
+                    <i>{strings.fact_invites_paid}</i>
+                    {fmt(strings.fact_to_share, { n: quota.purchased })}
+                  </span>
+                </div>
+
+                {event.addOns.length > 0 ? (
+                  <div className="addons">
+                    <span className="al">{strings.addons_label}</span>
+                    {event.addOns.map((a) => (
+                      <span key={a} className="ao">{a}</span>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {sendTab === 'cards' ? (
+          <div className="ctxsend">
+            {editingSettings ? (
+              <div className="vars">
+                <div className="vlegend">{strings.settings_legend}</div>
+                <div className="vgrid two">
+                  <label className="vfield">
+                    <span>{strings.field_host_label}</span>
+                    <input value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={60} />
+                  </label>
+                  <CategoryField
+                    value={eventCat}
+                    onChange={setEventCat}
+                    label={strings.field_category_label}
+                    otherLabel={strings.field_category_other}
+                  />
+                </div>
+                <div className="vsave">
+                  <p className="mutedp">{strings.settings_required_note}</p>
+                  <div className="vbtns">
+                    {data.sendSettings.confirmed ? (
+                      <button
+                        className="btn ghost"
+                        disabled={pending}
+                        title={strings.preview_close}
+                        onClick={() => {
+                          setHostName(data.sendSettings.hostName)
+                          setEventCat(data.sendSettings.eventCategory)
+                          setEditingSettings(false)
+                        }}
+                      ><X size={14} /></button>
+                    ) : null}
+                    <button className="btn solid" disabled={pending || !settingsValid} onClick={saveSettings}>
+                      <Check size={14} /> {strings.save_number}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : awaitingCount > 0 ? (
+              <div className="chips">
+                <button className="chip remind" disabled={pending} onClick={remindAwaiting}>
+                  <BellRing size={15} />{fmt(strings.remind_awaiting, { n: awaitingCount })}
+                </button>
+              </div>
+            ) : null}
+            {!whatsappLive ? (
+              <div className="connect">
+                <span className="dp">{strings.dryrun_pill}</span>
+                <span>{strings.dryrun_note}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : sendTab === 'ticket' ? (
+          <div className="ctxsend">
+            {entranceQuota.purchased > 0 ? (
+              <div className="equota">
+                <div className="top">
+                  <span>{strings.entrance_quota_label}</span>
+                  <span><b>{entranceQuota.used}</b> {fmt(strings.quota_used_suffix, { m: entranceQuota.purchased })}</span>
+                </div>
+                <div className="bar"><i style={{ width: `${epct}%` }} /></div>
+                <div className="ft">{fmt(strings.quota_remaining, { n: entranceQuota.remaining })}</div>
+              </div>
+            ) : null}
+            {attendingCount === 0 ? (
+              <div className="empty">{strings.empty_attending}</div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+
+      {/* Funnel + quota — Digital Cards only; Entrance Pass has its own
+       *  quota bar in the event context card above. */}
+      {sendTab === 'cards' ? (
+        <div className="funnel">
+          <div className="fc"><div className="fcicon"><Send size={13} /></div><div className="n">{funnel.invited}</div><div className="l">{strings.funnel_invited}</div></div>
+          <div className="fc"><div className="fcicon"><CheckCheck size={13} /></div><div className="n">{funnel.delivered}</div><div className="l"><span className="ar">→</span> {strings.funnel_delivered}</div></div>
+          <div className="fc"><div className="fcicon"><Eye size={13} /></div><div className="n">{funnel.viewed}</div><div className="l"><span className="ar">→</span> {strings.funnel_viewed}</div></div>
+          <div className="fc"><div className="fcicon"><CalendarCheck size={13} /></div><div className="n">{funnel.rsvpd}</div><div className="l"><span className="ar">→</span> {strings.funnel_rsvpd}</div></div>
+          <div className="fc quota">
+            <div className="top"><span>{strings.quota_label}</span><span><b>{quota.used}</b> {fmt(strings.quota_used_suffix, { m: quota.purchased })}</span></div>
+            <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+            <div className="ft">{fmt(strings.quota_remaining, { n: quota.remaining })} · <Link href="/invitations/catalog">{strings.quota_topup}</Link></div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Guest table */}
       <div className="gt">
@@ -950,7 +952,7 @@ export default function SendInvitesView({
             checked={visible.length > 0 && selected.size === visible.length}
             onChange={(e) => toggleSelectAll(e.target.checked)}
           />
-          <h2>{strings.guest_list}</h2><span className="cnt">{fmt(strings.guest_count, { n: guests.length })}</span>
+          <h2>{strings.guest_list}</h2>
           <input
             className="gsearch"
             type="search"
@@ -973,8 +975,16 @@ export default function SendInvitesView({
                 </button>
               </div>
             ) : (
-              <div className="seg">
-                <span className="sg on amber locked"><Ticket size={12} /> {strings.filter_attending}{attendingCount ? ` ${attendingCount}` : ''}</span>
+              <div className="seg" role="tablist" aria-label={strings.filter_aria}>
+                <button className={`sg amber ${ticketFilter === 'all' ? 'on' : ''}`} onClick={() => setTicketFilter('all')}>
+                  <Ticket size={12} /> {strings.filter_attending}{attendingCount ? ` ${attendingCount}` : ''}
+                </button>
+                <button className={`sg amber ${ticketFilter === 'notsent' ? 'on' : ''}`} onClick={() => setTicketFilter('notsent')}>
+                  {strings.filter_notsent}{ticketNotSentCount ? ` ${ticketNotSentCount}` : ''}
+                </button>
+                <button className={`sg amber ${ticketFilter === 'sent' ? 'on' : ''}`} onClick={() => setTicketFilter('sent')}>
+                  {strings.entrance_status_sent}{ticketSentCount ? ` ${ticketSentCount}` : ''}
+                </button>
               </div>
             )}
             {selected.size > 0 ? <span className="selcnt">{fmt(strings.selected_count, { n: selected.size })}</span> : null}
@@ -987,7 +997,7 @@ export default function SendInvitesView({
               <Plus size={14} /> {strings.add_guest}
             </button>
             <button
-              className={`btn ${effectiveFilter === 'attending' ? 'amber' : 'pri'}`}
+              className="btn send"
               disabled={pending || selected.size === 0}
               onClick={() => (effectiveFilter === 'attending' ? stageEntranceSend([...selected]) : stageBulkSend([...selected]))}
             >
@@ -1118,13 +1128,60 @@ export default function SendInvitesView({
                         )
                       )}
                     </td>
-                    <td>
-                      <span className={`mini ${g.channel}`}>{g.channel === 'whatsapp' ? <MessageCircle size={13} /> : <Smartphone size={13} />}{g.channel === 'whatsapp' ? strings.channel_whatsapp : strings.channel_sms}</span>
+                    <td style={{ position: 'relative' }}>
+                      {(() => {
+                          const channel = effectiveChannel(g)
+                          return (
+                            <div data-channel-menu style={{ position: 'relative', display: 'inline-block' }}>
+                              <button
+                                type="button"
+                                className={`pillselect pill-${channel}`}
+                                onClick={() => setChannelMenuOpenId((id) => (id === g.id ? null : g.id))}
+                                aria-haspopup="listbox"
+                                aria-expanded={channelMenuOpenId === g.id}
+                                aria-label={`${strings.row_whatsapp} / ${strings.row_sms}`}
+                              >
+                                {channel === 'whatsapp' ? <MessageCircle size={13} /> : <Smartphone size={13} />}
+                                {channel === 'whatsapp' ? strings.channel_whatsapp : strings.channel_sms}
+                              </button>
+                              {channelMenuOpenId === g.id ? (
+                                <div className="chmenu" role="listbox">
+                                  <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={channel === 'whatsapp'}
+                                    disabled={!hasPhone(g)}
+                                    className={`chmenu-item ${channel === 'whatsapp' ? 'active' : ''}`}
+                                    onClick={() => {
+                                      setChannelChoice((prev) => ({ ...prev, [g.id]: 'whatsapp' }))
+                                      setChannelMenuOpenId(null)
+                                    }}
+                                  >
+                                    <MessageCircle size={13} /> {strings.channel_whatsapp}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={channel === 'sms'}
+                                    disabled={!hasPhone(g)}
+                                    className={`chmenu-item ${channel === 'sms' ? 'active' : ''}`}
+                                    onClick={() => {
+                                      setChannelChoice((prev) => ({ ...prev, [g.id]: 'sms' }))
+                                      setChannelMenuOpenId(null)
+                                    }}
+                                  >
+                                    <Smartphone size={13} /> {strings.channel_sms}
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          )
+                      })()}
                     </td>
                     <td>
                       {sendTab === 'ticket' ? (
-                        <span className={`status ${entranceSentIds.has(g.id) ? 's-yes' : 's-none'}`}>
-                          {entranceSentIds.has(g.id) ? strings.entrance_status_sent : strings.entrance_status_notsent}
+                        <span className={`status ${ticketSent(g) ? 's-yes' : 's-none'}`}>
+                          {ticketSent(g) ? strings.entrance_status_sent : strings.entrance_status_notsent}
                         </span>
                       ) : (
                         <span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span>
@@ -1132,28 +1189,54 @@ export default function SendInvitesView({
                     </td>
                     <td>
                       <div className="ra">
-                        {effectiveFilter === 'attending' ? (
-                          <button
-                            className="ia send pass"
-                            disabled={pending || !hasPhone(g)}
-                            title={strings.row_send_pass}
-                            onClick={() => sendPassRow(g)}
-                          >
-                            {sendingRow === g.id ? <Loader2 size={14} className="spin" /> : <Ticket size={14} />}
-                            {strings.row_send_pass}
-                          </button>
-                        ) : (
+                        {effectiveFilter === 'attending' ? (() => {
+                          // Entrance passes are WhatsApp-only (template + QR
+                          // image) — there is no SMS equivalent. If the
+                          // guest's resolved channel isn't WhatsApp, don't
+                          // silently fall through to the generic SMS
+                          // reminder flow (rowShare): that opens an unrelated
+                          // compose window and never sends a ticket, with no
+                          // feedback since these guests are already
+                          // 'attending' (isAwaiting is false).
+                          const passUnavailable = effectiveChannel(g) !== 'whatsapp'
+                          return (
+                            <button
+                              className="ia send pass"
+                              disabled={pending || !hasPhone(g) || passUnavailable}
+                              title={passUnavailable ? strings.entrance_needs_whatsapp : strings.row_send_pass}
+                              onClick={() => {
+                                if (passUnavailable) {
+                                  toast.error(strings.entrance_needs_whatsapp)
+                                  return
+                                }
+                                sendPassRow(g)
+                              }}
+                            >
+                              {sendingRow === g.id ? (
+                                <Loader2 size={14} className="spin" />
+                              ) : (
+                                <Ticket size={14} />
+                              )}
+                              {strings.row_send_pass}
+                            </button>
+                          )
+                        })() : (
                           <button
                             className="ia send"
                             disabled={pending || !hasPhone(g)}
-                            title={strings.row_whatsapp}
-                            onClick={() => rowShare(g, 'whatsapp')}
+                            title={effectiveChannel(g) === 'whatsapp' ? strings.row_whatsapp : strings.row_sms}
+                            onClick={() => rowShare(g, effectiveChannel(g))}
                           >
-                            {sendingRow === g.id ? <Loader2 size={14} className="spin" /> : <MessageCircle size={14} />}
+                            {sendingRow === g.id ? (
+                              <Loader2 size={14} className="spin" />
+                            ) : g.status === 'none' ? (
+                              <Send size={13} />
+                            ) : (
+                              <RotateCcw size={13} />
+                            )}
                             {g.status === 'none' ? strings.row_send : strings.row_resend}
                           </button>
                         )}
-                        <button className="ia" disabled={pending || !hasPhone(g)} title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Smartphone size={15} /></button>
                         <button className="ia" disabled={pending} title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
                         <button
                           className="ia"
@@ -1198,7 +1281,7 @@ export default function SendInvitesView({
             <div className="mrow">
               <button className="btn ghost" onClick={() => setConfirmSend(null)}>{strings.confirm_cancel}</button>
               <button
-                className="btn pri"
+                className="btn send"
                 disabled={pending || !settingsValid}
                 onClick={() => runBulkSend(confirmSend.ids, confirmSend.reminder)}
               >
@@ -1223,7 +1306,7 @@ export default function SendInvitesView({
                   <Eye size={14} /> {strings.entrance_preview_button}
                 </button>
               ) : null}
-              <button className="btn amber" disabled={pending} onClick={runEntranceSend}>
+              <button className="btn send" disabled={pending} onClick={runEntranceSend}>
                 <Ticket size={15} /> {strings.confirm_confirm}
               </button>
             </div>
@@ -1236,7 +1319,7 @@ export default function SendInvitesView({
           WhatsApp text, so the couple can verify before sending in bulk. */}
       {entrancePreviewOpen && entrancePreviewGuest ? (
         <div className="ovl" onClick={() => setEntrancePreviewOpen(false)}>
-          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+          <div className="modal wide" data-lenis-prevent onClick={(e) => e.stopPropagation()}>
             <div className="mhead">
               <h3>{strings.entrance_preview_title}</h3>
               <button className="xbtn" onClick={() => setEntrancePreviewOpen(false)} aria-label={strings.preview_close}><X size={16} /></button>
@@ -1255,18 +1338,6 @@ export default function SendInvitesView({
                 <div className="wabody">{waText(entrancePreviewBody)}</div>
                 <div className="wafoot">{ENTRANCE_PASS_TEMPLATE.footer}</div>
               </div>
-            </div>
-            <div className="mrow">
-              <button className="btn ghost" onClick={() => setEntrancePreviewOpen(false)}>{strings.confirm_cancel}</button>
-              {confirmEntranceSend ? (
-                <button className="btn amber" disabled={pending} onClick={runEntranceSend}>
-                  <Ticket size={15} /> {strings.confirm_confirm}
-                </button>
-              ) : (
-                <button className="btn amber" disabled={pending} onClick={() => stageEntranceSend()}>
-                  <Ticket size={15} /> {fmt(strings.send_entrance_passes, { n: attendingCount })}
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -1291,7 +1362,7 @@ export default function SendInvitesView({
       {/* Invite preview + test send */}
       {previewOpen ? (
         <div className="ovl" onClick={() => setPreviewOpen(false)}>
-          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+          <div className="modal wide" data-lenis-prevent onClick={(e) => e.stopPropagation()}>
             <div className="mhead">
               <h3>{strings.preview_title}</h3>
               <button className="xbtn" onClick={() => setPreviewOpen(false)} aria-label={strings.preview_close}><X size={16} /></button>
@@ -1366,7 +1437,7 @@ export default function SendInvitesView({
       {/* Send report drawer */}
       {report ? (
         <div className="ovl right" onClick={() => setReport(null)}>
-          <div className="drawer" onClick={(e) => e.stopPropagation()}>
+          <div className="drawer" data-lenis-prevent onClick={(e) => e.stopPropagation()}>
             <div className="mhead">
               <h3>{strings.results_title}</h3>
               <button className="xbtn" onClick={() => setReport(null)} aria-label={strings.results_close}><X size={16} /></button>
@@ -1415,12 +1486,12 @@ const css = `
   --ink:#1c1b1f; --muted:#8b8790; --faint:#b6b2ba; --line:#ededf0; --hover:#faf8fc;
   --wa:#25D366; --sms:#3478F6; --amber-bg:#FFFBEB; --amber-bd:#FBE8B0; --amber-tx:#8a6d1a;
   --ok-bg:#EAF6EF; --ok-tx:#2E7D55; --bad-bg:#fcecec; --bad-tx:#c0392b;
+  --green:#9FE870; --green-tx:#3f6b1f;
   --radius:16px; --soft:0 1px 2px rgba(20,18,30,.05);
   color:var(--ink); }
 .si .serif, .si h1, .si h2, .si h3, .si .n, .si .ci b{ font-family:var(--font-cormorant),Georgia,serif; }
 .si h1{ font-weight:600; font-size:30px; letter-spacing:-.3px; }
 .si .head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-.si .headacts{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .si .evswitch{ display:flex; align-items:center; gap:8px; margin-left:auto; font-size:12px; font-weight:600; color:var(--muted); }
 .si .selwrap{ position:relative; display:inline-flex; align-items:center; }
 .si .evswitch select{ appearance:none; border:1px solid var(--line); border-radius:10px; padding:8px 34px 8px 12px;
@@ -1445,6 +1516,11 @@ const css = `
 .si .btn:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
 .si .btn.pri{ background:var(--lav-btn); color:var(--purple-d); box-shadow:var(--soft); }
 .si .btn.lg{ padding:11px 20px; font-size:14px; background:var(--purple); color:#fff; }
+/* Every actual "send now" button — invites, entrance passes, confirm-modal
+   sends — uses this one consistent green, regardless of which tab/context
+   it's in, instead of tab-colored (purple for cards, amber for tickets). */
+.si .btn.send{ background:var(--wa); color:#fff; box-shadow:var(--soft); }
+.si .btn.send:hover{ filter:brightness(1.06); background:var(--wa); }
 .si .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); }
 .si .btn.solid{ background:var(--purple); color:#fff; box-shadow:var(--soft); }
 .si .btn.ghost.danger{ color:var(--bad-tx); border-color:#f2c9c9; }
@@ -1452,37 +1528,39 @@ const css = `
 .si .btn.dangerfill{ background:var(--bad-tx); color:#fff; }
 .si .spin{ animation:si-spin .8s linear infinite; }
 @keyframes si-spin{ to{ transform:rotate(360deg); } }
-.si .ctx{ display:flex; gap:20px; align-items:center; background:#fff; border:1px solid var(--line);
-  border-radius:var(--radius); padding:18px; margin:22px 0 18px; box-shadow:var(--soft); }
-.si .ccard{ width:132px; height:178px; flex:none; border-radius:12px; position:relative; overflow:hidden;
-  background:linear-gradient(155deg,var(--purple),var(--lav)); }
-.si .ccard.noDesign{ background:var(--line); }
-.si .ccard .ci{ position:absolute; inset:9px; border:1px solid rgba(255,255,255,.55); border-radius:7px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; color:#fff; }
-.si .ccard .ci b{ font-size:14px; }
+.si .ctx{ position:relative; background:#fff; border:1px solid var(--line); border-radius:20px;
+  padding:22px; margin:22px 0 18px; box-shadow:var(--soft); }
+.si .ctxhead{ display:flex; gap:8px; flex-wrap:wrap; }
+.si .ctxbody{ display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+.si .cinfo-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.si .ccard{ width:92px; height:122px; flex:none; border-radius:14px; position:relative; overflow:hidden;
+  background:linear-gradient(155deg,var(--purple),var(--lav)); box-shadow:0 4px 14px rgba(107,63,160,.22); }
+.si .ccard.noDesign{ background:linear-gradient(155deg,var(--lav-soft),#fff); border:1.5px dashed var(--lav); box-shadow:none; }
+.si .ccard.ticket{ width:260px; height:76px; background:#FBEFDC; box-shadow:0 4px 14px rgba(138,109,26,.22); }
+.si .ccard .ci{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:5px; text-align:center; color:#fff; padding:8px; }
+.si .ccard .ci b{ font-size:13px; line-height:1.25; }
 .si .ccard .ci span{ font-size:7px; letter-spacing:1.2px; opacity:.85; }
-.si .ccard .ci.noDesign{ text-decoration:none; cursor:pointer; border:1px dashed var(--muted); border-radius:7px;
-  transition:background .12s; padding:8px; color:var(--muted); }
-.si .ccard .ci.noDesign:hover{ background:#fff; }
+.si .ccard .ci.noDesign{ text-decoration:none; cursor:pointer; color:var(--purple-d); gap:7px; }
+.si .ccard .ci.noDesign svg{ width:20px; height:20px; opacity:.7; }
 .si .ccard .ci.noDesign span{ opacity:.7; }
-.si .ccard .ci.noDesign b{ font-size:12px; line-height:1.3; text-decoration:underline; color:var(--ink); }
-.si .ctx h3{ font-size:20px; font-weight:600; }
-.si .ctx .row{ display:flex; gap:16px; color:var(--muted); font-size:13px; margin-top:8px; flex-wrap:wrap; align-items:center; }
-.si .badge{ display:inline-flex; align-items:center; gap:6px; background:var(--ok-bg); color:var(--ok-tx);
-  font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
-.si .ctx .chg{ margin-left:auto; align-self:flex-start; font-size:13px; color:var(--purple); font-weight:600; text-decoration:none; }
-.si .cinfo{ min-width:0; }
-.si .pmeta{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 26px; margin-top:14px; }
-.si .pmeta .fact{ display:inline-flex; flex-direction:column; gap:2px; font-size:14px; font-weight:600; color:var(--ink); }
-.si .pmeta .fact i{ font-style:normal; font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
-.si .catpill{ display:inline-flex; align-items:center; background:rgba(159,232,112,.28); color:#3f6b1f;
-  font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; }
-.si .addons{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:14px; }
-.si .addons .al{ font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
+.si .ccard .ci.noDesign b{ font-size:11.5px; line-height:1.3; text-decoration:underline; }
+.si .ctx h3{ font-size:19px; font-weight:600; }
+.si .ctx .row{ display:flex; gap:14px; color:var(--muted); font-size:13px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+.si .badge, .si .catpill{ display:inline-flex; align-items:center; gap:5px; background:var(--green); color:var(--green-tx);
+  font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; }
+.si .cinfo{ min-width:0; flex:1; }
+.si .pmeta{ display:flex; flex-wrap:wrap; align-items:center; gap:9px 24px; margin-top:12px; }
+.si .pmeta .fact{ display:inline-flex; flex-direction:column; gap:2px; font-size:13.5px; font-weight:600; color:var(--ink); }
+.si .pmeta .fact i{ font-style:normal; font-size:9.5px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
+.si .addons{ display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:12px; }
+.si .addons .al{ font-size:9.5px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
 .si .addons .ao{ display:inline-flex; align-items:center; background:var(--lav-soft); color:var(--purple-d);
-  font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; }
+  font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
 .si .funnel{ display:grid; grid-template-columns:repeat(4,1fr) 1.5fr; gap:12px; }
-.si .fc{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--soft); }
+.si .fc{ position:relative; background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--soft); }
+.si .fcicon{ position:absolute; top:14px; right:14px; width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; background:#F3F3F5; color:var(--purple); }
 .si .fc .n{ font-size:27px; line-height:1; font-weight:600; }
 .si .fc .l{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-top:8px; }
 .si .fc .l .ar{ color:var(--lav); font-weight:700; }
@@ -1492,6 +1570,12 @@ const css = `
 .si .bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--purple),var(--lav)); }
 .si .quota .ft{ font-size:11px; color:var(--muted); margin-top:9px; }
 .si .quota .ft a{ color:var(--purple); font-weight:600; text-decoration:none; }
+.si .equota{ margin-top:16px; padding:12px 14px; border:1px solid var(--amber-bd); border-radius:12px; background:#fff; }
+.si .equota .top{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:9px; }
+.si .equota .top b{ color:var(--ink); }
+.si .equota .bar{ background:var(--amber-bg); }
+.si .equota .bar i{ background:linear-gradient(90deg,var(--amber-tx),#c99a2e); }
+.si .equota .ft{ font-size:11px; color:var(--muted); margin-top:9px; }
 .si .sendtabs{ display:flex; flex-wrap:wrap; align-items:center; gap:24px; margin-top:22px;
   padding-bottom:8px; border-bottom:1px solid var(--line); }
 .si .stb{ display:inline-flex; align-items:center; gap:7px; margin-bottom:-9px; background:none; border:none;
@@ -1504,51 +1588,22 @@ const css = `
   padding:0 6px; background:rgba(0,0,0,.06); color:var(--muted); font-size:10.5px; font-weight:700; border-radius:999px; }
 .si .stb.on .stbcnt{ background:var(--ink); color:#fff; }
 .si .stb.amber.on .stbcnt{ background:var(--amber-tx); color:#fff; }
-.si .modes{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-top:16px; }
-.si .mode{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:var(--soft);
-  display:flex; flex-direction:column; }
-.si .mode.primary{ border-color:var(--lav); box-shadow:0 2px 10px rgba(107,63,160,.08); }
-.si .mode.entrance{ border-color:var(--amber-bd); box-shadow:0 2px 10px rgba(138,109,26,.08); grid-column:1/-1; }
-.si .tag{ font-size:10.5px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--lav); }
-.si .mode.primary .tag{ color:var(--purple); }
-.si .mode.entrance .tag{ color:var(--amber-tx); }
-.si .btn.amber{ background:var(--amber-bd); color:var(--amber-tx); box-shadow:var(--soft); }
+.si .ctxsend{ margin-top:18px; }
+.si .ctxsend .chips{ margin-top:0; }
 .si .seg .sg.on.amber{ background:var(--amber-bg); color:var(--amber-tx); }
-.si .seg .sg.locked{ cursor:default; }
-.si .mode h2{ font-size:20px; margin-top:6px; font-weight:600; }
-.si .mode p{ color:var(--muted); font-size:13px; margin-top:8px; line-height:1.55; }
-.si .mode p b{ color:var(--ink); font-weight:600; }
-.si .hrow{ display:flex; justify-content:space-between; align-items:flex-start; }
-.si .linkbox{ display:flex; align-items:center; gap:10px; background:var(--lav-soft); border-radius:12px;
-  padding:10px 12px 10px 14px; margin-top:16px; }
-.si .linkbox.off{ background:#f6f5f8; }
-.si .linkbox code{ font-family:ui-monospace,monospace; font-size:12.5px; color:var(--purple-d); flex:1;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.si .linkbox.off code{ color:var(--muted); }
-.si .linkbox .copybtn{ border:none; background:var(--purple); color:#fff; font-weight:600; font-size:12px;
-  padding:7px 14px; border-radius:999px; cursor:pointer; }
 .si .chips{ display:flex; gap:9px; margin-top:16px; flex-wrap:wrap; align-items:center; }
 .si .chip{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:#fff;
   border-radius:11px; padding:9px 13px; font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);
   transition:border-color .12s, background .12s; }
 .si .chip:hover{ background:var(--hover); border-color:var(--lav); }
 .si .chip:disabled{ opacity:.5; cursor:not-allowed; }
-.si .chip.wa svg{ color:var(--wa); } .si .chip.sms svg{ color:var(--sms); }
-.si .chip.copy svg{ color:var(--purple); } .si .chip.qr svg{ color:var(--ink); }
 .si .chip.remind svg{ color:#E0A458; }
-.si .note{ display:flex; gap:8px; align-items:flex-start; margin-top:auto; padding-top:16px; font-size:12px; color:var(--muted); }
-.si .note .k{ color:var(--purple); font-weight:600; }
-.si .tg{ position:relative; width:42px; height:24px; border-radius:999px; cursor:pointer; flex:none; border:none; padding:0; }
-.si .tg.on{ background:var(--purple); } .si .tg.off{ background:#d7d4da; }
-.si .tg i{ position:absolute; top:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; }
-.si .tg.on i{ left:21px; } .si .tg.off i{ left:3px; }
 .si .connect{ display:flex; align-items:center; gap:10px; margin-top:16px; padding:11px 14px; border-radius:12px;
   background:var(--amber-bg); border:1px solid var(--amber-bd); font-size:12.5px; color:var(--amber-tx); line-height:1.4; }
 .si .connect .dp{ background:var(--amber-bd); color:var(--amber-tx); font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; flex:none; }
 .si .gt{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); margin-top:24px; box-shadow:var(--soft); overflow:hidden; }
 .si .gth{ display:flex; align-items:center; gap:14px; padding:18px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .si .gth h2{ font-size:18px; font-weight:600; }
-.si .gth .cnt{ color:var(--muted); font-size:12px; }
 .si .gth .gsearch{ flex:0 1 240px; min-width:150px; border:1px solid var(--line); border-radius:10px;
   padding:8px 12px; font-size:13px; color:var(--ink); background:#fff; }
 .si .gth .gsearch:focus{ outline:none; border-color:var(--lav); }
@@ -1577,9 +1632,20 @@ const css = `
   border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; }
 .si .mini-btn.ghost{ background:#fff; color:var(--muted); border:1px solid var(--line); }
 .si .mini-btn:disabled{ opacity:.5; }
-.si .mini{ display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:9px;
-  padding:5px 10px; font-size:12px; font-weight:600; }
-.si .mini.whatsapp svg{ color:var(--wa); } .si .mini.sms svg{ color:var(--sms); }
+.si .pillselect{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 10px; font-size:11.5px;
+  font-weight:600; border:1px solid var(--line); color:var(--ink); white-space:nowrap; cursor:pointer; background:#fff; }
+.si .pillselect::after{ content:''; width:6px; height:6px; margin-left:2px; border-right:1.6px solid currentColor; border-bottom:1.6px solid currentColor;
+  opacity:.55; transform:translateY(-2px) rotate(45deg); }
+.si .pillselect:hover{ filter:brightness(0.97); }
+.si .pillselect.pill-whatsapp{ color:#1a8a4a; border-color:#bfe8d2; background-color:#eefaf3; }
+.si .pillselect.pill-sms{ color:var(--purple-d); border-color:var(--lav); background-color:#faf6fd; }
+.si .chmenu{ position:absolute; z-index:5; top:calc(100% + 4px); left:0; min-width:150px; background:#fff;
+  border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(20,18,30,.12); padding:4px; }
+.si .chmenu-item{ display:flex; width:100%; align-items:center; gap:7px; border:none; background:transparent; border-radius:8px;
+  padding:7px 9px; font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer; text-align:left; }
+.si .chmenu-item:hover:not(:disabled){ background:var(--hover); }
+.si .chmenu-item.active{ background:var(--hover); }
+.si .chmenu-item:disabled{ opacity:.4; cursor:not-allowed; }
 .si .status{ display:inline-flex; align-items:center; font-size:11.5px; font-weight:600; padding:4px 11px; border-radius:999px; }
 .si .s-none{ background:#f3f2f5; color:var(--muted); }
 .si .s-sent{ background:var(--lav-soft); color:var(--purple); }
@@ -1592,10 +1658,10 @@ const css = `
   display:inline-flex; align-items:center; justify-content:center; gap:6px; font-size:12px; font-weight:600; color:var(--ink); }
 .si .ia:hover{ background:var(--hover); border-color:var(--lav); }
 .si .ia:disabled{ opacity:.45; cursor:not-allowed; }
-.si .ia.send{ background:var(--purple); border-color:var(--purple); color:#fff; padding:0 12px; }
-.si .ia.send:hover{ filter:brightness(1.06); background:var(--purple); }
-.si .ia.send.pass{ background:var(--amber-bd); border-color:var(--amber-bd); color:var(--amber-tx); }
-.si .ia.send.pass:hover{ filter:brightness(1.03); background:var(--amber-bd); }
+.si .ia.send{ background:var(--wa); border-color:var(--wa); color:#fff; padding:0 12px; font-size:12.5px; }
+.si .ia.send:hover{ filter:brightness(1.06); background:var(--wa); }
+.si .ia.send.pass{ background:var(--wa); border-color:var(--wa); color:#fff; }
+.si .ia.send.pass:hover{ filter:brightness(1.06); background:var(--wa); }
 .si .ia.danger{ color:var(--bad-tx); }
 .si .ia.danger:hover{ border-color:var(--bad-tx); background:var(--bad-bg); }
 .si .einp{ width:100%; max-width:220px; border:1px solid var(--lav); border-radius:8px; padding:6px 9px; font-size:13px; background:#fff; }
@@ -1606,7 +1672,7 @@ const css = `
 .si .ovl{ position:fixed; inset:0; background:rgba(28,27,31,.42); z-index:60; display:flex; align-items:center; justify-content:center; padding:18px; }
 .si .ovl.right{ justify-content:flex-end; padding:0; }
 .si .modal{ background:#fff; border-radius:18px; padding:24px; width:min(440px,100%); box-shadow:0 18px 50px rgba(20,18,30,.25); }
-.si .modal.wide{ width:min(960px,96vw); max-height:92vh; overflow-y:auto; }
+.si .modal.wide{ width:min(960px,96vw); max-height:92vh; overflow-y:auto; overscroll-behavior:contain; }
 .si .pgrid{ display:grid; grid-template-columns:1fr 1.1fr; gap:20px; margin-top:16px; align-items:start; }
 .si .pgrid .vars{ margin-top:0; }
 .si .pgrid .vgrid{ grid-template-columns:1fr; }
@@ -1619,7 +1685,7 @@ const css = `
 .si .mhead{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .si .xbtn{ border:none; background:#f3f2f5; color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer;
   display:grid; place-items:center; }
-.si .wawrap{ margin-top:16px; background:#EFE7DD; border-radius:14px; padding:18px; }
+.si .wawrap{ margin-top:16px; background:#F3F3F5; border-radius:14px; padding:18px; }
 .si .wabubble{ background:#fff; border-radius:10px; padding:6px; width:min(380px,100%); margin:0 auto;
   box-shadow:0 1px 1px rgba(0,0,0,.08); font-size:13.5px; line-height:1.45; }
 .si .waimg{ position:relative; width:100%; aspect-ratio:4/3; border-radius:7px; overflow:hidden; background:linear-gradient(155deg,var(--purple),var(--lav)); }
@@ -1635,13 +1701,6 @@ const css = `
 .si .vsave{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
 .si .vsave .mutedp{ margin-top:0; }
 .si .vbtns{ display:flex; gap:8px; flex:none; }
-.si .vars.saved{ background:var(--ok-bg); border-color:#cfe8da; }
-.si .vlegend.ok{ color:var(--ok-tx); display:inline-flex; align-items:center; gap:5px; }
-.si .vsummary{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.si .vchip{ display:inline-flex; flex-direction:column; gap:2px; background:#fff; border:1px solid #dcebe2;
-  border-radius:10px; padding:8px 14px; font-size:13.5px; font-weight:600; color:var(--ink); }
-.si .vchip i{ font-style:normal; font-size:9.5px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--faint); }
-.si .vedit{ margin-left:auto; }
 .si .vfield{ display:flex; flex-direction:column; gap:5px; }
 .si .vfield + .vfield{ margin-top:10px; }
 .si .vgrid .vfield + .vfield{ margin-top:0; }
@@ -1672,8 +1731,7 @@ const css = `
 .si .dtag{ font-size:10.5px; font-weight:600; color:var(--purple-d); background:var(--lav-soft); padding:2px 8px; border-radius:999px; }
 .si .derr{ font-size:11.5px; color:var(--bad-tx); }
 
-@media(max-width:900px){ .si .modes{ grid-template-columns:1fr; } .si .funnel{ grid-template-columns:repeat(2,1fr); }
+@media(max-width:900px){ .si .funnel{ grid-template-columns:repeat(2,1fr); }
   .si .funnel .quota{ grid-column:span 2; } }
-@media(max-width:640px){ .si .ctx{ flex-direction:column; align-items:flex-start; } .si .ctx .chg{ margin-left:0; }
-  .si .gth .acts{ margin-left:0; width:100%; justify-content:flex-start; } }
+@media(max-width:640px){ .si .gth .acts{ margin-left:0; width:100%; justify-content:flex-start; } }
 `

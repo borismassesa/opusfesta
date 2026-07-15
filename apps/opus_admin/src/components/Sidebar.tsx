@@ -20,6 +20,7 @@ import {
   Gift,
   Globe,
   Globe2,
+  HandHeart,
   Home,
   Landmark,
   LayoutDashboard,
@@ -155,6 +156,7 @@ const sections: NavSection[] = [
     items: [
       { icon: QrCode, label: "Event Check-in", href: "/operations/checkin", requiredPermission: "opuspass.checkin" },
       { icon: CreditCard, label: "Invitation Payments", href: "/finance/payments", requiredPermission: "finance.read" },
+      { icon: HandHeart, label: "Pledge Concierge", href: "/opus-pass/pledges", requiredPermission: "opuspass.pledges.read" },
     ],
   },
   {

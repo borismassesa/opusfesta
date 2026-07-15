@@ -391,7 +391,7 @@ export default function PublicInviteClient({ data }: { data: PublicInviteData })
         </div>
 
         {/* Hero: compact card image beside the names, not a full-screen poster */}
-        <section className="mt-8 text-center">
+        <section className="mt-14 text-center sm:mt-16">
           {data.coverImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

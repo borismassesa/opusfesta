@@ -6,6 +6,7 @@ import {
   type LinkRequestKind,
   type LinkSend,
   type SendResult,
+  type ThankYouSend,
   type WhatsAppProvider,
 } from './types'
 
@@ -59,6 +60,18 @@ function readEntrancePassTemplateConfig(): { templateName: string; language: str
   return {
     templateName,
     language: process.env.WHATSAPP_TEMPLATE_LANG_ENTRANCE_PASS || 'sw',
+  }
+}
+
+/** Thank-you template name + language — independently configured since it
+ *  needs its own Meta approval (see THANK_YOU_TEMPLATE); null until that
+ *  template is submitted and approved. */
+function readThankYouTemplateConfig(): { templateName: string; language: string } | null {
+  const templateName = process.env.WHATSAPP_TEMPLATE_NAME_THANK_YOU
+  if (!templateName) return null
+  return {
+    templateName,
+    language: process.env.WHATSAPP_TEMPLATE_LANG_THANK_YOU || 'sw',
   }
 }
 
@@ -179,6 +192,32 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
           // The CTA button's base URL (e.g. https://opuspass.opusfesta.com/collect/{{1}})
           // is fixed in the approved template; only the trailing token is dynamic.
           { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: send.token }] },
+        ],
+      },
+    })
+  }
+
+  async sendThankYou(send: ThankYouSend): Promise<SendResult> {
+    const cfg = readThankYouTemplateConfig()
+    if (!cfg) return { ok: false, error: 'WhatsApp thank-you template is not configured' }
+    return this.post({
+      messaging_product: 'whatsapp',
+      to: send.to,
+      type: 'template',
+      template: {
+        name: cfg.templateName,
+        language: { code: send.languageCode || cfg.language },
+        components: [
+          { type: 'header', parameters: [{ type: 'image', image: { link: send.headerImageUrl } }] },
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: send.guestFirstName }, // {{1}}
+              { type: 'text', text: send.coupleName }, // {{2}}
+              { type: 'text', text: send.eventCategory }, // {{3}}
+            ],
+          },
+          // No buttons — see THANK_YOU_TEMPLATE.
         ],
       },
     })

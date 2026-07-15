@@ -31,7 +31,6 @@ export {
   type FooterStrings,
   type HelpStrings,
   type PricingStrings,
-  type HowItWorksStrings,
   type CartStrings,
   type AddressStrings,
   type ConfirmationStrings,
@@ -46,6 +45,7 @@ export {
   type DashboardEventsStrings,
   type DashboardSeatingStrings,
   type DashboardSendStrings,
+  type DashboardThankYouStrings,
   type DashboardEventScopeStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'

@@ -20,7 +20,7 @@ interface PageProps {
 export default async function PledgePage({ params, searchParams }: PageProps) {
   const { token } = await params
   const { event: eventId } = await searchParams
-  const couple = await getPublicPledgeCouple(token)
+  const couple = await getPublicPledgeCouple(token, eventId ?? null)
   if (!couple) notFound()
   const locale = await getLocale()
   const formsPledge = await loadUiStrings('forms-pledge', locale)
@@ -32,9 +32,8 @@ export default async function PledgePage({ params, searchParams }: PageProps) {
         coupleName={couple.coupleName}
         weddingDate={couple.weddingDate}
         city={couple.city}
-        paymentInstructions={couple.paymentInstructions}
-        paymentMethods={couple.paymentMethods}
         config={couple.pageConfig}
+        locale={locale}
       />
     </UIStringsProvider>
   )

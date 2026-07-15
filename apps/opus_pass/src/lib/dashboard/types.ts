@@ -32,8 +32,6 @@ export interface WeddingEvent {
   starts_at: string | null
   ends_at: string | null
   dress_code: string | null
-  collect_meal_choice: boolean
-  meal_options: string[]
   /** Show this event on the public wedding website. */
   is_public: boolean
   /** Let guests RSVP to this event directly from the wedding website. */
@@ -86,6 +84,10 @@ export interface GuestContact {
   review_status: GuestReviewStatus
   last_invited_at: string | null
   invite_count: number
+  /** Separate from the wedding-invite tracker above — the pledge ask is a
+   *  different send with its own status. NULL sent_at = never asked. */
+  pledge_invite_sent_at: string | null
+  pledge_invite_count: number
   created_at: string
   updated_at: string
 }
@@ -100,6 +102,9 @@ export interface GuestInvitation {
   dietary_notes: string | null
   guest_message: string | null
   responded_at: string | null
+  /** Last time this guest was sent a thank-you message for THIS event. NULL = never sent. */
+  thank_you_sent_at: string | null
+  thank_you_count: number
   created_at: string
   updated_at: string
 }
@@ -107,6 +112,36 @@ export interface GuestInvitation {
 /** A guest row enriched with their invitations for dashboard tables. */
 export interface GuestWithInvitations extends GuestContact {
   invitations: GuestInvitation[]
+}
+
+// ──────────────────────────────────── Guestbook ─────────────────────────────────
+
+/** 'pending' = a guest-submitted message awaiting host moderation. */
+export type GuestbookReviewStatus = 'pending' | 'approved' | 'hidden'
+
+/** Self-selected relation to the couple, shown as a byline on the public wall. */
+export type GuestbookRelation = 'Family' | 'Friend' | 'Colleague'
+
+export const GUESTBOOK_RELATIONS: GuestbookRelation[] = ['Family', 'Friend', 'Colleague']
+
+export interface GuestbookEntry {
+  id: string
+  guest_name: string
+  message: string
+  photo_url: string | null
+  video_url: string | null
+  audio_url: string | null
+  relation: GuestbookRelation | null
+  review_status: GuestbookReviewStatus
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export const GUESTBOOK_STATUS_LABELS: Record<GuestbookReviewStatus, string> = {
+  pending: 'Needs review',
+  approved: 'Approved',
+  hidden: 'Hidden',
 }
 
 // ──────────────────────────────── RSVP questions ────────────────────────────────

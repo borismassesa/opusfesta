@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
+import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import {
   HandCoins,
@@ -25,6 +26,8 @@ import {
   ExternalLink,
   Target,
   Wallet,
+  Loader2,
+  X,
 } from 'lucide-react'
 import { Card, EmptyState } from '@/components/dashboard/primitives'
 import { ChartCard, BarRows, Funnel, LineChart } from '@/components/dashboard/charts'
@@ -36,11 +39,25 @@ import {
   updatePledge,
   deletePledge,
   recordPledgeReminder,
+  sendPledgeReminderSms,
+  sendPledgeReminderEmail,
   updatePledgeCollection,
   sendWhatsAppPledgeRequests,
+  sendEmailPledgeRequests,
+  sendSmsPledgeRequests,
+  setPledgeCoverImage,
+  applyPledgeCardTemplate,
+  updateGuestContactInfo,
+  deleteGuest,
+  createGuest,
   type PledgeInput,
 } from '@/lib/dashboard/actions'
 import { PAYMENT_PROVIDERS, type PledgePaymentMethod } from '@/lib/dashboard/pledge-page'
+import {
+  PLEDGE_TEMPLATE_FREE_TIER_IDS,
+  PLEDGE_TEMPLATE_UNLOCK_FEE,
+  type PledgeCardCatalogItem,
+} from '@/lib/dashboard/pledge-card-templates'
 import {
   pledgeUrl,
   pledgeReminderMessage,
@@ -70,6 +87,7 @@ import {
   PAYMENT_METHOD_LABELS,
   PLEDGE_STATUS_LABELS,
 } from '@/lib/dashboard/types'
+import { PLEDGE_CURRENCIES, toTzs } from '@/lib/dashboard/currency'
 
 type ContactLite = {
   id: string
@@ -77,6 +95,8 @@ type ContactLite = {
   phone: string | null
   whatsapp_phone: string | null
   email: string | null
+  pledgeInviteSentAt: string | null
+  hasPledged: boolean
 }
 
 type PledgeView = 'all' | PledgeStatus | 'cards'
@@ -151,19 +171,23 @@ function outstandingAging(pledges: PledgeWithContact[]): AgingBucket[] {
     const bucket =
       d === null ? at('nodate') : d >= 0 ? at('due') : d >= -7 ? at('over1') : d >= -30 ? at('over8') : at('over30')
     bucket.count += 1
-    bucket.amount += owing
+    // Amounts pooled across pledges must share one currency — convert each
+    // pledge's own currency to TZS before adding it to the bucket total.
+    bucket.amount += toTzs(owing, p.currency)
   }
   return buckets.filter((b) => b.count > 0)
 }
 
-/** Cumulative pledged amount over time (grouped by creation day) for the trend chart. */
+/** Cumulative pledged amount over time (grouped by creation day) for the
+ *  trend chart. Each pledge is converted to TZS before summing so pledges
+ *  in different currencies don't get added together at face value. */
 function cumulativePledgedByDay(pledges: PledgeWithContact[]): { label: string; value: number }[] {
   const byDay = new Map<string, number>()
   for (const p of pledges) {
     if (p.status === 'declined') continue
     const day = (p.created_at || '').slice(0, 10)
     if (!day) continue
-    byDay.set(day, (byDay.get(day) ?? 0) + p.pledged_amount)
+    byDay.set(day, (byDay.get(day) ?? 0) + toTzs(p.pledged_amount, p.currency))
   }
   const days = [...byDay.keys()].sort()
   let cumulative = 0
@@ -174,11 +198,17 @@ function cumulativePledgedByDay(pledges: PledgeWithContact[]): { label: string; 
 }
 
 /** Largest pledges first (declined and zero-amount excluded) — feeds the
- *  "top contributors" recognition list. */
+ *  "top contributors" recognition list. Ranked by TZS-equivalent value so a
+ *  pledge in a stronger currency doesn't rank below a larger face-value
+ *  pledge in a weaker one. */
 function topContributors(pledges: PledgeWithContact[], limit = 10): PledgeWithContact[] {
   return pledges
     .filter((p) => p.status !== 'declined' && p.pledged_amount > 0)
-    .sort((a, b) => b.pledged_amount - a.pledged_amount || b.amount_received - a.amount_received)
+    .sort(
+      (a, b) =>
+        toTzs(b.pledged_amount, b.currency) - toTzs(a.pledged_amount, a.currency) ||
+        toTzs(b.amount_received, b.currency) - toTzs(a.amount_received, a.currency),
+    )
     .slice(0, limit)
 }
 
@@ -230,8 +260,14 @@ export default function PledgesManager({
   weddingDate,
   hero,
   pledgeToken,
+  pledgeCoverImageUrl,
+  pledgeCoverIsFullTemplate,
+  packageTierId,
+  pledgeCardCatalog,
   copy,
   whatsappLive,
+  emailLive,
+  smsLive,
 }: {
   initialPledges: PledgeWithContact[]
   stats: PledgeStats
@@ -247,8 +283,19 @@ export default function PledgesManager({
   weddingDate: string | null
   hero: DashboardHeroContent
   pledgeToken: string | null
+  /** Current pledge-page cover image (purchased design or an upload), if any. */
+  pledgeCoverImageUrl: string | null
+  /** True when the cover is a pre-designed template (names/date baked in). */
+  pledgeCoverIsFullTemplate: boolean
+  /** Package tier (lite/classic/elegant/signature) behind this event's paid
+   *  order, if any — Elegant/Signature get free pledge-card templates. */
+  packageTierId: string | null
+  /** Curated invitation-catalog designs offered as free pledge-card templates. */
+  pledgeCardCatalog: PledgeCardCatalogItem[]
   copy: PledgesDashboardCopy
   whatsappLive: boolean
+  emailLive: boolean
+  smsLive: boolean
 }) {
   const [section, setSection] = useState<Section>('manage')
   const [query, setQuery] = useState('')
@@ -262,6 +309,10 @@ export default function PledgesManager({
   const [payMethod, setPayMethod] = useState<PaymentMethod | ''>('')
   const [pendingDelete, setPendingDelete] = useState<PledgeWithContact | null>(null)
   const [pending, startTransition] = useTransition()
+  // `${pledgeId}:${channel}` of the in-flight reminder send, if any — guards
+  // against a double-click firing the same reminder (and its reminder_count
+  // bump) twice.
+  const [remindingKey, setRemindingKey] = useState<string | null>(null)
 
   // Pledge-collection settings (goal + structured how-to-pay methods)
   const [goalInput, setGoalInput] = useState(goalAmount ? String(goalAmount) : '')
@@ -517,8 +568,8 @@ export default function PledgesManager({
       .map((s) => {
         const rows = initialPledges.filter((p) => p.status === s)
         return `<tr><td>${PLEDGE_STATUS_LABELS[s]}</td><td class="r">${rows.length}</td><td class="r">${fmt(
-          rows.reduce((n, p) => n + p.pledged_amount, 0),
-        )}</td><td class="r">${fmt(rows.reduce((n, p) => n + p.amount_received, 0))}</td></tr>`
+          rows.reduce((n, p) => n + toTzs(p.pledged_amount, p.currency), 0),
+        )}</td><td class="r">${fmt(rows.reduce((n, p) => n + toTzs(p.amount_received, p.currency), 0))}</td></tr>`
       })
       .join('')
 
@@ -532,8 +583,9 @@ export default function PledgesManager({
     const topRows = topContributors(initialPledges, 10)
       .map(
         (p) =>
-          `<tr><td>${esc(p.full_name)}</td><td class="r">${fmt(p.pledged_amount)}</td><td class="r">${fmt(
+          `<tr><td>${esc(p.full_name)}</td><td class="r">${formatMoney(p.pledged_amount, p.currency)}</td><td class="r">${formatMoney(
             p.amount_received,
+            p.currency,
           )}</td></tr>`,
       )
       .join('')
@@ -606,9 +658,15 @@ export default function PledgesManager({
     // "Changia Sasa" button to their pledge page). The wa.me prefill with the
     // owing-amount text remains as the pre-go-live fallback.
     if (whatsappLive) {
+      const key = `${p.id}:whatsapp`
+      if (remindingKey === key) return // already in flight — ignore a double-click
+      setRemindingKey(key)
       startTransition(async () => {
         try {
-          const r = await sendWhatsAppPledgeRequests([p.guest_contact_id])
+          // Pass the event currently in view so the WhatsApp template's header
+          // image uses that event's own pledge card (falls back to the
+          // couple's default event otherwise — see sendWhatsAppLinkRequests).
+          const r = await sendWhatsAppPledgeRequests([p.guest_contact_id], selectedEventId ?? undefined)
           if (r.sent > 0 && r.dryRun) toast.success('1 queued (dry run)')
           else if (r.sent > 0) toast.success(`WhatsApp reminder sent to ${firstNameOf(p.full_name)}`)
           else if (r.skipped > 0) toast.error('No usable phone number for this contributor')
@@ -616,6 +674,8 @@ export default function PledgesManager({
           if (r.sent > 0) recordPledgeReminder(p.id, 'whatsapp').catch(() => {})
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Send failed')
+        } finally {
+          setRemindingKey(null)
         }
       })
       return
@@ -624,14 +684,47 @@ export default function PledgesManager({
     recordPledgeReminder(p.id, 'whatsapp').catch(() => {})
   }
 
+  // SMS/Email reminders used to just open the couple's own Messages/Mail app
+  // with a prefilled draft and immediately mark the reminder "sent" the
+  // moment the link was clicked — with zero confirmation the couple ever
+  // actually pressed send there. That's the single biggest reason guests
+  // reported never receiving reminders: nothing was tracked, nothing was
+  // guaranteed. Both now go through a real (tracked) send and only mark the
+  // reminder once the provider confirms it.
   function remindSms(p: PledgeWithContact) {
-    window.location.href = smsShareUrl(p, reminderText(p))
-    recordPledgeReminder(p.id, 'sms').catch(() => {})
+    const key = `${p.id}:sms`
+    if (remindingKey === key) return
+    setRemindingKey(key)
+    startTransition(async () => {
+      try {
+        const r = await sendPledgeReminderSms(p.id, reminderText(p))
+        if (r.ok && r.dryRun) toast.success('1 queued (dry run — no SMS gateway connected yet)')
+        else if (r.ok) toast.success(`SMS reminder sent to ${firstNameOf(p.full_name)}`)
+        else toast.error(r.error ?? 'Could not send SMS reminder')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Send failed')
+      } finally {
+        setRemindingKey(null)
+      }
+    })
   }
 
   function remindEmail(p: PledgeWithContact) {
-    window.location.href = emailShareUrl(p, `A gentle reminder — ${coupleName}`, reminderText(p))
-    recordPledgeReminder(p.id, 'email').catch(() => {})
+    const key = `${p.id}:email`
+    if (remindingKey === key) return
+    setRemindingKey(key)
+    startTransition(async () => {
+      try {
+        const r = await sendPledgeReminderEmail(p.id, reminderText(p))
+        if (r.ok && r.dryRun) toast.success('1 queued (dry run — email isn’t fully configured yet)')
+        else if (r.ok) toast.success(`Email reminder sent to ${firstNameOf(p.full_name)}`)
+        else toast.error(r.error ?? 'Could not send email reminder')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Send failed')
+      } finally {
+        setRemindingKey(null)
+      }
+    })
   }
 
   async function copyShareLink() {
@@ -743,13 +836,22 @@ export default function PledgesManager({
                         : ''}
                     </p>
                   </div>
-                  <div className="inline-flex gap-1">
-                    <ReminderButtons p={p} onWa={remindWhatsApp} onSms={remindSms} onEmail={remindEmail} />
+                  <div className="inline-flex flex-wrap gap-1.5">
+                    <ReminderButtons p={p} onWa={remindWhatsApp} onSms={remindSms} onEmail={remindEmail} sendingKey={remindingKey} />
                   </div>
                 </li>
               )
             })}
           </ul>
+          {remindersDue.length > 6 ? (
+            <button
+              type="button"
+              onClick={() => setSection('followups')}
+              className="mt-3 text-xs font-semibold text-[#1A1A1A]/60 underline-offset-2 hover:text-[#1A1A1A] hover:underline"
+            >
+              +{remindersDue.length - 6} more — view all in Follow-ups
+            </button>
+          ) : null}
         </Card>
       ) : null}
       </>
@@ -757,11 +859,24 @@ export default function PledgesManager({
 
       {section === 'invite' ? (
         <InviteSection
+          // Remount on event switch — this section's cover/template selection
+          // state is derived from props once via useState and never re-syncs
+          // on its own; a fresh key forces it to re-initialize from the newly
+          // selected event's actual data instead of showing the last event's.
+          key={selectedEventId ?? 'no-event'}
           shareLink={shareLink}
           coupleName={coupleName}
           onCopy={copyShareLink}
           copy={copy}
           contacts={contacts}
+          whatsappLive={whatsappLive}
+          emailLive={emailLive}
+          smsLive={smsLive}
+          coverImageUrl={pledgeCoverImageUrl}
+          coverIsFullTemplate={pledgeCoverIsFullTemplate}
+          selectedEventId={selectedEventId}
+          packageTierId={packageTierId}
+          pledgeCardCatalog={pledgeCardCatalog}
         />
       ) : null}
 
@@ -960,6 +1075,7 @@ export default function PledgesManager({
           onEmail={remindEmail}
           onRecord={openRecordPayment}
           copy={copy}
+          sendingKey={remindingKey}
         />
       ) : null}
 
@@ -1134,41 +1250,52 @@ function ReminderButtons({
   onWa,
   onSms,
   onEmail,
+  sendingKey,
 }: {
   p: PledgeWithContact
   onWa: (p: PledgeWithContact) => void
   onSms: (p: PledgeWithContact) => void
   onEmail: (p: PledgeWithContact) => void
+  /** `${pledgeId}:whatsapp` / `:sms` / `:email` while that channel's send is
+   *  in flight for this row — disables the button and swaps in a spinner so
+   *  a double-click can't fire the same reminder twice. */
+  sendingKey?: string | null
 }) {
   const hasPhone = Boolean(p.whatsapp_phone || p.phone)
+  const isSendingWa = sendingKey === `${p.id}:whatsapp`
+  const isSendingSms = sendingKey === `${p.id}:sms`
+  const isSendingEmail = sendingKey === `${p.id}:email`
   return (
     <>
       <button
         onClick={() => onWa(p)}
-        disabled={!hasPhone}
+        disabled={!hasPhone || isSendingWa}
         aria-label="Send reminder on WhatsApp"
         title={hasPhone ? 'Send reminder on WhatsApp' : 'No phone on file'}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[#25D366]/30 bg-[#25D366]/10 px-2.5 text-[11px] font-semibold text-[#1a8a4a] hover:bg-[#25D366]/20 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#25D366]/10"
       >
-        <MessageCircle className="h-4 w-4" />
+        {isSendingWa ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+        WhatsApp
       </button>
       <button
         onClick={() => onSms(p)}
-        disabled={!hasPhone}
+        disabled={!hasPhone || isSendingSms}
         aria-label="Send reminder by SMS"
         title={hasPhone ? 'Send reminder by SMS' : 'No phone on file'}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-black/[0.14] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A]/70 hover:bg-black/[0.04] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
       >
-        <Smartphone className="h-4 w-4" />
+        {isSendingSms ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Smartphone className="h-3.5 w-3.5" />}
+        SMS
       </button>
       <button
         onClick={() => onEmail(p)}
-        disabled={!p.email}
+        disabled={!p.email || isSendingEmail}
         aria-label="Send reminder by email"
         title={p.email ? 'Send reminder by email' : 'No email on file'}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-black/[0.14] bg-white px-2.5 text-[11px] font-semibold text-[#1A1A1A]/70 hover:bg-black/[0.04] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
       >
-        <Mail className="h-4 w-4" />
+        {isSendingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+        Email
       </button>
     </>
   )
@@ -1469,21 +1596,278 @@ function CollectionSection({
   )
 }
 
+type ShareChannel = 'whatsapp' | 'sms' | 'email'
+
+const SHARE_CHANNELS: { id: ShareChannel; label: string; icon: typeof MessageCircle }[] = [
+  { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { id: 'sms', label: 'SMS', icon: Smartphone },
+  { id: 'email', label: 'Email', icon: Mail },
+]
+
+function contactHasChannel(c: ContactLite, channel: ShareChannel): boolean {
+  if (channel === 'email') return Boolean(c.email)
+  return Boolean(c.whatsapp_phone || c.phone)
+}
+
+/** Best channel to reach a contact on, in priority order — drives the
+ *  "Preferred channel" pill and which single send a bulk "Send to selected"
+ *  or the row's primary Send button uses. */
+function preferredChannel(c: ContactLite): ShareChannel | null {
+  if (c.whatsapp_phone) return 'whatsapp'
+  if (c.phone) return 'sms'
+  if (c.email) return 'email'
+  return null
+}
+
+type ContactStatus = 'pledged' | 'awaiting' | 'not_sent'
+
+/** Pledged beats Awaiting beats Not sent — once someone's pledged, whether we
+ *  ever "sent" them a link stops mattering. */
+function contactStatus(c: ContactLite): ContactStatus {
+  if (c.hasPledged) return 'pledged'
+  if (c.pledgeInviteSentAt) return 'awaiting'
+  return 'not_sent'
+}
+
+const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  pledged: 'Pledged',
+  awaiting: 'Awaiting',
+  not_sent: 'Not sent',
+}
+
+// Guest table CSS — copied from the Send Invites console (SendInvitesView.tsx)
+// so the two guest tables look and feel identical. Scoped under its own
+// `.si` wrapper so it doesn't affect this page's existing Tailwind styling.
+const PLEDGE_TABLE_CSS = `
+.si{ --purple:#6B3FA0; --purple-d:#4A2870; --lav:#D7BDE8; --ink:#1c1b1f; --muted:#8b8790;
+  --faint:#b6b2ba; --line:#ededf0; --hover:#faf8fc; --radius:16px; --soft:0 1px 2px rgba(20,18,30,.05);
+  --bad-tx:#c0392b; --bad-bg:#fcecec;
+  color:var(--ink); }
+.si .gt{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--soft); overflow:hidden; }
+.si .gth{ display:flex; align-items:center; gap:14px; padding:18px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.si .gth h2{ font-size:18px; font-weight:600; }
+.si .gth .cnt{ color:var(--muted); font-size:12px; }
+.si .gth .gsearch{ flex:0 1 240px; min-width:150px; border:1px solid var(--line); border-radius:10px;
+  padding:8px 12px; font-size:13px; color:var(--ink); background:#fff; }
+.si .gth .gsearch:focus{ outline:none; border-color:var(--lav); }
+.si .empty{ padding:40px 20px; text-align:center; color:var(--muted); font-size:14px; }
+.si .scroll{ overflow-x:auto; }
+.si table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.si th{ text-align:left; font-size:10.5px; letter-spacing:.6px; text-transform:uppercase; color:var(--faint);
+  padding:12px 20px; border-bottom:1px solid var(--line); font-weight:600; position:sticky; top:0; background:#fff; z-index:1; }
+.si td{ padding:14px 20px; border-bottom:1px solid var(--line); }
+.si tr:last-child td{ border-bottom:none; }
+.si tbody tr:hover td{ background:var(--hover); }
+.si .who{ font-weight:600; }
+.si .contact{ color:var(--muted); font-size:12px; }
+.si .ra{ display:flex; gap:7px; justify-content:flex-end; align-items:center; }
+.si .ia{ height:32px; min-width:32px; padding:0 8px; border-radius:9px; border:1px solid var(--line); background:#fff; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; font-size:12px; font-weight:600; color:var(--ink); }
+.si .ia:hover{ background:var(--hover); border-color:var(--lav); }
+.si .ia:disabled{ opacity:.45; cursor:not-allowed; }
+.si .ia-whatsapp{ background:#25D366; border-color:#25D366; color:#fff; }
+.si .ia-whatsapp:hover{ filter:brightness(1.06); background:#25D366; }
+.si .ia-sms{ background:#1A1A1A; border-color:#1A1A1A; color:#fff; }
+.si .ia-sms:hover{ filter:brightness(1.3); background:#1A1A1A; }
+.si .ia-email{ background:var(--purple); border-color:var(--purple); color:#fff; }
+.si .ia-email:hover{ filter:brightness(1.06); background:var(--purple); }
+.si .ia.save{ background:var(--purple); border-color:var(--purple); color:#fff; padding:0 12px; }
+.si .ia.save:hover{ filter:brightness(1.06); background:var(--purple); }
+.si .ia.danger{ color:var(--bad-tx); }
+.si .ia.danger:hover{ border-color:var(--bad-tx); background:var(--bad-bg); }
+.si .einp{ width:100%; max-width:220px; border:1px solid var(--lav); border-radius:8px; padding:6px 9px; font-size:13px; background:#fff; }
+.si .einp:focus{ outline:none; border-color:var(--purple); }
+.si .spin{ animation:si-spin .8s linear infinite; }
+@keyframes si-spin{ to{ transform:rotate(360deg); } }
+.si .ia-primary{ padding:0 12px; font-size:12.5px; }
+.si input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--purple); cursor:pointer; }
+.si .tabs{ display:inline-flex; align-items:center; gap:2px; border:1px solid var(--line); border-radius:10px; padding:3px; }
+.si .tab{ border:none; background:transparent; border-radius:7px; padding:6px 10px; font-size:12.5px; font-weight:600;
+  color:var(--muted); cursor:pointer; white-space:nowrap; }
+.si .tab:hover{ color:var(--ink); }
+.si .tab.active{ background:#fff; color:var(--purple-d); box-shadow:var(--soft); }
+.si .addbtn{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:10px;
+  padding:8px 14px; font-size:13px; font-weight:600; color:var(--ink); background:#fff; cursor:pointer; white-space:nowrap; }
+.si .addbtn:hover{ background:var(--hover); border-color:var(--lav); }
+.si .bulkbtn{ display:inline-flex; align-items:center; gap:7px; border:none; border-radius:10px; padding:8px 16px;
+  font-size:13px; font-weight:700; color:#fff; background:var(--purple); cursor:pointer; white-space:nowrap;
+  margin-left:auto; }
+.si .bulkbtn:hover{ filter:brightness(1.08); }
+.si .bulkbtn:disabled{ opacity:.4; cursor:not-allowed; background:var(--faint); }
+.si .pill{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 10px; font-size:11.5px;
+  font-weight:600; border:1px solid var(--line); color:var(--ink); white-space:nowrap; }
+.si .pill-whatsapp{ color:#1a8a4a; border-color:#bfe8d2; background:#eefaf3; }
+.si .pill-sms{ color:var(--purple-d); border-color:var(--lav); background:#faf6fd; }
+.si .pill-email{ color:var(--purple-d); border-color:var(--lav); background:#faf6fd; }
+.si .pill-none{ color:var(--faint); }
+.si .pillselect{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 10px; font-size:11.5px;
+  font-weight:600; border:1px solid var(--line); color:var(--ink); white-space:nowrap; cursor:pointer; background:#fff; }
+.si .pillselect::after{ content:''; width:6px; height:6px; margin-left:2px; border-right:1.6px solid currentColor; border-bottom:1.6px solid currentColor;
+  opacity:.55; transform:translateY(-2px) rotate(45deg); }
+.si .pillselect:hover{ filter:brightness(0.97); }
+.si .pillselect.pill-whatsapp{ color:#1a8a4a; border-color:#bfe8d2; background-color:#eefaf3; }
+.si .pillselect.pill-sms{ color:var(--purple-d); border-color:var(--lav); background-color:#faf6fd; }
+.si .pillselect.pill-email{ color:var(--purple-d); border-color:var(--lav); background-color:#faf6fd; }
+.si .chmenu{ position:absolute; z-index:5; top:calc(100% + 4px); left:0; min-width:150px; background:#fff;
+  border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(20,18,30,.12); padding:4px; }
+.si .chmenu-item{ display:flex; width:100%; align-items:center; gap:7px; border:none; background:transparent; border-radius:8px;
+  padding:7px 9px; font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer; text-align:left; }
+.si .chmenu-item:hover:not(:disabled){ background:var(--hover); }
+.si .chmenu-item.active{ background:var(--hover); }
+.si .chmenu-item:disabled{ opacity:.4; cursor:not-allowed; }
+.si .chmenu-hint{ margin-left:auto; font-size:10px; font-weight:600; color:var(--faint); white-space:nowrap; }
+.si .status{ display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:11.5px; font-weight:700; white-space:nowrap; }
+.si .status-not_sent{ color:var(--muted); background:#f3f1f4; }
+.si .status-awaiting{ color:#9a6a12; background:#fdf1dc; }
+.si .status-pledged{ color:#1a8a4a; background:#eafaf0; }
+`
+
 function InviteSection({
   shareLink,
   coupleName,
   onCopy,
   copy,
   contacts,
+  whatsappLive,
+  emailLive,
+  smsLive,
+  coverImageUrl,
+  coverIsFullTemplate,
+  selectedEventId,
+  packageTierId,
+  pledgeCardCatalog,
 }: {
   shareLink: string | null
   coupleName: string
   onCopy: () => void
   copy: PledgesDashboardCopy
   contacts: ContactLite[]
+  whatsappLive: boolean
+  emailLive: boolean
+  smsLive: boolean
+  coverImageUrl: string | null
+  coverIsFullTemplate: boolean
+  selectedEventId: string | null
+  packageTierId: string | null
+  pledgeCardCatalog: PledgeCardCatalogItem[]
 }) {
-  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [contactSearch, setContactSearch] = useState('')
+  // `${contactId}:${channel}` of the in-flight per-row send, if any.
+  const [sendingKey, setSendingKey] = useState<string | null>(null)
+  const [rowEdit, setRowEdit] = useState<{
+    id: string
+    name: string
+    phone: string
+    email: string
+    askDelete: boolean
+  } | null>(null)
   const [pending, startTransition] = useTransition()
+  const [statusFilter, setStatusFilter] = useState<'all' | 'not_sent' | 'awaiting'>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkSending, startBulkSend] = useTransition()
+  const [addingGuest, setAddingGuest] = useState(false)
+  const [newGuest, setNewGuest] = useState({ name: '', phone: '', email: '' })
+  const [savingNewGuest, startSaveNewGuest] = useTransition()
+  // Per-contact channel override — the "Preferred channel" column defaults to
+  // preferredChannel(c) but the couple can pick a different one for any row.
+  const [channelChoice, setChannelChoice] = useState<Record<string, ShareChannel>>({})
+  // Contact id of the row whose channel-picker popover is open, if any —
+  // custom dropdown (not a native <select>) so the WhatsApp/SMS/Email icons
+  // can actually render inside it.
+  const [channelMenuOpenId, setChannelMenuOpenId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!channelMenuOpenId) return
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-channel-menu]')) setChannelMenuOpenId(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [channelMenuOpenId])
+  const [cover, setCover] = useState<{ url: string | null; isTemplate: boolean }>({
+    url: coverImageUrl,
+    isTemplate: coverIsFullTemplate,
+  })
+  const [savingCover, startCoverSave] = useTransition()
+  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null)
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
+  const hasFreeTemplateAccess = Boolean(packageTierId && PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(packageTierId))
+
+  /** The channel to actually send this contact on: their explicit override
+   *  from the dropdown if it's still usable (they might have picked Email,
+   *  then we should keep honoring it even though phone also exists), else
+   *  fall back to the auto-picked preferredChannel. */
+  function effectiveChannel(c: ContactLite): ShareChannel | null {
+    const chosen = channelChoice[c.id]
+    if (chosen && contactHasChannel(c, chosen)) return chosen
+    return preferredChannel(c)
+  }
+
+  function saveCover(url: string | null, isTemplate: boolean) {
+    setCover({ url, isTemplate })
+    setAppliedTemplateId(null)
+    startCoverSave(async () => {
+      try {
+        await setPledgeCoverImage(selectedEventId, url, isTemplate)
+        toast.success(url ? 'Pledge card image saved' : 'Pledge card image removed')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not save the pledge card image')
+      }
+    })
+  }
+
+  function useTemplate(item: PledgeCardCatalogItem) {
+    if (!selectedEventId) return
+    setApplyingTemplateId(item.id)
+    startCoverSave(async () => {
+      try {
+        await applyPledgeCardTemplate(selectedEventId, item.imageUrl)
+        setCover({ url: item.imageUrl, isTemplate: true })
+        setAppliedTemplateId(item.id)
+        toast.success('Pledge card template applied')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not apply this template')
+      } finally {
+        setApplyingTemplateId(null)
+      }
+    })
+  }
+
+  /** Unselect the currently-applied template, clearing the pledge page cover. */
+  function removeTemplate(item: PledgeCardCatalogItem) {
+    setApplyingTemplateId(item.id)
+    setCover({ url: null, isTemplate: false })
+    setAppliedTemplateId(null)
+    startCoverSave(async () => {
+      try {
+        await setPledgeCoverImage(selectedEventId, null, false)
+        toast.success('Pledge card template removed')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not remove this template')
+      } finally {
+        setApplyingTemplateId(null)
+      }
+    })
+  }
+
+  // QR for the share link — fills the otherwise-empty space next to the
+  // link/buttons row, and doubles as something printable for physical
+  // invites (e.g. a table card at the wedding).
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!shareLink) {
+      setQrDataUrl(null)
+      return
+    }
+    let cancelled = false
+    QRCode.toDataURL(shareLink, { margin: 1, width: 200, color: { dark: '#1A1A1A', light: '#00000000' } })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [shareLink])
 
   if (!shareLink) {
     return (
@@ -1501,144 +1885,717 @@ function InviteSection({
   const smsUrl = smsShareUrl(noone, message)
   const emailUrl = emailShareUrl({ email: null }, `You're invited to contribute — ${coupleName}`, message)
 
-  function togglePick(id: string) {
-    setPicked((prev) => {
+  const liveByChannel: Record<ShareChannel, boolean> = { whatsapp: whatsappLive, sms: smsLive, email: emailLive }
+  const notSentCount = contacts.filter((c) => contactStatus(c) === 'not_sent').length
+  const awaitingCount = contacts.filter((c) => contactStatus(c) === 'awaiting').length
+  const searched = contactSearch.trim()
+    ? contacts.filter((c) => c.full_name.toLowerCase().includes(contactSearch.trim().toLowerCase()))
+    : contacts
+  const visibleContacts =
+    statusFilter === 'all' ? searched : searched.filter((c) => contactStatus(c) === statusFilter)
+  const selectableIds = visibleContacts.filter((c) => effectiveChannel(c) !== null).map((c) => c.id)
+  const allVisibleSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id))
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      if (allVisibleSelected) {
+        const next = new Set(prev)
+        selectableIds.forEach((id) => next.delete(id))
+        return next
+      }
+      return new Set([...prev, ...selectableIds])
+    })
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
 
-  function sendToPicked() {
-    if (picked.size === 0) return
-    const ids = [...picked]
+  function saveRowEdit() {
+    if (!rowEdit) return
+    const { id, name, phone, email } = rowEdit
     startTransition(async () => {
       try {
-        const r = await sendWhatsAppPledgeRequests(ids)
-        toast.success(
-          r.dryRun
-            ? `Dry run: would send pledge link to ${r.sent} contact${r.sent === 1 ? '' : 's'}`
-            : `Pledge link sent to ${r.sent} contact${r.sent === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed` : ''}`,
-        )
-        setPicked(new Set())
+        await updateGuestContactInfo(id, name, phone, email)
+        toast.success('Guest saved')
+        setRowEdit(null)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not save this guest')
+      }
+    })
+  }
+
+  function removeGuest() {
+    if (!rowEdit) return
+    const { id } = rowEdit
+    startTransition(async () => {
+      try {
+        await deleteGuest(id)
+        toast.success('Guest removed')
+        setRowEdit(null)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not remove this guest')
+      }
+    })
+  }
+
+  /** Send to every selected contact, routed to each one's own chosen channel
+   *  (their dropdown pick, or the auto-picked default) — grouped into one
+   *  batched call per channel rather than N individual sends. */
+  function sendSelected() {
+    const targets = contacts.filter((c) => selectedIds.has(c.id))
+    if (!targets.length) return
+    const byChannel: Record<ShareChannel, string[]> = { whatsapp: [], sms: [], email: [] }
+    for (const c of targets) {
+      const ch = effectiveChannel(c)
+      if (ch) byChannel[ch].push(c.id)
+    }
+    startBulkSend(async () => {
+      try {
+        const results = await Promise.all([
+          byChannel.whatsapp.length
+            ? sendWhatsAppPledgeRequests(byChannel.whatsapp, selectedEventId ?? undefined)
+            : null,
+          byChannel.sms.length ? sendSmsPledgeRequests(byChannel.sms, selectedEventId ?? undefined) : null,
+          byChannel.email.length ? sendEmailPledgeRequests(byChannel.email, selectedEventId ?? undefined) : null,
+        ])
+        const sent = results.reduce((n, r) => n + (r?.sent ?? 0), 0)
+        const skipped = results.reduce((n, r) => n + (r?.skipped ?? 0), 0)
+        if (sent > 0) {
+          toast.success(`Sent to ${sent} guest${sent === 1 ? '' : 's'}${skipped ? ` · ${skipped} skipped` : ''}`)
+        } else {
+          toast.error('Nothing sent — check these guests have a phone number or email on file')
+        }
+        setSelectedIds(new Set())
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Bulk send failed')
+      }
+    })
+  }
+
+  function addGuest() {
+    if (!newGuest.name.trim()) {
+      toast.error("Enter the guest's name")
+      return
+    }
+    startSaveNewGuest(async () => {
+      const res = await createGuest({
+        full_name: newGuest.name.trim(),
+        phone: newGuest.phone.trim() || null,
+        whatsapp_phone: newGuest.phone.trim() || null,
+        email: newGuest.email.trim() || null,
+      })
+      if (res.ok) {
+        toast.success('Guest added')
+        setNewGuest({ name: '', phone: '', email: '' })
+        setAddingGuest(false)
+      } else {
+        toast.error(res.error)
+      }
+    })
+  }
+
+  function sendRow(id: string, ch: ShareChannel) {
+    const channelLabel = SHARE_CHANNELS.find((c) => c.id === ch)!.label
+    const sendFn =
+      ch === 'whatsapp' ? sendWhatsAppPledgeRequests
+      : ch === 'email' ? sendEmailPledgeRequests
+      : sendSmsPledgeRequests
+    setSendingKey(`${id}:${ch}`)
+    startTransition(async () => {
+      try {
+        const r = await sendFn([id], selectedEventId ?? undefined)
+        if (r.sent > 0) {
+          toast.success(r.dryRun ? `Dry run: would send via ${channelLabel}` : `${channelLabel} pledge link sent`)
+        } else if (r.skipped > 0) {
+          toast.error(ch === 'email' ? 'No email on file for this contact' : 'No phone number on file for this contact')
+        } else {
+          toast.error('Send failed')
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Send failed')
+      } finally {
+        setSendingKey(null)
       }
     })
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <a
-          href={shareLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-full border border-[#1A1A1A]/25 bg-white px-5 py-2.5 text-sm font-bold text-[#1A1A1A] transition hover:bg-black/[0.03]"
-        >
-          <ExternalLink className="h-4 w-4" /> Preview as guest
-        </a>
-        <Link
-          href="/my/dashboard/pledges/customize"
-          className="inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-black/90"
-        >
-          <Palette className="h-4 w-4" /> Customize
-        </Link>
-      </div>
-
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        {/* Share */}
-        <Card className="space-y-5 px-5 py-5">
-          <div>
-            <h3 className="text-base font-semibold text-[#1A1A1A]">{copy.share_title}</h3>
-            <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.share_description}</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1 truncate rounded-xl border border-black/[0.12] bg-white px-3 py-2.5 text-sm text-[#1A1A1A]/80">
-              {shareLink.replace(/^https?:\/\//, '')}
-            </div>
-            <button
-              type="button"
-              onClick={onCopy}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-            >
-              <Copy className="h-3.5 w-3.5" /> Copy
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white hover:brightness-95"
-            >
-              <MessageCircle className="h-4 w-4" /> WhatsApp
-            </a>
-            <a
-              href={smsUrl}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-            >
-              <Smartphone className="h-4 w-4" /> SMS
-            </a>
-            <a
-              href={emailUrl}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-            >
-              <Mail className="h-4 w-4" /> Email
-            </a>
-          </div>
-        </Card>
-
-        <Card className="space-y-2 px-5 py-5">
-          <h4 className="text-sm font-semibold text-[#1A1A1A]">The message they’ll receive</h4>
-          <div className="whitespace-pre-line rounded-xl bg-[#DCF8C6]/50 px-4 py-3 text-sm leading-relaxed text-[#1A1A1A]/85 ring-1 ring-black/[0.04]">
-            {message}
-          </div>
-        </Card>
-      </div>
-
+      {/* Pledge card image: a pledge-specific template (from the "Kadi za
+          Michango" catalog, see pledgeCardCatalog below) or an uploaded
+          photo, shown as the cover on the shared pledge page. Deliberately
+          does not offer the couple's invitation-card design here — that's a
+          different product and mixing it in confused what's actually a
+          pledge-page cover vs. an invitation. */}
       <Card className="space-y-4 px-5 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-[#1A1A1A]">Send via WhatsApp</h3>
-            <p className="mt-1 text-sm text-[#1A1A1A]/55">
-              Pick saved contacts and OpusPass sends each one a WhatsApp message with the pledge link.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={sendToPicked}
-            disabled={picked.size === 0 || pending}
-            className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50"
-          >
-            <MessageCircle className="h-4 w-4" /> Send to {picked.size || ''} selected
-          </button>
+        <div>
+          <h3 className="text-base font-semibold text-[#1A1A1A]">Pledge Card Templates</h3>
+          <p className="mt-1 text-sm text-[#1A1A1A]/55">
+            Give your pledge page a designed look — pick a pledge card template below.
+          </p>
         </div>
 
-        {contacts.length === 0 ? (
-          <p className="text-sm text-[#1A1A1A]/55">No saved contacts yet — add some under Guests first.</p>
-        ) : (
-          <div className="max-h-64 divide-y divide-black/[0.05] overflow-y-auto rounded-xl border border-black/[0.08]">
-            {contacts.map((c) => (
-              <label
-                key={c.id}
-                className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-black/[0.02]"
+        {/* Only surfaced when a photo uploaded before this UI change is still
+            set as the cover — a template's "in use" state already shows
+            inline on its thumbnail below, so repeating it here for templates
+            would just be the same fact said twice. */}
+        {cover.url && !cover.isTemplate ? (
+          <div className="flex items-start gap-3 rounded-xl border border-black/[0.12] bg-black/[0.015] p-3">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-black/[0.08]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={cover.url} alt="Pledge card cover" className="h-full w-full object-cover" />
+            </div>
+            <div className="space-y-1.5 text-sm">
+              <p className="font-medium text-[#1A1A1A]">Using your uploaded photo</p>
+              <button
+                type="button"
+                disabled={savingCover}
+                onClick={() => saveCover(null, false)}
+                className="text-xs font-semibold text-rose-600 underline-offset-2 hover:underline disabled:opacity-50"
               >
-                <input
-                  type="checkbox"
-                  checked={picked.has(c.id)}
-                  onChange={() => togglePick(c.id)}
-                  className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
-                />
-                <span className="font-medium text-[#1A1A1A]">{c.full_name}</span>
-                <span className="text-[#1A1A1A]/50">{c.whatsapp_phone || c.phone || 'No phone'}</span>
-              </label>
-            ))}
+                Remove
+              </button>
+            </div>
           </div>
-        )}
+        ) : null}
+
+        {/* Pledge card templates: the primary path, so it comes first. Real
+            designs pulled from the invitation catalog, filtered to the
+            "Kadi za Michango" category. Free for Elegant/Signature;
+            Classic/Essential unlock via a flat one-time fee (WhatsApp
+            request today — no live payment wired yet). */}
+        <div className="space-y-3">
+          {!hasFreeTemplateAccess ? (
+            <a
+              href={`https://wa.me/255799242471?text=${encodeURIComponent(
+                `Hi, I'd like to unlock pledge card templates for ${coupleName} (one-time TZS ${PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()} fee).`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#1A1A1A] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-black/90"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> Request to unlock — TZS {PLEDGE_TEMPLATE_UNLOCK_FEE.toLocaleString()}
+            </a>
+          ) : null}
+
+          {pledgeCardCatalog.length ? (
+            <div className="relative">
+              <div className="-mx-1 grid grid-flow-col auto-cols-[42%] gap-2.5 overflow-x-auto px-1 pb-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] sm:auto-cols-[31%] md:auto-cols-[23%] lg:auto-cols-[calc((100%-5*0.625rem)/6)] [&::-webkit-scrollbar]:hidden">
+                {pledgeCardCatalog.map((t) => {
+                  const isApplying = applyingTemplateId === t.id && savingCover
+                  const isApplied = appliedTemplateId === t.id || (cover.isTemplate && cover.url === t.imageUrl)
+                  return (
+                    <div
+                      key={t.id}
+                      title={t.name}
+                      className={cn(
+                        'snap-start space-y-1.5 rounded-xl border p-2',
+                        isApplied ? 'border-[#9FE870] ring-1 ring-[#9FE870]' : 'border-black/[0.12]',
+                        !hasFreeTemplateAccess && 'opacity-60',
+                      )}
+                    >
+                      <div className="relative aspect-[5/7] w-full overflow-hidden rounded-lg bg-black/[0.04]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={t.imageUrl} alt={t.name} className="h-full w-full object-contain" />
+                        {!hasFreeTemplateAccess ? (
+                          <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-[10px] font-semibold text-white/95">
+                            <Palette className="h-3.5 w-3.5" />
+                            Locked
+                          </span>
+                        ) : isApplied ? (
+                          <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#9FE870] text-[#1A1A1A]">
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-[#1A1A1A]" title={t.name}>
+                        {t.name}
+                      </p>
+                      {hasFreeTemplateAccess ? (
+                        <button
+                          type="button"
+                          disabled={savingCover}
+                          onClick={() => (isApplied ? removeTemplate(t) : useTemplate(t))}
+                          className={cn(
+                            'group/btn inline-flex w-full items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+                            isApplied
+                              ? 'border-[#9FE870] bg-[#9FE870]/20 text-[#3f6b1f] hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600'
+                              : 'border-black/[0.14] bg-white text-[#1A1A1A] hover:bg-black/[0.03]',
+                          )}
+                        >
+                          {isApplying ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : isApplied ? (
+                            <Check className="h-3 w-3 group-hover/btn:hidden" />
+                          ) : null}
+                          {isApplied ? (
+                            <>
+                              <span className="group-hover/btn:hidden">Applied</span>
+                              <span className="hidden group-hover/btn:inline">Remove</span>
+                            </>
+                          ) : (
+                            'Use this template'
+                          )}
+                        </button>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+              {pledgeCardCatalog.length > 6 ? (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute right-0 top-0 hidden h-[calc(100%-0.25rem)] w-10 bg-gradient-to-l from-white to-transparent lg:block"
+                />
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-xs text-[#1A1A1A]/45">No catalog designs available yet.</p>
+          )}
+        </div>
       </Card>
+
+      {cover.isTemplate ? (
+      <>
+      {/* Broad share: the applied card leads so it's obvious what guests will
+          see, then the link + every hand-off channel sit alongside it. */}
+      <Card className="overflow-hidden p-0">
+        <div className="flex flex-col sm:flex-row">
+          <div className="relative aspect-[5/7] w-full shrink-0 overflow-hidden bg-black/[0.04] sm:aspect-auto sm:w-40 md:w-48">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cover.url ?? ''} alt="Your pledge card cover" className="h-full w-full object-cover" />
+            <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-[#3f6b1f] shadow-sm">
+              <Check className="h-3 w-3" strokeWidth={3} /> Your pledge card
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-4 p-5">
+            <div className="space-y-3 sm:flex sm:items-start sm:justify-between sm:gap-3 sm:space-y-0">
+              <div className="min-w-0 sm:flex-1">
+                <h3 className="text-base font-semibold text-[#1A1A1A]">{copy.share_title}</h3>
+                <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.share_description}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                <a
+                  href={shareLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#1A1A1A]/25 bg-white px-4 py-2 text-sm font-bold text-[#1A1A1A] transition hover:bg-black/[0.03]"
+                >
+                  <ExternalLink className="h-4 w-4" /> Preview as guest
+                </a>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1 basis-64 truncate rounded-xl border border-black/[0.12] bg-white px-3 py-2.5 text-sm text-[#1A1A1A]/80">
+                {shareLink.replace(/^https?:\/\//, '')}
+              </div>
+              <button
+                type="button"
+                onClick={onCopy}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+              >
+                <Copy className="h-3.5 w-3.5" /> Copy
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3.5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
+              >
+                <MessageCircle className="h-4 w-4" /> WhatsApp
+              </a>
+              <a
+                href={smsUrl}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+              >
+                <Smartphone className="h-4 w-4" /> SMS
+              </a>
+              <a
+                href={emailUrl}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-black/[0.14] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+              >
+                <Mail className="h-4 w-4" /> Email
+              </a>
+
+              {/* QR for the link — pushed to the row's right end, doubles as
+                  something printable for a physical table card at the wedding. */}
+              {qrDataUrl ? (
+                <div className="ml-auto flex shrink-0 items-center gap-3 rounded-xl border border-black/[0.1] bg-black/[0.015] p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrDataUrl} alt="QR code for the pledge link" className="h-16 w-16 shrink-0" />
+                  <div className="space-y-1 text-xs text-[#1A1A1A]/55">
+                    <p className="font-semibold text-[#1A1A1A]">Scan to open</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Targeted send: pick contacts, bulk-select for a batched "Send to
+          selected", or send row-by-row via each guest's own channel buttons.
+          Meta-approved for WhatsApp; SMS/Email run as a dry run until their
+          providers go live. Sent/Awaiting status is real — see
+          pledge_invite_sent_at on guest_contacts. */}
+      <Card className="space-y-5 px-5 py-5">
+        <div>
+          <h3 className="text-base font-semibold text-[#1A1A1A]">Send to your guests</h3>
+          <p className="mt-1 text-sm text-[#1A1A1A]/55">
+            Send each guest their pledge link via WhatsApp, SMS, or Email — individually or in bulk.
+          </p>
+        </div>
+
+        <div>
+          {contacts.length === 0 ? (
+            <p className="text-sm text-[#1A1A1A]/55">No saved contacts yet — add some under Guests first.</p>
+          ) : (
+            <div className="si">
+              <style>{PLEDGE_TABLE_CSS}</style>
+              <div className="gt">
+                <div className="gth">
+                  <h2>Guest list</h2>
+                  <input
+                    className="gsearch"
+                    type="search"
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    placeholder="Search name or number…"
+                    aria-label="Search guests"
+                  />
+                  <div className="tabs" role="tablist" aria-label="Filter by status">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={statusFilter === 'all'}
+                      className={cn('tab', statusFilter === 'all' && 'active')}
+                      onClick={() => setStatusFilter('all')}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={statusFilter === 'not_sent'}
+                      className={cn('tab', statusFilter === 'not_sent' && 'active')}
+                      onClick={() => setStatusFilter('not_sent')}
+                    >
+                      Not sent {notSentCount}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={statusFilter === 'awaiting'}
+                      className={cn('tab', statusFilter === 'awaiting' && 'active')}
+                      onClick={() => setStatusFilter('awaiting')}
+                    >
+                      Awaiting {awaitingCount}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="addbtn"
+                    disabled={pending}
+                    onClick={() => setAddingGuest((v) => !v)}
+                  >
+                    <Plus size={14} /> Add guest
+                  </button>
+                  <button
+                    type="button"
+                    className="bulkbtn"
+                    disabled={selectedIds.size === 0 || bulkSending}
+                    onClick={sendSelected}
+                  >
+                    {bulkSending ? <Loader2 size={14} className="spin" /> : null}
+                    Send to selected {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+                    <Send size={13} />
+                  </button>
+                </div>
+                {visibleContacts.length === 0 && !addingGuest ? (
+                  <div className="empty">No guests match your search</div>
+                ) : (
+                  <div className="scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th style={{ width: 36 }}>
+                            <input
+                              type="checkbox"
+                              checked={allVisibleSelected}
+                              onChange={toggleSelectAll}
+                              disabled={selectableIds.length === 0}
+                              aria-label="Select all"
+                            />
+                          </th>
+                          <th>Guest</th>
+                          <th>Contact</th>
+                          <th>Preferred channel</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: 'right' }}>Send</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {addingGuest ? (
+                          <tr>
+                            <td />
+                            <td className="who">
+                              <input
+                                className="einp"
+                                autoFocus
+                                placeholder="Name"
+                                value={newGuest.name}
+                                onChange={(e) => setNewGuest({ ...newGuest, name: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') addGuest()
+                                  if (e.key === 'Escape') setAddingGuest(false)
+                                }}
+                              />
+                            </td>
+                            <td className="contact" colSpan={2}>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <input
+                                  className="einp"
+                                  placeholder="Phone"
+                                  value={newGuest.phone}
+                                  onChange={(e) => setNewGuest({ ...newGuest, phone: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') addGuest()
+                                    if (e.key === 'Escape') setAddingGuest(false)
+                                  }}
+                                  inputMode="tel"
+                                />
+                                <input
+                                  className="einp"
+                                  placeholder="Email"
+                                  value={newGuest.email}
+                                  onChange={(e) => setNewGuest({ ...newGuest, email: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') addGuest()
+                                    if (e.key === 'Escape') setAddingGuest(false)
+                                  }}
+                                  inputMode="email"
+                                />
+                              </div>
+                            </td>
+                            <td />
+                            <td>
+                              <div className="ra">
+                                <button className="ia save" disabled={savingNewGuest} onClick={addGuest}>
+                                  {savingNewGuest ? <Loader2 size={14} className="spin" /> : <Check size={14} />} Save
+                                </button>
+                                <button className="ia" onClick={() => setAddingGuest(false)} title="Cancel">
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                        {visibleContacts.map((c) =>
+                          rowEdit?.id === c.id ? (
+                            <tr key={c.id}>
+                              <td />
+                              <td className="who">
+                                <input
+                                  className="einp"
+                                  autoFocus
+                                  value={rowEdit.name}
+                                  onChange={(e) => setRowEdit({ ...rowEdit, name: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveRowEdit()
+                                    if (e.key === 'Escape') setRowEdit(null)
+                                  }}
+                                />
+                              </td>
+                              <td className="contact" colSpan={2}>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                  <input
+                                    className="einp"
+                                    placeholder="Phone"
+                                    value={rowEdit.phone}
+                                    onChange={(e) => setRowEdit({ ...rowEdit, phone: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveRowEdit()
+                                      if (e.key === 'Escape') setRowEdit(null)
+                                    }}
+                                    inputMode="tel"
+                                  />
+                                  <input
+                                    className="einp"
+                                    placeholder="Email"
+                                    value={rowEdit.email}
+                                    onChange={(e) => setRowEdit({ ...rowEdit, email: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveRowEdit()
+                                      if (e.key === 'Escape') setRowEdit(null)
+                                    }}
+                                    inputMode="email"
+                                  />
+                                </div>
+                              </td>
+                              <td />
+                              <td>
+                                <div className="ra">
+                                  <button className="ia save" disabled={pending} onClick={saveRowEdit}>
+                                    <Check size={14} /> Save
+                                  </button>
+                                  <button
+                                    className="ia danger"
+                                    disabled={pending}
+                                    title="Delete guest"
+                                    onClick={() => (rowEdit.askDelete ? removeGuest() : setRowEdit({ ...rowEdit, askDelete: true }))}
+                                  >
+                                    <Trash2 size={14} />
+                                    {rowEdit.askDelete ? 'Confirm' : null}
+                                  </button>
+                                  <button className="ia" disabled={pending} onClick={() => setRowEdit(null)} title="Cancel">
+                                    <X size={15} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            (() => {
+                              const phone = c.whatsapp_phone || c.phone
+                              const channel = effectiveChannel(c)
+                              const status = contactStatus(c)
+                              const isSendingChannel = channel !== null && sendingKey === `${c.id}:${channel}`
+                              return (
+                                <tr key={c.id}>
+                                  <td>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.has(c.id)}
+                                      onChange={() => toggleSelect(c.id)}
+                                      disabled={!channel}
+                                      aria-label={`Select ${c.full_name}`}
+                                    />
+                                  </td>
+                                  <td className="who">{c.full_name}</td>
+                                  <td className="contact">{phone || c.email || 'No contact'}</td>
+                                  <td style={{ position: 'relative' }}>
+                                    {channel ? (
+                                      <div data-channel-menu style={{ position: 'relative', display: 'inline-block' }}>
+                                        <button
+                                          type="button"
+                                          className={cn('pillselect', `pill-${channel}`)}
+                                          onClick={() =>
+                                            setChannelMenuOpenId((id) => (id === c.id ? null : c.id))
+                                          }
+                                          aria-haspopup="listbox"
+                                          aria-expanded={channelMenuOpenId === c.id}
+                                          aria-label={`Send channel for ${c.full_name}`}
+                                        >
+                                          {(() => {
+                                            const Icon = SHARE_CHANNELS.find((s) => s.id === channel)!.icon
+                                            return <Icon size={12} />
+                                          })()}
+                                          {SHARE_CHANNELS.find((s) => s.id === channel)!.label}
+                                        </button>
+                                        {channelMenuOpenId === c.id ? (
+                                          <div className="chmenu" role="listbox">
+                                            {SHARE_CHANNELS.map((s) => {
+                                              const Icon = s.icon
+                                              const usable = contactHasChannel(c, s.id)
+                                              return (
+                                                <button
+                                                  key={s.id}
+                                                  type="button"
+                                                  role="option"
+                                                  aria-selected={channel === s.id}
+                                                  disabled={!usable}
+                                                  className={cn('chmenu-item', channel === s.id && 'active')}
+                                                  onClick={() => {
+                                                    setChannelChoice((prev) => ({ ...prev, [c.id]: s.id }))
+                                                    setChannelMenuOpenId(null)
+                                                  }}
+                                                >
+                                                  <Icon size={13} />
+                                                  {s.label}
+                                                  {!usable ? (
+                                                    <span className="chmenu-hint">
+                                                      no {s.id === 'email' ? 'email' : 'phone'}
+                                                    </span>
+                                                  ) : null}
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : (
+                                      <span className="pill pill-none">No contact</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className={cn('status', `status-${status}`)}>
+                                      {CONTACT_STATUS_LABELS[status]}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <div className="ra">
+                                      {channel ? (
+                                        <button
+                                          className="ia ia-primary ia-whatsapp"
+                                          disabled={pending}
+                                          title={`Send via ${SHARE_CHANNELS.find((s) => s.id === channel)!.label}`}
+                                          onClick={() => sendRow(c.id, channel)}
+                                        >
+                                          {isSendingChannel ? (
+                                            <Loader2 size={14} className="spin" />
+                                          ) : (
+                                            <Send size={13} />
+                                          )}
+                                          Send
+                                        </button>
+                                      ) : null}
+                                      <button className="ia" disabled={pending} title="Copy pledge link" onClick={onCopy}>
+                                        <Copy size={15} />
+                                      </button>
+                                      <button
+                                        className="ia"
+                                        disabled={pending}
+                                        title="Edit guest"
+                                        onClick={() =>
+                                          setRowEdit({
+                                            id: c.id,
+                                            name: c.full_name,
+                                            phone: phone ?? '',
+                                            email: c.email ?? '',
+                                            askDelete: false,
+                                          })
+                                        }
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })()
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+      </>
+      ) : null}
     </div>
   )
 }
@@ -1653,6 +2610,7 @@ function FollowUpsSection({
   onEmail,
   onRecord,
   copy,
+  sendingKey,
 }: {
   pledges: PledgeWithContact[]
   onWa: (p: PledgeWithContact) => void
@@ -1660,6 +2618,7 @@ function FollowUpsSection({
   onEmail: (p: PledgeWithContact) => void
   onRecord: (p: PledgeWithContact) => void
   copy: PledgesDashboardCopy
+  sendingKey: string | null
 }) {
   // Everyone still owing money, due-first (overdue and scheduled-due at the top).
   const owing = pledges.filter((p) => OWING.includes(p.status))
@@ -1745,7 +2704,7 @@ function FollowUpsSection({
                 </td>
                 <td className="py-3.5 pr-3 text-right">
                   <div className="inline-flex items-center justify-end gap-1">
-                    <ReminderButtons p={p} onWa={onWa} onSms={onSms} onEmail={onEmail} />
+                    <ReminderButtons p={p} onWa={onWa} onSms={onSms} onEmail={onEmail} sendingKey={sendingKey} />
                     <button
                       onClick={() => onRecord(p)}
                       aria-label="Record payment"
@@ -1791,13 +2750,15 @@ function ReportsSection({
   const collectionRate =
     stats.totalPledged > 0 ? Math.round((stats.totalReceived / stats.totalPledged) * 100) : 0
 
+  // All the reduces below pool amounts across pledges that may each be in a
+  // different currency, so every amount is converted to TZS before adding.
   const byStatus = (Object.keys(PLEDGE_STATUS_LABELS) as PledgeStatus[]).map((s) => {
     const rows = pledges.filter((p) => p.status === s)
     return {
       label: PLEDGE_STATUS_LABELS[s],
       count: rows.length,
-      pledged: rows.reduce((n, p) => n + p.pledged_amount, 0),
-      received: rows.reduce((n, p) => n + p.amount_received, 0),
+      pledged: rows.reduce((n, p) => n + toTzs(p.pledged_amount, p.currency), 0),
+      received: rows.reduce((n, p) => n + toTzs(p.amount_received, p.currency), 0),
     }
   })
 
@@ -1807,7 +2768,7 @@ function ReportsSection({
       return {
         label: PAYMENT_METHOD_LABELS[m],
         count: rows.length,
-        received: rows.reduce((n, p) => n + p.amount_received, 0),
+        received: rows.reduce((n, p) => n + toTzs(p.amount_received, p.currency), 0),
       }
     })
     .filter((r) => r.count > 0)
@@ -1816,8 +2777,8 @@ function ReportsSection({
     pledges.reduce<Record<string, { pledged: number; received: number; count: number }>>((acc, p) => {
       const key = p.group_tag?.trim() || 'Ungrouped'
       const g = acc[key] ?? { pledged: 0, received: 0, count: 0 }
-      g.pledged += p.pledged_amount
-      g.received += p.amount_received
+      g.pledged += toTzs(p.pledged_amount, p.currency)
+      g.received += toTzs(p.amount_received, p.currency)
       g.count += 1
       acc[key] = g
       return acc
@@ -1853,12 +2814,15 @@ function ReportsSection({
   const awaitingCount = pledges.filter((p) => p.status === 'invited').length
   const top = topContributors(pledges, 10)
 
-  // Pledge-amount mix (count-based fulfillment + average / largest).
+  // Pledge-amount mix (count-based fulfillment + average / largest), pooled
+  // in TZS since `contributing` can span multiple currencies.
   const contributing = pledges.filter((p) => p.status !== 'declined' && p.pledged_amount > 0)
   const avgPledge = contributing.length
-    ? Math.round(contributing.reduce((n, p) => n + p.pledged_amount, 0) / contributing.length)
+    ? Math.round(
+        contributing.reduce((n, p) => n + toTzs(p.pledged_amount, p.currency), 0) / contributing.length,
+      )
     : 0
-  const largestPledge = contributing.reduce((m, p) => Math.max(m, p.pledged_amount), 0)
+  const largestPledge = contributing.reduce((m, p) => Math.max(m, toTzs(p.pledged_amount, p.currency)), 0)
   const fulfillmentRate = stats.totalPledges > 0 ? Math.round((stats.paidCount / stats.totalPledges) * 100) : 0
 
   // Goal progress.
@@ -2002,7 +2966,7 @@ function ReportsSection({
         <ReportTable
           title="Top contributors"
           head={['Contributor', 'Pledged', 'Received']}
-          rows={top.map((p) => [p.full_name, formatMoney(p.pledged_amount, 'TZS'), formatMoney(p.amount_received, 'TZS')])}
+          rows={top.map((p) => [p.full_name, formatMoney(p.pledged_amount, p.currency), formatMoney(p.amount_received, p.currency)])}
         />
       ) : null}
 
@@ -2238,10 +3202,11 @@ function PledgeSlideover({
                 value={form.currency}
                 onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
               >
-                <option value="TZS">TZS</option>
-                <option value="USD">USD</option>
-                <option value="KES">KES</option>
-                <option value="EUR">EUR</option>
+                {PLEDGE_CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Amount pledged">

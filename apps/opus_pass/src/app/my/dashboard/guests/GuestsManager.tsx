@@ -48,6 +48,7 @@ import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import { EventSwitcher } from '@/components/dashboard/EventScope'
 import type {
   ChildEntry,
+  GuestInvitation,
   GuestWithInvitations,
   RsvpStatus,
   WeddingEvent,
@@ -107,16 +108,45 @@ function hasPlusOne(form: GuestInput): boolean {
   )
 }
 
-function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
-  if (g.invitations.length === 0) return null
-  if (g.invitations.some((i) => i.rsvp_status === 'attending')) return 'attending'
-  if (g.invitations.every((i) => i.rsvp_status === 'declined')) return 'declined'
-  if (g.invitations.some((i) => i.rsvp_status === 'maybe')) return 'maybe'
+function summaryStatus(invitations: GuestInvitation[]): RsvpStatus | null {
+  if (invitations.length === 0) return null
+  if (invitations.some((i) => i.rsvp_status === 'attending')) return 'attending'
+  if (invitations.every((i) => i.rsvp_status === 'declined')) return 'declined'
+  if (invitations.some((i) => i.rsvp_status === 'maybe')) return 'maybe'
   return 'pending'
+}
+
+/** Narrow a guest's invitations to the currently selected event scope. */
+function scopedInvitations(g: GuestWithInvitations, eventFilter: string): GuestInvitation[] {
+  return eventFilter === 'all' ? g.invitations : g.invitations.filter((i) => i.event_id === eventFilter)
+}
+
+/** Whether a guest's invite has been sent for the given event scope.
+ *  Prefers per-event send logs (event_id tagged in guest_message_log);
+ *  falls back to the guest-level invite_count/last_invited_at for sends that
+ *  predate event-scoping. A legacy send can only have targeted an event the
+ *  guest was already invited to at send time — comparing last_invited_at
+ *  against each invitation's created_at keeps that signal even after the
+ *  guest is later added to a second event (invitations.length alone can't
+ *  tell those cases apart, and would otherwise wrongly revert to "not sent"). */
+function wasSentForScope(
+  g: GuestWithInvitations,
+  eventFilter: string,
+  sentEventIds: Record<string, string[]>,
+): boolean {
+  if (eventFilter === 'all') return g.invite_count > 0
+  const tagged = sentEventIds[g.id] ?? []
+  if (tagged.includes(eventFilter)) return true
+  if (tagged.length > 0) return false
+  if (g.invite_count === 0 || !g.last_invited_at) return false
+  const invitation = g.invitations.find((i) => i.event_id === eventFilter)
+  if (!invitation) return false
+  return new Date(invitation.created_at).getTime() <= new Date(g.last_invited_at).getTime()
 }
 
 export default function GuestsManager({
   initialGuests,
+  sentEventIds,
   events,
   eventFilter,
   scopeStrings,
@@ -127,6 +157,8 @@ export default function GuestsManager({
   whatsappLive,
 }: {
   initialGuests: GuestWithInvitations[]
+  /** Which event(s) each guest has a logged send for, keyed by guest id. */
+  sentEventIds: Record<string, string[]>
   events: WeddingEvent[]
   /** Event id the roster view is scoped to, or 'all' for the full roster. */
   eventFilter: string
@@ -163,16 +195,23 @@ export default function GuestsManager({
     [initialGuests]
   )
 
+  // Guests belonging to the selected event scope, before any search/view/
+  // group/rsvp refinement. This is the stable base for the stat cards and
+  // sub-nav badges, so those numbers track the event switcher but don't
+  // fluctuate as the user types a search query or flips sub-nav tabs.
+  const eventScopedGuests = useMemo(
+    () =>
+      eventFilter === 'all'
+        ? initialGuests
+        : initialGuests.filter((g) => g.invitations.some((i) => i.event_id === eventFilter)),
+    [initialGuests, eventFilter],
+  )
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const matched = initialGuests.filter((g) => {
-      // Event scope: show only guests invited to the selected event ('all'
-      // keeps the unified roster, where invitations are managed per guest).
-      if (eventFilter !== 'all' && !g.invitations.some((i) => i.event_id === eventFilter)) {
-        return false
-      }
+    const matched = eventScopedGuests.filter((g) => {
       if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
-      if (view === 'invite' && g.invite_count > 0) return false
+      if (view === 'invite' && wasSentForScope(g, eventFilter, sentEventIds)) return false
       if (view === 'address' && guestHasFullAddress(g)) return false
       if (rsvpFilter.size > 0) {
         // Match if ANY invitation on this guest has a selected status. A
@@ -194,7 +233,7 @@ export default function GuestsManager({
         ? a.full_name.localeCompare(b.full_name)
         : b.full_name.localeCompare(a.full_name),
     )
-  }, [initialGuests, query, groupFilter, sortDir, view, rsvpFilter, eventFilter])
+  }, [eventScopedGuests, query, groupFilter, sortDir, view, rsvpFilter, eventFilter, sentEventIds])
 
   // Close the Filter popover when the user clicks outside it.
   useEffect(() => {
@@ -217,21 +256,24 @@ export default function GuestsManager({
     })
   }
 
-  // Counts for the sub-nav badges — computed from the whole guest list so the
-  // numbers stay stable regardless of the currently-active view's filter.
+  // Counts for the sub-nav badges — computed from the event-scoped guest
+  // list so the numbers stay stable regardless of the currently-active
+  // view's filter, but still track the event switcher.
   const viewCounts = useMemo(() => {
-    const notInvited = initialGuests.filter((g) => g.invite_count === 0).length
-    const missingAddress = initialGuests.filter((g) => !guestHasFullAddress(g)).length
+    const notInvited = eventScopedGuests.filter((g) => !wasSentForScope(g, eventFilter, sentEventIds)).length
+    const missingAddress = eventScopedGuests.filter((g) => !guestHasFullAddress(g)).length
     return { notInvited, missingAddress }
-  }, [initialGuests])
+  }, [eventScopedGuests, eventFilter, sentEventIds])
 
   // Headcounts shown in the stats card row above the toolbar. Adults = each
   // primary guest + a plus-one when any plus-one field is present. Children
-  // = sum of attached children entries across all guests.
+  // = sum of attached children entries across all guests. Scoped to the
+  // selected event so the numbers never include guests invited to a
+  // different event.
   const headCounts = useMemo(() => {
-    let adults = initialGuests.length
+    let adults = eventScopedGuests.length
     let children = 0
-    for (const g of initialGuests) {
+    for (const g of eventScopedGuests) {
       const hasPlusOne =
         Boolean(g.plus_one_first_name?.trim()) ||
         Boolean(g.plus_one_last_name?.trim()) ||
@@ -240,7 +282,7 @@ export default function GuestsManager({
       children += g.children.length
     }
     return { adults, children }
-  }, [initialGuests])
+  }, [eventScopedGuests])
 
   // Collector share URL — origin is only available client-side, so we
   // initialise lazily once mounted to avoid a hydration mismatch.
@@ -262,17 +304,17 @@ export default function GuestsManager({
 
   const counts = useMemo(() => {
     const missingContact = filtered.filter((g) => !g.email && !g.phone && !g.whatsapp_phone).length
-    const invited = filtered.filter((g) => g.invite_count > 0).length
+    const invited = filtered.filter((g) => wasSentForScope(g, eventFilter, sentEventIds)).length
     let replied = 0
     let totalInvites = 0
     for (const g of filtered) {
-      for (const inv of g.invitations) {
+      for (const inv of scopedInvitations(g, eventFilter)) {
         totalInvites += 1
         if (inv.rsvp_status !== 'pending') replied += 1
       }
     }
     return { missingContact, invited, replied, totalInvites }
-  }, [filtered])
+  }, [filtered, eventFilter, sentEventIds])
 
   const allSelected = filtered.length > 0 && filtered.every((g) => selected.has(g.id))
   const someSelected = !allSelected && filtered.some((g) => selected.has(g.id))
@@ -493,7 +535,7 @@ export default function GuestsManager({
       return
     }
     toast.success('RSVP link copied')
-    recordSend(g.id, 'link').catch(() => {})
+    recordSend(g.id, 'link', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
   }
 
   function openManualWhatsApp(g: GuestWithInvitations) {
@@ -501,7 +543,7 @@ export default function GuestsManager({
     const msg = inviteMessage(coupleName, g.full_name, link)
     const url = whatsappShareUrl(g, msg)
     window.open(url, '_blank', 'noopener,noreferrer')
-    recordSend(g.id, 'whatsapp').catch(() => {})
+    recordSend(g.id, 'whatsapp', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
   }
 
   function sendWhatsApp(g: GuestWithInvitations) {
@@ -543,7 +585,7 @@ export default function GuestsManager({
     const msg = inviteMessage(coupleName, g.full_name, link)
     const url = emailShareUrl(g, `You're invited — ${coupleName}`, msg)
     window.location.href = url
-    recordSend(g.id, 'email').catch(() => {})
+    recordSend(g.id, 'email', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
   }
 
   function sendSms(g: GuestWithInvitations) {
@@ -551,7 +593,7 @@ export default function GuestsManager({
     const msg = inviteMessage(coupleName, g.full_name, link)
     const url = smsShareUrl(g, msg)
     window.location.href = url
-    recordSend(g.id, 'sms').catch(() => {})
+    recordSend(g.id, 'sms', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
   }
 
 
@@ -640,7 +682,7 @@ export default function GuestsManager({
         <div className="grid gap-3 lg:grid-cols-2">
           <Card className="px-5 py-4">
             <div className="grid grid-cols-3 divide-x divide-black/[0.12] text-center">
-              <Stat value={initialGuests.length} label={copy.stat_guests_label} />
+              <Stat value={eventScopedGuests.length} label={copy.stat_guests_label} />
               <Stat value={headCounts.adults} label={copy.stat_adults_label} />
               <Stat value={headCounts.children} label={copy.stat_children_label} />
             </div>
@@ -941,9 +983,10 @@ export default function GuestsManager({
               </thead>
               <tbody className="divide-y divide-black/[0.05]">
                 {filtered.map((g) => {
-                  const status = summaryStatus(g)
+                  const invitationsInScope = scopedInvitations(g, eventFilter)
+                  const status = summaryStatus(invitationsInScope)
                   const isSelected = selected.has(g.id)
-                  const sent = g.invite_count > 0
+                  const sent = wasSentForScope(g, eventFilter, sentEventIds)
                   return (
                     <tr
                       key={g.id}
@@ -986,11 +1029,11 @@ export default function GuestsManager({
                         </div>
                       </td>
                       <td className="hidden py-3.5 pr-4 md:table-cell">
-                        {g.invitations.length === 0 ? (
+                        {invitationsInScope.length === 0 ? (
                           <span className="text-xs text-[#1A1A1A]/40">Not invited yet</span>
                         ) : (
                           <div className="flex max-w-[180px] flex-wrap gap-1">
-                            {g.invitations.slice(0, 2).map((inv) => (
+                            {invitationsInScope.slice(0, 2).map((inv) => (
                               <span
                                 key={inv.id}
                                 className="rounded-full bg-black/[0.05] px-2 py-0.5 text-xs text-[#1A1A1A]/70"
@@ -998,9 +1041,9 @@ export default function GuestsManager({
                                 {eventName(inv.event_id)}
                               </span>
                             ))}
-                            {g.invitations.length > 2 ? (
+                            {invitationsInScope.length > 2 ? (
                               <span className="text-xs text-[#1A1A1A]/40">
-                                +{g.invitations.length - 2}
+                                +{invitationsInScope.length - 2}
                               </span>
                             ) : null}
                           </div>
@@ -1037,7 +1080,7 @@ export default function GuestsManager({
                         {sent ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-[#9FE870]/25 px-2.5 py-1 text-xs font-medium text-[#3f6b1f]">
                             <Check className="h-3 w-3" />
-                            Sent{g.invite_count > 1 ? ` · ${g.invite_count}×` : ''}
+                            Sent{eventFilter === 'all' && g.invite_count > 1 ? ` · ${g.invite_count}×` : ''}
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-black/[0.05] px-2.5 py-1 text-xs font-medium text-[#1A1A1A]/55">

@@ -23,6 +23,8 @@ import {
   Store,
   MessageCircle,
   ChevronUp,
+  BookHeart,
+  HeartHandshake,
   type LucideIcon,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
@@ -58,9 +60,11 @@ const NAV: NavItem[] = [
   { href: '/my/dashboard/pledges', labelKey: 'nav_pledges', icon: HandCoins },
   { href: '/my/dashboard/guests', labelKey: 'nav_guests', icon: Users },
   { href: '/my/dashboard/invitations', labelKey: 'nav_invitations', icon: Send },
+  { href: '/my/dashboard/thank-you', labelKey: 'nav_thank_you', icon: HeartHandshake },
   { href: '/my/dashboard/orders', labelKey: 'nav_orders', icon: Receipt },
   { href: '/my/dashboard/rsvps', labelKey: 'nav_rsvps', icon: ClipboardCheck },
   { href: '/my/dashboard/website', labelKey: 'nav_website', icon: Globe },
+  { href: '/my/dashboard/guestbook', labelKey: 'nav_guestbook', icon: BookHeart },
   { href: '/my/dashboard/seating', labelKey: 'nav_seating', icon: Armchair },
   // Vendor inquiries (quote requests + conversations) now render inside the
   // dashboard; the data is read from the shared marketplace tables.
@@ -86,7 +90,7 @@ function NavLinks({
           'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
           collapsed && 'justify-center px-0',
           active
-            ? 'bg-[#C9A0DC]/15 text-[#1A1A1A]'
+            ? 'bg-(--accent) text-(--on-accent)'
             : 'text-[#1A1A1A]/60 hover:bg-black/[0.04] hover:text-[#1A1A1A]',
         )
         const inner = (
@@ -94,7 +98,7 @@ function NavLinks({
             <Icon
               className={cn(
                 'h-[18px] w-[18px] shrink-0',
-                active ? 'text-[#8e57b3]' : 'text-[#1A1A1A]/40',
+                active ? 'text-(--on-accent)' : 'text-[#1A1A1A]/40',
               )}
             />
             {collapsed ? null : <span className="flex-1">{label}</span>}

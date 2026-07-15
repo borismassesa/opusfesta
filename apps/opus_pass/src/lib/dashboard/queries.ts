@@ -4,13 +4,16 @@ import { getDashboardUser, requireDashboardUser } from './auth'
 import { firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
-import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
+import { toTzs } from './currency'
+import { resolveEventCover, type PledgePageConfig, type PledgePaymentMethod } from './pledge-page'
+import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import type { SiteDoc } from '@/lib/builder/types'
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import type {
   DashboardStats,
   EventPledge,
   EventType,
+  GuestbookEntry,
   GuestInvitation,
   GuestWithInvitations,
   LastSend,
@@ -258,6 +261,28 @@ export async function getGuestsWithInvitations(): Promise<GuestWithInvitations[]
     ...g,
     invitations: byGuest.get(g.id) ?? [],
   }))
+}
+
+/** Which event(s) each guest has a logged send for — keyed by guest_contact_id.
+ *  Powers per-event "Sent"/"Not sent" on the guest list when scoped to one
+ *  event. Rows that predate event-scoping have a NULL event_id and are
+ *  omitted here (see 20260705000002_opuspass_event_scoped_invites.sql). */
+export async function getSentEventIdsByGuest(): Promise<Record<string, string[]>> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('guest_message_log')
+    .select('guest_contact_id, event_id')
+    .eq('user_id', user.id)
+    .not('event_id', 'is', null)
+
+  const map: Record<string, string[]> = {}
+  for (const row of (data ?? []) as { guest_contact_id: string; event_id: string }[]) {
+    const list = map[row.guest_contact_id] ?? []
+    if (!list.includes(row.event_id)) list.push(row.event_id)
+    map[row.guest_contact_id] = list
+  }
+  return map
 }
 
 /** When/how each guest was last contacted — keyed by guest_contact_id.
@@ -516,7 +541,9 @@ export async function getPledgeStats(scope: PledgeScope = {}): Promise<PledgeSta
 
 /** Pure aggregation over an already-fetched pledge list — use this instead of
  *  getPledgeStats when the caller already has the pledges, to avoid a second
- *  identical query. */
+ *  identical query. Totals are in TZS: each pledge's amount is converted
+ *  from its own currency before summing, so a mix of TZS/USD/KES/EUR
+ *  pledges doesn't get added together as if they were the same currency. */
 export function pledgeStatsFrom(pledges: PledgeWithContact[]): PledgeStats {
   let totalPledged = 0
   let totalReceived = 0
@@ -525,8 +552,8 @@ export function pledgeStatsFrom(pledges: PledgeWithContact[]): PledgeStats {
   let cardsToPrepare = 0
 
   for (const p of pledges) {
-    if (p.status !== 'declined') totalPledged += p.pledged_amount
-    totalReceived += p.amount_received
+    if (p.status !== 'declined') totalPledged += toTzs(p.pledged_amount, p.currency)
+    totalReceived += toTzs(p.amount_received, p.currency)
     if (p.status === 'paid') paidCount += 1
     if (p.will_attend === 'yes') attendingCount += 1
     // Card prep queue: they paid, confirmed they're coming, card not yet sent.
@@ -568,7 +595,9 @@ export interface PublicPledgeCouple {
   pageConfig: PledgePageConfig
 }
 
-export async function getPublicPledgeCouple(token: string): Promise<PublicPledgeCouple | null> {
+/** `eventId` is the ?event= carried on the guest link — picks which event's
+ *  cover to show (see resolveEventCover); null renders the default cover. */
+export async function getPublicPledgeCouple(token: string, eventId: string | null): Promise<PublicPledgeCouple | null> {
   const supabase = createDashboardClient()
   const { data: owner, error: ownerErr } = await supabase
     .from('users')
@@ -597,15 +626,18 @@ export async function getPublicPledgeCouple(token: string): Promise<PublicPledge
       pledge_page: PledgePageConfig | null
     }>()
 
-  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  // Guests see the pledge page as a personal ask from the couple, not a legal
+  // document — first names read warmer than full names here.
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean).map((n) => firstNameOf(n!))
   const coupleName = names.length ? names.join(' & ') : await fallbackCoupleNameFromEvent(supabase, owner.id)
+  const storedPage = profile?.pledge_page ?? {}
   return {
     coupleName,
     weddingDate: profile?.wedding_date ?? null,
     city: profile?.city ?? null,
     paymentInstructions: profile?.pledge_payment_instructions ?? null,
     paymentMethods: profile?.pledge_payment_methods ?? [],
-    pageConfig: profile?.pledge_page ?? {},
+    pageConfig: { ...storedPage, ...resolveEventCover(storedPage, eventId) },
   }
 }
 
@@ -626,8 +658,11 @@ export async function fallbackCoupleNameFromEvent(
   return primaryEvent?.name?.trim() || 'The Couple'
 }
 
-/** The signed-in couple's saved pledge-page customizations (for the editor). */
-export async function getMyPledgePageConfig(): Promise<PledgePageConfig> {
+/** The signed-in couple's saved pledge-page config, with the cover resolved
+ *  for the given event (each event can have its own pledge card cover — see
+ *  resolveEventCover). Pass the currently-selected event id, or null for
+ *  couples with no events. */
+export async function getMyPledgePageConfig(eventId: string | null): Promise<PledgePageConfig> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const { data } = await supabase
@@ -635,7 +670,23 @@ export async function getMyPledgePageConfig(): Promise<PledgePageConfig> {
     .select('pledge_page')
     .eq('user_id', user.id)
     .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
-  return data?.pledge_page ?? {}
+  const stored = data?.pledge_page ?? {}
+  return { ...stored, ...resolveEventCover(stored, eventId) }
+}
+
+/** The signed-in couple's saved Thank You card selection for one event —
+ *  mirrors getMyPledgePageConfig, reading thank_you_config instead. */
+export async function getMyThankYouCardConfig(
+  eventId: string | null,
+): Promise<{ coverImageUrl: string | null; coverIsFullTemplate: boolean }> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('couple_profiles')
+    .select('thank_you_config')
+    .eq('user_id', user.id)
+    .maybeSingle<{ thank_you_config: ThankYouCardConfig | null }>()
+  return resolveThankYouCover(data?.thank_you_config ?? null, eventId)
 }
 
 /** The signed-in couple's saved Contact Collector page customizations. */
@@ -1128,6 +1179,85 @@ export async function getMyPublicInvite(): Promise<MyPublicInvite> {
   }
 }
 
+// ──────────────────────────────────── Guestbook ─────────────────────────────────
+
+/** Every guestbook entry for the signed-in couple, newest first (dashboard moderation queue). */
+export async function getGuestbookEntries(): Promise<GuestbookEntry[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data, error } = await supabase
+    .from('guestbook_entries')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('[guestbook] list failed', error)
+    return []
+  }
+  return (data ?? []) as GuestbookEntry[]
+}
+
+/**
+ * Public, slug-scoped data for the standalone /guestbook/<slug> page.
+ *
+ * Deliberately independent of the wedding-website builder: it only requires
+ * `public_sharing_enabled` on couple_profiles (the same gate /i/<slug> uses),
+ * NOT a built/published website_doc, so guests can leave a message even if
+ * the couple never touches the site builder. Returns null when the slug is
+ * unknown or sharing is off, so the page 404s.
+ */
+export interface PublicGuestbookPage {
+  slug: string
+  coupleName: string
+  coverImageUrl: string | null
+  city: string | null
+  entries: GuestbookEntry[]
+}
+
+export async function getPublicGuestbookPage(slug: string): Promise<PublicGuestbookPage | null> {
+  if (!slug) return null
+  const supabase = createDashboardClient()
+  const { data: profile, error: profileErr } = await supabase
+    .from('couple_profiles')
+    .select('user_id, partner1_name, partner2_name, cover_image_url, city, public_sharing_enabled')
+    .eq('public_slug', slug)
+    .maybeSingle<{
+      user_id: string
+      partner1_name: string | null
+      partner2_name: string | null
+      cover_image_url: string | null
+      city: string | null
+      public_sharing_enabled: boolean
+    }>()
+  if (profileErr) {
+    console.error('[guestbook] public page lookup failed', profileErr)
+    return null
+  }
+  if (!profile || !profile.public_sharing_enabled) return null
+
+  const { data, error } = await supabase
+    .from('guestbook_entries')
+    .select('*')
+    .eq('user_id', profile.user_id)
+    .eq('review_status', 'approved')
+    .order('created_at', { ascending: false })
+    .limit(60)
+  if (error) {
+    console.error('[guestbook] public list failed', error)
+  }
+  // First names only — this header stays short and readable at the large
+  // display size the guestbook page sets it at (unlike the full-name
+  // treatment used elsewhere, e.g. getPublicInvite).
+  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
+  return {
+    slug,
+    coupleName: names.length ? names.join(' & ') : 'The Couple',
+    coverImageUrl: profile.cover_image_url,
+    city: profile.city,
+    entries: (data ?? []) as GuestbookEntry[],
+  }
+}
+
 /**
  * WhatsApp send entitlement = how many invitation "credits" the couple paid for
  * vs how many they've used, SCOPED TO ONE EVENT. Credits are the sum of
@@ -1143,6 +1273,10 @@ export async function getMyPublicInvite(): Promise<MyPublicInvite> {
  * quota; the couple must explicitly assign them.
  */
 export interface WhatsAppEntitlement {
+  /** Base purchased count from paid orders, before any admin adjustment —
+   *  the same for both pools since one purchase grants one of each per guest. */
+  basePurchased: number
+  /** Invite pool's effective size: basePurchased + admin invite adjustments. */
   purchased: number
   used: number
   remaining: number
@@ -1167,6 +1301,16 @@ export interface WhatsAppEntitlement {
   /** guest_contact_ids already sent a WhatsApp invite for THIS event (re-sends
    *  don't re-charge). */
   alreadySentIds: string[]
+  /** Entrance-pass pool: same purchase grants one ticket per paid guest,
+   *  consumed independently of invites (first send per guest charges, re-sends
+   *  are free). Guests ticketed before metering shipped stay counted as used
+   *  and keep free re-sends — only NEW guests are blocked when the pool runs dry. */
+  /** Entrance pool's effective size: basePurchased + admin entrance-pass adjustments. */
+  entrancePassPurchased: number
+  entrancePassUsed: number
+  entrancePassRemaining: number
+  /** guest_contact_ids already sent an entrance pass for THIS event. */
+  entrancePassSentIds: string[]
   /** Paid orders not yet assigned to any event — the couple needs to pick
    *  which event each one is for before it counts toward that event's quota. */
   unassignedOrders: PaidOrderSummary[]
@@ -1280,6 +1424,25 @@ export async function getEventOrderLinks(): Promise<EventOrderLinks> {
   return { byEvent, unassigned: unassignedOrdersFrom(orders) }
 }
 
+/** The package tier (lite/classic/elegant/signature) behind an event's most
+ *  recent paid order, if any — used to gate free vs. paid pledge-card
+ *  templates. UI-only signal; the server action re-derives this itself
+ *  before actually granting the free template. */
+export async function getEventPackageTierId(eventId: string): Promise<string | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.event_id === eventId)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+  return withImage?.tierId ?? items[0]?.tierId ?? null
+}
+
 export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppEntitlement> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
@@ -1349,36 +1512,54 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
   // the couple can assign them instead of them silently counting for nothing.
   const unassignedOrders = unassignedOrdersFrom(allPaidOrders)
 
-  // Used = distinct guests already sent a REAL WhatsApp invite FOR THIS EVENT.
-  // Also count sends logged BEFORE event-scoping shipped (event_id IS NULL) —
-  // those predate this feature and can't be attributed to a specific event,
-  // but treating them as "never sent" would double-invite AND double-charge a
-  // guest who was genuinely already invited. Erring toward a free resend is
-  // the safer failure mode for a paying customer. Dry-run stub sends log fake
-  // wamid.STUB-* ids — they must never consume paid credits.
-  //
-  // "Already sent" must match every SUCCESS status, not just 'sent' — the
-  // webhook upgrades rows sent → delivered → read as Meta's receipts land,
-  // so matching only 'sent' made a guest flip back to "Not sent" (and freed
-  // their quota slot, double-charging a resend) the moment their invite was
-  // successfully delivered. Only 'failed' means not sent.
-  const { data: sent } = await supabase
-    .from('whatsapp_messages')
-    .select('guest_contact_id')
+  // Used = distinct guests already credited a WhatsApp send FOR THIS EVENT,
+  // read from the credit_consumptions ledger — the atomic source of truth
+  // consume_send_credit() writes to (see migration 20260711000002). Also
+  // match consumptions logged BEFORE event-scoping shipped (event_id IS
+  // NULL) — those predate this feature and can't be attributed to a specific
+  // event, but treating them as "never sent" would double-invite AND
+  // double-charge a guest who was genuinely already invited. Erring toward a
+  // free resend is the safer failure mode for a paying customer.
+  const { data: consumed } = await supabase
+    .from('credit_consumptions')
+    .select('guest_contact_id, kind')
     .eq('user_id', user.id)
     .or(`event_id.eq.${eventId},event_id.is.null`)
-    .eq('direction', 'out')
-    .eq('kind', 'invite')
-    .in('status', ['sent', 'delivered', 'read'])
-    .not('wamid', 'like', 'wamid.STUB-%')
-  const alreadySentIds = [
-    ...new Set((sent ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x))),
+    .in('kind', ['invite', 'entrance_pass'])
+  const consumedRows = (consumed ?? []) as { guest_contact_id: string | null; kind: string }[]
+  const distinctGuests = (kind: string) => [
+    ...new Set(
+      consumedRows
+        .filter((r) => r.kind === kind)
+        .map((r) => r.guest_contact_id)
+        .filter((x): x is string => Boolean(x)),
+    ),
   ]
+  const alreadySentIds = distinctGuests('invite')
+  const entrancePassSentIds = distinctGuests('entrance_pass')
+
+  // Admin-granted/-revoked credits on top of the purchase — see
+  // migration 20260711000003. Each pool only ever adjusts by its own kind.
+  const { data: adjustments } = await supabase
+    .from('entitlement_adjustments')
+    .select('kind, delta')
+    .eq('user_id', user.id)
+    .eq('event_id', eventId)
+  const adjustmentRows = (adjustments ?? []) as { kind: string; delta: number }[]
+  const adjustmentTotal = (kind: string) =>
+    adjustmentRows.filter((r) => r.kind === kind).reduce((sum, r) => sum + r.delta, 0)
+  const invitePurchased = Math.max(0, purchased + adjustmentTotal('invite'))
+  const entrancePassPurchased = Math.max(0, purchased + adjustmentTotal('entrance_pass'))
 
   return {
-    purchased,
+    basePurchased: purchased,
+    purchased: invitePurchased,
     used: alreadySentIds.length,
-    remaining: Math.max(0, purchased - alreadySentIds.length),
+    remaining: Math.max(0, invitePurchased - alreadySentIds.length),
+    entrancePassPurchased,
+    entrancePassUsed: entrancePassSentIds.length,
+    entrancePassRemaining: Math.max(0, entrancePassPurchased - entrancePassSentIds.length),
+    entrancePassSentIds,
     hasPaidOrder: orders.length > 0,
     cardImageUrl,
     cardTreatment,
@@ -1391,6 +1572,50 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
     alreadySentIds,
     unassignedOrders,
   }
+}
+
+export type CreditKind = 'invite' | 'entrance_pass'
+export type ConsumeCreditVerdict = 'resend' | 'consumed' | 'blocked'
+
+/**
+ * Atomically check-and-spend one credit of `kind` for `guestContactId`, or
+ * report the guest already holds one (free resend) or the pool is dry
+ * (blocked). See consume_send_credit() in migration 20260711000002 — the
+ * advisory lock inside it is what actually closes the race two concurrent
+ * sends could otherwise hit on the last credit; this is just the typed call.
+ */
+export async function consumeSendCredit(
+  supabase: ReturnType<typeof createDashboardClient>,
+  args: { userId: string; eventId: string; guestContactId: string; kind: CreditKind; purchased: number },
+): Promise<ConsumeCreditVerdict> {
+  const { data, error } = await supabase.rpc('consume_send_credit', {
+    p_user_id: args.userId,
+    p_event_id: args.eventId,
+    p_guest_contact_id: args.guestContactId,
+    p_kind: args.kind,
+    p_purchased: args.purchased,
+  })
+  if (error) throw new Error(error.message)
+  return data as ConsumeCreditVerdict
+}
+
+/**
+ * Hand back a credit consume_send_credit() just reserved, because the actual
+ * WhatsApp send that followed it failed. Only call this for a 'consumed'
+ * verdict — never for 'resend' (that guest's original consumption predates
+ * this request and must not be forgotten).
+ */
+export async function releaseSendCredit(
+  supabase: ReturnType<typeof createDashboardClient>,
+  args: { userId: string; eventId: string; guestContactId: string; kind: CreditKind },
+): Promise<void> {
+  const { error } = await supabase.rpc('release_send_credit', {
+    p_user_id: args.userId,
+    p_event_id: args.eventId,
+    p_guest_contact_id: args.guestContactId,
+    p_kind: args.kind,
+  })
+  if (error) throw new Error(error.message)
 }
 
 // ──────────────────────────── Send-invites page ────────────────────────────
@@ -1412,6 +1637,9 @@ export interface SendGuestRow {
    *  is attending (the route 404s otherwise), but always present so the
    *  entrance-pass preview can pick any attending guest as its sample. */
   entrancePassUrl: string
+  /** True once this guest has been sent an entrance pass for this event —
+   *  drives the persistent Sent/Not sent status on the Pass Ticket tab. */
+  entrancePassSent: boolean
 }
 
 export interface SendInvitesData {
@@ -1455,6 +1683,9 @@ export interface SendInvitesData {
   unassignedOrders: PaidOrderSummary[]
   funnel: { invited: number; delivered: number; viewed: number; rsvpd: number }
   quota: { used: number; purchased: number; remaining: number; hasPaidOrder: boolean }
+  /** Entrance-pass pool — same purchased size as the invite quota, consumed
+   *  independently (first ticket per guest charges, re-sends are free). */
+  entranceQuota: { used: number; purchased: number; remaining: number }
   publicLink: { enabled: boolean; slug: string | null; url: string | null }
   whatsappLive: boolean
   /** The couple's own WhatsApp number — prefills the "send a test" input. */
@@ -1524,6 +1755,7 @@ export async function getSendInvitesData(
       unassignedOrders: unassignedOrdersFrom(paidOrders),
       funnel: { invited: 0, delivered: 0, viewed: 0, rsvpd: 0 },
       quota: { used: 0, purchased: 0, remaining: 0, hasPaidOrder: false },
+      entranceQuota: { used: 0, purchased: 0, remaining: 0 },
       publicLink: {
         enabled: publicInvite.enabled,
         slug: publicInvite.slug,
@@ -1551,6 +1783,7 @@ export async function getSendInvitesData(
     (readRows ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x)),
   )
   const sentSet = new Set(entitlement.alreadySentIds)
+  const entranceSentSet = new Set(entitlement.entrancePassSentIds)
 
   const roster = guests.filter((g) => g.review_status !== 'unconfirmed')
 
@@ -1594,6 +1827,7 @@ export async function getSendInvitesData(
       statusLabel,
       rsvpUrl: `${origin}/rsvp/${g.public_token}`,
       entrancePassUrl: `${origin}/entrance-pass/${g.public_token}?event=${selectedEventId}`,
+      entrancePassSent: entranceSentSet.has(g.id),
     }
   })
 
@@ -1639,6 +1873,11 @@ export async function getSendInvitesData(
       remaining: entitlement.remaining,
       hasPaidOrder: entitlement.hasPaidOrder,
     },
+    entranceQuota: {
+      used: entitlement.entrancePassUsed,
+      purchased: entitlement.entrancePassPurchased,
+      remaining: entitlement.entrancePassRemaining,
+    },
     publicLink: {
       enabled: publicInvite.enabled,
       slug: publicInvite.slug,
@@ -1652,6 +1891,130 @@ export async function getSendInvitesData(
       confirmed: entitlement.sendSettingsConfirmed,
     },
     guests: rows,
+  }
+}
+
+// ──────────────────────────── Thank-you page ────────────────────────────
+
+export interface ThankYouGuestRow {
+  id: string
+  name: string
+  phone: string | null
+  whatsappPhone: string | null
+  /** Preferred channel from which number is present. */
+  channel: 'whatsapp' | 'sms'
+  thankYouSent: boolean
+  thankYouSentAt: string | null
+  thankYouCount: number
+}
+
+export interface ThankYouData {
+  event: {
+    coupleName: string
+    eventName: string | null
+    eventTypeLabel: string | null
+    /** Swahili event-category noun (e.g. "harusi") — template {{3}}, used by the
+     *  in-page WhatsApp preview so it mirrors the real send exactly. */
+    eventCategorySw: string
+    dateLabel: string | null
+    venue: string | null
+  }
+  /** Every one of the couple's events, for the event switcher. */
+  events: { id: string; name: string; eventTypeLabel: string }[]
+  selectedEventId: string | null
+  /** The package tier behind this event's paid order — UI-only signal, the
+   *  card-template action re-derives it server-side before actually
+   *  applying a template. Sending itself isn't tier-gated. */
+  packageTierId: string | null
+  /** True when packageTierId is Elegant/Signature — drives the card-picker's
+   *  locked state (Classic/Essential can still send, just can't pick a
+   *  template card for free). */
+  hasFreeCardAccess: boolean
+  whatsappLive: boolean
+  /** The couple's own WhatsApp number — prefills the "send a test" input. */
+  testPhone: string | null
+  /** Guests confirmed "attending" for the selected event — the only audience
+   *  a thank-you broadcast makes sense for. */
+  guests: ThankYouGuestRow[]
+}
+
+/**
+ * `eventId` scopes everything on this page the same way it does on the Send
+ * Invites page: which guests are attending THIS event, and the event-category
+ * template variable. Defaults to the couple's first event when not given.
+ */
+export async function getThankYouData(eventId?: string, preloadedEvents?: WeddingEvent[]): Promise<ThankYouData> {
+  const [events, profile, guests] = await Promise.all([
+    preloadedEvents ? Promise.resolve(preloadedEvents) : getEvents(),
+    getCoupleProfile(),
+    getGuestsWithInvitations(),
+  ])
+
+  const selectedEvent = (eventId && events.find((e) => e.id === eventId)) || events[0] || null
+  const selectedEventId = selectedEvent?.id ?? null
+
+  if (!selectedEventId) {
+    return {
+      event: {
+        coupleName: profile ? coupleDisplayName(profile) : 'The Couple',
+        eventName: null,
+        eventTypeLabel: null,
+        eventCategorySw: 'sherehe',
+        dateLabel: null,
+        venue: null,
+      },
+      events: [],
+      selectedEventId: null,
+      packageTierId: null,
+      hasFreeCardAccess: false,
+      whatsappLive: getWhatsAppProvider().live,
+      testPhone: profile?.whatsapp_phone ?? null,
+      guests: [],
+    }
+  }
+
+  const [entitlement, packageTierId] = await Promise.all([
+    getWhatsAppEntitlement(selectedEventId),
+    getEventPackageTierId(selectedEventId),
+  ])
+
+  const guestRows: ThankYouGuestRow[] = []
+  for (const g of guests) {
+    if (g.review_status === 'unconfirmed') continue
+    const attending = g.invitations.find((i) => i.event_id === selectedEventId && i.rsvp_status === 'attending')
+    if (!attending) continue
+    guestRows.push({
+      id: g.id,
+      name: g.full_name,
+      phone: g.phone,
+      whatsappPhone: g.whatsapp_phone,
+      channel: g.whatsapp_phone ? 'whatsapp' : 'sms',
+      thankYouSent: Boolean(attending.thank_you_sent_at),
+      thankYouSentAt: attending.thank_you_sent_at,
+      thankYouCount: attending.thank_you_count,
+    })
+  }
+
+  const eventName = selectedEvent.name?.trim() || null
+  const eventTypeLbl = eventTypeLabel(selectedEvent.event_type)
+  const venue = [selectedEvent.venue_name, selectedEvent.city].filter(Boolean).join(', ') || null
+
+  return {
+    event: {
+      coupleName: entitlement.coupleName,
+      eventName,
+      eventTypeLabel: eventTypeLbl,
+      eventCategorySw: entitlement.eventCategory,
+      dateLabel: formatLongDate(selectedEvent.starts_at) || null,
+      venue,
+    },
+    events: events.map((e) => ({ id: e.id, name: e.name, eventTypeLabel: eventTypeLabel(e.event_type) })),
+    selectedEventId,
+    packageTierId,
+    hasFreeCardAccess: Boolean(packageTierId && THANK_YOU_FREE_TIER_IDS.includes(packageTierId)),
+    whatsappLive: getWhatsAppProvider().live,
+    testPhone: profile?.whatsapp_phone ?? null,
+    guests: guestRows,
   }
 }
 
