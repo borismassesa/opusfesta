@@ -129,6 +129,7 @@ export interface GuestbookEntry {
   guest_name: string
   message: string
   photo_url: string | null
+  video_url: string | null
   audio_url: string | null
   relation: GuestbookRelation | null
   review_status: GuestbookReviewStatus

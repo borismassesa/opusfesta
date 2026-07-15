@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2, ListFilter, HeartHandshake } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2, ListFilter, HeartHandshake } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -42,14 +42,6 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Pricing hero, tier badges, included/upgrade copy, ways to pay, security notes and FAQs — bilingual. Tier prices stay in the Packages CMS.',
-  },
-  {
-    key: 'how-it-works',
-    label: 'How it works page',
-    icon: ListChecks,
-    href: '/cms/opus-pass/site-ui/how-it-works',
-    status: 'live',
-    description: 'How-it-works header, process steps, guest features and CTAs — bilingual.',
   },
   {
     key: 'cart',

@@ -15,7 +15,6 @@ export type UiArea =
   | 'footer'
   | 'help'
   | 'pricing'
-  | 'how-it-works'
   | 'cart'
   | 'address'
   | 'confirmation'
@@ -39,14 +38,13 @@ export type UiArea =
 // source (auth buttons + mobile menu controls). The product-specific mega-menu
 // strings live alongside each product's own CMS group and are MERGED at read
 // time — see NAVBAR_SOURCES below + loadUiStrings('navbar') in ./ui-strings.ts.
-// The content-page areas (help / pricing / how-it-works) use the generic
-// single-row path in loadUiStrings (no merge).
+// The content-page areas (help / pricing) use the generic single-row path in
+// loadUiStrings (no merge).
 export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   navbar: 'opus-pass-ui-navbar',
   footer: 'opus-pass-ui-footer',
   help: 'opus-pass-ui-help',
   pricing: 'opus-pass-ui-pricing',
-  'how-it-works': 'opus-pass-ui-how-it-works',
   cart: 'opus-pass-ui-cart',
   address: 'opus-pass-ui-address',
   confirmation: 'opus-pass-ui-confirmation',
@@ -193,7 +191,6 @@ export interface FooterStrings {
   link_kadi_michango: string
   // Help links
   link_help_centre: string
-  link_how_it_works: string
   link_pricing: string
   link_contact: string
   // Company links
@@ -293,7 +290,7 @@ export interface PricingStrings {
   faq_intro: string
   contact_cta: string
   help_link: string
-  // FAQs (4) — each: q + a
+  // FAQs (6) — each: q + a
   faq_how_charged_q: string
   faq_how_charged_a: string
   faq_large_events_q: string
@@ -302,36 +299,10 @@ export interface PricingStrings {
   faq_payment_a: string
   faq_paper_q: string
   faq_paper_a: string
-}
-
-// ── How it works page ────────────────────────────────────────────────────────
-export interface HowItWorksStrings {
-  // Header
-  eyebrow: string
-  title: string
-  intro: string
-  // Process steps (4) — each: title + body
-  step_list_title: string
-  step_list_body: string
-  step_send_title: string
-  step_send_body: string
-  step_replies_title: string
-  step_replies_body: string
-  step_checkin_title: string
-  step_checkin_body: string
-  // Guest features section
-  guest_section_title: string
-  guest_section_intro: string
-  // Guest features (3) — each: title + body
-  guest_card_title: string
-  guest_card_body: string
-  guest_reminders_title: string
-  guest_reminders_body: string
-  guest_entry_title: string
-  guest_entry_body: string
-  // CTAs
-  cta_primary: string
-  cta_secondary: string
+  faq_addons_q: string
+  faq_addons_a: string
+  faq_upgrade_q: string
+  faq_upgrade_a: string
 }
 
 // ── Cart page ────────────────────────────────────────────────────────────────
@@ -1218,7 +1189,6 @@ export type UiStringsByArea = {
   footer: FooterStrings
   help: HelpStrings
   pricing: PricingStrings
-  'how-it-works': HowItWorksStrings
   cart: CartStrings
   address: AddressStrings
   confirmation: ConfirmationStrings
@@ -1333,7 +1303,6 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     link_send_off: 'Send-Off & Kitchen Party',
     link_kadi_michango: 'Kadi za Michango',
     link_help_centre: 'Help Centre',
-    link_how_it_works: 'How it works',
     link_pricing: 'Pricing',
     link_contact: 'Contact',
     link_about: 'About OpusPass',
@@ -1354,7 +1323,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     topic_getting_started_title: 'Getting started',
     topic_getting_started_body:
       'Create your event, build a guest list and send your first invitation in minutes.',
-    topic_getting_started_cta: 'See how it works',
+    topic_getting_started_cta: 'Get started',
     topic_pricing_title: 'Pricing & payments',
     topic_pricing_body:
       'Per-guest packages, what each one includes, and the mobile-money and card options we accept.',
@@ -1446,37 +1415,12 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     faq_paper_q: 'Is paper printing included?',
     faq_paper_a:
       'OpusPass is digital-first, so paper isn’t included by default. Paper card prints are an add-on on any package — we arrange printing and delivery within Tanzania on request.',
-  },
-  'how-it-works': {
-    eyebrow: 'How it works',
-    title: 'From first invite to final toast.',
-    intro:
-      'No more chasing replies in WhatsApp groups. Send once, track everywhere — and arrive on the day knowing exactly who’s coming.',
-    step_list_title: 'Build your list',
-    step_list_body:
-      'Create your event, then type names in or paste from a spreadsheet. Group by family, side or table.',
-    step_send_title: 'Send by WhatsApp or SMS',
-    step_send_body:
-      'One-tap send. Each guest gets a personal link, an animated digital card and their own ticket.',
-    step_replies_title: 'Watch replies live',
-    step_replies_body:
-      'Joyful yeses, regrets and meal picks land in your dashboard instantly — in English or Kiswahili.',
-    step_checkin_title: 'Plan & check in',
-    step_checkin_body:
-      'Arrange seating, send reminders, then scan tickets at the door to verify every guest on the day.',
-    guest_section_title: 'What every guest gets',
-    guest_section_intro: 'The experience is built for them too — not just for you.',
-    guest_card_title: 'A card and a ticket',
-    guest_card_body:
-      'Every guest receives a digital invitation with all your details plus a personal ticket with a unique barcode.',
-    guest_reminders_title: 'Gentle reminders',
-    guest_reminders_body:
-      'Automatic nudges before the day help guests confirm and cut down no-shows — no chasing in group chats.',
-    guest_entry_title: 'Fast entry',
-    guest_entry_body:
-      'At the gate their ticket is scanned to verify entry — stopping fake invitees and keeping the line moving.',
-    cta_primary: 'Start your guest list',
-    cta_secondary: 'See pricing',
+    faq_addons_q: 'Can I add extras like a wedding website or on-site scanning?',
+    faq_addons_a:
+      'Yes — add-ons such as a wedding website, on-site scanning, Save-the-Date and more can be layered onto any package. Add them at checkout or message our team afterwards and we’ll add them to your order.',
+    faq_upgrade_q: 'Can I switch to a higher package after I’ve started?',
+    faq_upgrade_a:
+      'Yes, you can upgrade at any time — we’ll only charge the difference for the guests already on your list. Message our team and we’ll handle the switch for you.',
   },
   cart: {
     back_to_designs: '← Back to designs',

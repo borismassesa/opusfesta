@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FocusEvent, type FormEvent } from 'react'
 import Image from 'next/image'
-import { Camera, Check, Mic, Pause, Play, Square, Trash2 } from 'lucide-react'
+import { Camera, Check, Mic, Pause, Play, Square, Trash2, Video, X } from 'lucide-react'
 import { submitGuestbookEntry } from '@/lib/dashboard/actions'
 import type { PublicGuestbookPage } from '@/lib/dashboard/queries'
 import { GUESTBOOK_RELATIONS, type GuestbookEntry, type GuestbookRelation } from '@/lib/dashboard/types'
@@ -24,6 +24,21 @@ const FIELD_BORDER = '#D8CDE3' // deeper than OUTLINE_VARIANT so boxed fields st
 const heading = { fontFamily: 'var(--font-playfair), Georgia, serif' }
 const body = { fontFamily: 'var(--font-montserrat), system-ui, sans-serif' }
 
+// Strips WebKit's native button chrome (the "aqua" hover/active glow some
+// Safari versions still paint even with the `appearance-none` utility class)
+// so our own border/background is the only thing that renders. Inline style
+// beats any stylesheet rule regardless of cascade layers, so this is the one
+// place we reach for `style` instead of Tailwind classes for a reset.
+const NO_NATIVE_BTN_CHROME = {
+  WebkitAppearance: 'none' as const,
+  appearance: 'none' as const,
+  border: 'none',
+  boxShadow: 'none',
+  outline: 'none',
+  WebkitTapHighlightColor: 'transparent',
+  background: 'transparent',
+}
+
 type Lang = 'sw' | 'en'
 const LANG_KEY = 'opuspass-guestbook-lang'
 
@@ -40,11 +55,13 @@ const STR: Record<Lang, Record<string, string>> = {
     message: 'Ujumbe',
     message_ph: 'Andika kutoka moyoni…',
     record: 'Rekodi',
+    record_video: 'Rekodi Video',
     recording: 'Inarekodi…',
     stop: 'Simamisha',
     discard: 'Ondoa',
     mic_denied: 'Imeshindwa kufikia maikrofoni. Angalia ruhusa ya kivinjari chako.',
-    photo: 'Picha',
+    camera_denied: 'Imeshindwa kufikia kamera. Angalia ruhusa ya kivinjari chako.',
+    photo: 'Picha/Video',
     send: 'Tuma Upendo Wako',
     sending: 'Inatuma…',
     error_name: 'Tafadhali jaza jina lako',
@@ -75,11 +92,13 @@ const STR: Record<Lang, Record<string, string>> = {
     message: 'Message',
     message_ph: 'Write from the heart…',
     record: 'Record',
+    record_video: 'Record Video',
     recording: 'Recording…',
     stop: 'Stop',
     discard: 'Discard',
     mic_denied: "Couldn't access your microphone. Check your browser permissions.",
-    photo: 'Photo',
+    camera_denied: "Couldn't access your camera. Check your browser permissions.",
+    photo: 'Photo/Video',
     send: 'Send Your Love',
     sending: 'Sending…',
     error_name: 'Please enter your name',
@@ -133,6 +152,10 @@ function formatDuration(totalSeconds: number): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX_RECORD_SECONDS = 120
+// Video files are far denser than audio and already have a 50MB server-side
+// cap, so recorded clips get a shorter ceiling to keep phone recordings
+// comfortably under that limit.
+const MAX_VIDEO_RECORD_SECONDS = 45
 
 function extForAudioType(mime: string): string {
   if (mime.startsWith('audio/mp4')) return 'm4a'
@@ -140,11 +163,27 @@ function extForAudioType(mime: string): string {
   return 'webm'
 }
 
+function extForVideoType(mime: string): string {
+  if (mime.startsWith('video/quicktime')) return 'mov'
+  if (mime.startsWith('video/webm')) return 'webm'
+  return 'mp4'
+}
+
+// MediaRecorder's video mimeType typically reports two comma-separated codecs
+// (e.g. "video/webm;codecs=vp8,opus") — that comma inside the Content-Type
+// header of a multipart part trips up the server's form parser and the type
+// silently degrades to "text/plain". Stripping to the bare type before
+// wrapping the recorded blob as a File sidesteps that entirely.
+function baseMimeType(mime: string): string {
+  return mime.split(';')[0].trim()
+}
+
 function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
   const [name, setName] = useState('')
   const [relation, setRelation] = useState<GuestbookRelation>('Family')
   const [message, setMessage] = useState('')
-  const [photo, setPhoto] = useState<File | null>(null)
+  const [media, setMedia] = useState<File | null>(null)
+  const mediaInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -156,6 +195,15 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false)
+  const [videoRecordingSeconds, setVideoRecordingSeconds] = useState(0)
+  const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null)
+  const videoRecorderRef = useRef<MediaRecorder | null>(null)
+  const videoChunksRef = useRef<Blob[]>([])
+  const videoStreamRef = useRef<MediaStream | null>(null)
+  const videoRecordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null)
 
   // Live mic-reactive ripple rings (Whisper Flow / Claude / ChatGPT voice-mode
   // style) — driven by a Web Audio AnalyserNode read every frame and written
@@ -223,6 +271,8 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current)
       streamRef.current?.getTracks().forEach((track) => track.stop())
       stopRippleLoop()
+      if (videoRecordTimerRef.current) clearInterval(videoRecordTimerRef.current)
+      videoStreamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
 
@@ -239,7 +289,8 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
   async function startRecording() {
     setError(null)
     setAudioBlob(null)
-    setPhoto(null)
+    clearMedia()
+    discardVideoRecording()
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
@@ -280,11 +331,74 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
     setRecordingSeconds(0)
   }
 
+  function stopVideoRecording() {
+    videoRecorderRef.current?.stop()
+    setIsRecordingVideo(false)
+    if (videoRecordTimerRef.current) {
+      clearInterval(videoRecordTimerRef.current)
+      videoRecordTimerRef.current = null
+    }
+  }
+
+  async function startVideoRecording() {
+    setError(null)
+    setRecordedVideo(null)
+    clearMedia()
+    discardRecording()
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })
+      videoStreamRef.current = stream
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream
+        videoPreviewRef.current.play().catch(() => {})
+      }
+      const mimeCandidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+      const mimeType =
+        typeof MediaRecorder !== 'undefined'
+          ? mimeCandidates.find((m) => MediaRecorder.isTypeSupported?.(m))
+          : undefined
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      videoChunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) videoChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        setRecordedVideo(new Blob(videoChunksRef.current, { type: recorder.mimeType || 'video/webm' }))
+        stream.getTracks().forEach((track) => track.stop())
+        videoStreamRef.current = null
+      }
+      videoRecorderRef.current = recorder
+      recorder.start()
+      setIsRecordingVideo(true)
+      setVideoRecordingSeconds(0)
+      videoRecordTimerRef.current = setInterval(() => {
+        setVideoRecordingSeconds((s) => {
+          const next = s + 1
+          if (next >= MAX_VIDEO_RECORD_SECONDS) stopVideoRecording()
+          return next
+        })
+      }, 1000)
+    } catch {
+      setError(t.camera_denied)
+    }
+  }
+
+  function discardVideoRecording() {
+    setRecordedVideo(null)
+    setVideoRecordingSeconds(0)
+  }
+
+  function clearMedia() {
+    setMedia(null)
+    if (mediaInputRef.current) mediaInputRef.current.value = ''
+  }
+
   function reset() {
     setName('')
     setMessage('')
-    setPhoto(null)
+    clearMedia()
     discardRecording()
+    discardVideoRecording()
     setDone(false)
   }
 
@@ -292,13 +406,22 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
     e.preventDefault()
     setError(null)
     if (!name.trim()) return setError(t.error_name)
-    if (!message.trim() && !audioBlob) return setError(t.error_message)
+    if (!message.trim() && !audioBlob && !recordedVideo) return setError(t.error_message)
 
     const formData = new FormData()
     formData.set('name', name.trim())
     formData.set('message', message.trim())
     formData.set('relation', relation)
-    if (photo) formData.set('photo', photo)
+    if (media) {
+      formData.set('media', media)
+    } else if (recordedVideo) {
+      formData.set(
+        'media',
+        new File([recordedVideo], `guest-video.${extForVideoType(recordedVideo.type)}`, {
+          type: baseMimeType(recordedVideo.type),
+        }),
+      )
+    }
     if (audioBlob) {
       formData.set('audio', new File([audioBlob], `voice-note.${extForAudioType(audioBlob.type)}`, { type: audioBlob.type }))
     }
@@ -412,25 +535,27 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
             </select>
           </div>
 
-          <div>
-            <label
-              className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em]"
-              style={{ ...body, color: SECONDARY }}
-            >
-              {t.message}
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              maxLength={1000}
-              rows={3}
-              placeholder={t.message_ph}
-              className={`${field} resize-y leading-relaxed`}
-              style={fieldStyle()}
-              onFocus={onFieldFocus}
-              onBlur={onFieldBlur}
-            />
-          </div>
+          {!isRecording && !audioBlob && !isRecordingVideo && !recordedVideo && (
+            <div>
+              <label
+                className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em]"
+                style={{ ...body, color: SECONDARY }}
+              >
+                {t.message}
+              </label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                maxLength={1000}
+                rows={3}
+                placeholder={t.message_ph}
+                className={`${field} resize-y leading-relaxed`}
+                style={fieldStyle()}
+                onFocus={onFieldFocus}
+                onBlur={onFieldBlur}
+              />
+            </div>
+          )}
         </div>
 
         {isRecording ? (
@@ -470,13 +595,31 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
               </p>
             </div>
           </div>
+        ) : isRecordingVideo ? (
+          <div className="mt-4 overflow-hidden rounded-2xl" style={{ backgroundColor: SURFACE_CONTAINER }}>
+            <div className="relative aspect-video w-full overflow-hidden bg-black">
+              <video ref={videoPreviewRef} muted autoPlay playsInline className="h-full w-full object-cover" />
+              <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: '#E03E3E' }} />
+                <span className="font-mono text-[11px] font-bold text-white">{formatDuration(videoRecordingSeconds)}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={stopVideoRecording}
+              className="flex w-full items-center justify-center gap-2 py-3 text-[10px] font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#E03E3E' }}
+            >
+              <Square className="h-3.5 w-3.5 fill-current" /> {t.stop}
+            </button>
+          </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={audioBlob ? discardRecording : startRecording}
-              className="flex items-center justify-center gap-2 rounded-full bg-white py-3 text-[10px] font-bold uppercase tracking-widest transition-colors"
-              style={{ ...body, border: `1.5px solid ${FIELD_BORDER}`, color: SECONDARY }}
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl py-3 text-[9px] font-bold uppercase tracking-wide transition-colors"
+              style={{ ...NO_NATIVE_BTN_CHROME, ...body, border: `1.5px solid ${FIELD_BORDER}`, color: SECONDARY, backgroundColor: '#ffffff' }}
             >
               {audioBlob ? (
                 <>
@@ -488,22 +631,74 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
                 </>
               )}
             </button>
-            <label
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-white py-3 text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-[#FAF6FC]"
+            <button
+              type="button"
+              onClick={recordedVideo ? discardVideoRecording : startVideoRecording}
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl py-3 text-[9px] font-bold uppercase tracking-wide transition-colors"
+              style={{ ...NO_NATIVE_BTN_CHROME, ...body, border: `1.5px solid ${FIELD_BORDER}`, color: SECONDARY, backgroundColor: '#ffffff' }}
+            >
+              {recordedVideo ? (
+                <>
+                  <Trash2 className="h-4 w-4" /> {formatDuration(videoRecordingSeconds)}
+                </>
+              ) : (
+                <>
+                  <Video className="h-4 w-4" /> {t.record_video}
+                </>
+              )}
+            </button>
+            <div
+              className="flex items-center justify-center gap-1 rounded-2xl bg-white py-3 text-[9px] font-bold uppercase tracking-wide transition-colors"
               style={{ ...body, border: `1.5px solid ${FIELD_BORDER}`, color: SECONDARY }}
             >
-              <Camera className="h-4 w-4" />
-              <span className="max-w-[90px] truncate">{photo ? photo.name : t.photo}</span>
+              {media ? (
+                <>
+                  {media.type.startsWith('video/') ? (
+                    <Video className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <Camera className="h-4 w-4 shrink-0" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => mediaInputRef.current?.click()}
+                    className="max-w-[48px] cursor-pointer truncate normal-case"
+                    style={NO_NATIVE_BTN_CHROME}
+                  >
+                    {media.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearMedia}
+                    aria-label={t.discard}
+                    className="shrink-0 cursor-pointer opacity-60 transition-opacity hover:opacity-100"
+                    style={NO_NATIVE_BTN_CHROME}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => mediaInputRef.current?.click()}
+                  className="flex w-full cursor-pointer flex-col items-center justify-center gap-1 hover:bg-[#FAF6FC]"
+                  style={NO_NATIVE_BTN_CHROME}
+                >
+                  <Camera className="h-4 w-4" />
+                  {t.photo}
+                </button>
+              )}
               <input
+                ref={mediaInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
                 className="hidden"
                 onChange={(e) => {
-                  setPhoto(e.target.files?.[0] ?? null)
+                  setMedia(e.target.files?.[0] ?? null)
                   discardRecording()
+                  discardVideoRecording()
                 }}
               />
-            </label>
+            </div>
           </div>
         )}
 
@@ -631,6 +826,31 @@ function WishCard({ entry, index, t }: { entry: GuestbookEntry; index: number; t
     return <VoiceNoteCard entry={entry} t={t} />
   }
 
+  if (entry.video_url) {
+    return (
+      <div
+        className="break-inside-avoid group overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow hover:shadow-md"
+        style={{ border: `1px solid ${OUTLINE_VARIANT}33` }}
+      >
+        <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: SURFACE_CONTAINER }}>
+          <video src={entry.video_url} controls preload="metadata" className="h-full w-full object-cover" />
+        </div>
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="min-w-0 truncate text-[11px] font-bold uppercase tracking-widest" style={body}>
+              {entry.guest_name}
+            </h4>
+            <RelationPill relation={entry.relation} t={t} />
+          </div>
+          <p className="mt-2 text-sm font-light leading-relaxed" style={{ ...body, color: SECONDARY }}>
+            {entry.message}
+          </p>
+          <Timestamp entry={entry} t={t} />
+        </div>
+      </div>
+    )
+  }
+
   if (entry.photo_url) {
     return (
       <div
@@ -717,9 +937,9 @@ function WishFeed({ data, t }: { data: PublicGuestbookPage; t: Record<string, st
       case 'photos':
         return Boolean(e.photo_url)
       case 'videos':
-        return false // no video attachments yet — an honest empty result, not a fake one
+        return Boolean(e.video_url)
       case 'messages':
-        return !e.audio_url && !e.photo_url
+        return !e.audio_url && !e.photo_url && !e.video_url
     }
   })
 

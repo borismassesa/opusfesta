@@ -31,7 +31,6 @@ export {
   type FooterStrings,
   type HelpStrings,
   type PricingStrings,
-  type HowItWorksStrings,
   type CartStrings,
   type AddressStrings,
   type ConfirmationStrings,

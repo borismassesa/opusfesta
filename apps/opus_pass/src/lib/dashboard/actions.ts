@@ -1621,11 +1621,14 @@ export async function dismissReviewGuest(guestId: string): Promise<void> {
 
 const GUESTBOOK_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const GUESTBOOK_PHOTO_MAX_BYTES = 8 * 1024 * 1024
+const GUESTBOOK_VIDEO_MAX_BYTES = 50 * 1024 * 1024
 const GUESTBOOK_RELATIONS = new Set(['Family', 'Friend', 'Colleague'])
-// MediaRecorder's mimeType often carries codec params (e.g. "audio/webm;codecs=opus"),
-// so these are prefixes, matched with startsWith — not an exact-match set.
+// MediaRecorder's mimeType often carries codec params (e.g. "audio/webm;codecs=opus",
+// "video/webm;codecs=vp8,opus"), so these are prefixes, matched with startsWith —
+// not an exact-match set.
 const GUESTBOOK_AUDIO_MIME_PREFIXES = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/mpeg', 'audio/aac']
 const GUESTBOOK_AUDIO_MAX_BYTES = 10 * 1024 * 1024
+const GUESTBOOK_VIDEO_MIME_PREFIXES = ['video/mp4', 'video/quicktime', 'video/webm']
 
 function extForAudioMime(mime: string): string {
   if (mime.startsWith('audio/mp4')) return 'm4a'
@@ -1633,6 +1636,12 @@ function extForAudioMime(mime: string): string {
   if (mime.startsWith('audio/mpeg')) return 'mp3'
   if (mime.startsWith('audio/aac')) return 'aac'
   return 'webm'
+}
+
+function extForVideoMime(mime: string): string {
+  if (mime.startsWith('video/quicktime')) return 'mov'
+  if (mime.startsWith('video/webm')) return 'webm'
+  return 'mp4'
 }
 
 /**
@@ -1675,25 +1684,47 @@ export async function submitGuestbookEntry(
     return { ok: false, error: 'This invitation link is no longer active.' }
   }
 
+  // A guest attaches at most one media item — a photo OR a video, picked from
+  // the same "media" field — plus an optional voice note above.
   let photoUrl: string | null = null
-  const photo = formData.get('photo')
-  if (photo instanceof File && photo.size > 0) {
-    if (!GUESTBOOK_PHOTO_MIMES.has(photo.type)) {
-      return { ok: false, error: 'Photos must be JPEG, PNG or WebP.' }
+  let videoUrl: string | null = null
+  const media = formData.get('media')
+  if (media instanceof File && media.size > 0) {
+    if (media.type.startsWith('video/')) {
+      if (!GUESTBOOK_VIDEO_MIME_PREFIXES.some((prefix) => media.type.startsWith(prefix))) {
+        return { ok: false, error: 'Videos must be MP4, MOV or WebM.' }
+      }
+      if (media.size > GUESTBOOK_VIDEO_MAX_BYTES) {
+        return { ok: false, error: 'Video must be 50MB or smaller.' }
+      }
+      const ext = extForVideoMime(media.type)
+      const path = `${profile.user_id}/${randomUUID()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('guestbook-videos')
+        .upload(path, media, { contentType: media.type })
+      if (upErr) {
+        console.error('[guestbook] video upload failed', upErr)
+        return { ok: false, error: 'Something went wrong uploading your video — please try again.' }
+      }
+      videoUrl = supabase.storage.from('guestbook-videos').getPublicUrl(path).data.publicUrl
+    } else {
+      if (!GUESTBOOK_PHOTO_MIMES.has(media.type)) {
+        return { ok: false, error: 'Photos must be JPEG, PNG or WebP.' }
+      }
+      if (media.size > GUESTBOOK_PHOTO_MAX_BYTES) {
+        return { ok: false, error: 'Photo must be 8MB or smaller.' }
+      }
+      const ext = media.type === 'image/png' ? 'png' : media.type === 'image/webp' ? 'webp' : 'jpg'
+      const path = `${profile.user_id}/${randomUUID()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('guestbook-photos')
+        .upload(path, media, { contentType: media.type })
+      if (upErr) {
+        console.error('[guestbook] photo upload failed', upErr)
+        return { ok: false, error: 'Something went wrong uploading your photo — please try again.' }
+      }
+      photoUrl = supabase.storage.from('guestbook-photos').getPublicUrl(path).data.publicUrl
     }
-    if (photo.size > GUESTBOOK_PHOTO_MAX_BYTES) {
-      return { ok: false, error: 'Photo must be 8MB or smaller.' }
-    }
-    const ext = photo.type === 'image/png' ? 'png' : photo.type === 'image/webp' ? 'webp' : 'jpg'
-    const path = `${profile.user_id}/${randomUUID()}.${ext}`
-    const { error: upErr } = await supabase.storage
-      .from('guestbook-photos')
-      .upload(path, photo, { contentType: photo.type })
-    if (upErr) {
-      console.error('[guestbook] photo upload failed', upErr)
-      return { ok: false, error: 'Something went wrong uploading your photo — please try again.' }
-    }
-    photoUrl = supabase.storage.from('guestbook-photos').getPublicUrl(path).data.publicUrl
   }
 
   let audioUrl: string | null = null
@@ -1722,6 +1753,7 @@ export async function submitGuestbookEntry(
     guest_name: guestName,
     message,
     photo_url: photoUrl,
+    video_url: videoUrl,
     audio_url: audioUrl,
     relation,
     review_status: 'pending',

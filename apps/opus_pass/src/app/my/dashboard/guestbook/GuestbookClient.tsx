@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { BookHeart, Check, Copy, ExternalLink, EyeOff, Link2, Mic, Trash2, UserCheck } from 'lucide-react'
+import { BookHeart, Check, Copy, ExternalLink, EyeOff, Link2, Mic, Trash2, UserCheck, Video } from 'lucide-react'
 import {
   approveGuestbookEntry,
   hideGuestbookEntry,
@@ -257,6 +257,12 @@ function EntryRow({
         {entry.photo_url && (
           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
             <Image src={entry.photo_url} alt="" fill sizes="56px" className="object-cover" />
+          </div>
+        )}
+        {entry.video_url && (
+          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-black/5">
+            <video src={entry.video_url} muted preload="metadata" className="h-full w-full object-cover" />
+            <Video className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow" />
           </div>
         )}
         <div className="min-w-0 flex-1">

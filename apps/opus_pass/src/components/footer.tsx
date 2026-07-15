@@ -29,7 +29,6 @@ function buildColumns(s: FooterStrings): FooterColumn[] {
       title: s.col_help,
       links: [
         { label: s.link_help_centre, href: '/help' },
-        { label: s.link_how_it_works, href: '/how-it-works' },
         { label: s.link_pricing, href: '/pricing' },
         { label: s.link_contact, href: '/contact' },
       ],
