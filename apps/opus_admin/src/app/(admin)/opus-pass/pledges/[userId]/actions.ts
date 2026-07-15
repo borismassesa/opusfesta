@@ -383,25 +383,36 @@ export async function sendPledgeRequestsAdmin(
   eventId?: string,
 ): Promise<SendSummaryResult> {
   await requirePermission('opuspass.pledges.write')
-  await assertEligible(userId)
-  if (!guestIds.length) return { ok: true, sent: 0, failed: 0, skipped: 0, dryRun: true }
+  try {
+    await assertEligible(userId)
+    if (!guestIds.length) return { ok: true, sent: 0, failed: 0, skipped: 0, dryRun: true }
 
-  let result: SendSummaryResult
-  if (channel === 'email') {
-    result = await sendPledgeRequestEmails(userId, guestIds)
-  } else {
-    result = await callInternalPledgeSend({ action: 'pledge_request', channel, userId, eventId, guestIds })
+    let result: SendSummaryResult
+    if (channel === 'email') {
+      result = await sendPledgeRequestEmails(userId, guestIds)
+    } else {
+      result = await callInternalPledgeSend({ action: 'pledge_request', channel, userId, eventId, guestIds })
+    }
+
+    await logPledgeAction({
+      message: `Sent ${channel} pledge request to ${guestIds.length} contributor(s)`,
+      targetResource: `couple_profiles:${userId}`,
+      userId,
+      eventId,
+      metadata: { channel, guestIds, result },
+    })
+    revalidatePath(`/opus-pass/pledges/${userId}`)
+    return result
+  } catch (err) {
+    return {
+      ok: false,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      dryRun: false,
+      error: err instanceof Error ? err.message : 'Failed to send pledge requests',
+    }
   }
-
-  await logPledgeAction({
-    message: `Sent ${channel} pledge request to ${guestIds.length} contributor(s)`,
-    targetResource: `couple_profiles:${userId}`,
-    userId,
-    eventId,
-    metadata: { channel, guestIds, result },
-  })
-  revalidatePath(`/opus-pass/pledges/${userId}`)
-  return result
 }
 
 async function sendPledgeRequestEmails(userId: string, guestIds: string[]): Promise<SendSummaryResult> {
@@ -449,23 +460,34 @@ export async function sendPledgeReminderAdmin(
   message: string,
 ): Promise<SendSummaryResult> {
   await requirePermission('opuspass.pledges.write')
-  await assertEligible(userId)
+  try {
+    await assertEligible(userId)
 
-  let result: SendSummaryResult
-  if (channel === 'email') {
-    result = await sendPledgeReminderEmail(userId, pledgeId, message)
-  } else {
-    result = await callInternalPledgeSend({ action: 'pledge_reminder', channel, userId, pledgeId, message })
+    let result: SendSummaryResult
+    if (channel === 'email') {
+      result = await sendPledgeReminderEmail(userId, pledgeId, message)
+    } else {
+      result = await callInternalPledgeSend({ action: 'pledge_reminder', channel, userId, pledgeId, message })
+    }
+
+    await logPledgeAction({
+      message: `Sent ${channel} pledge reminder`,
+      targetResource: `event_pledges:${pledgeId}`,
+      userId,
+      metadata: { channel, result },
+    })
+    revalidatePath(`/opus-pass/pledges/${userId}`)
+    return result
+  } catch (err) {
+    return {
+      ok: false,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      dryRun: false,
+      error: err instanceof Error ? err.message : 'Failed to send pledge reminder',
+    }
   }
-
-  await logPledgeAction({
-    message: `Sent ${channel} pledge reminder`,
-    targetResource: `event_pledges:${pledgeId}`,
-    userId,
-    metadata: { channel, result },
-  })
-  revalidatePath(`/opus-pass/pledges/${userId}`)
-  return result
 }
 
 async function sendPledgeReminderEmail(userId: string, pledgeId: string, message: string): Promise<SendSummaryResult> {

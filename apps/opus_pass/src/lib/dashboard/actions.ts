@@ -1975,11 +1975,13 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
     } else {
       summary.failed += 1
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
-      // The send failed — hand back the credit consumeSendCredit just reserved.
-      if (!isResend) {
-        await releaseSendCredit(supabase, { userId: user.id, eventId: resolvedEventId, guestContactId: g.id, kind: 'invite' })
-        remaining += 1
-      }
+    }
+    // A failed send or a dry-run simulation (no live Meta account yet) never
+    // actually reached the guest — hand back the credit consumeSendCredit
+    // reserved so the couple's real quota isn't burned by test traffic.
+    if (!isResend && (!result.ok || result.dryRun)) {
+      await releaseSendCredit(supabase, { userId: user.id, eventId: resolvedEventId, guestContactId: g.id, kind: 'invite' })
+      remaining += 1
     }
   }
 
@@ -2055,7 +2057,10 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
   summary.hasPaidOrder = ent.hasPaidOrder
   summary.purchased = ent.entrancePassPurchased
   summary.remaining = ent.entrancePassRemaining
-  if (ent.entrancePassPurchased <= 0) return summary
+  // No blanket bail-out on a dry pool: a guest who already holds a ticket
+  // (an existing credit_consumptions row) is still entitled to a free
+  // resend regardless of remaining purchased quota — consumeSendCredit
+  // below is the real gate, and it only blocks guests needing a NEW credit.
 
   const { data: invitations } = await supabase
     .from('guest_invitations')
@@ -2143,11 +2148,13 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
     } else {
       summary.failed += 1
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
-      // The send failed — hand back the credit consumeSendCredit just reserved.
-      if (!isResend) {
-        await releaseSendCredit(supabase, { userId: user.id, eventId: resolvedEventId, guestContactId: g.id, kind: 'entrance_pass' })
-        remaining += 1
-      }
+    }
+    // A failed send or a dry-run simulation (no live Meta account yet) never
+    // actually reached the guest — hand back the credit consumeSendCredit
+    // reserved so the couple's real quota isn't burned by test traffic.
+    if (!isResend && (!result.ok || result.dryRun)) {
+      await releaseSendCredit(supabase, { userId: user.id, eventId: resolvedEventId, guestContactId: g.id, kind: 'entrance_pass' })
+      remaining += 1
     }
   }
 
@@ -2345,31 +2352,23 @@ async function resolveThankYouHeaderImage(
 }
 
 /** Bump the thank-you send tracker on one guest's invitation row for this
- *  event — mirrors markPledgeInviteSent's fetch-then-increment pattern, but
- *  scoped to guest_invitations since (unlike the pledge ask) this tracker is
- *  per-event, not couple-level. */
+ *  event, scoped to guest_invitations since (unlike the pledge ask) this
+ *  tracker is per-event, not couple-level. Goes through an atomic RPC (see
+ *  migration 20260715000001) rather than a select-then-update in application
+ *  code, so two overlapping sends for the same guest can't both read the
+ *  same count and undercount. */
 async function markThankYouSent(
   supabase: ReturnType<typeof createDashboardClient>,
   userId: string,
   eventId: string,
   guestId: string,
 ): Promise<void> {
-  const { data: invitation } = await supabase
-    .from('guest_invitations')
-    .select('thank_you_count')
-    .eq('user_id', userId)
-    .eq('event_id', eventId)
-    .eq('guest_contact_id', guestId)
-    .maybeSingle<{ thank_you_count: number }>()
-  await supabase
-    .from('guest_invitations')
-    .update({
-      thank_you_sent_at: new Date().toISOString(),
-      thank_you_count: (invitation?.thank_you_count ?? 0) + 1,
-    })
-    .eq('user_id', userId)
-    .eq('event_id', eventId)
-    .eq('guest_contact_id', guestId)
+  const { error } = await supabase.rpc('increment_thank_you_count', {
+    p_user_id: userId,
+    p_event_id: eventId,
+    p_guest_contact_id: guestId,
+  })
+  if (error) throw new Error(error.message)
 }
 
 /**

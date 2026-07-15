@@ -22,9 +22,11 @@ export interface PledgePageConfig {
   /** Arbitrary accent hex used for the CTA and small flourishes. */
   accent?: string
   coverTone?: PledgeCoverTone
-  /** Optional cover background image URL (overrides the tone gradient). Resolved
-   *  per-event by resolveEventCover() below — never read this directly off the
-   *  raw stored config, it's legacy/only meaningful pre-multi-event. */
+  /** Optional cover background image URL (overrides the tone gradient). Legacy
+   *  pre-multi-event field — don't read this directly off the raw stored
+   *  config; go through resolveEventCover() below, which prefers the matching
+   *  eventCovers entry and falls back to this field for couples who set a
+   *  cover before per-event covers existed. */
   coverImageUrl?: string | null
   /** True when coverImageUrl is a fully pre-designed template (names/date/venue
    *  already baked into the artwork) — suppresses the text overlay so nothing
@@ -43,16 +45,23 @@ export interface PledgePageConfig {
 export const EVENTLESS_COVER_KEY = '_default'
 
 /** Resolve the cover that applies to a specific event from the couple's raw
- *  stored pledge_page config. Ignores the legacy top-level coverImageUrl/
- *  coverIsFullTemplate fields entirely — those predate per-event covers and
- *  would otherwise leak one event's cover into every other event. */
+ *  stored pledge_page config. Falls back to the legacy top-level
+ *  coverImageUrl/coverIsFullTemplate fields when there's no per-event entry
+ *  yet — those predate per-event covers, and couples who set a custom cover
+ *  before per-event scoping shipped still have it saved only in those two
+ *  fields (no eventCovers entry, no backfill migration). Without this
+ *  fallback their cover would silently revert to the default gradient. */
 export function resolveEventCover(
   stored: PledgePageConfig | null | undefined,
   eventId: string | null,
 ): { coverImageUrl: string | null; coverIsFullTemplate: boolean } {
   const key = eventId ?? EVENTLESS_COVER_KEY
   const cover = stored?.eventCovers?.[key]
-  return { coverImageUrl: cover?.coverImageUrl ?? null, coverIsFullTemplate: cover?.coverIsFullTemplate ?? false }
+  if (cover) return { coverImageUrl: cover.coverImageUrl ?? null, coverIsFullTemplate: Boolean(cover.coverIsFullTemplate) }
+  if (stored?.coverImageUrl) {
+    return { coverImageUrl: stored.coverImageUrl, coverIsFullTemplate: Boolean(stored.coverIsFullTemplate) }
+  }
+  return { coverImageUrl: null, coverIsFullTemplate: false }
 }
 
 type PledgePageTextDefaults = Pick<

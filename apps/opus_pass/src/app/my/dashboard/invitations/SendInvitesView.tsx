@@ -1189,25 +1189,38 @@ export default function SendInvitesView({
                     </td>
                     <td>
                       <div className="ra">
-                        {effectiveFilter === 'attending' ? (
-                          <button
-                            className="ia send pass"
-                            disabled={pending || !hasPhone(g)}
-                            title={effectiveChannel(g) === 'whatsapp' ? strings.row_send_pass : strings.row_sms}
-                            onClick={() => (effectiveChannel(g) === 'whatsapp' ? sendPassRow(g) : rowShare(g, 'sms'))}
-                          >
-                            {sendingRow === g.id ? (
-                              <Loader2 size={14} className="spin" />
-                            ) : effectiveChannel(g) === 'whatsapp' ? (
-                              <Ticket size={14} />
-                            ) : g.status === 'none' ? (
-                              <Send size={13} />
-                            ) : (
-                              <RotateCcw size={13} />
-                            )}
-                            {effectiveChannel(g) === 'whatsapp' ? strings.row_send_pass : (g.status === 'none' ? strings.row_send : strings.row_resend)}
-                          </button>
-                        ) : (
+                        {effectiveFilter === 'attending' ? (() => {
+                          // Entrance passes are WhatsApp-only (template + QR
+                          // image) — there is no SMS equivalent. If the
+                          // guest's resolved channel isn't WhatsApp, don't
+                          // silently fall through to the generic SMS
+                          // reminder flow (rowShare): that opens an unrelated
+                          // compose window and never sends a ticket, with no
+                          // feedback since these guests are already
+                          // 'attending' (isAwaiting is false).
+                          const passUnavailable = effectiveChannel(g) !== 'whatsapp'
+                          return (
+                            <button
+                              className="ia send pass"
+                              disabled={pending || !hasPhone(g) || passUnavailable}
+                              title={passUnavailable ? strings.entrance_needs_whatsapp : strings.row_send_pass}
+                              onClick={() => {
+                                if (passUnavailable) {
+                                  toast.error(strings.entrance_needs_whatsapp)
+                                  return
+                                }
+                                sendPassRow(g)
+                              }}
+                            >
+                              {sendingRow === g.id ? (
+                                <Loader2 size={14} className="spin" />
+                              ) : (
+                                <Ticket size={14} />
+                              )}
+                              {strings.row_send_pass}
+                            </button>
+                          )
+                        })() : (
                           <button
                             className="ia send"
                             disabled={pending || !hasPhone(g)}

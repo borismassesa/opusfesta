@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   const roster: RosterEntry[] = (invitations ?? []).map((inv) => {
     const contact = inv.guest_contacts as unknown as { full_name: string; group_tag: string | null } | null
     return {
-      qrToken: signEntryPassToken({ invitationId: inv.id, guestContactId: inv.guest_contact_id }),
+      qrToken: signEntryPassToken({ guestContactId: inv.guest_contact_id, invitationId: inv.id }),
       invitationId: inv.id,
       guestContactId: inv.guest_contact_id,
       fullName: contact?.full_name ?? 'Guest',

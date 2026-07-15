@@ -1,6 +1,7 @@
 import 'server-only'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { listEligibleCoupleTiers, type PledgeConciergeTier } from './tier'
+import { toTzs } from './currency'
 
 export interface EligibleCouple {
   userId: string
@@ -20,6 +21,7 @@ type PledgeAggRow = {
   user_id: string
   pledged_amount: number
   amount_received: number
+  currency: string
   status: string
   created_at: string
   updated_at: string
@@ -46,7 +48,7 @@ export async function getEligibleCouples(): Promise<EligibleCouple[]> {
         .order('starts_at', { ascending: true, nullsFirst: false }),
       supabase
         .from('event_pledges')
-        .select('user_id, pledged_amount, amount_received, status, created_at, updated_at')
+        .select('user_id, pledged_amount, amount_received, currency, status, created_at, updated_at')
         .in('user_id', userIds),
     ])
   if (profilesErr) throw new Error(profilesErr.message)
@@ -75,8 +77,8 @@ export async function getEligibleCouples(): Promise<EligibleCouple[]> {
       lastActivity: null,
     }
     bucket.count += 1
-    bucket.pledged += Number(row.pledged_amount) || 0
-    bucket.received += Number(row.amount_received) || 0
+    bucket.pledged += toTzs(Number(row.pledged_amount) || 0, row.currency)
+    bucket.received += toTzs(Number(row.amount_received) || 0, row.currency)
     if (row.status !== 'paid' && row.status !== 'declined') bucket.outstanding += 1
     const activityAt = row.updated_at || row.created_at
     if (activityAt && (!bucket.lastActivity || activityAt > bucket.lastActivity)) bucket.lastActivity = activityAt

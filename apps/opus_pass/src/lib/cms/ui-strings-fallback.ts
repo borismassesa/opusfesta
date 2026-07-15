@@ -1071,6 +1071,7 @@ export interface DashboardSendStrings {
   row_send: string
   row_resend: string
   row_send_pass: string
+  entrance_needs_whatsapp: string
   entrance_status_sent: string
   entrance_status_notsent: string
   row_edit: string
@@ -2077,6 +2078,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     row_send: 'Send Invites',
     row_resend: 'Resend',
     row_send_pass: 'Send Pass',
+    entrance_needs_whatsapp: 'Entrance passes are sent by WhatsApp only — add a WhatsApp number for this guest',
     entrance_status_sent: 'Sent',
     entrance_status_notsent: 'Not sent',
     row_edit: 'Edit guest',

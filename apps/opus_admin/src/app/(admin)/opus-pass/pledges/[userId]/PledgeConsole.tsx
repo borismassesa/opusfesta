@@ -16,6 +16,7 @@ import {
 } from './actions'
 import type { PledgeCouple, PledgeEvent, PledgeGuest, PledgeRow } from './queries'
 import type { PledgeConciergeTier } from '../tier'
+import { toTzs } from '../currency'
 
 const STATUS_LABEL: Record<string, string> = {
   invited: 'Invited',
@@ -66,8 +67,8 @@ export default function PledgeConsole({
     back: { href: '/opus-pass/pledges', label: 'Pledge Concierge' },
   })
 
-  const totalPledged = pledges.reduce((sum, p) => sum + p.pledgedAmount, 0)
-  const totalReceived = pledges.reduce((sum, p) => sum + p.amountReceived, 0)
+  const totalPledged = pledges.reduce((sum, p) => sum + toTzs(p.pledgedAmount, p.currency), 0)
+  const totalReceived = pledges.reduce((sum, p) => sum + toTzs(p.amountReceived, p.currency), 0)
   const outstanding = pledges.filter((p) => p.status !== 'paid' && p.status !== 'declined').length
   const goalPct = couple.pledgeGoalAmount ? Math.min(100, Math.round((totalReceived / couple.pledgeGoalAmount) * 100)) : null
 

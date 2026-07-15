@@ -406,7 +406,7 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
     e.preventDefault()
     setError(null)
     if (!name.trim()) return setError(t.error_name)
-    if (!message.trim() && !audioBlob && !recordedVideo) return setError(t.error_message)
+    if (!message.trim() && !audioBlob && !recordedVideo && !media) return setError(t.error_message)
 
     const formData = new FormData()
     formData.set('name', name.trim())
