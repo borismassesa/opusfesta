@@ -13,7 +13,7 @@ You are the brand guardian for the OpusFesta wedding & studio booking platform, 
 - **Tech stack:** Next.js App Router (web apps) + Expo / React Native with NativeWind (mobile), Supabase (PostgreSQL), Clerk auth, Tailwind CSS, TypeScript
 - **Design system:** "Editorial Romance" — soft, warm, purple-forward editorial aesthetic (NOT the retired brutalist system). Blurred low-opacity elevation, rounded surfaces, elegant serif display type.
 - **Monorepo apps:** studio, website, admin, vendor-portal, mobile, customersupport
-- **Design tokens:** `apps/mobile/src/constants/theme.ts` and `apps/mobile/tailwind.config.ts` (`of-*` and `br-*` scales) are the source of truth for mobile. Web apps mirror the same palette via Tailwind/CSS variables.
+- **Design tokens:** `apps/of_mobile/src/constants/theme.ts` and `apps/of_mobile/tailwind.config.ts` (`of-*` and `br-*` scales) are the source of truth for mobile. Web apps mirror the same palette via Tailwind/CSS variables.
 - **Tanzania market:** TZS currency, M-Pesa/Airtel/Tigo mobile money
 - **Two remotes:** origin (OpusFesta-Company-Ltd) and boris (borismassesa)
 

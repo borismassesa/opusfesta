@@ -6,6 +6,7 @@ export type NotificationType =
   | 'rsvp_received'
   | 'pledge_received'
   | 'payment_confirmed'
+  | 'guestbook_received'
   | 'system'
 
 export interface NotificationRecord {

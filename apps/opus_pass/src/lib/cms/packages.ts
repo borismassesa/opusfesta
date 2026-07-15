@@ -239,9 +239,16 @@ export const PACKAGES_FALLBACK: PackagesContent = {
       ],
     },
   ],
+  // Source: OpusPass_Packages_final.xlsx, "Add-Ons" sheet (English + Kiswahili
+  // columns) — the detailed add-on catalogue, distinct from the shorter prose
+  // summary line on the English/Kiswahili sheets.
   addons: [
-    { id: 'a1', label: 'Human follow-up calling', label_sw: 'Kupiga simu za ufuatiliaji' },
-    { id: 'a2', label: 'Paper card prints', label_sw: 'Machapisho ya kadi (karatasi)' },
+    { id: 'a1', label: 'On-site scanning attendant', label_sw: 'Mhudumu wa kukagua mlangoni' },
+    { id: 'a2', label: 'Paper card prints', label_sw: 'Machapisho ya kadi za karatasi' },
+    { id: 'a3', label: 'Wedding website', label_sw: 'Tovuti ya harusi' },
+    { id: 'a4', label: 'Gifts registry', label_sw: 'Rejista ya zawadi' },
+    { id: 'a5', label: 'Save-the-Date', label_sw: 'Save-the-Date' },
+    { id: 'a6', label: 'Digital guestbook', label_sw: 'Kitabu cha wageni cha kidijitali' },
   ],
 }
 

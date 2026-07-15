@@ -185,6 +185,24 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
     },
     {
       ...addOnDefaults(),
+      id: 'human-follow-up-calling',
+      title: 'Human follow-up calling',
+      title_sw: 'Kupiga simu za ufuatiliaji',
+      description:
+        "A real person calls your invited guests who haven't RSVP'd yet to gently follow up and record their response for you.",
+      description_sw:
+        'Mtu halisi anapiga simu wageni wako walioalikwa ambao bado hawajajibu RSVP, kufuatilia kwa upole na kurekodi jibu lao kwa niaba yako.',
+      pricingMode: 'quote',
+      includedInTierIds: ['elegant', 'signature'],
+      includedTitle: 'Human follow-up calling',
+      includedTitle_sw: 'Kupiga simu za ufuatiliaji',
+      includedDescription:
+        "A real person calls your invited guests who haven't RSVP'd yet to gently follow up and record their response for you — included with your Elegant and Signature packages.",
+      includedDescription_sw:
+        'Mtu halisi anapiga simu wageni wako walioalikwa ambao bado hawajajibu RSVP, kufuatilia kwa upole na kurekodi jibu lao kwa niaba yako — imejumuishwa na kifurushi chako cha Elegant na Signature.',
+    },
+    {
+      ...addOnDefaults(),
       id: 'wedding-website',
       title: 'Wedding website',
       title_sw: 'Tovuti ya harusi',
@@ -201,17 +219,6 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
     },
     {
       ...addOnDefaults(),
-      id: 'human-follow-up-calling',
-      title: 'Human follow-up calling',
-      title_sw: 'Kupiga simu za ufuatiliaji',
-      description:
-        "A real person calls your invited guests who haven't RSVP'd yet to gently follow up and record their response for you.",
-      description_sw:
-        'Mtu halisi anapiga simu wageni wako walioalikwa ambao bado hawajajibu RSVP, kufuatilia kwa upole na kurekodi jibu lao kwa niaba yako.',
-      pricingMode: 'quote',
-    },
-    {
-      ...addOnDefaults(),
       id: 'gifts-registry',
       title: 'Gifts registry',
       title_sw: 'Orodha ya zawadi',
@@ -220,6 +227,13 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
       description_sw:
         'Orodha ya zawadi inayoweza kushirikiwa ili wageni wako wajue hasa cha kuleta au kuchangia.',
       pricingMode: 'quote',
+      includedInTierIds: ['signature'],
+      includedTitle: 'Gifts registry',
+      includedTitle_sw: 'Orodha ya zawadi',
+      includedDescription:
+        'A shareable gift registry so your guests know exactly what to bring or contribute toward — included with your Signature package.',
+      includedDescription_sw:
+        'Orodha ya zawadi inayoweza kushirikiwa ili wageni wako wajue hasa cha kuleta au kuchangia — imejumuishwa na kifurushi chako cha Signature.',
     },
   ],
   faq: [
@@ -231,18 +245,6 @@ export const PRODUCT_ADDONS_FAQ_FALLBACK: ProductAddonsFaqContent = {
         'Every package includes a dashboard to run your event end to end — create the event, build and organise your guest list, and send invites from one place. Watch RSVPs land in real time with live headcounts and meal choices. Classic and up add live check-ins, pledge collection and a thank-you blast; Elegant and Signature add save-the-dates, schedule or menu design and richer reporting.',
       body_sw:
         'Kila kifurushi kinajumuisha dashibodi ya kuendesha tukio lako mwanzo hadi mwisho — tengeneza tukio, jenga na panga orodha yako ya wageni, na tuma mialiko kutoka sehemu moja. Angalia RSVP zikiingia moja kwa moja pamoja na idadi ya wageni na chaguo za chakula. Classic na zaidi zinaongeza ukaguzi wa moja kwa moja, ukusanyaji wa michango na ujumbe wa shukrani; Elegant na Signature zinaongeza save-the-date, ratiba au muundo wa menyu na ripoti za kina zaidi.',
-      link_label: '',
-      link_label_sw: '',
-      link_href: '',
-    },
-    {
-      id: 'free-wedding-website',
-      title: 'Free wedding website',
-      title_sw: 'Tovuti ya harusi bila malipo',
-      body:
-        'Pair your invitation with a personal wedding website — your story, schedule, venue map, photos, and a built-in bilingual RSVP your guests can visit anytime. Included with the Signature package; available as an add-on on Lite and Classic.',
-      body_sw:
-        'Ambatanisha mwaliko wako na tovuti yako binafsi ya harusi — hadithi yako, ratiba, ramani ya eneo, picha, na RSVP ya lugha mbili iliyojengwa ndani ambayo wageni wako wanaweza kutembelea wakati wowote. Imejumuishwa na kifurushi cha Signature; inapatikana kama nyongeza kwenye Lite na Classic.',
       link_label: '',
       link_label_sw: '',
       link_href: '',

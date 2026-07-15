@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+
+/*
+ * OpusFesta brand tokens (canonical source: apps/vendors_portal/src/lib/brand-palette.ts).
+ * Lavender is the primary brand expression; sage is reserved for
+ * success/booking states ("the Emerald Principle"); champagne is the warm
+ * secondary (used here for VIP); rose is the error accent. Layout/structure
+ * is ported from the apps/untitled design prototype, but colors and type
+ * match the rest of OpusPass (Montserrat, #1A1A1A text, white surfaces).
+ */
+html,
+body {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@keyframes radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scan-vertical {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}

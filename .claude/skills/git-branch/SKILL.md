@@ -21,6 +21,7 @@ Numbers are zero-padded to 4 digits: `OF-MPS-0001`
 | `ADM` | Admin dashboard | `apps/admin` |
 | `WEB` | Website / public pages | `apps/website` |
 | `VND` | Vendor portal & management | `apps/vendor-portal` |
+| `MOB` | Mobile app (iOS / Android) | `apps/of_mobile` |
 | `PAY` | Payments & billing | `packages/payments`, cross-app |
 | `INF` | Infrastructure / DevOps | Root config, CI, deployment |
 | `TD` | Technical debt / refactoring | Any — cross-cutting |

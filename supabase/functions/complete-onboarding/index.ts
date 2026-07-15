@@ -286,7 +286,7 @@ Deno.serve(async (req: Request) => {
               email: profile.email,
               instagram: profile.instagram,
             },
-            portfolio_images: profile.portfolio_urls ?? [],
+            gallery_urls: profile.portfolio_urls ?? [],
             onboarding_status: "active",
             onboarding_started_at: new Date().toISOString(),
             onboarding_completed_at: new Date().toISOString(),

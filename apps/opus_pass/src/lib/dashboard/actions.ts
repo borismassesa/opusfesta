@@ -1,15 +1,21 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { randomUUID } from 'node:crypto'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
-import { paymentMethodsToText } from './pledge-page'
-import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars } from './queries'
+import { paymentMethodsToText, resolveEventCover, EVENTLESS_COVER_KEY } from './pledge-page'
+import { PLEDGE_TEMPLATE_FREE_TIER_IDS } from './pledge-card-templates'
+import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
+import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, pledgeUrl, publicOrigin } from './share'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEventPackageTierId, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
+import { getSmsProvider } from '@/lib/sms'
+import { isEmailConfigured, sendEmail } from '@/lib/email'
+import { pledgeRequestEmail } from './pledge-email'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -33,6 +39,8 @@ function revalidateDashboard() {
   revalidatePath('/my/dashboard/pledges')
   revalidatePath('/my/dashboard/website')
   revalidatePath('/my/dashboard/seating')
+  revalidatePath('/my/dashboard/guestbook')
+  revalidatePath('/my/dashboard/thank-you')
 }
 
 // ---------------------------------------------------------------- Events
@@ -47,8 +55,6 @@ export interface EventInput {
   starts_at?: string | null
   ends_at?: string | null
   dress_code?: string | null
-  collect_meal_choice?: boolean
-  meal_options?: string[]
   /** Show on public website. Defaults to true server-side. */
   is_public?: boolean
   /** Let guests RSVP via the website. Defaults to false server-side. */
@@ -70,8 +76,6 @@ export async function createEvent(input: EventInput): Promise<void> {
     starts_at: input.starts_at || null,
     ends_at: input.ends_at || null,
     dress_code: input.dress_code || null,
-    collect_meal_choice: input.collect_meal_choice ?? false,
-    meal_options: input.meal_options ?? [],
     is_public: input.is_public ?? true,
     allow_rsvp: input.allow_rsvp ?? false,
     sort_order: input.sort_order ?? 0,
@@ -95,8 +99,6 @@ export async function updateEvent(id: string, input: EventInput): Promise<void> 
       starts_at: input.starts_at || null,
       ends_at: input.ends_at || null,
       dress_code: input.dress_code || null,
-      collect_meal_choice: input.collect_meal_choice ?? false,
-      meal_options: input.meal_options ?? [],
       is_public: input.is_public ?? true,
       allow_rsvp: input.allow_rsvp ?? false,
       sort_order: input.sort_order ?? 0,
@@ -557,7 +559,7 @@ export async function updateRsvp(invitationId: string, update: RsvpUpdate): Prom
 
 // ---------------------------------------------------------------- Sending
 
-export async function recordSend(guestId: string, channel: SendChannel): Promise<void> {
+export async function recordSend(guestId: string, channel: SendChannel, eventId?: string): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
@@ -578,7 +580,7 @@ export async function recordSend(guestId: string, channel: SendChannel): Promise
 
   const { error: logErr } = await supabase
     .from('guest_message_log')
-    .insert({ user_id: user.id, guest_contact_id: guestId, channel })
+    .insert({ user_id: user.id, guest_contact_id: guestId, channel, event_id: eventId ?? null })
   if (logErr) throw new Error(logErr.message)
   revalidateDashboard()
 }
@@ -811,6 +813,97 @@ export async function recordPledgeReminder(pledgeId: string, channel: SendChanne
   revalidateDashboard()
 }
 
+/** Result of an actual (tracked) SMS/email reminder send — as opposed to the
+ *  old behaviour of just opening the couple's own SMS/Mail app with a
+ *  prefilled draft and optimistically marking it "sent" the moment the link
+ *  was clicked, with no confirmation the couple ever pressed send there. */
+export interface PledgeReminderSendResult {
+  ok: boolean
+  /** True when no live gateway is configured — the message was logged, not
+   *  actually delivered. */
+  dryRun: boolean
+  error?: string
+}
+
+/** Send a reminder SMS with the given (already-composed, owing-amount-aware)
+ *  message text, and only mark the reminder as sent once the provider
+ *  confirms it. `message` comes from the caller (pledgeReminderMessage) since
+ *  its content — amount owing, due date, payment instructions — depends on
+ *  live data the caller already has; this action just delivers it. */
+export async function sendPledgeReminderSms(pledgeId: string, message: string): Promise<PledgeReminderSendResult> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getSmsProvider()
+
+  const { data: pledge } = await supabase
+    .from('event_pledges')
+    .select('guest_contact_id')
+    .eq('id', pledgeId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ guest_contact_id: string }>()
+  if (!pledge) return { ok: false, dryRun: !provider.live, error: 'Pledge not found' }
+
+  const { data: contact } = await supabase
+    .from('guest_contacts')
+    .select('phone, whatsapp_phone')
+    .eq('id', pledge.guest_contact_id)
+    .eq('user_id', user.id)
+    .maybeSingle<{ phone: string | null; whatsapp_phone: string | null }>()
+  const to = normalizePhone(contact?.phone ?? contact?.whatsapp_phone)
+  if (!to) return { ok: false, dryRun: !provider.live, error: 'No phone number on file' }
+
+  const result = await provider.sendText(to, message)
+  if (result.ok) await recordPledgeReminder(pledgeId, 'sms')
+  return { ok: result.ok, dryRun: Boolean(result.dryRun), error: result.error }
+}
+
+/** Send a reminder email with the given (already-composed) message text —
+ *  same tracked-on-confirmed-success contract as sendPledgeReminderSms. */
+export async function sendPledgeReminderEmail(pledgeId: string, message: string): Promise<PledgeReminderSendResult> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const live = isEmailConfigured()
+
+  const { data: pledge } = await supabase
+    .from('event_pledges')
+    .select('guest_contact_id')
+    .eq('id', pledgeId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ guest_contact_id: string }>()
+  if (!pledge) return { ok: false, dryRun: !live, error: 'Pledge not found' }
+
+  const { data: contact } = await supabase
+    .from('guest_contacts')
+    .select('email')
+    .eq('id', pledge.guest_contact_id)
+    .eq('user_id', user.id)
+    .maybeSingle<{ email: string | null }>()
+  if (!contact?.email) return { ok: false, dryRun: !live, error: 'No email on file' }
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name')
+    .eq('user_id', user.id)
+    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null }>()
+  const coupleName = [profile?.partner1_name, profile?.partner2_name].filter(Boolean).join(' & ') || 'The Couple'
+
+  let ok = true
+  if (live) {
+    ok = (
+      await sendEmail({
+        to: contact.email,
+        subject: `A gentle reminder — ${coupleName}`,
+        html: message.replace(/\n/g, '<br>'),
+        text: message,
+      })
+    ).sent
+  } else {
+    console.warn('[email:dry-run] would send pledge reminder', { to: contact.email })
+  }
+  if (ok) await recordPledgeReminder(pledgeId, 'email')
+  return { ok, dryRun: !live, error: ok ? undefined : 'Send failed' }
+}
+
 // ---------------------------------------------------------------- Couple profile
 
 export interface CoupleProfileInput {
@@ -878,25 +971,169 @@ export async function updatePledgeCollection(input: {
   revalidatePath('/my/dashboard/settings')
 }
 
-/** Save the couple's public pledge-page customizations (wording, colors, cover). */
-export async function updatePledgePageConfig(config: PledgePageConfig): Promise<void> {
+/** Set (or clear) the pledge page's cover image for one event, without
+ *  touching the rest of the couple's customizations or any other event's
+ *  cover — used by the "Share & Preview" pledge card picker (purchased
+ *  design or an uploaded photo). */
+export async function setPledgeCoverImage(
+  eventId: string | null,
+  coverImageUrl: string | null,
+  coverIsFullTemplate: boolean,
+): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
-  // Update the existing profile; if there isn't one yet, create a minimal row
-  // (partner1_name is required) so the customization isn't silently dropped.
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('pledge_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
+  const stored = profile?.pledge_page ?? {}
+  const nextConfig: PledgePageConfig = {
+    ...stored,
+    eventCovers: {
+      ...stored.eventCovers,
+      [eventId ?? EVENTLESS_COVER_KEY]: { coverImageUrl, coverIsFullTemplate },
+    },
+  }
+
   const { data, error } = await supabase
     .from('couple_profiles')
-    .update({ pledge_page: config, updated_at: new Date().toISOString() })
+    .update({ pledge_page: nextConfig, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .select('id')
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) {
     const { error: insErr } = await supabase
       .from('couple_profiles')
-      .insert({ user_id: user.id, partner1_name: 'The Couple', pledge_page: config })
+      .insert({ user_id: user.id, partner1_name: 'The Couple', pledge_page: nextConfig })
     if (insErr) throw new Error(insErr.message)
   }
   revalidatePath('/my/dashboard/pledges')
+}
+
+/** Apply a card design pulled from the invitation catalog as the pledge page
+ *  cover, for free. Free for Elegant/Signature only — re-derives the event's
+ *  paid-order tier server-side rather than trusting a client-supplied tier,
+ *  since this gates a paid feature (Classic/Essential must unlock it). */
+export async function applyPledgeCardTemplate(eventId: string, cardImageUrl: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone, pledge_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null; pledge_page: PledgePageConfig | null }>()
+
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.event_id === eventId)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+  const tierId = withImage?.tierId ?? items[0]?.tierId ?? null
+  if (!tierId || !PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(tierId)) {
+    throw new Error('Pledge card templates are included with Elegant and Signature packages — unlock this design to use it.')
+  }
+
+  const stored = profile?.pledge_page ?? {}
+  const nextConfig: PledgePageConfig = {
+    ...stored,
+    eventCovers: {
+      ...stored.eventCovers,
+      [eventId]: { coverImageUrl: cardImageUrl, coverIsFullTemplate: true },
+    },
+  }
+  const { data, error } = await supabase
+    .from('couple_profiles')
+    .update({ pledge_page: nextConfig, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', pledge_page: nextConfig })
+    if (insErr) throw new Error(insErr.message)
+  }
+  revalidatePath('/my/dashboard/pledges')
+}
+
+/** Set (or clear) the Thank You card image for one event, without touching
+ *  any other event's card — used by the card-template picker. Mirrors
+ *  setPledgeCoverImage. */
+export async function setThankYouCoverImage(
+  eventId: string | null,
+  coverImageUrl: string | null,
+  coverIsFullTemplate: boolean,
+): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('thank_you_config')
+    .eq('user_id', user.id)
+    .maybeSingle<{ thank_you_config: ThankYouCardConfig | null }>()
+  const stored = profile?.thank_you_config ?? {}
+  const nextConfig: ThankYouCardConfig = {
+    ...stored,
+    eventCovers: {
+      ...stored.eventCovers,
+      [eventId ?? EVENTLESS_COVER_KEY]: { coverImageUrl, coverIsFullTemplate },
+    },
+  }
+
+  const { data, error } = await supabase
+    .from('couple_profiles')
+    .update({ thank_you_config: nextConfig, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', thank_you_config: nextConfig })
+    if (insErr) throw new Error(insErr.message)
+  }
+  revalidatePath('/my/dashboard/thank-you')
+}
+
+/** Apply a card design pulled from the invitation catalog as the Thank You
+ *  message's header image, for free. Free for Elegant/Signature only —
+ *  re-derives the event's paid-order tier server-side rather than trusting
+ *  a client-supplied tier, mirroring applyPledgeCardTemplate. */
+export async function applyThankYouCardTemplate(eventId: string, cardImageUrl: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const tierId = await getEventPackageTierId(eventId)
+  if (!tierId || !THANK_YOU_FREE_TIER_IDS.includes(tierId)) {
+    throw new Error('Thank-you messages are included with Elegant and Signature packages — upgrade to unlock this.')
+  }
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('thank_you_config')
+    .eq('user_id', user.id)
+    .maybeSingle<{ thank_you_config: ThankYouCardConfig | null }>()
+  const stored = profile?.thank_you_config ?? {}
+  const nextConfig: ThankYouCardConfig = {
+    ...stored,
+    eventCovers: {
+      ...stored.eventCovers,
+      [eventId]: { coverImageUrl: cardImageUrl, coverIsFullTemplate: true },
+    },
+  }
+  const { data, error } = await supabase
+    .from('couple_profiles')
+    .update({ thank_you_config: nextConfig, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    const { error: insErr } = await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', thank_you_config: nextConfig })
+    if (insErr) throw new Error(insErr.message)
+  }
+  revalidatePath('/my/dashboard/thank-you')
 }
 
 /** Upload a cover image for the pledge page; returns its public URL. */
@@ -1380,6 +1617,203 @@ export async function dismissReviewGuest(guestId: string): Promise<void> {
   revalidateDashboard()
 }
 
+// ---------------------------------------------------------------------- Guestbook
+
+const GUESTBOOK_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const GUESTBOOK_PHOTO_MAX_BYTES = 8 * 1024 * 1024
+const GUESTBOOK_VIDEO_MAX_BYTES = 50 * 1024 * 1024
+const GUESTBOOK_RELATIONS = new Set(['Family', 'Friend', 'Colleague'])
+// MediaRecorder's mimeType often carries codec params (e.g. "audio/webm;codecs=opus",
+// "video/webm;codecs=vp8,opus"), so these are prefixes, matched with startsWith —
+// not an exact-match set.
+const GUESTBOOK_AUDIO_MIME_PREFIXES = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/mpeg', 'audio/aac']
+const GUESTBOOK_AUDIO_MAX_BYTES = 10 * 1024 * 1024
+const GUESTBOOK_VIDEO_MIME_PREFIXES = ['video/mp4', 'video/quicktime', 'video/webm']
+
+function extForAudioMime(mime: string): string {
+  if (mime.startsWith('audio/mp4')) return 'm4a'
+  if (mime.startsWith('audio/ogg')) return 'ogg'
+  if (mime.startsWith('audio/mpeg')) return 'mp3'
+  if (mime.startsWith('audio/aac')) return 'aac'
+  return 'webm'
+}
+
+function extForVideoMime(mime: string): string {
+  if (mime.startsWith('video/quicktime')) return 'mov'
+  if (mime.startsWith('video/webm')) return 'webm'
+  return 'mp4'
+}
+
+/**
+ * Public, no-auth submission from a guest visiting the published wedding site
+ * (SiteRenderer's guestbook block). Mirrors submitPublicInviteRsvp: resolves
+ * the owning couple from the slug, gates on sharing being enabled, and writes
+ * via the service-role client since the guest has no session. Entries land
+ * `pending` — the couple moderates them into view on their dashboard.
+ */
+export async function submitGuestbookEntry(
+  slug: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  const guestName = String(formData.get('name') ?? '').trim().slice(0, 80)
+  const message = String(formData.get('message') ?? '').trim().slice(0, 1000)
+  const relationRaw = String(formData.get('relation') ?? '').trim()
+  const relation = GUESTBOOK_RELATIONS.has(relationRaw) ? relationRaw : null
+  const hasAudio = formData.get('audio') instanceof File && (formData.get('audio') as File).size > 0
+  if (!guestName) return { ok: false, error: 'Please enter your name.' }
+  // A voice note stands on its own — text is only required when there isn't one.
+  if (!message && !hasAudio) return { ok: false, error: 'Please write a short message or record a voice note.' }
+
+  const supabase = createDashboardClient()
+
+  const { data: profile, error: pErr } = await supabase
+    .from('couple_profiles')
+    .select('user_id, public_sharing_enabled, partner1_name, partner2_name')
+    .eq('public_slug', slug)
+    .maybeSingle<{
+      user_id: string
+      public_sharing_enabled: boolean
+      partner1_name: string | null
+      partner2_name: string | null
+    }>()
+  if (pErr) {
+    console.error('[guestbook] profile lookup failed', pErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
+  if (!profile || !profile.public_sharing_enabled) {
+    return { ok: false, error: 'This invitation link is no longer active.' }
+  }
+
+  // A guest attaches at most one media item — a photo OR a video, picked from
+  // the same "media" field — plus an optional voice note above.
+  let photoUrl: string | null = null
+  let videoUrl: string | null = null
+  const media = formData.get('media')
+  if (media instanceof File && media.size > 0) {
+    if (media.type.startsWith('video/')) {
+      if (!GUESTBOOK_VIDEO_MIME_PREFIXES.some((prefix) => media.type.startsWith(prefix))) {
+        return { ok: false, error: 'Videos must be MP4, MOV or WebM.' }
+      }
+      if (media.size > GUESTBOOK_VIDEO_MAX_BYTES) {
+        return { ok: false, error: 'Video must be 50MB or smaller.' }
+      }
+      const ext = extForVideoMime(media.type)
+      const path = `${profile.user_id}/${randomUUID()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('guestbook-videos')
+        .upload(path, media, { contentType: media.type })
+      if (upErr) {
+        console.error('[guestbook] video upload failed', upErr)
+        return { ok: false, error: 'Something went wrong uploading your video — please try again.' }
+      }
+      videoUrl = supabase.storage.from('guestbook-videos').getPublicUrl(path).data.publicUrl
+    } else {
+      if (!GUESTBOOK_PHOTO_MIMES.has(media.type)) {
+        return { ok: false, error: 'Photos must be JPEG, PNG or WebP.' }
+      }
+      if (media.size > GUESTBOOK_PHOTO_MAX_BYTES) {
+        return { ok: false, error: 'Photo must be 8MB or smaller.' }
+      }
+      const ext = media.type === 'image/png' ? 'png' : media.type === 'image/webp' ? 'webp' : 'jpg'
+      const path = `${profile.user_id}/${randomUUID()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('guestbook-photos')
+        .upload(path, media, { contentType: media.type })
+      if (upErr) {
+        console.error('[guestbook] photo upload failed', upErr)
+        return { ok: false, error: 'Something went wrong uploading your photo — please try again.' }
+      }
+      photoUrl = supabase.storage.from('guestbook-photos').getPublicUrl(path).data.publicUrl
+    }
+  }
+
+  let audioUrl: string | null = null
+  const audio = formData.get('audio')
+  if (audio instanceof File && audio.size > 0) {
+    if (!GUESTBOOK_AUDIO_MIME_PREFIXES.some((prefix) => audio.type.startsWith(prefix))) {
+      return { ok: false, error: 'Voice notes must be a recorded audio clip.' }
+    }
+    if (audio.size > GUESTBOOK_AUDIO_MAX_BYTES) {
+      return { ok: false, error: 'Voice note must be 10MB or smaller.' }
+    }
+    const ext = extForAudioMime(audio.type)
+    const path = `${profile.user_id}/${randomUUID()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('guestbook-audio')
+      .upload(path, audio, { contentType: audio.type || 'audio/webm' })
+    if (upErr) {
+      console.error('[guestbook] audio upload failed', upErr)
+      return { ok: false, error: 'Something went wrong uploading your voice note — please try again.' }
+    }
+    audioUrl = supabase.storage.from('guestbook-audio').getPublicUrl(path).data.publicUrl
+  }
+
+  const { error: insErr } = await supabase.from('guestbook_entries').insert({
+    user_id: profile.user_id,
+    guest_name: guestName,
+    message,
+    photo_url: photoUrl,
+    video_url: videoUrl,
+    audio_url: audioUrl,
+    relation,
+    review_status: 'pending',
+  })
+  if (insErr) {
+    console.error('[guestbook] insert failed', insErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
+
+  const coupleNames = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || 'you'
+  await createNotification({
+    userId: profile.user_id,
+    type: 'guestbook_received',
+    title: `${guestName} left ${coupleNames} a guestbook message`,
+    body: message.length > 120 ? `${message.slice(0, 117)}…` : message,
+    href: '/my/dashboard/guestbook',
+  })
+
+  return { ok: true }
+}
+
+/** Approve a guestbook entry so it appears on the published site. */
+export async function approveGuestbookEntry(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('guestbook_entries')
+    .update({ review_status: 'approved', reviewed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Hide a guestbook entry (kept for the record, no longer shown publicly). */
+export async function hideGuestbookEntry(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('guestbook_entries')
+    .update({ review_status: 'hidden', reviewed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Permanently delete a guestbook entry. */
+export async function deleteGuestbookEntry(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('guestbook_entries')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
 // ---------------------------------------------------------------- WhatsApp invitations
 
 /** Per-guest outcome of one send run — powers the results drawer. */
@@ -1471,8 +1905,7 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
   const { data: guests, error } = await q
   if (error) throw new Error(error.message)
 
-  const sentSet = new Set(ent.alreadySentIds)
-  let remaining = ent.remaining
+  let remaining = ent.remaining // informational only — consumeSendCredit is the actual gate
   const now = new Date().toISOString()
 
   for (const g of (guests ?? []) as {
@@ -1488,12 +1921,21 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'skipped' })
       continue
     }
-    const isResend = sentSet.has(g.id)
-    if (!isResend && remaining <= 0) {
+
+    const verdict = await consumeSendCredit(supabase, {
+      userId: user.id,
+      eventId: resolvedEventId,
+      guestContactId: g.id,
+      kind: 'invite',
+      purchased: ent.purchased,
+    })
+    if (verdict === 'blocked') {
       summary.blocked += 1
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'blocked' })
       continue
     }
+    const isResend = verdict === 'resend'
+    if (!isResend) remaining -= 1
 
     const result = await provider.sendInvite({
       to,
@@ -1519,10 +1961,6 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
     if (result.ok) {
       summary.sent += 1
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'sent', resend: isResend })
-      if (!isResend) {
-        remaining -= 1 // consume one paid credit per newly-invited guest
-        sentSet.add(g.id)
-      }
       await supabase.from('guest_message_log').insert({
         user_id: user.id,
         guest_contact_id: g.id,
@@ -1538,6 +1976,13 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
       summary.failed += 1
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
     }
+    // A failed send or a dry-run simulation (no live Meta account yet) never
+    // actually reached the guest — hand back the credit consumeSendCredit
+    // reserved so the couple's real quota isn't burned by test traffic.
+    if (!isResend && (!result.ok || result.dryRun)) {
+      await releaseSendCredit(supabase, { userId: user.id, eventId: resolvedEventId, guestContactId: g.id, kind: 'invite' })
+      remaining += 1
+    }
   }
 
   summary.remaining = remaining
@@ -1548,9 +1993,11 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
 /**
  * Send an "OpusPass Entrance Pass" — a ticket image bearing the guest's name
  * and a scannable check-in QR — to guests who have confirmed attending the
- * given event. Unlike sendWhatsAppInvites, this is NOT gated by invite
- * credits: it serves a different purpose (check-in, not the paid invite), so
- * every attending guest can always receive or re-receive one for free.
+ * given event. Metered like invites but from its OWN pool of the same
+ * purchased size: buying N guests grants N invite credits AND N entrance-pass
+ * credits. The first ticket to a distinct guest consumes one; re-sending that
+ * guest their own ticket is free. Guests ticketed before metering shipped
+ * keep their free re-sends — only NEW guests are blocked once the pool is dry.
  */
 export async function sendEntrancePasses(guestIds?: string[], eventId?: string): Promise<WhatsAppSendSummary> {
   const user = await requireDashboardUser()
@@ -1604,6 +2051,17 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
   const categoryOverride = profile?.invite_event_category?.trim() || null
   const { eventCategory, dateLabel, timeLabel, venue } = computeEntrancePassVars(event, categoryOverride)
 
+  // Ticket credits come from the same paid order as invite credits, but are
+  // a separate pool — see getWhatsAppEntitlement.
+  const ent = await getWhatsAppEntitlement(resolvedEventId)
+  summary.hasPaidOrder = ent.hasPaidOrder
+  summary.purchased = ent.entrancePassPurchased
+  summary.remaining = ent.entrancePassRemaining
+  // No blanket bail-out on a dry pool: a guest who already holds a ticket
+  // (an existing credit_consumptions row) is still entitled to a free
+  // resend regardless of remaining purchased quota — consumeSendCredit
+  // below is the real gate, and it only blocks guests needing a NEW credit.
+
   const { data: invitations } = await supabase
     .from('guest_invitations')
     .select('guest_contact_id')
@@ -1624,6 +2082,7 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
   if (error) throw new Error(error.message)
 
   const origin = publicOrigin()
+  let remaining = ent.entrancePassRemaining // informational only — consumeSendCredit is the actual gate
 
   for (const g of (guests ?? []) as {
     id: string
@@ -1639,6 +2098,21 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
       continue
     }
 
+    const verdict = await consumeSendCredit(supabase, {
+      userId: user.id,
+      eventId: resolvedEventId,
+      guestContactId: g.id,
+      kind: 'entrance_pass',
+      purchased: ent.entrancePassPurchased,
+    })
+    if (verdict === 'blocked') {
+      summary.blocked += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'blocked' })
+      continue
+    }
+    const isResend = verdict === 'resend'
+    if (!isResend) remaining -= 1
+
     const result = await provider.sendEntrancePass({
       to,
       // Meta rejects/limits overlong template params — a full name is
@@ -1653,10 +2127,10 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
       headerImageUrl: `${origin}/entrance-pass/${g.public_token}?event=${resolvedEventId}`,
     })
 
-    // Logged for delivery-status tracking only — unlike sendWhatsAppInvites,
-    // this intentionally doesn't touch guest_message_log / last_invited_at:
-    // those drive the invite-quota UI ("already invited") and this is a
-    // separate, quota-free, post-RSVP send.
+    // Delivery-status log only now — credit_consumptions (written by
+    // consumeSendCredit above) is the quota ledger; this intentionally still
+    // doesn't touch guest_message_log / last_invited_at, which drive the
+    // invite-quota UI ("already invited"), a separate pool's send.
     await supabase.from('whatsapp_messages').insert({
       user_id: user.id,
       guest_contact_id: g.id,
@@ -1670,13 +2144,21 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
 
     if (result.ok) {
       summary.sent += 1
-      summary.results.push({ id: g.id, name: g.full_name, outcome: 'sent' })
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'sent', resend: isResend })
     } else {
       summary.failed += 1
       summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
     }
+    // A failed send or a dry-run simulation (no live Meta account yet) never
+    // actually reached the guest — hand back the credit consumeSendCredit
+    // reserved so the couple's real quota isn't burned by test traffic.
+    if (!isResend && (!result.ok || result.dryRun)) {
+      await releaseSendCredit(supabase, { userId: user.id, eventId: resolvedEventId, guestContactId: g.id, kind: 'entrance_pass' })
+      remaining += 1
+    }
   }
 
+  summary.remaining = remaining
   revalidateDashboard()
   return summary
 }
@@ -1743,6 +2225,187 @@ export async function sendWhatsAppTestInvite(
     direction: 'out',
     wamid: result.wamid ?? null,
     kind: 'invite_test',
+    status: result.ok ? 'sent' : 'failed',
+    error: result.error ?? null,
+  })
+
+  return { ok: result.ok, dryRun: Boolean(result.dryRun), error: result.error }
+}
+
+/** Outcome of a thank-you broadcast — no quota/purchase fields since, unlike
+ *  invites/entrance passes, this isn't metered. */
+export interface ThankYouSendSummary {
+  sent: number
+  failed: number
+  /** Skipped because the guest has no phone number. */
+  skipped: number
+  /** True when handled by the dry-run stub (no live Meta account yet). */
+  dryRun: boolean
+  /** One entry per guest attempted, in send order. */
+  results: WhatsAppSendResult[]
+}
+
+/**
+ * Send the post-event "thank you" message to guests confirmed attending the
+ * given event (or a subset, when guestIds is passed). Available to every
+ * package tier — only the card TEMPLATE used as the header image is
+ * paygated (see applyThankYouCardTemplate); everyone else just gets the
+ * generic banner header. Not quota-gated either: every eligible guest can
+ * always be thanked.
+ */
+export async function sendThankYouMessages(guestIds?: string[], eventId?: string): Promise<ThankYouSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getWhatsAppProvider()
+  const resolvedEventId = await resolveDefaultEventId(eventId)
+
+  const summary: ThankYouSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !provider.live, results: [] }
+  if (!resolvedEventId) return summary
+
+  const [ent, headerImageUrl] = await Promise.all([
+    getWhatsAppEntitlement(resolvedEventId),
+    resolveThankYouHeaderImage(supabase, user.id, resolvedEventId),
+  ])
+
+  const { data: invitations } = await supabase
+    .from('guest_invitations')
+    .select('guest_contact_id')
+    .eq('user_id', user.id)
+    .eq('event_id', resolvedEventId)
+    .eq('rsvp_status', 'attending')
+  const attendingIds = new Set((invitations ?? []).map((i) => i.guest_contact_id as string))
+  if (!attendingIds.size) return summary
+
+  const targetIds = guestIds && guestIds.length ? guestIds.filter((id) => attendingIds.has(id)) : [...attendingIds]
+  if (!targetIds.length) return summary
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, phone, whatsapp_phone')
+    .eq('user_id', user.id)
+    .in('id', targetIds)
+  if (error) throw new Error(error.message)
+
+  for (const g of (guests ?? []) as { id: string; full_name: string; phone: string | null; whatsapp_phone: string | null }[]) {
+    const to = normalizePhone(g.whatsapp_phone ?? g.phone)
+    if (!to) {
+      summary.skipped += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'skipped' })
+      continue
+    }
+
+    const result = await provider.sendThankYou({
+      to,
+      guestFirstName: firstNameOf(g.full_name),
+      coupleName: ent.coupleName,
+      eventCategory: ent.eventCategory,
+      headerImageUrl,
+    })
+
+    await supabase.from('whatsapp_messages').insert({
+      user_id: user.id,
+      guest_contact_id: g.id,
+      event_id: resolvedEventId,
+      direction: 'out',
+      wamid: result.wamid ?? null,
+      kind: 'thank_you',
+      status: result.ok ? 'sent' : 'failed',
+      error: result.error ?? null,
+    })
+
+    if (result.ok) {
+      summary.sent += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'sent' })
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        event_id: resolvedEventId,
+        channel: 'whatsapp',
+      })
+      await markThankYouSent(supabase, user.id, resolvedEventId, g.id)
+    } else {
+      summary.failed += 1
+      summary.results.push({ id: g.id, name: g.full_name, outcome: 'failed', error: result.error })
+    }
+  }
+
+  revalidateDashboard()
+  return summary
+}
+
+/** The thank-you message's header image for one event: the couple's chosen
+ *  card design if they've applied one (see applyThankYouCardTemplate),
+ *  else a generic OpusPass banner — same fallback sendWhatsAppLinkRequests
+ *  uses for collector/pledge links. */
+async function resolveThankYouHeaderImage(
+  supabase: ReturnType<typeof createDashboardClient>,
+  userId: string,
+  eventId: string,
+): Promise<string> {
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('thank_you_config')
+    .eq('user_id', userId)
+    .maybeSingle<{ thank_you_config: ThankYouCardConfig | null }>()
+  const cover = resolveThankYouCover(profile?.thank_you_config ?? null, eventId)
+  return cover.coverImageUrl ?? `${publicOrigin()}/assets/images/couples_together.jpg`
+}
+
+/** Bump the thank-you send tracker on one guest's invitation row for this
+ *  event, scoped to guest_invitations since (unlike the pledge ask) this
+ *  tracker is per-event, not couple-level. Goes through an atomic RPC (see
+ *  migration 20260715000001) rather than a select-then-update in application
+ *  code, so two overlapping sends for the same guest can't both read the
+ *  same count and undercount. */
+async function markThankYouSent(
+  supabase: ReturnType<typeof createDashboardClient>,
+  userId: string,
+  eventId: string,
+  guestId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('increment_thank_you_count', {
+    p_user_id: userId,
+    p_event_id: eventId,
+    p_guest_contact_id: guestId,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Send the thank-you template to a number the COUPLE controls so they can
+ * preview exactly what guests will receive before a bulk send. Mirrors
+ * sendWhatsAppTestInvite: not tied to a guest, never touches the thank-you
+ * tracker.
+ */
+export async function sendThankYouTestMessage(rawPhone: string, eventId?: string): Promise<WhatsAppTestSendResult> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getWhatsAppProvider()
+  const resolvedEventId = await resolveDefaultEventId(eventId)
+  if (!resolvedEventId) return { ok: false, dryRun: !provider.live, error: 'no event set up yet' }
+  const [ent, headerImageUrl] = await Promise.all([
+    getWhatsAppEntitlement(resolvedEventId),
+    resolveThankYouHeaderImage(supabase, user.id, resolvedEventId),
+  ])
+
+  const to = normalizePhone(rawPhone)
+  if (!to || to.length < 9) return { ok: false, dryRun: !provider.live, error: 'invalid phone number' }
+
+  const result = await provider.sendThankYou({
+    to,
+    guestFirstName: 'Rafiki',
+    coupleName: ent.coupleName,
+    eventCategory: ent.eventCategory,
+    headerImageUrl,
+  })
+
+  await supabase.from('whatsapp_messages').insert({
+    user_id: user.id,
+    guest_contact_id: null,
+    event_id: resolvedEventId,
+    direction: 'out',
+    wamid: result.wamid ?? null,
+    kind: 'thank_you_test',
     status: result.ok ? 'sent' : 'failed',
     error: result.error ?? null,
   })
@@ -1888,6 +2551,43 @@ export async function updateGuestBasics(guestId: string, name: string, rawPhone:
 }
 
 /**
+ * Lightweight inline edit from the Pledges guest table: guest display name,
+ * phone, and email. Same narrow philosophy as updateGuestBasics — a blank
+ * phone or email means "leave it as it is", so a quick edit can never
+ * silently strip a guest's existing contact info.
+ */
+export async function updateGuestContactInfo(
+  guestId: string,
+  name: string,
+  rawPhone: string,
+  email: string,
+): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const fullName = name.replace(/\s+/g, ' ').trim().slice(0, 120)
+  if (!fullName) throw new Error('Enter the guest name')
+  const updatePayload: { full_name: string; phone?: string; whatsapp_phone?: string; email?: string } = {
+    full_name: fullName,
+  }
+  if (rawPhone.trim()) {
+    const phone = normalizePhone(rawPhone)
+    if (!phone || phone.length < 9) throw new Error('Enter a valid phone number')
+    updatePayload.phone = phone
+    updatePayload.whatsapp_phone = phone
+  }
+  if (email.trim()) {
+    updatePayload.email = email.trim()
+  }
+  const { error } = await supabase
+    .from('guest_contacts')
+    .update(updatePayload)
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/**
  * Quick inline fix from the Send Invites table: attach a phone number to a
  * guest who was skipped for having none. Also fills whatsapp_phone when empty
  * so the guest immediately becomes WhatsApp-sendable.
@@ -1926,6 +2626,31 @@ export interface WhatsAppLinkSendSummary {
   dryRun: boolean
 }
 
+/** Bump the pledge-ask send tracker for one contact — separate from the
+ *  wedding-invite tracker (recordSend/invite_count above), since asking for a
+ *  pledge is a distinct send from inviting someone to the wedding. Mirrors
+ *  recordSend's fetch-then-increment pattern. */
+async function markPledgeInviteSent(
+  supabase: ReturnType<typeof createDashboardClient>,
+  userId: string,
+  guestId: string,
+): Promise<void> {
+  const { data: guest } = await supabase
+    .from('guest_contacts')
+    .select('pledge_invite_count')
+    .eq('id', guestId)
+    .eq('user_id', userId)
+    .maybeSingle<{ pledge_invite_count: number }>()
+  await supabase
+    .from('guest_contacts')
+    .update({
+      pledge_invite_sent_at: new Date().toISOString(),
+      pledge_invite_count: (guest?.pledge_invite_count ?? 0) + 1,
+    })
+    .eq('id', guestId)
+    .eq('user_id', userId)
+}
+
 /**
  * Send the couple's Contact Collector or Pledge link to the given saved
  * contacts via a templated WhatsApp message (image header + CTA URL button
@@ -1936,6 +2661,7 @@ async function sendWhatsAppLinkRequests(
   kind: LinkRequestKind,
   guestIds: string[],
   token: string | null,
+  eventId?: string,
 ): Promise<WhatsAppLinkSendSummary> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
@@ -1944,13 +2670,28 @@ async function sendWhatsAppLinkRequests(
 
   if (!token || !guestIds.length) return summary
 
-  // Collector/pledge links are couple-level, not tied to any one event — only
-  // coupleName is needed here, so any resolvable event id is sufficient.
-  const resolvedEventId = await resolveDefaultEventId()
+  // Collector/pledge links are couple-level, not tied to any one event — but
+  // when the caller knows which event is currently in view, prefer that one
+  // so `ent.coupleName`/category context matches what's on screen.
+  const resolvedEventId = await resolveDefaultEventId(eventId)
   if (!resolvedEventId) return summary
   const ent = await getWhatsAppEntitlement(resolvedEventId)
-  // Generic OpusPass banner — collector/pledge links aren't tied to a paid card.
-  const headerImageUrl = `${publicOrigin()}/assets/images/couples_together.jpg`
+  // Generic OpusPass banner — used as the WhatsApp template's image header
+  // whenever there's no better option (collector links, or a pledge that
+  // hasn't had a card design applied to this event yet).
+  let headerImageUrl = `${publicOrigin()}/assets/images/couples_together.jpg`
+  // For pledge links, lead with the couple's own selected/paid pledge card
+  // design for this event (if they've applied one) so the WhatsApp message
+  // shows the actual card instead of a generic banner.
+  if (kind === 'pledge') {
+    const { data: profile } = await supabase
+      .from('couple_profiles')
+      .select('pledge_page')
+      .eq('user_id', user.id)
+      .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
+    const cover = resolveEventCover(profile?.pledge_page, resolvedEventId)
+    if (cover.coverImageUrl) headerImageUrl = cover.coverImageUrl
+  }
 
   const { data: guests, error } = await supabase
     .from('guest_contacts')
@@ -1996,6 +2737,7 @@ async function sendWhatsAppLinkRequests(
         guest_contact_id: g.id,
         channel: 'whatsapp',
       })
+      if (kind === 'pledge') await markPledgeInviteSent(supabase, user.id, g.id)
     } else {
       summary.failed += 1
     }
@@ -2011,10 +2753,163 @@ export async function sendWhatsAppCollectorRequests(guestIds: string[]): Promise
   return sendWhatsAppLinkRequests('collector', guestIds, token)
 }
 
-/** Send the self-pledge link to selected saved contacts via WhatsApp. */
-export async function sendWhatsAppPledgeRequests(guestIds: string[]): Promise<WhatsAppLinkSendSummary> {
+/** Send the self-pledge link to selected saved contacts via WhatsApp. `eventId`,
+ *  when passed, should be the event currently in view on the Pledges page so
+ *  the resolved coupleName/category context matches what the couple sees. */
+export async function sendWhatsAppPledgeRequests(
+  guestIds: string[],
+  eventId?: string,
+): Promise<WhatsAppLinkSendSummary> {
   const token = await getMyPledgeToken()
-  return sendWhatsAppLinkRequests('pledge', guestIds, token)
+  return sendWhatsAppLinkRequests('pledge', guestIds, token, eventId)
+}
+
+/** Result of a Pledge link broadcast over Email or SMS. */
+export interface PledgeLinkSendSummary {
+  sent: number
+  failed: number
+  /** Contacts with no usable email/phone on file. */
+  skipped: number
+  /** True when handled by a dry-run stub (no live provider configured yet). */
+  dryRun: boolean
+}
+
+/** Pledge links are couple-level (not tied to one event), but the pledge page
+ *  itself can be event-scoped — resolve the given event (falling back to the
+ *  couple's default event) the same way the WhatsApp send does, so all three
+ *  channels point at the same page the couple currently has open. */
+async function resolvePledgeSendContext(
+  eventId?: string,
+): Promise<{ token: string; coupleName: string; eventId: string } | null> {
+  const token = await getMyPledgeToken()
+  if (!token) return null
+  const resolvedEventId = await resolveDefaultEventId(eventId)
+  if (!resolvedEventId) return null
+  const ent = await getWhatsAppEntitlement(resolvedEventId)
+  return { token, coupleName: ent.coupleName, eventId: resolvedEventId }
+}
+
+/**
+ * Send the self-pledge link to selected saved contacts by email — a branded
+ * HTML message with a CTA button to the couple's pledge page. Real delivery
+ * via Resend once RESEND_API_KEY is set, else a dry run (mirrors the
+ * WhatsApp stub) so the send pipeline is testable before then.
+ */
+export async function sendEmailPledgeRequests(
+  guestIds: string[],
+  eventId?: string,
+): Promise<PledgeLinkSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const live = isEmailConfigured()
+  const summary: PledgeLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !live }
+  if (!guestIds.length) return summary
+
+  const ctx = await resolvePledgeSendContext(eventId)
+  if (!ctx) return summary
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, email')
+    .eq('user_id', user.id)
+    .in('id', guestIds)
+  if (error) throw new Error(error.message)
+
+  const link = pledgeUrl(publicOrigin(), ctx.token, ctx.eventId)
+
+  for (const g of (guests ?? []) as { id: string; full_name: string; email: string | null }[]) {
+    if (!g.email) {
+      summary.skipped += 1
+      continue
+    }
+
+    const { subject, html, text } = pledgeRequestEmail(ctx.coupleName, firstNameOf(g.full_name), link)
+    let ok = true
+    if (live) {
+      ok = (await sendEmail({ to: g.email, subject, html, text })).sent
+    } else {
+      console.warn('[email:dry-run] would send pledge request', { to: g.email, subject })
+    }
+
+    if (ok) {
+      summary.sent += 1
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        channel: 'email',
+      })
+      await markPledgeInviteSent(supabase, user.id, g.id)
+    } else {
+      summary.failed += 1
+    }
+  }
+
+  revalidateDashboard()
+  return summary
+}
+
+/**
+ * Send the self-pledge link to selected saved contacts by SMS. No gateway is
+ * wired up yet, so every send runs through the dry-run stub — the contact
+ * picker, message log, and dashboard UI already work end to end and only the
+ * provider (`@/lib/sms`) needs to change once a gateway is chosen.
+ */
+export async function sendSmsPledgeRequests(
+  guestIds: string[],
+  eventId?: string,
+): Promise<PledgeLinkSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getSmsProvider()
+  const summary: PledgeLinkSendSummary = { sent: 0, failed: 0, skipped: 0, dryRun: !provider.live }
+  if (!guestIds.length) return summary
+
+  const ctx = await resolvePledgeSendContext(eventId)
+  if (!ctx) return summary
+
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('id, full_name, phone, whatsapp_phone')
+    .eq('user_id', user.id)
+    .in('id', guestIds)
+  if (error) throw new Error(error.message)
+
+  const link = pledgeUrl(publicOrigin(), ctx.token, ctx.eventId)
+
+  for (const g of (guests ?? []) as {
+    id: string
+    full_name: string
+    phone: string | null
+    whatsapp_phone: string | null
+  }[]) {
+    const to = normalizePhone(g.phone ?? g.whatsapp_phone)
+    if (!to) {
+      summary.skipped += 1
+      continue
+    }
+
+    const result = await provider.sendLinkRequest({
+      to,
+      contactFirstName: firstNameOf(g.full_name),
+      coupleName: ctx.coupleName,
+      link,
+    })
+
+    if (result.ok) {
+      summary.sent += 1
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        channel: 'sms',
+      })
+      await markPledgeInviteSent(supabase, user.id, g.id)
+    } else {
+      summary.failed += 1
+    }
+  }
+
+  revalidateDashboard()
+  return summary
 }
 
 /**

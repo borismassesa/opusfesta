@@ -30,7 +30,7 @@ export default async function HelpCentrePage() {
 
   // Text comes from the CMS (t.*); icons + hrefs stay hardcoded scalars.
   const topics: { Icon: typeof PlayCircle; titleKey: keyof HelpStrings; bodyKey: keyof HelpStrings; ctaKey: keyof HelpStrings; href: string }[] = [
-    { Icon: PlayCircle, titleKey: 'topic_getting_started_title', bodyKey: 'topic_getting_started_body', ctaKey: 'topic_getting_started_cta', href: '/how-it-works' },
+    { Icon: PlayCircle, titleKey: 'topic_getting_started_title', bodyKey: 'topic_getting_started_body', ctaKey: 'topic_getting_started_cta', href: '/' },
     { Icon: CreditCard, titleKey: 'topic_pricing_title', bodyKey: 'topic_pricing_body', ctaKey: 'topic_pricing_cta', href: '/pricing' },
     { Icon: Ticket, titleKey: 'topic_invitations_title', bodyKey: 'topic_invitations_body', ctaKey: 'topic_invitations_cta', href: '/invitations' },
     { Icon: Users, titleKey: 'topic_guests_title', bodyKey: 'topic_guests_body', ctaKey: 'topic_guests_cta', href: '/guests-and-rsvp' },
@@ -73,7 +73,7 @@ export default async function HelpCentrePage() {
               href={href}
               className="group flex flex-col rounded-2xl border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300"
             >
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#F2EFE9] text-[#5C6B4D]">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-[#5C6B4D]">
                 <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
               </span>
               <h2 className="mt-4 text-[17px] font-extrabold tracking-tight text-[#1A1A1A]">
@@ -127,7 +127,7 @@ export default async function HelpCentrePage() {
               {t.cta_contact}
             </Link>
             <a
-              href="https://wa.me/255000000000"
+              href="https://wa.me/255799202171"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full border border-white/30 px-7 py-3.5 text-[14px] font-bold text-white transition-colors hover:bg-white/10"
