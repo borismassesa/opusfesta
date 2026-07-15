@@ -206,6 +206,16 @@ export default function TemplatePurchaseModal({
     setErrors(e)
     if (Object.keys(e).length > 0) return
 
+    // Card mode has no phone field of its own (it reuses the couple's saved
+    // contact.phone) — without this guard, a couple with no phone on file
+    // would silently send an empty phone to /api/payments/initiate, which
+    // rejects the whole request with a generic "required" error they have
+    // no way to fix from this screen.
+    if (isCard && !contact.phone) {
+      setPayError('Add a phone number to your account before paying by card — or pay with M-Pesa instead.')
+      return
+    }
+
     const item = {
       id: templateCardItemId(target.templateType, target.templateId),
       name: target.templateName,

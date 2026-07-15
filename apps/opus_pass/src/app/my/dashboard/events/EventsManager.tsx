@@ -138,7 +138,7 @@ function toPayload(f: FormState): EventInput {
     address: f.address.trim() || null,
     city: f.city.trim() || null,
     starts_at: combineLocal(f.startDate, f._startTime),
-    ends_at: f.startDate ? f._endsAt : null,
+    ends_at: f._endsAt,
     dress_code: f._dressCode,
     is_public: f.is_public,
     allow_rsvp: f.allow_rsvp,

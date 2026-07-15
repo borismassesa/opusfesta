@@ -10,7 +10,7 @@ import { paymentMethodsToText, resolveEventCover, EVENTLESS_COVER_KEY } from './
 import { PLEDGE_TEMPLATE_FREE_TIER_IDS, parseTemplateCardItemId } from './pledge-card-templates'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, pledgeUrl, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEventPackageTierId, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import { getSmsProvider } from '@/lib/sms'
@@ -971,6 +971,29 @@ export async function updatePledgeCollection(input: {
   revalidatePath('/my/dashboard/settings')
 }
 
+/** When a couple's first-ever per-event pledge cover is about to be written,
+ *  and they have a legacy top-level cover (set before per-event covers
+ *  existed — see resolveEventCover's fallback in pledge-page.ts), snapshot
+ *  that legacy cover onto every OTHER existing event first. Without this,
+ *  the moment eventCovers stops being empty, resolveEventCover's fallback
+ *  stops applying — any other event that was silently relying on it would
+ *  lose its cover (and its guest-shared link's design) with no warning. */
+async function backfillLegacyPledgeCover(
+  supabase: ReturnType<typeof createDashboardClient>,
+  stored: PledgePageConfig,
+  excludeEventId: string | null,
+): Promise<NonNullable<PledgePageConfig['eventCovers']>> {
+  const hasAnyEventCover = Boolean(stored.eventCovers && Object.keys(stored.eventCovers).length > 0)
+  if (hasAnyEventCover || !stored.coverImageUrl) return stored.eventCovers ?? {}
+  const events = await getEvents()
+  const backfill: NonNullable<PledgePageConfig['eventCovers']> = {}
+  for (const e of events) {
+    if (e.id === excludeEventId) continue
+    backfill[e.id] = { coverImageUrl: stored.coverImageUrl, coverIsFullTemplate: Boolean(stored.coverIsFullTemplate) }
+  }
+  return backfill
+}
+
 /** Set (or clear) the pledge page's cover image for one event, without
  *  touching the rest of the couple's customizations or any other event's
  *  cover — used by the "Share & Preview" pledge card picker (purchased
@@ -988,10 +1011,11 @@ export async function setPledgeCoverImage(
     .eq('user_id', user.id)
     .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
   const stored = profile?.pledge_page ?? {}
+  const backfilledCovers = await backfillLegacyPledgeCover(supabase, stored, eventId)
   const nextConfig: PledgePageConfig = {
     ...stored,
     eventCovers: {
-      ...stored.eventCovers,
+      ...backfilledCovers,
       [eventId ?? EVENTLESS_COVER_KEY]: { coverImageUrl, coverIsFullTemplate },
     },
   }
@@ -1045,10 +1069,11 @@ export async function applyPledgeCardTemplate(eventId: string, cardImageUrl: str
   }
 
   const stored = profile?.pledge_page ?? {}
+  const backfilledCovers = await backfillLegacyPledgeCover(supabase, stored, eventId)
   const nextConfig: PledgePageConfig = {
     ...stored,
     eventCovers: {
-      ...stored.eventCovers,
+      ...backfilledCovers,
       [eventId]: { coverImageUrl: cardImageUrl, coverIsFullTemplate: true },
     },
   }
@@ -1116,21 +1141,17 @@ export async function applyThankYouCardTemplate(eventId: string, cardImageUrl: s
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
-  const [tierId, profileForOrders] = await Promise.all([
-    getEventPackageTierId(eventId),
-    supabase
-      .from('couple_profiles')
-      .select('whatsapp_phone')
-      .eq('user_id', user.id)
-      .maybeSingle<{ whatsapp_phone: string | null }>(),
-  ])
+  const { data: profileForOrders } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profileForOrders?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.event_id === eventId)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+  const tierId = withImage?.tierId ?? items[0]?.tierId ?? null
   const hasFreeAccess = Boolean(tierId && THANK_YOU_FREE_TIER_IDS.includes(tierId))
-  const orders = await fetchPaidOrdersForCouple(
-    supabase,
-    user.id,
-    user.email,
-    profileForOrders.data?.whatsapp_phone ?? null,
-  )
   // Individual template purchases aren't scoped to one event — a design
   // bought for any event counts everywhere, mirroring getPurchasedTemplateIds().
   const purchasedThisDesign = orders.some((o) =>

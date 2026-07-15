@@ -115,6 +115,14 @@ export default function ThankYouView({
   const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set(purchasedTemplateIds))
   const [purchaseTarget, setPurchaseTarget] = useState<TemplatePurchaseTarget | null>(null)
   const canUseCard = (t: PledgeCardCatalogItem) => hasFreeCardAccess || purchasedIds.has(t.id)
+
+  // Resync from the server-fetched prop after router.refresh() (e.g. the
+  // card-redirect purchase_ref effect below) — the useState initializer only
+  // runs on mount, so without this a card purchase would still show "Locked"
+  // until a full page reload even though the server now knows it's paid.
+  useEffect(() => {
+    setPurchasedIds(new Set(purchasedTemplateIds))
+  }, [purchasedTemplateIds])
   // Fires the confetti overlay — a fresh timestamp key so it can re-trigger
   // (and remount) on a second purchase in the same session.
   const [celebrateAt, setCelebrateAt] = useState<number | null>(null)
