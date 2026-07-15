@@ -26,6 +26,13 @@ export default function SmoothScrollProvider({ children }: { children: React.Rea
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         orientation: 'vertical',
         smoothWheel: true,
+        // Without this, Lenis hijacks every wheel event on the page —
+        // including ones over a modal/dropdown's own overflow-y-auto panel —
+        // and calls preventDefault on them, silently killing native scroll
+        // inside anything nested in this provider. Elements that manage
+        // their own scroll (dialogs, dropdowns, side panels) opt out with
+        // data-lenis-prevent.
+        prevent: (node) => node.closest('[data-lenis-prevent]') !== null,
       })
     } catch (err) {
       console.error('Lenis initialisation failed', err)

@@ -179,8 +179,15 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
       buyerName: contact.name ?? 'OpusPass customer',
       buyerEmail: contact.email,
       buyerPhone: contact.phone,
-      redirectUrl: `${origin}/invitations/confirmation?ref=${ref}`,
-      cancelUrl: `${origin}/invitations/checkout`,
+      // Card redirects the browser back via Selcom's hosted page, so this URL
+      // must carry the ref itself (mobile/lipa_namba resolve client-side and
+      // don't rely on this). `redirectPath` (when the caller overrides the
+      // default invitation confirmation page) may or may not already have a
+      // query string, so append `ref` with the right separator.
+      redirectUrl: body.redirectPath
+        ? `${origin}${body.redirectPath}${body.redirectPath.includes('?') ? '&' : '?'}purchase_ref=${ref}`
+        : `${origin}/invitations/confirmation?ref=${ref}`,
+      cancelUrl: `${origin}${body.cancelPath ?? '/invitations/checkout'}`,
       webhookUrl: `${origin}/api/payments/webhook`,
     })
 

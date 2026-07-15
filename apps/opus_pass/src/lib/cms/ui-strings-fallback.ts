@@ -1119,7 +1119,6 @@ export interface DashboardThankYouStrings {
   card_remove_failed: string
   card_locked_badge: string
   card_unlock_cta: string // {fee}
-  card_unlock_message: string // {couple} {fee}
   // Guest table
   search_placeholder: string
   search_aria: string
@@ -2117,8 +2116,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     card_removed_toast: 'Thank-you card removed',
     card_remove_failed: 'Could not remove this card',
     card_locked_badge: 'Locked',
-    card_unlock_cta: 'Request to unlock (TZS {fee})',
-    card_unlock_message: "Hi, I'd like to unlock thank-you card templates for {couple} (one-time TZS {fee} fee).",
+    card_unlock_cta: 'Purchase — TZS {fee}',
     search_placeholder: 'Search guests…',
     search_aria: 'Search guests',
     select_all_aria: 'Select all guests',

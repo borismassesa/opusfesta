@@ -43,8 +43,13 @@ export type InitiateItem = {
   /** Non-guest-scaling extras already folded into `total` (prints, swag, etc.). */
   extrasTotal?: number
   addOns?: string[]
-  /** Client-computed line total (TZS) — re-derived server-side, never trusted. */
+  /** Client-computed line total (TZS) — re-derived server-side, never trusted.
+   *  Ignored when `kind` names a flat-price product (see `kind`). */
   total: number
+  /** Marks a non-invitation flat-price line (e.g. a single pledge/thank-you
+   *  card template unlock) so priceOrder() can authoritatively re-price it
+   *  instead of trusting the client or the guest-tier math. */
+  kind?: 'template_unlock'
 }
 
 export type InitiateContact = {
@@ -68,6 +73,12 @@ export type InitiateRequest = {
   eventId?: string
   /** Label persisted for the invoice, e.g. "M-Pesa +255…". */
   paymentLabel?: string
+  /** Where Selcom returns the buyer after a card payment. Defaults to the
+   *  invitation-checkout confirmation page when omitted. */
+  redirectPath?: string
+  /** Where Selcom sends the buyer if they cancel a card payment. Defaults to
+   *  the invitation checkout page when omitted. */
+  cancelPath?: string
 }
 
 /** Response from /api/payments/initiate. */

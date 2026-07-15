@@ -46,8 +46,6 @@ const fmt = (t: string, v: Record<string, string | number>) =>
 
 const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as EventType[]
 const NAME_MAX = 100
-const ATTIRE_MAX = 400
-const NOTE_MAX = 1000
 
 // ----------------------------------------------------------------------- types
 
@@ -57,16 +55,18 @@ type FormState = {
   /** Free-text label used when event_type is 'other'. */
   custom_type: string
   startDate: string
-  startTime: string
-  endDate: string
-  endTime: string
   venue_name: string
   address: string
   city: string
   is_public: boolean
   allow_rsvp: boolean
-  dress_code: string
-  description: string
+  // Not editable in this form (no UI control), but carried through unchanged
+  // on save so an existing event's time-of-day / end / attire / note aren't
+  // silently wiped out — see git history of this file for why that matters.
+  _startTime: string
+  _endsAt: string | null
+  _dressCode: string | null
+  _description: string | null
 }
 
 const EMPTY_FORM: FormState = {
@@ -74,16 +74,15 @@ const EMPTY_FORM: FormState = {
   event_type: 'wedding',
   custom_type: '',
   startDate: '',
-  startTime: '',
-  endDate: '',
-  endTime: '',
   venue_name: '',
   address: '',
   city: '',
   is_public: true,
   allow_rsvp: false,
-  dress_code: '',
-  description: '',
+  _startTime: '00:00',
+  _endsAt: null,
+  _dressCode: null,
+  _description: null,
 }
 
 // ------------------------------------------------------------------- helpers
@@ -108,23 +107,21 @@ function combineLocal(date: string, time: string): string | null {
 
 function fromEvent(e: WeddingEvent): FormState {
   const start = splitLocal(e.starts_at)
-  const end = splitLocal(e.ends_at)
   const known = e.event_type in EVENT_TYPE_LABELS
   return {
     name: e.name,
     event_type: known ? e.event_type : 'other',
     custom_type: known ? '' : e.event_type,
     startDate: start.date,
-    startTime: start.time,
-    endDate: end.date,
-    endTime: end.time,
     venue_name: e.venue_name ?? '',
     address: e.address ?? '',
     city: e.city ?? '',
     is_public: e.is_public,
     allow_rsvp: e.allow_rsvp,
-    dress_code: e.dress_code ?? '',
-    description: e.description ?? '',
+    _startTime: start.time || '00:00',
+    _endsAt: e.ends_at,
+    _dressCode: e.dress_code,
+    _description: e.description,
   }
 }
 
@@ -136,13 +133,13 @@ function toPayload(f: FormState): EventInput {
   return {
     name: f.name.trim(),
     event_type,
-    description: f.description.trim() || null,
+    description: f._description,
     venue_name: f.venue_name.trim() || null,
     address: f.address.trim() || null,
     city: f.city.trim() || null,
-    starts_at: combineLocal(f.startDate, f.startTime),
-    ends_at: combineLocal(f.endDate, f.endTime),
-    dress_code: f.dress_code.trim() || null,
+    starts_at: combineLocal(f.startDate, f._startTime),
+    ends_at: f._endsAt,
+    dress_code: f._dressCode,
     is_public: f.is_public,
     allow_rsvp: f.allow_rsvp,
   }
@@ -378,40 +375,14 @@ export default function EventsManager({
               <CounterRow value={form.name.length} max={NAME_MAX} hint={strings.hint_max_100} />
             </Field>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={strings.field_start_date}>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={form.startDate}
-                  onChange={(e) => set('startDate', e.target.value)}
-                />
-              </Field>
-              <Field label={strings.field_start_time}>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={form.startTime}
-                  onChange={(e) => set('startTime', e.target.value)}
-                />
-              </Field>
-              <Field label={strings.field_end_date}>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={form.endDate}
-                  onChange={(e) => set('endDate', e.target.value)}
-                />
-              </Field>
-              <Field label={strings.field_end_time}>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={form.endTime}
-                  onChange={(e) => set('endTime', e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field label={strings.field_start_date}>
+              <input
+                type="date"
+                className={inputClass}
+                value={form.startDate}
+                onChange={(e) => set('startDate', e.target.value)}
+              />
+            </Field>
           </div>
 
           {/* Event location */}
@@ -467,36 +438,6 @@ export default function EventsManager({
               onChange={(v) => set('allow_rsvp', v)}
             />
           </Section>
-
-          {/* Attire + Note */}
-          <div className="space-y-4">
-            <Field label={strings.field_attire}>
-              <textarea
-                className={inputClass}
-                rows={2}
-                value={form.dress_code}
-                maxLength={ATTIRE_MAX}
-                onChange={(e) => set('dress_code', e.target.value)}
-                placeholder={strings.placeholder_attire}
-              />
-              <CounterRow value={form.dress_code.length} max={ATTIRE_MAX} hint={strings.hint_max_400} />
-            </Field>
-            <Field label={strings.field_note}>
-              <textarea
-                className={inputClass}
-                rows={3}
-                value={form.description}
-                maxLength={NOTE_MAX}
-                onChange={(e) => set('description', e.target.value)}
-                placeholder={strings.placeholder_note}
-              />
-              <CounterRow
-                value={form.description.length}
-                max={NOTE_MAX}
-                hint={strings.hint_note_suggestions}
-              />
-            </Field>
-          </div>
 
           {/* Footer */}
           <div className="flex items-center gap-3 border-t border-black/[0.06] pt-5">
@@ -775,7 +716,7 @@ function PreviewCard({
   editing: WeddingEvent | null
   strings: DashboardEventsStrings
 }) {
-  const when = formatWhen(form.startDate, form.startTime)
+  const when = formatWhen(form.startDate, form._startTime)
   const whereParts = [form.venue_name, form.city].filter(Boolean)
   return (
     <Card className="overflow-hidden p-0">
@@ -819,22 +760,6 @@ function PreviewCard({
             ) : null}
           </div>
         </div>
-        {form.dress_code ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              {strings.preview_attire_label}
-            </p>
-            <p className="mt-1 text-sm text-[#1A1A1A]/75">{form.dress_code}</p>
-          </div>
-        ) : null}
-        {form.description ? (
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              {strings.preview_note_label}
-            </p>
-            <p className="mt-1 text-sm text-[#1A1A1A]/75">{form.description}</p>
-          </div>
-        ) : null}
       </div>
     </Card>
   )

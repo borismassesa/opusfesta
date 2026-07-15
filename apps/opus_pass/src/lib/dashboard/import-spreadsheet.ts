@@ -6,7 +6,8 @@
  *  - `.csv` (and pasted text), parsed in-place.
  *  - `.xlsx`, the Office Open XML format. An `.xlsx` file is just a ZIP archive
  *    of XML parts; we read the archive with the browser's `DecompressionStream`
- *    (no third-party dependency) and pull the first worksheet's cells out.
+ *    (no third-party dependency) and pull every worksheet's cells out, then
+ *    concatenate the guest rows from all sheets.
  *
  * These functions rely on browser APIs (`DOMParser`, `DecompressionStream`,
  * `File`), so this module must only ever be imported by client components.
@@ -33,8 +34,19 @@ export async function fileToImportLines(file: File): Promise<string> {
   }
 
   if (isXlsx) {
-    const rows = await parseXlsx(file)
-    return rowsToImportLines(rows)
+    const sheets = await parseXlsx(file)
+    // A workbook with multiple sheets is often guest-list tabs alongside
+    // unrelated ones (Budget, Instructions, Seating) — the headerless
+    // "column 0/1/2 = name/email/phone" fallback below is safe for a single
+    // sheet a couple pasted/exported directly, but applying it to EVERY
+    // sheet in a multi-tab workbook would misread a non-guest tab's rows as
+    // guest names. Only merge sheets that declare themselves via a real
+    // header row once there's more than one to choose from.
+    const requireHeader = sheets.length > 1
+    return sheets
+      .map((rows) => rowsToImportLines(rows, requireHeader))
+      .filter((lines) => lines.length > 0)
+      .join('\n')
   }
 
   const text = (await file.text()).replace(/\r\n?/g, '\n').trim()
@@ -59,7 +71,7 @@ function isHeaderRow(cells: string[]): boolean {
  * (Guest ID, Title, RSVP Status, …). Without a header it falls back to the
  * documented paste order: `Name, email, phone`.
  */
-export function rowsToImportLines(rows: string[][]): string {
+export function rowsToImportLines(rows: string[][], requireHeader = false): string {
   if (rows.length === 0) return ''
 
   // Scan the first several rows for the header — spreadsheets frequently have
@@ -72,6 +84,11 @@ export function rowsToImportLines(rows: string[][]): string {
       break
     }
   }
+
+  // Called with requireHeader when merging multiple worksheets — a sheet
+  // with no recognizable header is more likely an unrelated tab than a
+  // genuine headerless guest list, so skip it rather than guessing.
+  if (headerIdx === -1 && requireHeader) return ''
 
   let nameIdx = 0
   let emailIdx = 1
@@ -149,12 +166,12 @@ export function parseCsv(text: string): string[][] {
 // ---------------------------------------------------------------- XLSX
 
 /**
- * Parse the first worksheet of an `.xlsx` file into a table of cell strings.
- * Reads the ZIP container by hand and inflates entries with the browser's
- * `DecompressionStream`, then reads the shared-string table and the first
- * worksheet referenced by the workbook.
+ * Parse every worksheet of an `.xlsx` file into tables of cell strings — one
+ * table per sheet, in workbook order. Reads the ZIP container by hand and
+ * inflates entries with the browser's `DecompressionStream`, then reads the
+ * shared-string table and each worksheet referenced by the workbook.
  */
-async function parseXlsx(file: File): Promise<string[][]> {
+async function parseXlsx(file: File): Promise<string[][][]> {
   if (typeof DecompressionStream === 'undefined') {
     throw new SpreadsheetError(
       'Your browser can’t read .xlsx files — please use a CSV, or paste the names instead.'
@@ -176,40 +193,47 @@ async function parseXlsx(file: File): Promise<string[][]> {
     return new DOMParser().parseFromString(decoder.decode(bytes), 'application/xml')
   }
 
-  // Resolve the first worksheet via the workbook → rels chain, falling back to
+  // Resolve every worksheet via the workbook → rels chain, falling back to
   // the conventional `xl/worksheets/sheet1.xml` path.
-  const sheetPath = await firstSheetPath(xml)
-  const sheetDoc = sheetPath ? await xml(sheetPath) : null
-  if (!sheetDoc) {
+  const sheetPaths = await allSheetPaths(xml)
+  const sharedStrings = await readSharedStrings(await xml('xl/sharedStrings.xml'))
+
+  const sheets: string[][][] = []
+  for (const sheetPath of sheetPaths) {
+    const sheetDoc = await xml(sheetPath)
+    if (sheetDoc) sheets.push(worksheetToRows(sheetDoc, sharedStrings))
+  }
+  if (sheets.length === 0) {
     throw new SpreadsheetError('Couldn’t find a worksheet in that .xlsx file.')
   }
-
-  const sharedStrings = await readSharedStrings(await xml('xl/sharedStrings.xml'))
-  return worksheetToRows(sheetDoc, sharedStrings)
+  return sheets
 }
 
-/** Find the path of the workbook's first worksheet. */
-async function firstSheetPath(
+/** Find the paths of every worksheet in the workbook, in workbook order. */
+async function allSheetPaths(
   xml: (path: string) => Promise<Document | null>
-): Promise<string | null> {
+): Promise<string[]> {
   const workbook = await xml('xl/workbook.xml')
   const rels = await xml('xl/_rels/workbook.xml.rels')
   if (workbook && rels) {
-    const firstSheet = workbook.getElementsByTagName('sheet')[0]
-    const rid =
-      firstSheet?.getAttribute('r:id') ?? firstSheet?.getAttributeNS(null, 'id') ?? null
-    if (rid) {
-      const rel = Array.from(rels.getElementsByTagName('Relationship')).find(
-        (r) => r.getAttribute('Id') === rid
-      )
-      const target = rel?.getAttribute('Target')
-      if (target) {
+    const relByRid = new Map(
+      Array.from(rels.getElementsByTagName('Relationship')).map((r) => [
+        r.getAttribute('Id'),
+        r.getAttribute('Target'),
+      ])
+    )
+    const paths = Array.from(workbook.getElementsByTagName('sheet'))
+      .map((sheet) => {
+        const rid = sheet.getAttribute('r:id') ?? sheet.getAttributeNS(null, 'id') ?? null
+        const target = rid ? relByRid.get(rid) : null
+        if (!target) return null
         const clean = target.replace(/^\//, '').replace(/^xl\//, '')
         return `xl/${clean}`
-      }
-    }
+      })
+      .filter((p): p is string => p !== null)
+    if (paths.length > 0) return paths
   }
-  return 'xl/worksheets/sheet1.xml'
+  return ['xl/worksheets/sheet1.xml']
 }
 
 /** Read the workbook's shared-string table into an indexable array. */

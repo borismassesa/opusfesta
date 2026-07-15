@@ -1,7 +1,7 @@
 'use client'
 
-import { Fragment, useMemo, useState, useTransition } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { useBodyLock } from '@/hooks/useBodyLock'
@@ -26,12 +26,14 @@ import {
   type WhatsAppSendResult,
 } from '@/lib/dashboard/actions'
 import { firstNameOf } from '@/lib/dashboard/share'
-import { THANK_YOU_CARD_UNLOCK_FEE } from '@/lib/dashboard/thank-you'
 import { THANK_YOU_TEMPLATE } from '@/lib/whatsapp/types'
 import type { ThankYouData, ThankYouGuestRow } from '@/lib/dashboard/queries'
-import type { PledgeCardCatalogItem } from '@/lib/dashboard/pledge-card-templates'
-import type { DashboardThankYouStrings } from '@/lib/cms/ui-strings-fallback'
+import { TEMPLATE_CARD_PRICE, type PledgeCardCatalogItem } from '@/lib/dashboard/pledge-card-templates'
+import type { DashboardThankYouStrings, CheckoutFormStrings, CheckoutPaymentStrings } from '@/lib/cms/ui-strings-fallback'
 import { setActiveEventCookie } from '@/components/dashboard/EventScope'
+import TemplatePurchaseModal, { type TemplatePurchaseTarget } from '@/components/dashboard/TemplatePurchaseModal'
+import Confetti from '@/components/invitations/Confetti'
+import { getLastOrder, setLastOrder } from '@/lib/cart-storage'
 
 /** Substitute `{var}` placeholders in a CMS template with runtime values. */
 const fmt = (t: string, v: Record<string, string | number>) =>
@@ -65,15 +67,26 @@ export default function ThankYouView({
   coverImageUrl,
   coverIsFullTemplate,
   cardCatalog,
+  purchasedTemplateIds,
+  contactEmail,
+  contactPhone,
+  checkoutFormStrings,
+  checkoutPaymentStrings,
 }: {
   data: ThankYouData
   strings: DashboardThankYouStrings
   coverImageUrl: string | null
   coverIsFullTemplate: boolean
   cardCatalog: PledgeCardCatalogItem[]
+  purchasedTemplateIds: string[]
+  contactEmail: string
+  contactPhone: string | null
+  checkoutFormStrings: CheckoutFormStrings
+  checkoutPaymentStrings: CheckoutPaymentStrings
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { event, guests, events, selectedEventId, hasFreeCardAccess, whatsappLive } = data
   const eventId = selectedEventId ?? undefined
 
@@ -96,14 +109,76 @@ export default function ThankYouView({
   const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null)
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
 
+  // Cards bought individually (Classic/Essential) — seeded from the paid
+  // orders fetched server-side, grown optimistically the moment a purchase
+  // resolves so the picker unlocks without a full reload.
+  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set(purchasedTemplateIds))
+  const [purchaseTarget, setPurchaseTarget] = useState<TemplatePurchaseTarget | null>(null)
+  const canUseCard = (t: PledgeCardCatalogItem) => hasFreeCardAccess || purchasedIds.has(t.id)
+
+  // Resync from the server-fetched prop after router.refresh() (e.g. the
+  // card-redirect purchase_ref effect below) — the useState initializer only
+  // runs on mount, so without this a card purchase would still show "Locked"
+  // until a full page reload even though the server now knows it's paid.
+  useEffect(() => {
+    setPurchasedIds(new Set(purchasedTemplateIds))
+  }, [purchasedTemplateIds])
+  // Fires the confetti overlay — a fresh timestamp key so it can re-trigger
+  // (and remount) on a second purchase in the same session.
+  const [celebrateAt, setCelebrateAt] = useState<number | null>(null)
+
   useBodyLock(Boolean(confirmSend || report || previewOpen))
+
+  // After a card-redirect purchase, Selcom bounces the buyer back here with
+  // `?purchase_ref=...` — confirm it landed and unlock the design.
+  useEffect(() => {
+    const ref = searchParams.get('purchase_ref')
+    if (!ref) return
+    let cancelled = false
+    ;(async () => {
+      for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
+        try {
+          const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`, { cache: 'no-store' })
+          if (res.ok) {
+            const data = (await res.json()) as { status: string }
+            if (data.status === 'paid') {
+              // Promote the local order snapshot (recorded by TemplatePurchaseModal
+              // before the Selcom card redirect) so it shows paid on Orders.
+              const stored = getLastOrder()
+              if (stored && stored.ref === ref) setLastOrder({ ...stored, paymentStatus: 'paid' })
+              toast.success('Card design unlocked')
+              setCelebrateAt(Date.now())
+              router.refresh()
+              break
+            }
+            if (data.status === 'failed' || data.status === 'expired') {
+              toast.error('That payment did not go through')
+              break
+            }
+          }
+        } catch {
+          /* transient — retry */
+        }
+        await new Promise((r) => setTimeout(r, 2500))
+      }
+      if (!cancelled) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('purchase_ref')
+        router.replace(`${url.pathname}${url.search}`)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function useCardTemplate(item: PledgeCardCatalogItem) {
     if (!selectedEventId) return
     setApplyingTemplateId(item.id)
     startCoverSave(async () => {
       try {
-        await applyThankYouCardTemplate(selectedEventId, item.imageUrl)
+        await applyThankYouCardTemplate(selectedEventId, item.imageUrl, item.id)
         setCover({ url: item.imageUrl, isTemplate: true })
         setAppliedTemplateId(item.id)
         toast.success(strings.card_applied_toast)
@@ -291,41 +366,30 @@ export default function ThankYouView({
             </div>
           </div>
         ) : null}
-        {!hasFreeCardAccess ? (
-          <a
-            className="btn solid unlockbtn"
-            href={`https://wa.me/255799242471?text=${encodeURIComponent(
-              fmt(strings.card_unlock_message, { couple: event.coupleName, fee: THANK_YOU_CARD_UNLOCK_FEE.toLocaleString() }),
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <MessageCircle size={14} /> {fmt(strings.card_unlock_cta, { fee: THANK_YOU_CARD_UNLOCK_FEE.toLocaleString() })}
-          </a>
-        ) : null}
         {cardCatalog.length ? (
           <div className="cardgridwrap">
             <div className="cardgrid">
               {cardCatalog.map((t) => {
                 const isApplying = applyingTemplateId === t.id && savingCover
                 const isApplied = appliedTemplateId === t.id || (cover.isTemplate && cover.url === t.imageUrl)
+                const usable = canUseCard(t)
                 return (
                   <div
                     key={t.id}
                     title={t.name}
-                    className={`cardtile ${isApplied ? 'on' : ''} ${!hasFreeCardAccess ? 'locked' : ''}`}
+                    className={`cardtile ${isApplied ? 'on' : ''} ${!usable ? 'locked' : ''}`}
                   >
                     <div className="cardimg">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={t.imageUrl} alt={t.name} />
-                      {!hasFreeCardAccess ? (
+                      {!usable ? (
                         <span className="cardlockbadge"><Lock size={12} /> {strings.card_locked_badge}</span>
                       ) : isApplied ? (
                         <span className="cardcheck"><Check size={12} strokeWidth={3} /></span>
                       ) : null}
                     </div>
                     <p className="cardname">{t.name}</p>
-                    {hasFreeCardAccess ? (
+                    {usable ? (
                       <button
                         type="button"
                         className="cardbtn"
@@ -340,7 +404,22 @@ export default function ThankYouView({
                           strings.card_use
                         )}
                       </button>
-                    ) : null}
+                    ) : (
+                      <button
+                        type="button"
+                        className="cardbtn cardbuybtn"
+                        onClick={() =>
+                          setPurchaseTarget({
+                            templateId: t.id,
+                            templateName: t.name,
+                            templateImageUrl: t.imageUrl,
+                            templateType: 'thank_you_card',
+                          })
+                        }
+                      >
+                        {fmt(strings.card_unlock_cta, { fee: TEMPLATE_CARD_PRICE.toLocaleString() })}
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -351,6 +430,30 @@ export default function ThankYouView({
           <p className="mutedp">{strings.card_none}</p>
         )}
       </div>
+
+      {purchaseTarget ? (
+        <TemplatePurchaseModal
+          target={purchaseTarget}
+          price={TEMPLATE_CARD_PRICE}
+          eventId={selectedEventId}
+          contact={{ name: event.coupleName, email: contactEmail, phone: contactPhone }}
+          returnPath={`${pathname}${selectedEventId ? `?event=${selectedEventId}` : ''}`}
+          formStrings={checkoutFormStrings}
+          paymentStrings={checkoutPaymentStrings}
+          onClose={() => setPurchaseTarget(null)}
+          onPurchaseSubmitted={(result) => {
+            if (result.status === 'paid') {
+              setPurchasedIds((prev) => new Set(prev).add(purchaseTarget.templateId))
+            }
+            if (result.status === 'paid' || result.status === 'processing') {
+              setCelebrateAt(Date.now())
+            }
+            setPurchaseTarget(null)
+          }}
+        />
+      ) : null}
+
+      {celebrateAt ? <Confetti key={celebrateAt} /> : null}
 
       <div className="gt">
         <div className="gth">
@@ -571,7 +674,6 @@ const css = `
 .ty .curcover p{ font-size:13px; font-weight:600; }
 .ty .linkbtn{ border:none; background:none; padding:0; margin-top:4px; font-size:11.5px; font-weight:600; color:var(--bad-tx); cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
 .ty .linkbtn:disabled{ opacity:.5; cursor:not-allowed; }
-.ty .unlockbtn{ margin-top:14px; }
 /* 6 cards visible at the lg breakpoint, fewer (with horizontal scroll) on
    smaller viewports — same breakpoint math as the Pledges card picker
    (auto-cols-[42%]/[31%]/[23%]/6-up), just expressed as plain CSS. */
@@ -587,7 +689,6 @@ const css = `
 @media(min-width:1024px){ .ty .cardfade{ display:block; } }
 .ty .cardtile{ scroll-snap-align:start; border:1px solid var(--line); border-radius:12px; padding:8px; }
 .ty .cardtile.on{ border-color:var(--wa); box-shadow:0 0 0 1px var(--wa); }
-.ty .cardtile.locked{ opacity:.75; }
 .ty .cardimg{ position:relative; aspect-ratio:5/7; width:100%; border-radius:8px; overflow:hidden; background:var(--hover); }
 .ty .cardimg img{ width:100%; height:100%; object-fit:contain; display:block; }
 .ty .cardcheck{ position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; background:var(--wa); color:#fff; display:grid; place-items:center; }
@@ -598,6 +699,8 @@ const css = `
 .ty .cardbtn:hover:not(:disabled){ background:var(--hover); }
 .ty .cardbtn:disabled{ opacity:.5; cursor:not-allowed; }
 .ty .cardtile.on .cardbtn{ border-color:var(--wa); color:var(--ok-tx); background:var(--ok-bg); }
+.ty .cardbuybtn{ border-color:var(--ink); background:var(--ink); color:#fff; }
+.ty .cardbuybtn:hover:not(:disabled){ background:var(--ink); opacity:.9; }
 .ty .gth{ display:flex; align-items:center; gap:14px; padding:18px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .ty .gth .gsearch{ flex:0 1 240px; min-width:150px; border:1px solid var(--line); border-radius:10px;
   padding:8px 12px; font-size:13px; color:var(--ink); background:#fff; }

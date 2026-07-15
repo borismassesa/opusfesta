@@ -1,4 +1,11 @@
-import { getEvents, getThankYouData, getMyThankYouCardConfig } from '@/lib/dashboard/queries'
+import {
+  getEvents,
+  getThankYouData,
+  getMyThankYouCardConfig,
+  getPurchasedTemplateIds,
+  getCoupleProfile,
+} from '@/lib/dashboard/queries'
+import { getDashboardUser } from '@/lib/dashboard/auth'
 import { resolveEventScope } from '@/lib/dashboard/event-scope'
 import { EventChooser } from '@/components/dashboard/EventScope'
 import { getLocale } from '@/lib/cms/locale'
@@ -38,11 +45,26 @@ export default async function ThankYouPage({
   }
 
   const selectedEventId = scope.selected?.id ?? null
-  const [data, strings, cardConfig, catalogProducts] = await Promise.all([
+  const [
+    data,
+    strings,
+    cardConfig,
+    catalogProducts,
+    purchasedTemplateIds,
+    profile,
+    dashboardUser,
+    checkoutFormStrings,
+    checkoutPaymentStrings,
+  ] = await Promise.all([
     getThankYouData(selectedEventId ?? undefined, events),
     loadUiStrings('dashboard-thank-you', locale),
     getMyThankYouCardConfig(selectedEventId),
     loadInvitationProducts(locale),
+    getPurchasedTemplateIds('thank_you_card'),
+    getCoupleProfile(),
+    getDashboardUser(),
+    loadUiStrings('checkout-form', locale),
+    loadUiStrings('checkout-payment', locale),
   ])
 
   // Same fallback the Pledges card picker uses: no "Kadi za Michango" designs
@@ -63,6 +85,11 @@ export default async function ThankYouPage({
       coverImageUrl={cardConfig.coverImageUrl}
       coverIsFullTemplate={cardConfig.coverIsFullTemplate}
       cardCatalog={cardCatalog}
+      purchasedTemplateIds={Array.from(purchasedTemplateIds)}
+      contactEmail={dashboardUser?.email ?? ''}
+      contactPhone={profile?.whatsapp_phone ?? null}
+      checkoutFormStrings={checkoutFormStrings}
+      checkoutPaymentStrings={checkoutPaymentStrings}
     />
   )
 }

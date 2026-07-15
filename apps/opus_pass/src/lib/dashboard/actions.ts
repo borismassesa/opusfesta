@@ -7,10 +7,10 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText, resolveEventCover, EVENTLESS_COVER_KEY } from './pledge-page'
-import { PLEDGE_TEMPLATE_FREE_TIER_IDS } from './pledge-card-templates'
+import { PLEDGE_TEMPLATE_FREE_TIER_IDS, parseTemplateCardItemId } from './pledge-card-templates'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import { coupleSlugBase, firstNameOf, fullNameOf, normalizePhone, pledgeUrl, publicOrigin } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEventPackageTierId, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import { getSmsProvider } from '@/lib/sms'
@@ -971,6 +971,29 @@ export async function updatePledgeCollection(input: {
   revalidatePath('/my/dashboard/settings')
 }
 
+/** When a couple's first-ever per-event pledge cover is about to be written,
+ *  and they have a legacy top-level cover (set before per-event covers
+ *  existed — see resolveEventCover's fallback in pledge-page.ts), snapshot
+ *  that legacy cover onto every OTHER existing event first. Without this,
+ *  the moment eventCovers stops being empty, resolveEventCover's fallback
+ *  stops applying — any other event that was silently relying on it would
+ *  lose its cover (and its guest-shared link's design) with no warning. */
+async function backfillLegacyPledgeCover(
+  supabase: ReturnType<typeof createDashboardClient>,
+  stored: PledgePageConfig,
+  excludeEventId: string | null,
+): Promise<NonNullable<PledgePageConfig['eventCovers']>> {
+  const hasAnyEventCover = Boolean(stored.eventCovers && Object.keys(stored.eventCovers).length > 0)
+  if (hasAnyEventCover || !stored.coverImageUrl) return stored.eventCovers ?? {}
+  const events = await getEvents()
+  const backfill: NonNullable<PledgePageConfig['eventCovers']> = {}
+  for (const e of events) {
+    if (e.id === excludeEventId) continue
+    backfill[e.id] = { coverImageUrl: stored.coverImageUrl, coverIsFullTemplate: Boolean(stored.coverIsFullTemplate) }
+  }
+  return backfill
+}
+
 /** Set (or clear) the pledge page's cover image for one event, without
  *  touching the rest of the couple's customizations or any other event's
  *  cover — used by the "Share & Preview" pledge card picker (purchased
@@ -988,10 +1011,11 @@ export async function setPledgeCoverImage(
     .eq('user_id', user.id)
     .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
   const stored = profile?.pledge_page ?? {}
+  const backfilledCovers = await backfillLegacyPledgeCover(supabase, stored, eventId)
   const nextConfig: PledgePageConfig = {
     ...stored,
     eventCovers: {
-      ...stored.eventCovers,
+      ...backfilledCovers,
       [eventId ?? EVENTLESS_COVER_KEY]: { coverImageUrl, coverIsFullTemplate },
     },
   }
@@ -1012,10 +1036,12 @@ export async function setPledgeCoverImage(
 }
 
 /** Apply a card design pulled from the invitation catalog as the pledge page
- *  cover, for free. Free for Elegant/Signature only — re-derives the event's
- *  paid-order tier server-side rather than trusting a client-supplied tier,
- *  since this gates a paid feature (Classic/Essential must unlock it). */
-export async function applyPledgeCardTemplate(eventId: string, cardImageUrl: string): Promise<void> {
+ *  cover. Free for Elegant/Signature (re-derives the event's paid-order tier
+ *  server-side rather than trusting a client-supplied tier); everyone else
+ *  must have individually bought this exact design (see
+ *  templateCardItemId/getPurchasedTemplateIds) — also re-checked
+ *  server-side, not trusted from the client's "unlocked" state. */
+export async function applyPledgeCardTemplate(eventId: string, cardImageUrl: string, templateId: string): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const { data: profile } = await supabase
@@ -1029,15 +1055,25 @@ export async function applyPledgeCardTemplate(eventId: string, cardImageUrl: str
   const items = order?.items ?? []
   const withImage = items.find((it) => it.image)
   const tierId = withImage?.tierId ?? items[0]?.tierId ?? null
-  if (!tierId || !PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(tierId)) {
+  const hasFreeAccess = Boolean(tierId && PLEDGE_TEMPLATE_FREE_TIER_IDS.includes(tierId))
+  // Individual template purchases aren't scoped to one event — a design
+  // bought for any event counts everywhere, mirroring getPurchasedTemplateIds().
+  const purchasedThisDesign = orders.some((o) =>
+    (o.items ?? []).some((it) => {
+      const parsed = it.id ? parseTemplateCardItemId(it.id) : null
+      return parsed?.type === 'pledge_card' && parsed.templateId === templateId
+    }),
+  )
+  if (!hasFreeAccess && !purchasedThisDesign) {
     throw new Error('Pledge card templates are included with Elegant and Signature packages — unlock this design to use it.')
   }
 
   const stored = profile?.pledge_page ?? {}
+  const backfilledCovers = await backfillLegacyPledgeCover(supabase, stored, eventId)
   const nextConfig: PledgePageConfig = {
     ...stored,
     eventCovers: {
-      ...stored.eventCovers,
+      ...backfilledCovers,
       [eventId]: { coverImageUrl: cardImageUrl, coverIsFullTemplate: true },
     },
   }
@@ -1096,16 +1132,36 @@ export async function setThankYouCoverImage(
 }
 
 /** Apply a card design pulled from the invitation catalog as the Thank You
- *  message's header image, for free. Free for Elegant/Signature only —
- *  re-derives the event's paid-order tier server-side rather than trusting
- *  a client-supplied tier, mirroring applyPledgeCardTemplate. */
-export async function applyThankYouCardTemplate(eventId: string, cardImageUrl: string): Promise<void> {
+ *  message's header image. Free for Elegant/Signature (re-derives the
+ *  event's paid-order tier server-side rather than trusting a
+ *  client-supplied tier); everyone else must have individually bought this
+ *  exact design (see templateCardItemId/getPurchasedTemplateIds) — also
+ *  re-checked server-side, mirroring applyPledgeCardTemplate. */
+export async function applyThankYouCardTemplate(eventId: string, cardImageUrl: string, templateId: string): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
 
-  const tierId = await getEventPackageTierId(eventId)
-  if (!tierId || !THANK_YOU_FREE_TIER_IDS.includes(tierId)) {
-    throw new Error('Thank-you messages are included with Elegant and Signature packages — upgrade to unlock this.')
+  const { data: profileForOrders } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const orders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profileForOrders?.whatsapp_phone ?? null)
+  const order = orders.find((o) => o.event_id === eventId)
+  const items = order?.items ?? []
+  const withImage = items.find((it) => it.image)
+  const tierId = withImage?.tierId ?? items[0]?.tierId ?? null
+  const hasFreeAccess = Boolean(tierId && THANK_YOU_FREE_TIER_IDS.includes(tierId))
+  // Individual template purchases aren't scoped to one event — a design
+  // bought for any event counts everywhere, mirroring getPurchasedTemplateIds().
+  const purchasedThisDesign = orders.some((o) =>
+    (o.items ?? []).some((it) => {
+      const parsed = it.id ? parseTemplateCardItemId(it.id) : null
+      return parsed?.type === 'thank_you_card' && parsed.templateId === templateId
+    }),
+  )
+  if (!hasFreeAccess && !purchasedThisDesign) {
+    throw new Error('Thank-you card designs are included with Elegant and Signature packages — unlock this design to use it.')
   }
 
   const { data: profile } = await supabase

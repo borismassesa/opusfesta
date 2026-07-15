@@ -3,12 +3,8 @@ import { EVENTLESS_COVER_KEY } from './pledge-page'
 /** Sending a thank-you message is available to every package tier — only the
  *  card TEMPLATE picker (the WhatsApp header image) is paygated, mirroring
  *  the Pledges card-template picker exactly: free for these tiers, everyone
- *  else can request a one-time unlock (see THANK_YOU_CARD_UNLOCK_FEE). */
+ *  else buys individual designs (see TEMPLATE_CARD_PRICE). */
 export const THANK_YOU_FREE_TIER_IDS = ['elegant', 'signature']
-
-/** Flat one-time fee (TZS) offered to Classic/Essential couples to unlock the
- *  thank-you card picker. Mirrors PLEDGE_TEMPLATE_UNLOCK_FEE. */
-export const THANK_YOU_CARD_UNLOCK_FEE = 15000
 
 /** The couple_profiles.thank_you_config JSONB shape — a card design (from the
  *  invitation catalog) applied as the WhatsApp message's header image,
