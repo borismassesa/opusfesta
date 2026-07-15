@@ -58,9 +58,10 @@ export function slugify(input: string): string {
     .slice(0, 60)
 }
 
-/** Build a public-invite slug base from the couple's names ("asha-na-juma"). */
+/** Build a public-invite slug base from the couple's first names ("asha-na-juma"). */
 export function coupleSlugBase(partner1: string | null, partner2: string | null): string {
-  const base = slugify([partner1, partner2].filter(Boolean).join(' na '))
+  const firstNames = [partner1, partner2].filter(Boolean).map((name) => firstNameOf(name as string))
+  const base = slugify(firstNames.join(' na '))
   return base || 'harusi'
 }
 
