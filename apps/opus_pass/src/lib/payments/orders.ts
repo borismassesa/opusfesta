@@ -145,9 +145,12 @@ export function orderRowToStoredOrder(order: OrderRow): StoredOrder {
 }
 
 /**
- * Every order (any status) belonging to this couple — for the Orders
- * dashboard, which needs to show payment-review/failed orders too, not just
- * paid ones. Matches by user_id first; email/phone are only consulted for
+ * Every order still relevant to the couple's Orders dashboard — paid ones
+ * plus payments genuinely in flight (pending/processing). Deliberately
+ * excludes failed/expired/refunded: orderRowToStoredOrder only distinguishes
+ * 'paid' vs 'verifying', so a dead/abandoned checkout would otherwise render
+ * as an indefinite, misleading "payment under review" and get re-polled on
+ * every visit. Matches by user_id first; email/phone are only consulted for
  * guest-checkout rows (user_id IS NULL), mirroring
  * fetchPaidOrdersForCouple in lib/dashboard/queries.ts.
  */
@@ -165,6 +168,7 @@ export async function getOrdersForUser(
   const { data, error } = await supabase
     .from('invitation_orders')
     .select(SELECT_COLS)
+    .in('status', ['pending', 'processing', 'paid'])
     .or(ors.join(','))
     .order('created_at', { ascending: false })
   if (error) throw new Error(`getOrdersForUser failed: ${error.message}`)
