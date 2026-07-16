@@ -1,7 +1,7 @@
 import 'server-only'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import type { StoredOrder } from '@/lib/cart-storage'
-import type { InitiateItem, OrderStatus } from './types'
+import type { FulfillmentStatus, InitiateItem, OrderStatus } from './types'
 import { isTerminal } from './types'
 
 // Data-access layer for invitation_orders / invitation_payment_events. All
@@ -31,10 +31,15 @@ export type OrderRow = {
   payment_label: string | null
   payment_submitted_at: string | null
   paid_at: string | null
+  fulfillment_status: FulfillmentStatus
+  fulfillment_updated_at: string | null
+  fulfillment_updated_by: string | null
+  receipt_emailed_at: string | null
+  purchase_notified_at: string | null
 }
 
 const SELECT_COLS =
-  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at'
+  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at, fulfillment_status, fulfillment_updated_at, fulfillment_updated_by, receipt_emailed_at, purchase_notified_at'
 
 export async function createPendingOrder(input: {
   ref: string
@@ -192,7 +197,41 @@ export async function transitionOrder(
     const latest = await getOrderByRef(ref)
     return latest?.status ?? current.status
   }
+
+  // This call genuinely just flipped the order to 'paid' (current.status was
+  // non-terminal, and the guarded UPDATE above matched a row) — send the
+  // customer receipt + admin new-purchase email exactly once, for every
+  // payment method. Lipa Namba never reaches 'paid' through this function
+  // (its admin-approval action writes status='paid' directly), so this only
+  // covers card/mobile — which previously got no email at all.
+  if (next === 'paid') await notifyOrderPaid(ref)
+
   return next
+}
+
+/** Best-effort, single-fire "order paid" side effects. A send failure must
+ *  never surface to the payment-confirmation caller (webhook/status poll). */
+async function notifyOrderPaid(ref: string): Promise<void> {
+  try {
+    const order = await getOrderByRef(ref)
+    if (!order || order.receipt_emailed_at) return // already notified — defensive belt
+
+    const { sendOrderPaidReceipt, sendAdminNewPurchaseEmail } = await import('./email')
+    const [customer, admin] = await Promise.all([
+      sendOrderPaidReceipt(order),
+      sendAdminNewPurchaseEmail(order),
+    ])
+
+    const patch: Record<string, string> = {}
+    if (customer.sent) patch.receipt_emailed_at = new Date().toISOString()
+    if (admin.sent) patch.purchase_notified_at = new Date().toISOString()
+    if (Object.keys(patch).length > 0) {
+      const supabase = createSupabaseServerClient()
+      await supabase.from('invitation_orders').update(patch).eq('ref', ref)
+    }
+  } catch (error) {
+    console.error('[payments] notifyOrderPaid failed', error)
+  }
 }
 
 /**
