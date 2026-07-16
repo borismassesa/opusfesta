@@ -29,6 +29,7 @@ import {
   ListTodo,
   LogOut,
   Newspaper,
+  Package,
   PanelLeftClose,
   PanelLeftOpen,
   PanelTop,
@@ -156,6 +157,7 @@ const sections: NavSection[] = [
     items: [
       { icon: QrCode, label: "Event Check-in", href: "/operations/checkin", requiredPermission: "opuspass.checkin" },
       { icon: CreditCard, label: "Invitation Payments", href: "/finance/payments", requiredPermission: "finance.read" },
+      { icon: Package, label: "Order Fulfilment", href: "/finance/orders", requiredPermission: "finance.read" },
       { icon: HandHeart, label: "Pledge Concierge", href: "/opus-pass/pledges", requiredPermission: "opuspass.pledges.read" },
     ],
   },
