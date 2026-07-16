@@ -28,6 +28,7 @@ import {
   Target,
   Wallet,
   Loader2,
+  Clock,
   X,
 } from 'lucide-react'
 import { Card, EmptyState } from '@/components/dashboard/primitives'
@@ -57,11 +58,13 @@ import { PAYMENT_PROVIDERS, type PledgePaymentMethod } from '@/lib/dashboard/ple
 import {
   PLEDGE_TEMPLATE_FREE_TIER_IDS,
   TEMPLATE_CARD_PRICE,
+  parseTemplateCardItemId,
   type PledgeCardCatalogItem,
 } from '@/lib/dashboard/pledge-card-templates'
 import TemplatePurchaseModal, { type TemplatePurchaseTarget } from '@/components/dashboard/TemplatePurchaseModal'
+import PaymentSummaryModal from '@/components/dashboard/PaymentSummaryModal'
 import Confetti from '@/components/invitations/Confetti'
-import { getLastOrder, setLastOrder } from '@/lib/cart-storage'
+import { getLastOrder, setLastOrder, getOrders, getPendingTemplateIds, type StoredOrder } from '@/lib/cart-storage'
 import {
   pledgeUrl,
   pledgeReminderMessage,
@@ -1832,7 +1835,14 @@ function InviteSection({
   // server-fetched paid orders, then grows optimistically the moment a
   // purchase resolves so the picker unlocks without a full page reload.
   const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set(purchasedTemplateIds))
+  // Templates paid for but still awaiting finance's manual approval — seeded
+  // from this device's local order history (see getPendingTemplateIds; the
+  // server only tracks paid orders, so a fresh device/session won't show
+  // this until the purchase itself happens there).
+  const [pendingTemplateIds, setPendingTemplateIds] = useState<Set<string>>(new Set())
   const [purchaseTarget, setPurchaseTarget] = useState<TemplatePurchaseTarget | null>(null)
+  // The order just paid for / submitted — drives the post-purchase summary.
+  const [summaryOrder, setSummaryOrder] = useState<StoredOrder | null>(null)
   const canUseTemplate = (t: PledgeCardCatalogItem) => hasFreeTemplateAccess || purchasedIds.has(t.id)
 
   // Resync from the server-fetched prop after router.refresh() (e.g. the
@@ -1845,6 +1855,53 @@ function InviteSection({
   // Fires the confetti overlay — a fresh timestamp key so it can re-trigger
   // (and remount) on a second purchase in the same session.
   const [celebrateAt, setCelebrateAt] = useState<number | null>(null)
+
+  // Seed the "under review" badges from local order history, then re-check
+  // each pending order once — approvals happen out-of-band in the finance
+  // dashboard, so a couple returning later (no purchase_ref in the URL)
+  // still needs to see a design unlock once it's been confirmed.
+  useEffect(() => {
+    const pending = getPendingTemplateIds('pledge_card')
+    setPendingTemplateIds(pending)
+    if (pending.size === 0) return
+    let cancelled = false
+    ;(async () => {
+      for (const order of getOrders()) {
+        if (order.paymentStatus !== 'verifying') continue
+        for (const item of order.items) {
+          const parsed = parseTemplateCardItemId(item.id)
+          if (!parsed || parsed.type !== 'pledge_card') continue
+          try {
+            const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(order.ref)}`, { cache: 'no-store' })
+            if (!res.ok) continue
+            const data = (await res.json()) as { status: string }
+            if (cancelled) return
+            if (data.status === 'paid') {
+              setLastOrder({ ...order, paymentStatus: 'paid' })
+              setPurchasedIds((prev) => new Set(prev).add(parsed.templateId))
+              setPendingTemplateIds((prev) => {
+                const next = new Set(prev)
+                next.delete(parsed.templateId)
+                return next
+              })
+            } else if (data.status === 'failed' || data.status === 'expired') {
+              setPendingTemplateIds((prev) => {
+                const next = new Set(prev)
+                next.delete(parsed.templateId)
+                return next
+              })
+            }
+          } catch {
+            /* transient — leave it pending, next visit will retry */
+          }
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // After a card-redirect purchase, Selcom bounces the buyer back here with
   // `?purchase_ref=...` — confirm it landed and unlock the design without the
@@ -1863,7 +1920,21 @@ function InviteSection({
               // Promote the local order snapshot (recorded by TemplatePurchaseModal
               // before the Selcom card redirect) so it shows paid on Orders.
               const stored = getLastOrder()
-              if (stored && stored.ref === ref) setLastOrder({ ...stored, paymentStatus: 'paid' })
+              const paidOrder = stored && stored.ref === ref ? { ...stored, paymentStatus: 'paid' as const } : null
+              if (paidOrder) {
+                setLastOrder(paidOrder)
+                setSummaryOrder(paidOrder)
+                for (const item of paidOrder.items) {
+                  const parsed = parseTemplateCardItemId(item.id)
+                  if (!parsed || parsed.type !== 'pledge_card') continue
+                  setPurchasedIds((prev) => new Set(prev).add(parsed.templateId))
+                  setPendingTemplateIds((prev) => {
+                    const next = new Set(prev)
+                    next.delete(parsed.templateId)
+                    return next
+                  })
+                }
+              }
               toast.success('Card design unlocked')
               setCelebrateAt(Date.now())
               router.refresh()
@@ -2178,6 +2249,7 @@ function InviteSection({
                   const isApplying = applyingTemplateId === t.id && savingCover
                   const isApplied = appliedTemplateId === t.id || (cover.isTemplate && cover.url === t.imageUrl)
                   const usable = canUseTemplate(t)
+                  const isPending = !usable && pendingTemplateIds.has(t.id)
                   return (
                     <div
                       key={t.id}
@@ -2190,7 +2262,12 @@ function InviteSection({
                       <div className="relative aspect-[5/7] w-full overflow-hidden rounded-lg bg-black/[0.04]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={t.imageUrl} alt={t.name} className="h-full w-full object-contain" />
-                        {!usable ? (
+                        {isPending ? (
+                          <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-amber-900/55 text-[10px] font-semibold text-white/95">
+                            <Clock className="h-3.5 w-3.5" />
+                            Under review
+                          </span>
+                        ) : !usable ? (
                           <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-[10px] font-semibold text-white/95">
                             <Lock className="h-3.5 w-3.5" />
                             Locked
@@ -2229,6 +2306,14 @@ function InviteSection({
                           ) : (
                             'Use this template'
                           )}
+                        </button>
+                      ) : isPending ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[10.5px] font-semibold text-amber-800 disabled:cursor-not-allowed"
+                        >
+                          <Clock className="h-3 w-3" /> Payment under review
                         </button>
                       ) : (
                         <button
@@ -2276,16 +2361,20 @@ function InviteSection({
           onPurchaseSubmitted={(result) => {
             if (result.status === 'paid') {
               setPurchasedIds((prev) => new Set(prev).add(purchaseTarget.templateId))
-            }
-            if (result.status === 'paid' || result.status === 'processing') {
               setCelebrateAt(Date.now())
             }
+            if (result.status === 'processing') {
+              setPendingTemplateIds((prev) => new Set(prev).add(purchaseTarget.templateId))
+            }
+            if (result.order) setSummaryOrder(result.order)
             setPurchaseTarget(null)
           }}
         />
       ) : null}
 
       {celebrateAt ? <Confetti key={celebrateAt} /> : null}
+
+      {summaryOrder ? <PaymentSummaryModal order={summaryOrder} onClose={() => setSummaryOrder(null)} /> : null}
 
       {cover.isTemplate ? (
       <>

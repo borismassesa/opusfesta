@@ -8,6 +8,8 @@ import { toTzs } from './currency'
 import { resolveEventCover, type PledgePageConfig, type PledgePaymentMethod } from './pledge-page'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import { parseTemplateCardItemId, type TemplateCardType } from './pledge-card-templates'
+import { getOrdersForUser, orderRowToStoredOrder } from '@/lib/payments/orders'
+import type { StoredOrder } from '@/lib/cart-storage'
 import type { SiteDoc } from '@/lib/builder/types'
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import type {
@@ -1393,6 +1395,21 @@ export async function getPurchasedTemplateIds(
     }
   }
   return ids
+}
+
+/** Every order (any status — payment-review, paid, failed…) belonging to the
+ *  signed-in couple, newest first, as StoredOrder for the Orders dashboard.
+ *  Redirects to sign-in when signed out (dashboard page, not an API route). */
+export async function getOrdersForDashboard(): Promise<StoredOrder[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const rows = await getOrdersForUser(user.id, user.email, profile?.whatsapp_phone ?? null)
+  return rows.map(orderRowToStoredOrder)
 }
 
 export interface PaidOrderSummary {
