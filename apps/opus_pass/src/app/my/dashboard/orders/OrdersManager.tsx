@@ -1,11 +1,12 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Receipt, Download, Check, Clock, Package, ArrowRight, Ticket } from 'lucide-react'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
-import { getOrders, setLastOrder, type StoredOrder, type StoredOrderItem } from '@/lib/cart-storage'
+import type { StoredOrder, StoredOrderItem } from '@/lib/cart-storage'
 import { downloadInvoice } from '@/lib/invoice'
 import { ORDER_STAGES, currentStageIndex, stageTone, type OrderStatusTone } from '@/lib/order-status'
 import type { StatusResponse } from '@/lib/payments/types'
@@ -216,45 +217,46 @@ function OrderCard({ order, strings }: { order: StoredOrder; strings: DashboardO
   )
 }
 
-export default function OrdersManager({ strings }: { strings: DashboardOrdersStrings }) {
-  const [orders, setOrders] = useState<StoredOrder[]>([])
-  const [mounted, setMounted] = useState(false)
+export default function OrdersManager({
+  strings,
+  orders,
+}: {
+  strings: DashboardOrdersStrings
+  orders: StoredOrder[]
+}) {
+  const router = useRouter()
 
+  // Orders are fetched server-side (the real source of truth, including any
+  // admin-set fulfillment_status). The only thing that can change without a
+  // fresh page load is a payment that was still under verification when this
+  // page rendered — do one round of status checks and let the server
+  // re-render with the canonical result rather than patching client state.
   useEffect(() => {
-    setOrders(getOrders())
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted || orders.length === 0) return
+    const pending = orders.filter((o) => o.paymentStatus !== 'paid')
+    if (pending.length === 0) return
     let cancelled = false
-    async function sync() {
-      let changed = false
-      for (const order of orders) {
+    ;(async () => {
+      for (const order of pending) {
         try {
           const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(order.ref)}`, {
             cache: 'no-store',
           })
           if (!res.ok) continue
           const data = (await res.json()) as StatusResponse
-          if (data.status !== 'paid' || order.paymentStatus === 'paid') continue
-          setLastOrder({
-            ...order,
-            paidAt: data.paidAt ?? order.paidAt,
-            paymentStatus: 'paid',
-          })
-          changed = true
+          if (data.status === 'paid' && !cancelled) {
+            router.refresh()
+            return
+          }
         } catch {
-          /* keep the local order snapshot if the status check fails */
+          /* transient — leave as-is, the next visit will retry */
         }
       }
-      if (!cancelled && changed) setOrders(getOrders())
-    }
-    void sync()
+    })()
     return () => {
       cancelled = true
     }
-  }, [mounted, orders])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders])
 
   const stats = useMemo(() => {
     const inProgress = orders.filter((o) => ORDER_STAGES[currentStageIndex(o)].id !== 'delivered').length
@@ -271,7 +273,7 @@ export default function OrdersManager({ strings }: { strings: DashboardOrdersStr
         <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_subtitle}</p>
       </header>
 
-      {!mounted ? null : orders.length === 0 ? (
+      {orders.length === 0 ? (
         <EmptyState
           icon={<Receipt className="h-7 w-7" />}
           title={strings.empty_title}

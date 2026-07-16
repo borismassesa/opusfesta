@@ -36,10 +36,11 @@ export type OrderRow = {
   fulfillment_updated_by: string | null
   receipt_emailed_at: string | null
   purchase_notified_at: string | null
+  created_at: string
 }
 
 const SELECT_COLS =
-  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at, fulfillment_status, fulfillment_updated_at, fulfillment_updated_by, receipt_emailed_at, purchase_notified_at'
+  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at, fulfillment_status, fulfillment_updated_at, fulfillment_updated_by, receipt_emailed_at, purchase_notified_at, created_at'
 
 export async function createPendingOrder(input: {
   ref: string
@@ -120,6 +121,7 @@ export function orderRowToStoredOrder(order: OrderRow): StoredOrder {
     },
     paymentRef: order.payment_reference ?? undefined,
     paymentStatus: order.status === 'paid' ? 'paid' : 'verifying',
+    fulfillmentStatus: order.fulfillment_status,
     contact: {
       name: order.contact_name ?? undefined,
       email: order.contact_email,
@@ -140,6 +142,33 @@ export function orderRowToStoredOrder(order: OrderRow): StoredOrder {
     discount: order.discount,
     total: order.amount_total,
   }
+}
+
+/**
+ * Every order (any status) belonging to this couple — for the Orders
+ * dashboard, which needs to show payment-review/failed orders too, not just
+ * paid ones. Matches by user_id first; email/phone are only consulted for
+ * guest-checkout rows (user_id IS NULL), mirroring
+ * fetchPaidOrdersForCouple in lib/dashboard/queries.ts.
+ */
+export async function getOrdersForUser(
+  userId: string,
+  email: string | null | undefined,
+  whatsappPhone: string | null,
+): Promise<OrderRow[]> {
+  const supabase = createSupabaseServerClient()
+  const guestCheckoutOrs: string[] = []
+  if (email) guestCheckoutOrs.push(`and(user_id.is.null,contact_email.eq.${email})`)
+  if (whatsappPhone) guestCheckoutOrs.push(`and(user_id.is.null,contact_phone.eq.${whatsappPhone})`)
+  const ors = [`user_id.eq.${userId}`, ...guestCheckoutOrs]
+
+  const { data, error } = await supabase
+    .from('invitation_orders')
+    .select(SELECT_COLS)
+    .or(ors.join(','))
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`getOrdersForUser failed: ${error.message}`)
+  return (data as OrderRow[]) ?? []
 }
 
 export async function setProviderOrderId(ref: string, providerOrderId: string): Promise<void> {

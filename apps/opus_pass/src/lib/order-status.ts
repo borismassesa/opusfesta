@@ -1,6 +1,6 @@
 import type { StoredOrder } from '@/lib/cart-storage'
 
-export type OrderStageId = 'payment_review' | 'confirmed' | 'in_design' | 'delivered'
+export type OrderStageId = 'payment_review' | 'confirmed' | 'in_design' | 'ready' | 'delivered'
 
 export type OrderStage = {
   id: OrderStageId
@@ -8,8 +8,9 @@ export type OrderStage = {
   description: string
 }
 
-// Linear fulfilment for digital invitations. Without an orders backend the
-// current stage is derived from how long ago payment was made (24h SLA).
+// Mirrors invitation_orders.status (payment_review) and
+// invitation_orders.fulfillment_status (confirmed/in_design/ready/delivered
+// = not_started/in_progress/ready/delivered) — see currentStageIndex.
 export const ORDER_STAGES: OrderStage[] = [
   {
     id: 'payment_review',
@@ -18,20 +19,27 @@ export const ORDER_STAGES: OrderStage[] = [
   },
   { id: 'confirmed', label: 'Order confirmed', description: 'Payment confirmed' },
   { id: 'in_design', label: 'In design', description: 'Our team is personalising your invitation' },
+  { id: 'ready', label: 'Design ready', description: 'Your design is ready' },
   { id: 'delivered', label: 'Delivered', description: 'Your design and OpusPass tickets are ready' },
 ]
 
-const HOUR = 1000 * 60 * 60
-
-/** Index of the order's current stage in ORDER_STAGES. */
+/** Index of the order's current stage in ORDER_STAGES, driven by the real
+ *  payment status + fulfillment_status set by the admin team — not a
+ *  time-based guess. `fulfillmentStatus` is undefined for orders fetched
+ *  before this field existed; treat that the same as 'not_started'. */
 export function currentStageIndex(order: StoredOrder): number {
-  const verifying = order.paymentStatus === 'verifying'
-  const paid = new Date(order.paidAt).getTime()
-  if (Number.isNaN(paid)) return verifying ? 0 : 2
-  const hours = (Date.now() - paid) / HOUR
-  if (verifying) return 0 // payment under review until finance approves
-  if (hours >= 24) return 3 // delivered
-  return 2 // in design
+  if (order.paymentStatus !== 'paid') return 0 // payment_review
+  switch (order.fulfillmentStatus) {
+    case 'in_progress':
+      return 2 // in_design
+    case 'ready':
+      return 3
+    case 'delivered':
+      return 4
+    case 'not_started':
+    default:
+      return 1 // confirmed
+  }
 }
 
 export function currentStage(order: StoredOrder): OrderStage {
@@ -42,6 +50,6 @@ export type OrderStatusTone = 'neutral' | 'amber' | 'emerald'
 
 export function stageTone(id: OrderStageId): OrderStatusTone {
   if (id === 'delivered') return 'emerald'
-  if (id === 'in_design' || id === 'payment_review') return 'amber'
+  if (id === 'in_design' || id === 'ready' || id === 'payment_review') return 'amber'
   return 'neutral'
 }
