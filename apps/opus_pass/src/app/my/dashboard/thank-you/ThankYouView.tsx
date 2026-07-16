@@ -14,6 +14,7 @@ import {
   Loader2,
   ChevronDown,
   Lock,
+  Clock,
   HeartHandshake,
   Check,
 } from 'lucide-react'
@@ -28,12 +29,13 @@ import {
 import { firstNameOf } from '@/lib/dashboard/share'
 import { THANK_YOU_TEMPLATE } from '@/lib/whatsapp/types'
 import type { ThankYouData, ThankYouGuestRow } from '@/lib/dashboard/queries'
-import { TEMPLATE_CARD_PRICE, type PledgeCardCatalogItem } from '@/lib/dashboard/pledge-card-templates'
+import { TEMPLATE_CARD_PRICE, parseTemplateCardItemId, type PledgeCardCatalogItem } from '@/lib/dashboard/pledge-card-templates'
 import type { DashboardThankYouStrings, CheckoutFormStrings, CheckoutPaymentStrings } from '@/lib/cms/ui-strings-fallback'
 import { setActiveEventCookie } from '@/components/dashboard/EventScope'
 import TemplatePurchaseModal, { type TemplatePurchaseTarget } from '@/components/dashboard/TemplatePurchaseModal'
+import PaymentSummaryModal from '@/components/dashboard/PaymentSummaryModal'
 import Confetti from '@/components/invitations/Confetti'
-import { getLastOrder, setLastOrder } from '@/lib/cart-storage'
+import { getLastOrder, setLastOrder, getOrders, getPendingTemplateIds, type StoredOrder } from '@/lib/cart-storage'
 
 /** Substitute `{var}` placeholders in a CMS template with runtime values. */
 const fmt = (t: string, v: Record<string, string | number>) =>
@@ -113,7 +115,13 @@ export default function ThankYouView({
   // orders fetched server-side, grown optimistically the moment a purchase
   // resolves so the picker unlocks without a full reload.
   const [purchasedIds, setPurchasedIds] = useState<Set<string>>(() => new Set(purchasedTemplateIds))
+  // Cards paid for but still awaiting finance's manual approval — seeded from
+  // this device's local order history (see getPendingTemplateIds; the server
+  // only tracks paid orders).
+  const [pendingTemplateIds, setPendingTemplateIds] = useState<Set<string>>(new Set())
   const [purchaseTarget, setPurchaseTarget] = useState<TemplatePurchaseTarget | null>(null)
+  // The order just paid for / submitted — drives the post-purchase summary.
+  const [summaryOrder, setSummaryOrder] = useState<StoredOrder | null>(null)
   const canUseCard = (t: PledgeCardCatalogItem) => hasFreeCardAccess || purchasedIds.has(t.id)
 
   // Resync from the server-fetched prop after router.refresh() (e.g. the
@@ -128,6 +136,52 @@ export default function ThankYouView({
   const [celebrateAt, setCelebrateAt] = useState<number | null>(null)
 
   useBodyLock(Boolean(confirmSend || report || previewOpen))
+
+  // Seed the "under review" badges from local order history, then re-check
+  // each pending order once — approvals happen out-of-band in the finance
+  // dashboard, so a couple returning later (no purchase_ref in the URL)
+  // still needs to see a design unlock once it's been confirmed.
+  useEffect(() => {
+    const pendingIds = getPendingTemplateIds('thank_you_card')
+    setPendingTemplateIds(pendingIds)
+    if (pendingIds.size === 0) return
+    let cancelled = false
+    ;(async () => {
+      for (const order of getOrders()) {
+        if (order.paymentStatus !== 'verifying') continue
+        for (const item of order.items) {
+          const parsed = parseTemplateCardItemId(item.id)
+          if (!parsed || parsed.type !== 'thank_you_card') continue
+          try {
+            const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(order.ref)}`, { cache: 'no-store' })
+            if (!res.ok) continue
+            const data = (await res.json()) as { status: string }
+            if (cancelled) return
+            if (data.status === 'paid') {
+              setLastOrder({ ...order, paymentStatus: 'paid' })
+              setPurchasedIds((prev) => new Set(prev).add(parsed.templateId))
+              setPendingTemplateIds((prev) => {
+                const next = new Set(prev)
+                next.delete(parsed.templateId)
+                return next
+              })
+            } else if (data.status === 'failed' || data.status === 'expired') {
+              setPendingTemplateIds((prev) => {
+                const next = new Set(prev)
+                next.delete(parsed.templateId)
+                return next
+              })
+            }
+          } catch {
+            /* transient — leave it pending, next visit will retry */
+          }
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // After a card-redirect purchase, Selcom bounces the buyer back here with
   // `?purchase_ref=...` — confirm it landed and unlock the design.
@@ -145,7 +199,21 @@ export default function ThankYouView({
               // Promote the local order snapshot (recorded by TemplatePurchaseModal
               // before the Selcom card redirect) so it shows paid on Orders.
               const stored = getLastOrder()
-              if (stored && stored.ref === ref) setLastOrder({ ...stored, paymentStatus: 'paid' })
+              const paidOrder = stored && stored.ref === ref ? { ...stored, paymentStatus: 'paid' as const } : null
+              if (paidOrder) {
+                setLastOrder(paidOrder)
+                setSummaryOrder(paidOrder)
+                for (const item of paidOrder.items) {
+                  const parsed = parseTemplateCardItemId(item.id)
+                  if (!parsed || parsed.type !== 'thank_you_card') continue
+                  setPurchasedIds((prev) => new Set(prev).add(parsed.templateId))
+                  setPendingTemplateIds((prev) => {
+                    const next = new Set(prev)
+                    next.delete(parsed.templateId)
+                    return next
+                  })
+                }
+              }
               toast.success('Card design unlocked')
               setCelebrateAt(Date.now())
               router.refresh()
@@ -373,6 +441,7 @@ export default function ThankYouView({
                 const isApplying = applyingTemplateId === t.id && savingCover
                 const isApplied = appliedTemplateId === t.id || (cover.isTemplate && cover.url === t.imageUrl)
                 const usable = canUseCard(t)
+                const isPending = !usable && pendingTemplateIds.has(t.id)
                 return (
                   <div
                     key={t.id}
@@ -382,7 +451,9 @@ export default function ThankYouView({
                     <div className="cardimg">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={t.imageUrl} alt={t.name} />
-                      {!usable ? (
+                      {isPending ? (
+                        <span className="cardlockbadge pending"><Clock size={12} /> Under review</span>
+                      ) : !usable ? (
                         <span className="cardlockbadge"><Lock size={12} /> {strings.card_locked_badge}</span>
                       ) : isApplied ? (
                         <span className="cardcheck"><Check size={12} strokeWidth={3} /></span>
@@ -403,6 +474,10 @@ export default function ThankYouView({
                         ) : (
                           strings.card_use
                         )}
+                      </button>
+                    ) : isPending ? (
+                      <button type="button" className="cardbtn cardpendingbtn" disabled>
+                        <Clock size={12} /> Payment under review
                       </button>
                     ) : (
                       <button
@@ -444,16 +519,20 @@ export default function ThankYouView({
           onPurchaseSubmitted={(result) => {
             if (result.status === 'paid') {
               setPurchasedIds((prev) => new Set(prev).add(purchaseTarget.templateId))
-            }
-            if (result.status === 'paid' || result.status === 'processing') {
               setCelebrateAt(Date.now())
             }
+            if (result.status === 'processing') {
+              setPendingTemplateIds((prev) => new Set(prev).add(purchaseTarget.templateId))
+            }
+            if (result.order) setSummaryOrder(result.order)
             setPurchaseTarget(null)
           }}
         />
       ) : null}
 
       {celebrateAt ? <Confetti key={celebrateAt} /> : null}
+
+      {summaryOrder ? <PaymentSummaryModal order={summaryOrder} onClose={() => setSummaryOrder(null)} /> : null}
 
       <div className="gt">
         <div className="gth">
@@ -694,6 +773,8 @@ const css = `
 .ty .cardcheck{ position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; background:var(--wa); color:#fff; display:grid; place-items:center; }
 .ty .cardlockbadge{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
   background:rgba(28,27,31,.45); color:#fff; font-size:10px; font-weight:600; }
+.ty .cardlockbadge.pending{ background:rgba(138,109,26,.72); }
+.ty .cardpendingbtn{ border-color:var(--amber-bd); background:var(--amber-bg); color:var(--amber-tx); cursor:not-allowed; }
 .ty .cardname{ margin-top:6px; font-size:11px; font-weight:600; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ty .cardbtn{ margin-top:6px; width:100%; border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 8px; font-size:10.5px; font-weight:600; color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .ty .cardbtn:hover:not(:disabled){ background:var(--hover); }
