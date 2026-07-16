@@ -381,3 +381,77 @@ export async function sendManualPaymentSubmittedEmails(order: OrderRow): Promise
 
   return { customerSent: customer.sent, adminSent: admin.sent }
 }
+
+/**
+ * Customer "here's your receipt" email — sent once, right after an order
+ * genuinely transitions to `paid` (see `transitionOrder`/`notifyOrderPaid` in
+ * ./orders). Unlike `sendManualPaymentSubmittedEmails` (which fires at
+ * *submission* time for Lipa Namba, before anyone has confirmed anything),
+ * this fires once the payment is actually confirmed — today that's the
+ * card/mobile-push (Selcom) methods, which previously sent no email at all.
+ */
+export async function sendOrderPaidReceipt(order: OrderRow): Promise<{ sent: boolean }> {
+  const isTemplate = isTemplateOrder(order)
+  const html = emailShell({
+    eyebrow: isTemplate ? 'OpusPass' : 'OpusFesta Invitations',
+    preheader: `Your receipt for order ${order.ref}.`,
+    heading: 'Payment received — here is your receipt',
+    body: `
+      ${heroImageHtml(order)}
+      <tr><td style="padding:16px 28px 0;color:#333;font-size:15px;line-height:1.65;">
+        Thank you — your payment is confirmed. ${isTemplate ? 'Your card design is now being personalised.' : 'Your invitation order is confirmed and moving into design.'}
+      </td></tr>
+      <tr><td style="padding:18px 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #F0DFF6;background:#FCF7FF;border-radius:10px;padding:8px 14px;">
+          ${orderRows(order)}
+        </table>
+      </td></tr>
+      <tr><td style="padding:0 28px 22px;color:#666;font-size:13px;line-height:1.6;">
+        Your invoice is attached to this email as your receipt.
+      </td></tr>`,
+  })
+
+  const invoice = await invoicePdfAttachment(order)
+  const result = await send({
+    to: order.contact_email,
+    subject: `Your OpusFesta receipt — ${order.ref}`,
+    html,
+    text: `Receipt ${order.ref}\nAmount: ${formatTzs(order.amount_total)}\nPayment confirmed.`,
+    attachments: invoice ? [invoice] : undefined,
+  })
+  return { sent: result.sent }
+}
+
+/** Admin "new purchase" email for auto-confirmed (card/mobile) orders — these
+ *  need no approval action (already paid), so this is purely informational,
+ *  unlike `financeVerificationEmail` which asks the reviewer to act. */
+export async function sendAdminNewPurchaseEmail(order: OrderRow): Promise<{ sent: boolean }> {
+  const isTemplate = isTemplateOrder(order)
+  const itemName = order.items[0]?.name ?? (isTemplate ? 'Card design' : 'Invitation order')
+  const html = emailShell({
+    eyebrow: 'OpusPass · New purchase',
+    preheader: `${itemName} purchased — ${formatTzs(order.amount_total)}.`,
+    heading: 'New purchase confirmed',
+    body: `
+      ${heroImageHtml(order)}
+      <tr><td style="padding:16px 28px 0;color:#333;font-size:15px;line-height:1.65;">
+        ${escapeHtml(itemName)} was purchased and paid via ${escapeHtml(order.payment_label || order.provider)}. No action needed — track fulfilment from the orders queue.
+      </td></tr>
+      <tr><td style="padding:18px 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #F0DFF6;background:#FCF7FF;border-radius:10px;padding:8px 14px;">
+          ${orderRows(order)}
+        </table>
+      </td></tr>
+      <tr><td style="padding:0 28px 22px;" align="left">
+        <a href="${escapeHtml(appUrl('/finance/payments'))}" style="font-size:13px;color:#7E5896;text-decoration:underline;">Open admin</a>
+      </td></tr>`,
+  })
+
+  const result = await send({
+    to: adminRecipients(),
+    subject: `New ${isTemplate ? 'template' : 'invitation'} purchase — ${order.ref}`,
+    html,
+    text: `New purchase ${order.ref}\nItem: ${itemName}\nAmount: ${formatTzs(order.amount_total)}\nMethod: ${order.payment_label || order.provider}`,
+  })
+  return { sent: result.sent }
+}

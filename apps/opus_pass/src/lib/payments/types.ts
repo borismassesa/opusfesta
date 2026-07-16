@@ -24,6 +24,12 @@ export function isTerminal(status: OrderStatus): boolean {
   return TERMINAL_STATUSES.has(status)
 }
 
+/** Design-fulfillment progress once an order is paid. Independent of
+ *  OrderStatus — a payment can be 'paid' while fulfillment is still
+ *  'not_started'. Mirrors the DB enum in the
+ *  20260716000001_invitation_orders_fulfillment_receipts migration. */
+export type FulfillmentStatus = 'not_started' | 'in_progress' | 'ready' | 'delivered'
+
 export type PaymentMethod = 'mobile' | 'card' | 'lipa_namba'
 
 /** One cart line as sent from the browser to /api/payments/initiate. */
