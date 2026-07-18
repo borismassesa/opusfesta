@@ -20,6 +20,24 @@ Module._initPaths();
 // Monorepo: watch shared packages
 config.watchFolders = [monorepoRoot];
 
+// Exclude nested git worktrees and stray backup dirs from the watched tree.
+// watchFolders above pulls in the ENTIRE monorepo root, which in this repo
+// includes several `git worktree`-checked-out copies (.worktrees/,
+// .claude/worktrees/) plus a stray apps/.git.bak/ — paths that other,
+// concurrently-running sessions actively mutate (branch switches, worktree
+// add/remove). Metro's file-map crawler isn't safe against a watched
+// directory changing mid-crawl and throws `TreeFS: remove called on a
+// non-empty directory`; blocking these paths keeps the watched tree stable
+// regardless of what else is happening elsewhere in the monorepo.
+const blockedMonorepoPaths = ['.worktrees', path.join('.claude', 'worktrees'), path.join('apps', '.git.bak')];
+config.resolver.blockList = [
+  ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : [config.resolver.blockList]),
+  ...blockedMonorepoPaths.map((rel) => {
+    const abs = path.join(monorepoRoot, rel).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${abs}(/.*)?$`);
+  }),
+];
+
 // Monorepo: resolve node_modules from both app and root
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
