@@ -38,7 +38,7 @@ function DashboardHome() {
   const upcoming = useUpcomingEvents();
 
   const greetingName = profile.data ? coupleFirstNames(profile.data) : (user?.firstName ?? 'there');
-  const isLoading = profile.isPending || stats.isPending;
+  const isLoading = profile.isPending || stats.isPending || upcoming.isPending;
 
   if (isLoading) {
     return (
