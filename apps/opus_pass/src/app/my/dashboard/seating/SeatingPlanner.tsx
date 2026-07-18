@@ -28,6 +28,18 @@ import {
 import type { SeatableGuest, SeatingData, SeatingTable } from '@/lib/dashboard/types'
 import type { DashboardSeatingStrings } from '@/lib/cms/ui-strings-fallback'
 import { setActiveEventCookie } from '@/components/dashboard/EventScope'
+import type { SeatingPlanPdfData } from '@/lib/seating-plan-pdf'
+import { formatLongDate } from '@/lib/dashboard/share'
+
+const EAT_TIME_ZONE = 'Africa/Dar_es_Salaam'
+
+/** "17 July 2026 at 3:42 PM" in East Africa Time, regardless of where the
+ *  couple happens to be viewing from when they generate the PDF. */
+function formatGeneratedAt(d: Date): string {
+  const date = d.toLocaleDateString('en-GB', { timeZone: EAT_TIME_ZONE, day: 'numeric', month: 'long', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { timeZone: EAT_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
+  return `${date} at ${time}`
+}
 
 type EventLite = { id: string; name: string }
 
@@ -76,6 +88,7 @@ export default function SeatingPlanner({
   const [editTable, setEditTable] = useState<SeatingTable | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const pool = useMemo(() => guests.filter((g) => g.table_id === null), [guests])
@@ -186,68 +199,90 @@ export default function SeatingPlanner({
     return lines.join('\n')
   }
 
-  async function shareWithVenue() {
-    try {
-      await navigator.clipboard.writeText(buildPlanText())
-      toast.success(strings.toast_copied)
-    } catch {
-      toast.error(strings.toast_copy_failed)
+  /** Payload for /api/seating-plan — same data buildPlanText() summarizes as
+   *  plain text, shaped for the @react-pdf/renderer document instead. */
+  function buildPdfData(): SeatingPlanPdfData {
+    const venue = [data.event.venue_name, data.event.city].filter(Boolean).join(', ') || null
+    return {
+      eventName: data.event.name,
+      eventDate: data.event.starts_at ? formatLongDate(data.event.starts_at) : null,
+      venue,
+      generatedAt: formatGeneratedAt(new Date()),
+      totalCapacity,
+      seatedTotal,
+      unassignedTotal: toSeatTotal,
+      tables: tables.map((t) => {
+        const gs = guestsAtTable(t.id)
+        return {
+          name: t.name,
+          isHead: t.is_head,
+          capacity: t.capacity,
+          seated: seatsOf(gs),
+          guests: gs.map((g) => ({ name: g.full_name, seats: g.seats, meal: mealLine(g) || null })),
+        }
+      }),
+      unassigned: pool.map((g) => ({ name: g.full_name, seats: g.seats, meal: mealLine(g) || null })),
     }
   }
 
-  function exportPdf() {
-    const w = window.open('', '_blank', 'noopener,noreferrer')
-    if (!w) {
-      toast.error(strings.toast_popups_blocked)
-      return
+  async function fetchPdfBlob(): Promise<Blob> {
+    const res = await fetch('/api/seating-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildPdfData()),
+    })
+    if (!res.ok) throw new Error('PDF request failed')
+    return res.blob()
+  }
+
+  const pdfFilename = `${data.event.name.replace(/[^A-Za-z0-9 _-]/g, '').trim() || 'OpusPass'}-Seating-Plan.pdf`
+
+  async function downloadPdf() {
+    setPdfBusy(true)
+    try {
+      const blob = await fetchPdfBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = pdfFilename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error(strings.toast_pdf_failed)
+    } finally {
+      setPdfBusy(false)
     }
-    const esc = (s: string) =>
-      s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] as string)
-    const tableBlocks = tables
-      .map((t) => {
-        const gs = guestsAtTable(t.id)
-        const rows =
-          gs.length === 0
-            ? '<li class="empty">—</li>'
-            : gs
-                .map((g) => {
-                  const meal = mealLine(g)
-                  return `<li><span>${esc(g.full_name)} <em>×${g.seats}</em></span>${
-                    meal ? `<span class="meal">${esc(meal)}</span>` : ''
-                  }</li>`
-                })
-                .join('')
-        return `<section class="tbl"><h2>${t.is_head ? '★ ' : ''}${esc(t.name)} <span>${seatsOf(
-          gs,
-        )}/${t.capacity}</span></h2><ul>${rows}</ul></section>`
-      })
-      .join('')
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(
-      fmt(strings.plan_doc_title, { event: data.event.name }),
-    )}</title><style>
-      *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1A1A1A}
-      body{margin:32px}
-      h1{font-size:22px;margin:0 0 4px}
-      .sub{color:#666;font-size:13px;margin:0 0 24px}
-      .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-      .tbl{border:1px solid #e6e6ea;border-radius:12px;padding:12px 14px;break-inside:avoid}
-      .tbl h2{font-size:14px;margin:0 0 8px;display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding-bottom:6px}
-      .tbl h2 span{color:#8e57b3;font-weight:700}
-      ul{list-style:none;margin:0;padding:0}
-      li{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0}
-      li em{color:#8e57b3;font-style:normal;font-weight:600}
-      .meal{color:#888;font-size:11px}
-      .empty{color:#bbb}
-    </style></head><body>
-      <h1>${esc(data.event.name)}</h1>
-      <p class="sub">${esc(
-        fmt(strings.plan_doc_subtitle, { seated: seatedTotal, tables: tables.length }),
-      )}</p>
-      <div class="grid">${tableBlocks}</div>
-    </body></html>`)
-    w.document.close()
-    w.focus()
-    w.print()
+  }
+
+  /** Native share sheet with the actual PDF attached (WhatsApp, Files, email, …)
+   *  where the browser supports sharing files; otherwise falls back to the
+   *  original "copy a text summary" flow so venues without app support still
+   *  get something pasteable into WhatsApp. */
+  async function sharePdf() {
+    setPdfBusy(true)
+    try {
+      const blob = await fetchPdfBlob()
+      const file = new File([blob], pdfFilename, { type: 'application/pdf' })
+      const canShareFile = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
+      if (canShareFile && navigator.share) {
+        await navigator.share({ files: [file], title: fmt(strings.plan_doc_title, { event: data.event.name }) })
+        return
+      }
+      await navigator.clipboard.writeText(buildPlanText())
+      toast.success(strings.toast_copied)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return // user cancelled the share sheet
+      try {
+        await navigator.clipboard.writeText(buildPlanText())
+        toast.success(strings.toast_copied)
+      } catch {
+        toast.error(strings.toast_copy_failed)
+      }
+    } finally {
+      setPdfBusy(false)
+    }
   }
 
   const noGuests = guests.length === 0
@@ -256,17 +291,19 @@ export default function SeatingPlanner({
     <div className="space-y-5">
       {/* Stats + actions — one row (the event selector lives in the page header, top right) */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label={strings.stat_seated} value={seatedTotal} />
-          <Stat label={strings.stat_to_seat} value={toSeatTotal} />
-          <Stat label={strings.stat_tables} value={tables.length} />
-          <Stat label={strings.stat_seats_used} value={`${seatedTotal} / ${totalCapacity}`} />
-        </div>
+        <Card className="flex-1 px-5 py-4">
+          <div className="grid grid-cols-2 divide-x divide-black/[0.12] text-center sm:grid-cols-4">
+            <Stat label={strings.stat_seated} value={seatedTotal} />
+            <Stat label={strings.stat_to_seat} value={toSeatTotal} />
+            <Stat label={strings.stat_tables} value={tables.length} />
+            <Stat label={strings.stat_seats_used} value={`${seatedTotal} / ${totalCapacity}`} />
+          </div>
+        </Card>
         <div className="flex shrink-0 items-center gap-2">
-          <Button variant="secondary" onClick={exportPdf} disabled={noGuests}>
+          <Button variant="secondary" onClick={downloadPdf} disabled={noGuests || pdfBusy}>
             <Download className="h-4 w-4" /> {strings.toolbar_export}
           </Button>
-          <Button onClick={shareWithVenue} disabled={noGuests}>
+          <Button onClick={sharePdf} disabled={noGuests || pdfBusy}>
             <Share2 className="h-4 w-4" /> {strings.toolbar_share}
           </Button>
         </div>
@@ -495,10 +532,10 @@ export function SeatingEventPicker({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <Card className="flex items-baseline gap-2 px-4 py-3">
-      <span className="text-xl font-bold tracking-tight text-[#1A1A1A]">{value}</span>
-      <span className="text-xs text-[#1A1A1A]/55">{label}</span>
-    </Card>
+    <div>
+      <div className="text-2xl leading-none font-semibold tracking-tight text-[#1A1A1A]">{value}</div>
+      <div className="mt-1 text-xs font-medium text-[#1A1A1A]/55">{label}</div>
+    </div>
   )
 }
 

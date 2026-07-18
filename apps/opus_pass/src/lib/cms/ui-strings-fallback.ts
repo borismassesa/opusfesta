@@ -918,6 +918,7 @@ export interface DashboardSeatingStrings {
   toast_copied: string
   toast_copy_failed: string
   toast_popups_blocked: string
+  toast_pdf_failed: string
 }
 
 export interface DashboardSendStrings {
@@ -1933,6 +1934,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     toast_copied: 'Seating plan copied. Paste it to your venue or WhatsApp.',
     toast_copy_failed: 'Could not copy. Try the Export button instead.',
     toast_popups_blocked: 'Allow pop-ups to export the plan.',
+    toast_pdf_failed: 'Could not generate the PDF. Please try again.',
   },
   'dashboard-send': {
     heading: 'Send invites',

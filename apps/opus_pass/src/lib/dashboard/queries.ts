@@ -1,7 +1,7 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
-import { firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
+import { eventInviteUrl, firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw } from './types'
 import { toTzs } from './currency'
@@ -745,7 +745,9 @@ export function coupleFirstNames(profile: CoupleProfileLite | null): string {
   return names.map(firstNameOf).join(' & ')
 }
 
-/** The signed-in couple's public-sharing state, for the Privacy/URLs settings pages. */
+/** The signed-in couple's account-wide public-sharing state (also backs the
+ *  wedding-website builder's publish flow) — for the Privacy settings page.
+ *  The invite hub itself is event-scoped; see getInviteShareInfo. */
 export async function getPublicShareInfo(): Promise<{ slug: string | null; enabled: boolean }> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
@@ -1027,11 +1029,8 @@ export interface PublicInviteEvent {
   description: string | null
   venue_name: string | null
   address: string | null
-  city: string | null
   starts_at: string | null
-  ends_at: string | null
   dress_code: string | null
-  allow_rsvp: boolean
 }
 
 export interface PublicInviteData {
@@ -1040,20 +1039,23 @@ export interface PublicInviteData {
   weddingDate: string | null
   city: string | null
   coverImageUrl: string | null
-  /** True once the wedding date has passed — the hub closes RSVPs. */
+  /** True once this event's date has passed — the hub closes RSVPs. */
   hasPassed: boolean
-  /** Any public event accepts RSVPs AND the wedding hasn't passed. */
+  /** This event accepts RSVPs AND its date hasn't passed. */
   allowRsvp: boolean
-  events: PublicInviteEvent[]
-  /** General questions (asked to everyone who RSVPs) for the combined hub RSVP. */
+  event: PublicInviteEvent
+  /** General + this-event's own follow-up questions, for the hub's RSVP form. */
   generalQuestions: RsvpQuestion[]
 }
 
 /**
- * Public, slug-scoped fetch for the shareable invitation hub (no auth, no PII).
- * Returns null when the slug is unknown or the couple has sharing disabled —
- * so a revoked link 404s. Reads run through the service-role client; only the
- * non-PII projection above is ever exposed.
+ * Public, slug-scoped fetch for one event's shareable invite hub (no auth, no
+ * PII). Tied to a single wedding_events row (its own invite_slug/
+ * invite_sharing_enabled) rather than the couple account-wide — a multi-event
+ * couple gets one link per event, so a guest's RSVP here only ever applies to
+ * the event the link was actually for. See
+ * 20260718000003_opuspass_invite_event_scoped_link.sql. Returns null when the
+ * slug is unknown or sharing is off, so the page 404s.
  */
 /**
  * Public, slug-scoped fetch of a PUBLISHED wedding website (the full SiteDoc).
@@ -1089,110 +1091,93 @@ export async function getPublicInvite(slug: string): Promise<PublicInviteData | 
   if (!slug) return null
   const supabase = createDashboardClient()
 
-  const { data: profile, error } = await supabase
-    .from('couple_profiles')
-    .select(
-      'user_id, partner1_name, partner2_name, wedding_date, city, cover_image_url, public_sharing_enabled',
-    )
-    .eq('public_slug', slug)
-    .maybeSingle<{
-      user_id: string
-      partner1_name: string | null
-      partner2_name: string | null
-      wedding_date: string | null
-      city: string | null
-      cover_image_url: string | null
-      public_sharing_enabled: boolean
-    }>()
-  if (error) {
-    console.error('[public-invite] profile lookup failed', error)
-    throw error
-  }
-  if (!profile || !profile.public_sharing_enabled) return null
-
-  const { data: events } = await supabase
+  const { data: event, error } = await supabase
     .from('wedding_events')
     .select(
-      'id, name, event_type, description, venue_name, address, city, starts_at, ends_at, dress_code, allow_rsvp, sort_order',
+      'id, user_id, name, event_type, description, venue_name, address, city, starts_at, ends_at, dress_code, allow_rsvp, invite_sharing_enabled',
     )
-    .eq('user_id', profile.user_id)
-    .eq('is_public', true)
-    .order('sort_order', { ascending: true })
-    .order('starts_at', { ascending: true, nullsFirst: false })
+    .eq('invite_slug', slug)
+    .maybeSingle<{
+      id: string
+      user_id: string
+      name: string
+      event_type: string
+      description: string | null
+      venue_name: string | null
+      address: string | null
+      city: string | null
+      starts_at: string | null
+      ends_at: string | null
+      dress_code: string | null
+      allow_rsvp: boolean
+      invite_sharing_enabled: boolean
+    }>()
+  if (error) {
+    console.error('[public-invite] event lookup failed', error)
+    throw error
+  }
+  if (!event || !event.invite_sharing_enabled) return null
 
-  const publicEvents: PublicInviteEvent[] = (events ?? []).map((e) => ({
-    id: e.id as string,
-    name: e.name as string,
-    event_type: e.event_type as string,
-    description: (e.description as string | null) ?? null,
-    venue_name: (e.venue_name as string | null) ?? null,
-    address: (e.address as string | null) ?? null,
-    city: (e.city as string | null) ?? null,
-    starts_at: (e.starts_at as string | null) ?? null,
-    ends_at: (e.ends_at as string | null) ?? null,
-    dress_code: (e.dress_code as string | null) ?? null,
-    allow_rsvp: Boolean(e.allow_rsvp),
-  }))
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name, cover_image_url')
+    .eq('user_id', event.user_id)
+    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; cover_image_url: string | null }>()
 
-  const { data: generalRows } = await supabase
+  // This event's own follow-ups, plus the couple's general questions (asked
+  // regardless of event) — mirrors what the couple configured for this event
+  // in RSVP setup, not just the account-wide general set.
+  const { data: questionRows } = await supabase
     .from('rsvp_questions')
     .select('*')
-    .eq('user_id', profile.user_id)
-    .is('event_id', null)
+    .eq('user_id', event.user_id)
+    .or(`event_id.eq.${event.id},event_id.is.null`)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
-  const generalQuestions = (generalRows ?? []).map((r) => toRsvpQuestion(r as Record<string, unknown>))
+  const generalQuestions = (questionRows ?? []).map((r) => toRsvpQuestion(r as Record<string, unknown>))
 
-  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean)
-  const hasPassed = profile.wedding_date ? profile.wedding_date < todayISODate() : false
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const hasPassed = event.starts_at ? new Date(event.starts_at).getTime() < Date.now() : false
 
   return {
     slug,
     coupleName: names.length ? names.join(' & ') : 'The Couple',
-    weddingDate: profile.wedding_date,
-    city: profile.city,
-    coverImageUrl: profile.cover_image_url,
+    weddingDate: event.starts_at,
+    city: event.city,
+    coverImageUrl: profile?.cover_image_url ?? null,
     hasPassed,
-    allowRsvp: !hasPassed && publicEvents.some((e) => e.allow_rsvp),
-    events: publicEvents,
+    allowRsvp: !hasPassed && event.allow_rsvp,
+    event: {
+      id: event.id,
+      name: event.name,
+      event_type: event.event_type,
+      description: event.description,
+      venue_name: event.venue_name,
+      address: event.address,
+      starts_at: event.starts_at,
+      dress_code: event.dress_code,
+    },
     generalQuestions,
   }
 }
 
-/** Today's date as YYYY-MM-DD (wedding_date is a DATE column). */
-function todayISODate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-/** The signed-in couple's public-invite sharing state (for the dashboard). */
-export interface MyPublicInvite {
+/** One event's public invite/RSVP link — /rsvp/event/<slug>, distinct per event
+ *  (getGuestbookShareInfo/getGiftRegistryShareInfo are the sibling lookups). */
+export interface InviteShareInfo {
   slug: string | null
   enabled: boolean
-  coverImageUrl: string | null
-  coupleName: string
 }
 
-export async function getMyPublicInvite(): Promise<MyPublicInvite> {
+export async function getInviteShareInfo(eventId: string): Promise<InviteShareInfo> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const { data } = await supabase
-    .from('couple_profiles')
-    .select('partner1_name, partner2_name, public_slug, public_sharing_enabled, cover_image_url')
+    .from('wedding_events')
+    .select('invite_slug, invite_sharing_enabled')
+    .eq('id', eventId)
     .eq('user_id', user.id)
-    .maybeSingle<{
-      partner1_name: string | null
-      partner2_name: string | null
-      public_slug: string | null
-      public_sharing_enabled: boolean | null
-      cover_image_url: string | null
-    }>()
-  const names = [data?.partner1_name, data?.partner2_name].filter(Boolean)
-  return {
-    slug: data?.public_slug ?? null,
-    enabled: Boolean(data?.public_sharing_enabled),
-    coverImageUrl: data?.cover_image_url ?? null,
-    coupleName: names.length ? names.join(' & ') : 'The Couple',
-  }
+    .maybeSingle<{ invite_slug: string | null; invite_sharing_enabled: boolean | null }>()
+  return { slug: data?.invite_slug ?? null, enabled: Boolean(data?.invite_sharing_enabled) }
 }
 
 // ──────────────────────────────────── Guestbook ─────────────────────────────────
@@ -1217,12 +1202,14 @@ export async function getGuestbookEntries(eventId: string | null): Promise<Guest
 
 /**
  * Public, slug-scoped data for the standalone /guestbook/<slug> page.
+ * Scoped to a single wedding_events row (its own guestbook_sharing_enabled
+ * flag and guestbook_slug) rather than the couple-wide invite slug, so each
+ * event has its own link and only shows that event's messages.
  *
- * Deliberately independent of the wedding-website builder: it only requires
- * `public_sharing_enabled` on couple_profiles (the same gate /i/<slug> uses),
- * NOT a built/published website_doc, so guests can leave a message even if
- * the couple never touches the site builder. Returns null when the slug is
- * unknown or sharing is off, so the page 404s.
+ * Deliberately independent of the wedding-website builder: it doesn't
+ * require a built/published website_doc, so guests can leave a message even
+ * if the couple never touches the site builder. Returns null when the slug
+ * is unknown or sharing is off, so the page 404s.
  */
 export interface PublicGuestbookPage {
   slug: string
@@ -1235,45 +1222,65 @@ export interface PublicGuestbookPage {
 export async function getPublicGuestbookPage(slug: string): Promise<PublicGuestbookPage | null> {
   if (!slug) return null
   const supabase = createDashboardClient()
-  const { data: profile, error: profileErr } = await supabase
-    .from('couple_profiles')
-    .select('user_id, partner1_name, partner2_name, cover_image_url, city, public_sharing_enabled')
-    .eq('public_slug', slug)
+  const { data: event, error: eventErr } = await supabase
+    .from('wedding_events')
+    .select('id, user_id, name, city, guestbook_sharing_enabled')
+    .eq('guestbook_slug', slug)
     .maybeSingle<{
+      id: string
       user_id: string
-      partner1_name: string | null
-      partner2_name: string | null
-      cover_image_url: string | null
+      name: string
       city: string | null
-      public_sharing_enabled: boolean
+      guestbook_sharing_enabled: boolean
     }>()
-  if (profileErr) {
-    console.error('[guestbook] public page lookup failed', profileErr)
+  if (eventErr) {
+    console.error('[guestbook] public page lookup failed', eventErr)
     return null
   }
-  if (!profile || !profile.public_sharing_enabled) return null
+  if (!event || !event.guestbook_sharing_enabled) return null
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('cover_image_url')
+    .eq('user_id', event.user_id)
+    .maybeSingle<{ cover_image_url: string | null }>()
 
   const { data, error } = await supabase
     .from('guestbook_entries')
     .select('*')
-    .eq('user_id', profile.user_id)
+    .eq('event_id', event.id)
     .eq('review_status', 'approved')
     .order('created_at', { ascending: false })
     .limit(60)
   if (error) {
     console.error('[guestbook] public list failed', error)
   }
-  // First names only — this header stays short and readable at the large
-  // display size the guestbook page sets it at (unlike the full-name
-  // treatment used elsewhere, e.g. getPublicInvite).
-  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
   return {
     slug,
-    coupleName: names.length ? names.join(' & ') : 'The Couple',
-    coverImageUrl: profile.cover_image_url,
-    city: profile.city,
+    coupleName: event.name,
+    coverImageUrl: profile?.cover_image_url ?? null,
+    city: event.city,
     entries: (data ?? []) as GuestbookEntry[],
   }
+}
+
+/** The guestbook's per-event public share link — /guestbook/<slug>, distinct
+ *  from the account-wide invite-hub slug (getMyPublicInvite). */
+export interface GuestbookShareInfo {
+  slug: string | null
+  enabled: boolean
+}
+
+export async function getGuestbookShareInfo(eventId: string): Promise<GuestbookShareInfo> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('guestbook_slug, guestbook_sharing_enabled')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ guestbook_slug: string | null; guestbook_sharing_enabled: boolean | null }>()
+  return { slug: data?.guestbook_slug ?? null, enabled: Boolean(data?.guestbook_sharing_enabled) }
 }
 
 // ─────────────────────────────── Gift registry ──────────────────────────────────
@@ -1300,30 +1307,51 @@ export interface GiftRegistryHero {
   registryWelcomeMessage: string | null
 }
 
-/** Everything except eventDate, which the caller merges in from the resolved event scope. */
-export async function getGiftRegistryHero(): Promise<Omit<GiftRegistryHero, 'eventDate'>> {
+/** Everything except eventDate, which the caller merges in from the resolved event scope.
+ *  Scoped to a single wedding_events row — a multi-event couple gets a distinct hero
+ *  (name, banner, cover, welcome message) per event, defaulting to that event's own
+ *  `name` when no custom header override has been set for it. */
+export async function getGiftRegistryHero(eventId: string): Promise<Omit<GiftRegistryHero, 'eventDate'>> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const { data } = await supabase
-    .from('couple_profiles')
-    .select('partner1_name, partner2_name, registry_header, registry_banner_image_url, registry_cover_image_url, registry_welcome_message')
+    .from('wedding_events')
+    .select('name, gift_registry_header, gift_registry_banner_image_url, gift_registry_cover_image_url, gift_registry_welcome_message')
+    .eq('id', eventId)
     .eq('user_id', user.id)
     .maybeSingle<{
-      partner1_name: string | null
-      partner2_name: string | null
-      registry_header: string | null
-      registry_banner_image_url: string | null
-      registry_cover_image_url: string | null
-      registry_welcome_message: string | null
+      name: string
+      gift_registry_header: string | null
+      gift_registry_banner_image_url: string | null
+      gift_registry_cover_image_url: string | null
+      gift_registry_welcome_message: string | null
     }>()
-  const names = [data?.partner1_name, data?.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
   return {
-    coupleName: names.length ? names.join(' & ') : 'The Couple',
-    registryHeader: data?.registry_header ?? null,
-    registryBannerImageUrl: data?.registry_banner_image_url ?? null,
-    registryCoverImageUrl: data?.registry_cover_image_url ?? null,
-    registryWelcomeMessage: data?.registry_welcome_message ?? null,
+    coupleName: data?.gift_registry_header?.trim() || data?.name || 'The Couple',
+    registryHeader: data?.gift_registry_header ?? null,
+    registryBannerImageUrl: data?.gift_registry_banner_image_url ?? null,
+    registryCoverImageUrl: data?.gift_registry_cover_image_url ?? null,
+    registryWelcomeMessage: data?.gift_registry_welcome_message ?? null,
   }
+}
+
+/** The manage-registry page's per-event public share link — /gift-registry/<slug>,
+ *  distinct from the account-wide invite-hub/guestbook slug (getMyPublicInvite). */
+export interface GiftRegistryShareInfo {
+  slug: string | null
+  enabled: boolean
+}
+
+export async function getGiftRegistryShareInfo(eventId: string): Promise<GiftRegistryShareInfo> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('gift_registry_slug, gift_registry_sharing_enabled')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ gift_registry_slug: string | null; gift_registry_sharing_enabled: boolean | null }>()
+  return { slug: data?.gift_registry_slug ?? null, enabled: Boolean(data?.gift_registry_sharing_enabled) }
 }
 
 /** Count-only lookup (no row fetch) for the registry's "add your guest count" nudge. */
@@ -1516,9 +1544,10 @@ export async function getGiftRegistryClaims(eventId: string | null): Promise<Gif
 
 /**
  * Public, slug-scoped data for the standalone /gift-registry/<slug> page.
- * Gated on the same `public_sharing_enabled` flag as the guestbook and
- * invite hub — no separate registry-specific toggle. Returns null when the
- * slug is unknown or sharing is off, so the page 404s.
+ * Scoped to a single wedding_events row (its own gift_registry_sharing_enabled
+ * flag and gift_registry_slug) rather than the couple-wide invite/guestbook
+ * slug, so each event has its own link and only shows that event's gifts.
+ * Returns null when the slug is unknown or sharing is off, so the page 404s.
  */
 export interface PublicGiftRegistryPage {
   slug: string
@@ -1534,39 +1563,37 @@ export interface PublicGiftRegistryPage {
 export async function getPublicGiftRegistryPage(slug: string): Promise<PublicGiftRegistryPage | null> {
   if (!slug) return null
   const supabase = createDashboardClient()
-  const { data: profile, error: profileErr } = await supabase
-    .from('couple_profiles')
+  const { data: event, error: eventErr } = await supabase
+    .from('wedding_events')
     .select(
-      'user_id, partner1_name, partner2_name, public_sharing_enabled, registry_header, wedding_date, registry_banner_image_url, registry_cover_image_url, registry_welcome_message',
+      'id, name, starts_at, gift_registry_sharing_enabled, gift_registry_header, gift_registry_banner_image_url, gift_registry_cover_image_url, gift_registry_welcome_message',
     )
-    .eq('public_slug', slug)
+    .eq('gift_registry_slug', slug)
     .maybeSingle<{
-      user_id: string
-      partner1_name: string | null
-      partner2_name: string | null
-      public_sharing_enabled: boolean
-      registry_header: string | null
-      wedding_date: string | null
-      registry_banner_image_url: string | null
-      registry_cover_image_url: string | null
-      registry_welcome_message: string | null
+      id: string
+      name: string
+      starts_at: string | null
+      gift_registry_sharing_enabled: boolean
+      gift_registry_header: string | null
+      gift_registry_banner_image_url: string | null
+      gift_registry_cover_image_url: string | null
+      gift_registry_welcome_message: string | null
     }>()
-  if (profileErr) {
-    console.error('[gift-registry] public page lookup failed', profileErr)
+  if (eventErr) {
+    console.error('[gift-registry] public page lookup failed', eventErr)
     return null
   }
-  if (!profile || !profile.public_sharing_enabled) return null
+  if (!event || !event.gift_registry_sharing_enabled) return null
 
   const { data, error } = await supabase
     .from('gift_registry_items')
     .select('*')
-    .eq('user_id', profile.user_id)
+    .eq('event_id', event.id)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) {
     console.error('[gift-registry] public list failed', error)
   }
-  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
   // This page is public and unauthenticated — never let a guest's contact
   // info reach the client bundle, even though the UI doesn't render it.
   // React Server Components serialize the whole prop object to the browser,
@@ -1579,12 +1606,12 @@ export async function getPublicGiftRegistryPage(slug: string): Promise<PublicGif
   }))
   return {
     slug,
-    coupleName: names.length ? names.join(' & ') : 'The Couple',
-    registryHeader: profile.registry_header,
-    weddingDate: profile.wedding_date,
-    registryBannerImageUrl: profile.registry_banner_image_url,
-    registryCoverImageUrl: profile.registry_cover_image_url,
-    registryWelcomeMessage: profile.registry_welcome_message,
+    coupleName: event.gift_registry_header?.trim() || event.name,
+    registryHeader: event.gift_registry_header,
+    weddingDate: event.starts_at,
+    registryBannerImageUrl: event.gift_registry_banner_image_url,
+    registryCoverImageUrl: event.gift_registry_cover_image_url,
+    registryWelcomeMessage: event.gift_registry_welcome_message,
     items,
   }
 }
@@ -2093,8 +2120,7 @@ export async function getSendInvitesData(
   const supabase = createDashboardClient()
   const origin = publicOrigin()
 
-  const [publicInvite, events, profile, guests] = await Promise.all([
-    getMyPublicInvite(),
+  const [events, profile, guests] = await Promise.all([
     preloadedEvents ? Promise.resolve(preloadedEvents) : getEvents(),
     getCoupleProfile(),
     getGuestsWithInvitations(),
@@ -2103,10 +2129,10 @@ export async function getSendInvitesData(
   const selectedEvent = (eventId && events.find((e) => e.id === eventId)) || events[0] || null
   const selectedEventId = selectedEvent?.id ?? null
 
-  // No events at all yet: nothing to scope guests/quota to, but the couple
-  // may already have bought a design before setting up their first event —
-  // still surface it so they can create an event and assign it, rather than
-  // it silently vanishing.
+  // No events at all yet: nothing to scope guests/quota — or the invite
+  // link — to, but the couple may already have bought a design before
+  // setting up their first event; still surface it so they can create an
+  // event and assign it, rather than it silently vanishing.
   if (!selectedEventId) {
     const paidOrders = await fetchPaidOrdersForCouple(
       supabase,
@@ -2138,11 +2164,7 @@ export async function getSendInvitesData(
       funnel: { invited: 0, delivered: 0, viewed: 0, rsvpd: 0 },
       quota: { used: 0, purchased: 0, remaining: 0, hasPaidOrder: false },
       entranceQuota: { used: 0, purchased: 0, remaining: 0 },
-      publicLink: {
-        enabled: publicInvite.enabled,
-        slug: publicInvite.slug,
-        url: publicInvite.slug ? `${origin}/i/${publicInvite.slug}` : null,
-      },
+      publicLink: { enabled: false, slug: null, url: null },
       whatsappLive: getWhatsAppProvider().live,
       testPhone: profile?.whatsapp_phone ?? null,
       sendSettings: { hostName: '', eventCategory: '', confirmed: false },
@@ -2150,7 +2172,10 @@ export async function getSendInvitesData(
     }
   }
 
-  const entitlement = await getWhatsAppEntitlement(selectedEventId)
+  const [entitlement, publicInvite] = await Promise.all([
+    getWhatsAppEntitlement(selectedEventId),
+    getInviteShareInfo(selectedEventId),
+  ])
 
   // WhatsApp read receipts → "viewed" (real once delivery webhooks land),
   // scoped to this event only.
@@ -2263,7 +2288,7 @@ export async function getSendInvitesData(
     publicLink: {
       enabled: publicInvite.enabled,
       slug: publicInvite.slug,
-      url: publicInvite.slug ? `${origin}/i/${publicInvite.slug}` : null,
+      url: publicInvite.slug ? eventInviteUrl(origin, publicInvite.slug) : null,
     },
     whatsappLive: getWhatsAppProvider().live,
     testPhone: profile?.whatsapp_phone ?? null,

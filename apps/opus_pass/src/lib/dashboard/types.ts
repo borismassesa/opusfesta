@@ -15,7 +15,7 @@ export type RsvpStatus = 'pending' | 'attending' | 'declined' | 'maybe'
 
 export type SendChannel = 'whatsapp' | 'sms' | 'email' | 'link'
 
-/** How a guest entered the roster. 'public' = self-registered via /i/<slug>. */
+/** How a guest entered the roster. 'public' = self-registered via /rsvp/event/<slug>. */
 export type GuestSource = 'host' | 'public'
 
 /** Review state for a guest. 'unconfirmed' = a public self-RSVP awaiting the host. */
@@ -36,6 +36,10 @@ export interface WeddingEvent {
   is_public: boolean
   /** Let guests RSVP to this event directly from the wedding website. */
   allow_rsvp: boolean
+  /** This event's own public invite/RSVP link — /rsvp/event/<invite_slug>, distinct
+   *  per event so a multi-event couple doesn't fan one guest's RSVP across every event. */
+  invite_slug: string | null
+  invite_sharing_enabled: boolean
   sort_order: number
   created_at: string
   updated_at: string

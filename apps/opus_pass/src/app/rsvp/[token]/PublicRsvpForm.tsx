@@ -443,6 +443,7 @@ function QuestionField({
 
 function Shell({
   children,
+  coupleName,
   weddingDate,
   poweredBy,
 }: {
@@ -470,9 +471,12 @@ function Shell({
         <div className="rounded-3xl bg-white/70 p-6 shadow-[0_8px_40px_rgba(0,0,0,0.06)] backdrop-blur sm:p-8">
           {children}
         </div>
-        <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">
-          <PoweredByLine text={poweredBy} />
-        </p>
+        <footer className="mt-6 flex flex-col items-center gap-2 text-center">
+          <p className="text-[15px]" style={{ fontFamily: 'var(--font-playfair), Georgia, serif', color: '#1A1A1A' }}>
+            {coupleName}
+          </p>
+          <PoweredByLine text={poweredBy} className="text-[11px] uppercase tracking-[0.2em] text-[#1A1A1A]/60" />
+        </footer>
       </div>
     </div>
   )

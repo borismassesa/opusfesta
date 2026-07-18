@@ -18,7 +18,7 @@ export default function UrlsView({ url, enabled }: { url: string | null; enabled
   return (
     <div>
       <h2 className="text-lg font-bold text-[#1A1A1A]">URLs</h2>
-      <p className="mt-1 text-sm text-[#1A1A1A]/55">Your public invite link — share it anywhere.</p>
+      <p className="mt-1 text-sm text-[#1A1A1A]/55">Your event&apos;s public invite link — share it anywhere.</p>
       <div className="mt-4 rounded-2xl border border-black/[0.08] bg-white p-5 shadow-sm sm:p-6">
         {url ? (
           <>
@@ -36,9 +36,9 @@ export default function UrlsView({ url, enabled }: { url: string | null; enabled
             </div>
             {!enabled ? (
               <p className="mt-3 text-sm text-amber-700">
-                Public sharing is currently off, so this link won’t work for guests. Turn it back on in{' '}
-                <Link href="/my/dashboard/settings/privacy" className="font-medium underline underline-offset-2">
-                  Privacy
+                This link is currently off, so it won’t work for guests. Turn it back on in{' '}
+                <Link href="/my/dashboard/rsvps" className="font-medium underline underline-offset-2">
+                  RSVP setup
                 </Link>
                 .
               </p>
@@ -55,13 +55,13 @@ export default function UrlsView({ url, enabled }: { url: string | null; enabled
           </>
         ) : (
           <>
-            <p className="text-sm text-[#1A1A1A]/65">You haven’t created a public link yet.</p>
+            <p className="text-sm text-[#1A1A1A]/65">You haven’t created an invite link yet.</p>
             <p className="mt-3">
               <Link
-                href="/my/dashboard/settings/privacy"
+                href="/my/dashboard/rsvps"
                 className="text-sm font-medium text-[#7E5896] underline underline-offset-2 hover:text-[#5f4171]"
               >
-                Turn on public sharing
+                Set up RSVPs
               </Link>{' '}
               to generate one.
             </p>

@@ -39,7 +39,7 @@ export default async function PublishedWebsitePage({ params }: PageProps) {
   if (!doc) notFound()
   return (
     <main className="min-h-screen w-full">
-      <SiteRenderer doc={composeDoc(doc)} editable={false} compact={false} />
+      <SiteRenderer doc={composeDoc(doc)} editable={false} compact={false} slug={slug} />
     </main>
   )
 }

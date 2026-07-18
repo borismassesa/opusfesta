@@ -8,7 +8,7 @@ import {
   approveGuestbookEntry,
   hideGuestbookEntry,
   deleteGuestbookEntry,
-  enablePublicSharing,
+  enableGuestbookSharing,
 } from '@/lib/dashboard/actions'
 import { guestbookPath } from '@/lib/dashboard/share'
 import { GUESTBOOK_STATUS_LABELS, type GuestbookEntry, type GuestbookReviewStatus } from '@/lib/dashboard/types'
@@ -93,7 +93,7 @@ export default function GuestbookClient({
             <Stat value={entries.filter((e) => e.review_status === 'hidden').length} label="Hidden" />
           </div>
         </Card>
-        <ShareLinkCard shareSlug={shareSlug} shareEnabled={shareEnabled} />
+        <ShareLinkCard shareSlug={shareSlug} shareEnabled={shareEnabled} eventId={selectedEventId} />
       </div>
 
       {entries.length === 0 ? (
@@ -177,7 +177,15 @@ function Stat({ value, label }: { value: number; label: string }) {
   )
 }
 
-function ShareLinkCard({ shareSlug, shareEnabled }: { shareSlug: string | null; shareEnabled: boolean }) {
+function ShareLinkCard({
+  shareSlug,
+  shareEnabled,
+  eventId,
+}: {
+  shareSlug: string | null
+  shareEnabled: boolean
+  eventId: string | null
+}) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -192,8 +200,9 @@ function ShareLinkCard({ shareSlug, shareEnabled }: { shareSlug: string | null; 
   const shareLink = shareSlug && origin ? `${origin}${guestbookPath(shareSlug)}` : null
 
   function onEnable() {
+    if (!eventId) return
     startTransition(async () => {
-      await enablePublicSharing()
+      await enableGuestbookSharing(eventId)
       router.refresh()
     })
   }
@@ -245,7 +254,7 @@ function ShareLinkCard({ shareSlug, shareEnabled }: { shareSlug: string | null; 
             <button
               type="button"
               onClick={onEnable}
-              disabled={pending}
+              disabled={pending || !eventId}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0] disabled:opacity-50"
             >
               <Link2 className="h-3.5 w-3.5" /> {pending ? 'Generating…' : 'Get my guestbook link'}

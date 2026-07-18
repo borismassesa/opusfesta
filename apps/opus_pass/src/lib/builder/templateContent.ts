@@ -8,6 +8,19 @@
 
 import type { Block, BuilderMeta, FontKey, Palette, Section } from './types'
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/** Local ISO→"Month D, YYYY" formatter (avoids a circular import with presets.ts). */
+function dayMonthYear(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return iso
+  const [, y, mm, dd] = m
+  return `${MONTHS[Number(mm) - 1] ?? ''} ${Number(dd)}, ${y}`
+}
+
 const GALLERY_PHOTOS = [
   '/assets/images/cutesy_couple.jpg',
   '/assets/images/coupleswithpiano.jpg',
@@ -21,6 +34,7 @@ type SectionKind =
   | 'story'
   | 'verse'
   | 'details'
+  | 'showcase'
   | 'gallery'
   | 'registry'
   | 'rsvp'
@@ -42,6 +56,7 @@ export const SECTION_PAGE: Record<string, string> = {
   sec_story: 'home',
   sec_verse: 'home',
   sec_details: 'schedule',
+  sec_showcase: 'schedule',
   sec_gallery: 'gallery',
   sec_registry: 'registry',
   sec_rsvp: 'rsvp',
@@ -106,6 +121,13 @@ const BLUEPRINTS: Record<string, SectionSpec[]> = {
     { kind: 'gallery', headline: 'Sun-soaked moments' },
     { kind: 'registry', eyebrow: 'Registry', headline: 'Your presence is the present' },
     { kind: 'rsvp', headline: 'Will you join us?' },
+  ],
+  zambarau: [
+    { kind: 'story', headline: 'Join Us for Our Special Day', body: "We are so incredibly excited to celebrate our love story with our closest family and friends. Your presence means the world to us, and we can't wait to share these unforgettable moments as we begin this beautiful new chapter of our lives together." },
+    { kind: 'showcase' },
+    { kind: 'gallery', headline: 'Captured Moments' },
+    { kind: 'registry', headline: 'Registry', body: "Your presence is present enough, but if you wish to give a gift, here are some things we'd love for our new chapter." },
+    { kind: 'rsvp', headline: 'Will you celebrate with us?' },
   ],
 }
 
@@ -179,6 +201,40 @@ function buildSection(spec: SectionSpec, bg: string, c: Ctx): Section {
         { ...base(`${sid}_m`, 16, 0), type: 'map', venue: 'Wedding Venue', address: c.meta.location || 'To be announced' },
       ])
     }
+    case 'showcase': {
+      const sid = 'sec_showcase'
+      return sectionShell(sid, spec.headline ?? 'The Details', bg, [
+        spec.eyebrow ? eyebrow(`${sid}_eb`, spec.eyebrow, c) : paragraph(`${sid}_sp`, '', c),
+        heading(`${sid}_h`, spec.headline ?? 'The Details', 38, c),
+        {
+          ...base(`${sid}_s`, 28, 0),
+          type: 'showcase',
+          items: [
+            {
+              icon: 'calendar',
+              title: 'The When',
+              lines: [dayMonthYear(c.meta.date), 'Ceremony in the afternoon', 'Reception to follow'],
+            },
+            {
+              icon: 'pin',
+              title: 'The Where',
+              lines: [c.meta.location || 'To be announced'],
+            },
+            {
+              icon: 'sparkles',
+              title: 'Dress Code',
+              lines: ['Formal — black-tie optional'],
+              swatches: [
+                { hex: '#1E293B', label: 'Navy' },
+                { hex: '#94A3B8', label: 'Slate' },
+                { hex: '#C9A54A', label: 'Gold' },
+                { hex: '#FDFBF9', label: 'Ivory' },
+              ],
+            },
+          ],
+        } as Block,
+      ])
+    }
     case 'gallery': {
       const sid = 'sec_gallery'
       const photos = (c.meta.photos ?? []).filter(Boolean)
@@ -193,6 +249,7 @@ function buildSection(spec: SectionSpec, bg: string, c: Ctx): Section {
       return sectionShell(sid, spec.headline ?? 'Registry', bg, [
         spec.eyebrow ? eyebrow(`${sid}_eb`, spec.eyebrow, c) : paragraph(`${sid}_sp`, '', c),
         heading(`${sid}_h`, spec.headline ?? 'Your presence is the present', 34, c),
+        ...(spec.body ? [paragraph(`${sid}_t`, spec.body, c)] : []),
         {
           ...base(`${sid}_r`, 16, 0),
           type: 'registry',

@@ -5,7 +5,6 @@ import {
   getRsvpQuestions,
   getRsvpEventSummaries,
   getRsvpAnswerSummaries,
-  getMyPublicInvite,
 } from '@/lib/dashboard/queries'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
@@ -40,14 +39,13 @@ export default async function RsvpsPage({
     )
   }
 
-  const [guests, lastSend, questions, summaries, answerSummaries, publicInvite, hero, copy] =
+  const [guests, lastSend, questions, summaries, answerSummaries, hero, copy] =
     await Promise.all([
       getGuestsWithInvitations(),
       getLastSendByGuest(),
       getRsvpQuestions(),
       getRsvpEventSummaries(),
       getRsvpAnswerSummaries(),
-      getMyPublicInvite(),
       loadDashboardHero('rsvps', locale),
       loadDashboardCopy('rsvps', locale),
     ])
@@ -63,7 +61,6 @@ export default async function RsvpsPage({
       questions={questions}
       summaries={summaries}
       answerSummaries={answerSummaries}
-      publicInvite={publicInvite}
     />
   )
 }

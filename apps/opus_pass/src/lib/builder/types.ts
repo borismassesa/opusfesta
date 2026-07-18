@@ -11,6 +11,7 @@ export type FontKey =
   | 'Montserrat'
   | 'Dancing Script'
   | 'Yellowtail'
+  | 'Plus Jakarta Sans'
 
 export type Align = 'left' | 'center' | 'right' | 'justify'
 
@@ -38,6 +39,7 @@ export type Motif =
   | 'crest'
   | 'kanga'
   | 'sunrise'
+  | 'heart'
 
 export type TemplateDecor = {
   motif: Motif
@@ -66,6 +68,7 @@ export type BlockType =
   | 'map'
   | 'registry'
   | 'gallery'
+  | 'showcase'
 
 export type BaseBlock = {
   id: string
@@ -140,6 +143,15 @@ export type RegistryBlock = BaseBlock & { type: 'registry'; items: RegistryItem[
 
 export type GalleryBlock = BaseBlock & { type: 'gallery'; images: string[] }
 
+/** A single icon + title + detail-lines card, e.g. "The When" / "The Where" / "Dress Code". */
+export type ShowcaseItem = {
+  icon: 'calendar' | 'pin' | 'sparkles'
+  title: string
+  lines: string[]
+  swatches?: { hex: string; label: string }[]
+}
+export type ShowcaseBlock = BaseBlock & { type: 'showcase'; items: ShowcaseItem[] }
+
 export type Block =
   | EyebrowBlock
   | HeadingBlock
@@ -152,6 +164,7 @@ export type Block =
   | MapBlock
   | RegistryBlock
   | GalleryBlock
+  | ShowcaseBlock
 
 export type SectionType = 'hero' | 'content' | 'rsvp' | 'details' | 'registry' | 'gallery'
 export type HeroLayout = 'centered' | 'split' | 'photo'
@@ -210,6 +223,7 @@ export type PageKey =
   | 'schedule'
   | 'travel'
   | 'registry'
+  | 'guestbook'
   | 'party'
   | 'gallery'
   | 'things'
@@ -273,6 +287,7 @@ export const FONT_STACKS: Record<FontKey, string> = {
   Montserrat: 'var(--font-montserrat), system-ui, sans-serif',
   'Dancing Script': 'var(--font-dancing), cursive',
   Yellowtail: 'var(--font-yellowtail), cursive',
+  'Plus Jakarta Sans': 'var(--font-jakarta), system-ui, sans-serif',
 }
 
 export const FONT_OPTIONS = Object.keys(FONT_STACKS) as FontKey[]

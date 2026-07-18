@@ -1,9 +1,27 @@
-import { getEvents, getGiftRegistryClaims, getGiftRegistryHero, getGiftRegistryItems, getGuestCount, getMyPublicInvite } from '@/lib/dashboard/queries'
+import {
+  getEvents,
+  getGiftRegistryClaims,
+  getGiftRegistryHero,
+  getGiftRegistryItems,
+  getGiftRegistryShareInfo,
+  getGuestCount,
+  type GiftRegistryHero,
+} from '@/lib/dashboard/queries'
 import { resolveEventScope } from '@/lib/dashboard/event-scope'
 import { EventChooser } from '@/components/dashboard/EventScope'
 import { getLocale } from '@/lib/cms/locale'
 import { loadUiStrings } from '@/lib/cms/ui-strings'
 import GiftRegistryManager from './GiftRegistryManager'
+
+// A couple who hasn't created any wedding_events yet has nothing to scope
+// the registry's hero/share-link to — shown until they add their first event.
+const NO_EVENT_HERO: Omit<GiftRegistryHero, 'eventDate'> = {
+  coupleName: 'The Couple',
+  registryHeader: null,
+  registryBannerImageUrl: null,
+  registryCoverImageUrl: null,
+  registryWelcomeMessage: null,
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -33,10 +51,10 @@ export default async function GiftRegistryPage({
   }
 
   const selectedEventId = scope.selected?.id ?? null
-  const [items, invite, heroBase, guestCount, claims] = await Promise.all([
+  const [items, share, heroBase, guestCount, claims] = await Promise.all([
     getGiftRegistryItems(selectedEventId),
-    getMyPublicInvite(),
-    getGiftRegistryHero(),
+    selectedEventId ? getGiftRegistryShareInfo(selectedEventId) : Promise.resolve({ slug: null, enabled: false }),
+    selectedEventId ? getGiftRegistryHero(selectedEventId) : Promise.resolve(NO_EVENT_HERO),
     getGuestCount(),
     getGiftRegistryClaims(selectedEventId),
   ])
@@ -46,8 +64,8 @@ export default async function GiftRegistryPage({
   return (
     <GiftRegistryManager
       initial={items}
-      shareSlug={invite.slug}
-      shareEnabled={invite.enabled}
+      shareSlug={share.slug}
+      shareEnabled={share.enabled}
       hero={{ ...heroBase, eventDate: scope.selected?.starts_at ?? null }}
       guestCount={guestCount}
       initialClaims={claims}

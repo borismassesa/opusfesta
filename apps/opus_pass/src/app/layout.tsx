@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
-import { Yellowtail, Playfair_Display, Cormorant_Garamond, Dancing_Script, Montserrat, EB_Garamond } from 'next/font/google'
+import { Yellowtail, Playfair_Display, Cormorant_Garamond, Dancing_Script, Montserrat, EB_Garamond, Plus_Jakarta_Sans } from 'next/font/google'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
@@ -23,6 +23,7 @@ const cormorant    = Cormorant_Garamond({ weight: ['400','700'], subsets: ['lati
 const dancing      = Dancing_Script(   { weight: ['400','700'], subsets: ['latin'], variable: '--font-dancing',    display: 'swap' })
 const montserrat   = Montserrat(       { weight: ['400','700'], subsets: ['latin'], variable: '--font-montserrat', display: 'swap' })
 const garamond     = EB_Garamond(      { weight: ['400','700'], subsets: ['latin'], variable: '--font-garamond',   display: 'swap' })
+const jakarta      = Plus_Jakarta_Sans({ weight: ['300','400','500','600','700'], subsets: ['latin'], variable: '--font-jakarta', display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'OpusPass — Your wedding, in one digital pass',
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     dancing.variable,
     montserrat.variable,
     garamond.variable,
+    jakarta.variable,
   ].join(' ')
 
   const organizationSchema = {

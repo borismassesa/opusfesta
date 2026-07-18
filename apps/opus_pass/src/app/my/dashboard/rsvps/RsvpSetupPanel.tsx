@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useSyncExternalStore, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Card, SectionTitle, EmptyState } from '@/components/dashboard/primitives'
@@ -12,10 +13,12 @@ import {
   createRsvpQuestion,
   updateRsvpQuestion,
   deleteRsvpQuestion,
+  enableInviteSharing,
   type RsvpQuestionInput,
 } from '@/lib/dashboard/actions'
 import { EVENT_QUESTION_PRESETS, GENERAL_QUESTION_PRESETS, type RsvpQuestionPreset } from '@/lib/dashboard/rsvp-presets'
-import type { RsvpEventSummary, RsvpAnswerSummary, MyPublicInvite } from '@/lib/dashboard/queries'
+import { eventInvitePath } from '@/lib/dashboard/share'
+import type { RsvpEventSummary, RsvpAnswerSummary } from '@/lib/dashboard/queries'
 import {
   RSVP_QUESTION_KIND_LABELS,
   type RsvpQuestion,
@@ -26,19 +29,35 @@ type EditorState =
   | { open: false }
   | { open: true; scope: 'event' | 'general'; eventId: string | null; eventName?: string; initial: RsvpQuestion | null }
 
+// Not a real subscription (the value never changes after mount) — just lets
+// useSyncExternalStore read window.location.origin without an SSR mismatch,
+// so the copyable link is localhost while developing, not the prod domain.
+function subscribeToNothing() {
+  return () => {}
+}
+function getOrigin() {
+  return window.location.origin
+}
+function getServerOrigin() {
+  return ''
+}
+
 export default function RsvpSetupPanel({
   events,
+  selectedEventId,
   questions,
   summaries,
   answerSummaries,
-  publicInvite,
 }: {
   events: WeddingEvent[]
+  /** Which event's card to show — Setup is per-event config, not a merged view. */
+  selectedEventId: string | null
   questions: RsvpQuestion[]
   summaries: RsvpEventSummary[]
   answerSummaries: Record<string, RsvpAnswerSummary>
-  publicInvite: MyPublicInvite
 }) {
+  const router = useRouter()
+  const origin = useSyncExternalStore(subscribeToNothing, getOrigin, getServerOrigin)
   const [editor, setEditor] = useState<EditorState>({ open: false })
   const [deleting, setDeleting] = useState<RsvpQuestion | null>(null)
   const [pending, startTransition] = useTransition()
@@ -60,12 +79,18 @@ export default function RsvpSetupPanel({
     [summaries],
   )
 
-  const published = publicInvite.enabled && Boolean(publicInvite.slug)
+  const event = useMemo(
+    () => events.find((e) => e.id === selectedEventId) ?? events[0] ?? null,
+    [events, selectedEventId],
+  )
+  // This event's own invite link — not a couple-wide slug, so switching
+  // events above also switches which link this banner shows/copies.
+  const published = Boolean(event?.invite_sharing_enabled && event?.invite_slug)
   const anyCollecting = useMemo(() => events.some((e) => e.allow_rsvp), [events])
 
   // One reconciled status so the toggle(s) and the banner never contradict:
   //  paused        — nothing is collecting; sharing a link would lead nowhere.
-  //  live_unshared — collecting, but the invite link hasn't been shared yet.
+  //  live_unshared — collecting, but this event's invite link isn't on yet.
   //  live_shared   — collecting AND shared; RSVPs are fully live.
   const status: 'paused' | 'live_unshared' | 'live_shared' = !anyCollecting
     ? 'paused'
@@ -73,9 +98,21 @@ export default function RsvpSetupPanel({
       ? 'live_unshared'
       : 'live_shared'
 
+  function enableSharing() {
+    if (!event) return
+    startTransition(async () => {
+      try {
+        await enableInviteSharing(event.id)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not turn on sharing')
+      }
+    })
+  }
+
   function copyShareLink() {
-    if (!publicInvite.slug) return
-    const url = `${window.location.origin}/i/${publicInvite.slug}`
+    if (!event?.invite_slug || !origin) return
+    const url = `${origin}${eventInvitePath(event.invite_slug)}`
     navigator.clipboard?.writeText(url).then(
       () => toast.success('Invite link copied'),
       () => toast.error('Could not copy link'),
@@ -162,76 +199,73 @@ export default function RsvpSetupPanel({
   return (
     <div className="space-y-6">
       {/* Reconciled status — toggle state + share state in one clear message */}
-      <StatusBanner status={status} onCopyLink={copyShareLink} />
+      <StatusBanner status={status} onCopyLink={copyShareLink} onShare={enableSharing} sharing={pending} />
 
-      {/* Per-event follow-up questions */}
-      {events.map((event) => {
-        const summary = summaryByEvent.get(event.id)
-        const followUps = questionsByEvent.get(event.id) ?? []
-        return (
-          <Card key={event.id} className="overflow-hidden shadow-sm ring-1 ring-black/[0.04]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-4">
-              <h2 className="text-base font-semibold text-[#1A1A1A]">{event.name}</h2>
-              <label
-                className="inline-flex cursor-pointer items-center gap-2.5"
-                title={event.allow_rsvp ? 'Guests can RSVP to this event' : "Off — guests can't RSVP to this event yet"}
+      {/* Selected event's follow-up questions — Setup is per-event config,
+          use the switcher in the tab bar above to work on a different event. */}
+      {event ? (
+        <Card key={event.id} className="overflow-hidden shadow-sm ring-1 ring-black/[0.04]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-4">
+            <h2 className="text-base font-semibold text-[#1A1A1A]">{event.name}</h2>
+            <label
+              className="inline-flex cursor-pointer items-center gap-2.5"
+              title={event.allow_rsvp ? 'Guests can RSVP to this event' : "Off — guests can't RSVP to this event yet"}
+            >
+              <span className="text-sm text-[#1A1A1A]/70">
+                Collect RSVPs <span className="text-[#1A1A1A]/40">· {event.allow_rsvp ? 'On' : 'Off'}</span>
+              </span>
+              <Toggle
+                checked={event.allow_rsvp}
+                disabled={pending}
+                onChange={(v) => toggleEvent(event.id, v)}
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-5 p-5 lg:grid-cols-[auto_1fr]">
+            <AttendanceDonut summary={summaryByEvent.get(event.id)} />
+
+            <div>
+              <h3 className="text-sm font-semibold text-[#1A1A1A]">Follow-up questions</h3>
+              <p className="mb-3 mt-0.5 text-xs text-[#1A1A1A]/55">
+                Asked to everyone who RSVPs to {event.name}.
+              </p>
+
+              <QuestionList
+                questions={questionsByEvent.get(event.id) ?? []}
+                answerSummaries={answerSummaries}
+                onEdit={(q) => setEditor({ open: true, scope: 'event', eventId: event.id, eventName: event.name, initial: q })}
+                onDelete={(q) => setDeleting(q)}
+              />
+
+              {/* Popular presets quick-add */}
+              {eventPresetsLeft.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {eventPresetsLeft.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => addPreset(p, event.id)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-3 py-1.5 text-xs font-medium text-[#1A1A1A]/70 hover:bg-black/[0.07] disabled:opacity-50"
+                    >
+                      <Plus className="h-3 w-3" /> {p.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => setEditor({ open: true, scope: 'event', eventId: event.id, eventName: event.name, initial: null })}
+                className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#7E5896] ring-1 ring-inset ring-[#C9A0DC]/60 hover:bg-[#F0DFF6]/50"
               >
-                <span className="text-sm text-[#1A1A1A]/70">
-                  Collect RSVPs <span className="text-[#1A1A1A]/40">· {event.allow_rsvp ? 'On' : 'Off'}</span>
-                </span>
-                <Toggle
-                  checked={event.allow_rsvp}
-                  disabled={pending}
-                  onChange={(v) => toggleEvent(event.id, v)}
-                />
-              </label>
+                <Plus className="h-4 w-4" /> Add a follow-up question
+              </button>
             </div>
-
-            <div className="grid gap-5 p-5 lg:grid-cols-[auto_1fr]">
-              <AttendanceDonut summary={summary} />
-
-              <div>
-                <h3 className="text-sm font-semibold text-[#1A1A1A]">Follow-up questions</h3>
-                <p className="mb-3 mt-0.5 text-xs text-[#1A1A1A]/55">
-                  Asked to everyone who RSVPs to {event.name}.
-                </p>
-
-                <QuestionList
-                  questions={followUps}
-                  answerSummaries={answerSummaries}
-                  onEdit={(q) => setEditor({ open: true, scope: 'event', eventId: event.id, eventName: event.name, initial: q })}
-                  onDelete={(q) => setDeleting(q)}
-                />
-
-                {/* Popular presets quick-add */}
-                {eventPresetsLeft.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {eventPresetsLeft.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        disabled={pending}
-                        onClick={() => addPreset(p, event.id)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-3 py-1.5 text-xs font-medium text-[#1A1A1A]/70 hover:bg-black/[0.07] disabled:opacity-50"
-                      >
-                        <Plus className="h-3 w-3" /> {p.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={() => setEditor({ open: true, scope: 'event', eventId: event.id, eventName: event.name, initial: null })}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#7E5896] ring-1 ring-inset ring-[#C9A0DC]/60 hover:bg-[#F0DFF6]/50"
-                >
-                  <Plus className="h-4 w-4" /> Add a follow-up question
-                </button>
-              </div>
-            </div>
-          </Card>
-        )
-      })}
+          </div>
+        </Card>
+      ) : null}
 
       {/* General questions */}
       <Card className="p-5 shadow-sm ring-1 ring-black/[0.04]">
@@ -302,9 +336,13 @@ export default function RsvpSetupPanel({
 function StatusBanner({
   status,
   onCopyLink,
+  onShare,
+  sharing,
 }: {
   status: 'paused' | 'live_unshared' | 'live_shared'
   onCopyLink: () => void
+  onShare: () => void
+  sharing: boolean
 }) {
   const pill =
     status === 'paused' ? (
@@ -344,12 +382,12 @@ function StatusBanner({
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A]">RSVPs are live — one step left {pill}</p>
           <p className="mt-0.5 text-xs text-[#5d3a78]">
-            Now share your invite link so guests can find it and reply.
+            Generate this event&apos;s invite link so guests can find it and reply.
           </p>
         </div>
-        <Link href="/my/dashboard/invitations" className="shrink-0">
-          <Button>Share invite</Button>
-        </Link>
+        <Button onClick={onShare} disabled={sharing} className="shrink-0">
+          {sharing ? 'Generating…' : 'Get invite link'}
+        </Button>
       </div>
     )
   }

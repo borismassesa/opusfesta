@@ -1,4 +1,4 @@
-import { getEvents, getGuestbookEntries, getMyPublicInvite } from '@/lib/dashboard/queries'
+import { getEvents, getGuestbookEntries, getGuestbookShareInfo } from '@/lib/dashboard/queries'
 import { resolveEventScope } from '@/lib/dashboard/event-scope'
 import { EventChooser } from '@/components/dashboard/EventScope'
 import { getLocale } from '@/lib/cms/locale'
@@ -33,15 +33,18 @@ export default async function GuestbookPage({
   }
 
   const selectedEventId = scope.selected?.id ?? null
-  const [entries, invite] = await Promise.all([getGuestbookEntries(selectedEventId), getMyPublicInvite()])
+  const [entries, share] = await Promise.all([
+    getGuestbookEntries(selectedEventId),
+    selectedEventId ? getGuestbookShareInfo(selectedEventId) : Promise.resolve({ slug: null, enabled: false }),
+  ])
   // The link is built client-side from window.location.origin (see
   // ShareLinkCard) rather than publicOrigin() here, so it resolves to
   // localhost while developing instead of always pointing at production.
   return (
     <GuestbookClient
       initial={entries}
-      shareSlug={invite.slug}
-      shareEnabled={invite.enabled}
+      shareSlug={share.slug}
+      shareEnabled={share.enabled}
       events={events.map((e) => ({ id: e.id, name: e.name }))}
       selectedEventId={selectedEventId}
       scopeStrings={scopeStrings}
