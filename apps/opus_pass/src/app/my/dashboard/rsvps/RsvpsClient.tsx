@@ -2,16 +2,17 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Download } from 'lucide-react'
+import { ChevronDown, Download } from 'lucide-react'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
-import { Tabs } from '@/components/dashboard/controls'
+import { Tabs, inputClass } from '@/components/dashboard/controls'
 import { EventSwitcher } from '@/components/dashboard/EventScope'
+import { ALL_EVENTS } from '@/lib/dashboard/event-scope-constants'
 import RsvpSetupPanel from './RsvpSetupPanel'
 import RsvpTracker from './RsvpTracker'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { RsvpsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
-import type { MyPublicInvite, RsvpEventSummary, RsvpAnswerSummary } from '@/lib/dashboard/queries'
+import type { RsvpEventSummary, RsvpAnswerSummary } from '@/lib/dashboard/queries'
 import {
   RSVP_STATUS_LABELS,
   type GuestWithInvitations,
@@ -40,7 +41,6 @@ export default function RsvpsClient({
   questions,
   summaries,
   answerSummaries,
-  publicInvite,
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
@@ -53,9 +53,28 @@ export default function RsvpsClient({
   questions: RsvpQuestion[]
   summaries: RsvpEventSummary[]
   answerSummaries: Record<string, RsvpAnswerSummary>
-  publicInvite: MyPublicInvite
 }) {
   const [tab, setTab] = useState<Tab>('setup')
+
+  // Setup & questions is per-event config — there's no sensible "all events"
+  // merged view for it (each event has its own toggle + questions), so it
+  // always resolves to one real event, falling back to the first when the
+  // couple's overall scope is the combined "all" view. Kept as local state
+  // (not routed through `?event=`/EventSwitcher like the Responses tab)
+  // because every event's questions/summaries are already loaded client-side
+  // here — switching which card shows doesn't need a server round-trip, and
+  // relying on one made switching feel unreliable.
+  const [setupEventId, setSetupEventId] = useState(
+    () => eventFilter !== ALL_EVENTS ? eventFilter : (events[0]?.id ?? ''),
+  )
+  // Re-derive during render (not an effect — see react-hooks/set-state-in-effect)
+  // when the couple's overall scope changes, e.g. switching events on the
+  // Responses tab, then coming back to Setup & questions.
+  const [syncedFilter, setSyncedFilter] = useState(eventFilter)
+  if (eventFilter !== syncedFilter) {
+    setSyncedFilter(eventFilter)
+    if (eventFilter !== ALL_EVENTS) setSetupEventId(eventFilter)
+  }
 
   const hasResponses = useMemo(
     () => guests.some((g) => g.invitations.length > 0),
@@ -135,18 +154,38 @@ export default function RsvpsClient({
             { id: 'responses', label: 'Responses' },
           ]}
           trailing={
-            tab === 'responses' && events.length > 1 ? (
-              <EventSwitcher events={events} selectedId={eventFilter} strings={scopeStrings} allowAll />
+            events.length > 1 ? (
+              tab === 'responses' ? (
+                <EventSwitcher events={events} selectedId={eventFilter} strings={scopeStrings} allowAll />
+              ) : (
+                <label className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-[#1A1A1A]/60">{scopeStrings.switcher_label}</span>
+                  <span className="relative inline-flex items-center">
+                    <select
+                      className={`${inputClass} w-auto appearance-none pr-9`}
+                      value={setupEventId}
+                      onChange={(e) => setSetupEventId(e.target.value)}
+                    >
+                      {events.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1A1A1A]/45" />
+                  </span>
+                </label>
+              )
             ) : undefined
           }
         />
         {tab === 'setup' ? (
           <RsvpSetupPanel
             events={events}
+            selectedEventId={setupEventId}
             questions={questions}
             summaries={summaries}
             answerSummaries={answerSummaries}
-            publicInvite={publicInvite}
           />
         ) : (
           <RsvpTracker

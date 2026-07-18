@@ -78,6 +78,14 @@ svg {
 }
 .wb-hero-marquee { animation: wb-hero-marquee 40s linear infinite; will-change: transform; }
 
+/* Zambarau's schedule timeline connector — ported from apps/wedding_website's
+   Schedule.tsx (its own dash/animate-dash), a dashed line whose dashes creep
+   toward the center dot. */
+@keyframes wb-dash {
+  to { stroke-dashoffset: -16; }
+}
+.wb-dash { animation: wb-dash 1s linear infinite; }
+
 @keyframes marquee {
   from {
     transform: translateX(0);

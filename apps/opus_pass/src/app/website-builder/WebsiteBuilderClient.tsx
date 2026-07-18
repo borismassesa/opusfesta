@@ -22,6 +22,8 @@ import {
 import { cn } from '@/lib/utils'
 import { FONT_STACKS, type BuilderMeta } from '@/lib/builder/types'
 import { composeDoc, formatLongDate, getPreset, type DesignPreset } from '@/lib/builder/presets'
+import type { GiftRegistryItemWithClaims } from '@/lib/dashboard/queries'
+import type { GuestbookEntry } from '@/lib/dashboard/types'
 import { publishWebsite } from './actions'
 import { useBuilder } from './useBuilder'
 import { SiteRenderer } from './components/SiteRenderer'
@@ -38,7 +40,18 @@ const TABS: { key: Tab; icon: LucideIcon }[] = [
   { key: 'Settings', icon: SettingsIcon },
 ]
 
-export default function WebsiteBuilderClient() {
+export default function WebsiteBuilderClient({
+  registryItems = [],
+  guestbookEntries = [],
+}: {
+  /** The couple's real gift-registry items — Zambarau's Registry tab renders
+   *  these (falling back to sample items when the registry is still empty)
+   *  instead of static placeholders. */
+  registryItems?: GiftRegistryItemWithClaims[]
+  /** The couple's real guestbook entries — Zambarau's Guest Book tab renders
+   *  the actual GuestbookPublicClient with these instead of a static message. */
+  guestbookEntries?: GuestbookEntry[]
+}) {
   const api = useBuilder()
   const [tab, setTab] = useState<Tab>('Design')
   const [designView, setDesignView] = useState<DesignView>('summary')
@@ -226,7 +239,7 @@ export default function WebsiteBuilderClient() {
           ) : (
             <ScaledPreview device={device} announcement={meta.announcement}>
               <div key={animKey} className={animClass}>
-                <SiteRenderer doc={rendered} editable={false} compact={device !== 'desktop'} />
+                <SiteRenderer doc={rendered} editable={false} compact={device !== 'desktop'} registryItems={registryItems} guestbookEntries={guestbookEntries} />
               </div>
             </ScaledPreview>
           )}
@@ -261,7 +274,7 @@ export default function WebsiteBuilderClient() {
 
       {showPreview && (
         <PreviewOverlay onClose={() => setShowPreview(false)}>
-          <SiteRenderer doc={rendered} editable={false} compact={false} />
+          <SiteRenderer doc={rendered} editable={false} compact={false} registryItems={registryItems} guestbookEntries={guestbookEntries} />
         </PreviewOverlay>
       )}
 

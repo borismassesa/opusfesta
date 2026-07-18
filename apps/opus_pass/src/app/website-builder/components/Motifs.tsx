@@ -132,6 +132,19 @@ export function MotifMark({
           })}
         </svg>
       )
+    case 'heart':
+      return (
+        <svg viewBox="0 0 128 28" className={cls} aria-hidden fill="none" stroke={color}>
+          <line x1="0" y1="14" x2="48" y2="14" strokeWidth="1" opacity="0.4" />
+          <line x1="80" y1="14" x2="128" y2="14" strokeWidth="1" opacity="0.4" />
+          <path
+            d="M64 21 C64 21 55 15 55 8.5 C55 5.5 57.3 3.5 60 3.5 C62 3.5 64 5 64 7.5 C64 5 66 3.5 68 3.5 C70.7 3.5 73 5.5 73 8.5 C73 15 64 21 64 21 Z"
+            fill={color}
+            stroke="none"
+            opacity="0.85"
+          />
+        </svg>
+      )
     default:
       return null
   }

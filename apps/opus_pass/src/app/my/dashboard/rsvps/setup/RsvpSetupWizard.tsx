@@ -26,12 +26,11 @@ import {
   createRsvpQuestion,
   updateRsvpQuestion,
   deleteRsvpQuestion,
-  enablePublicSharing,
-  setPublicSharing,
+  enableInviteSharing,
+  disableInviteSharing,
   type RsvpQuestionInput,
 } from '@/lib/dashboard/actions'
 import { EVENT_QUESTION_PRESETS, GENERAL_QUESTION_PRESETS, type RsvpQuestionPreset } from '@/lib/dashboard/rsvp-presets'
-import type { MyPublicInvite } from '@/lib/dashboard/queries'
 import { RSVP_QUESTION_KIND_LABELS, type RsvpQuestion, type WeddingEvent } from '@/lib/dashboard/types'
 
 type StepId = 'intro' | 'events' | 'event-questions' | 'general-questions' | 'privacy' | 'done'
@@ -52,17 +51,18 @@ type EditorState =
 export default function RsvpSetupWizard({
   events,
   questions,
-  publicInvite,
 }: {
   events: WeddingEvent[]
   questions: RsvpQuestion[]
-  publicInvite: MyPublicInvite
 }) {
   const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [editor, setEditor] = useState<EditorState>({ open: false })
   const [deleting, setDeleting] = useState<RsvpQuestion | null>(null)
-  const [isPublic, setIsPublic] = useState(publicInvite.enabled)
+  // "Public RSVP" applies to every event currently collecting RSVPs at once —
+  // each event has its own invite link/toggle (see RsvpSetupPanel), but this
+  // guided wizard is a single yes/no step, not a per-event picker.
+  const [isPublic, setIsPublic] = useState(events.some((e) => e.allow_rsvp && e.invite_sharing_enabled))
   const [pending, startTransition] = useTransition()
 
   const step = STEPS[stepIndex].id
@@ -153,8 +153,10 @@ export default function RsvpSetupWizard({
     setIsPublic(makePublic)
     startTransition(async () => {
       try {
-        if (makePublic) await enablePublicSharing()
-        else await setPublicSharing(false)
+        await Promise.all(
+          rsvpEvents.map((e) => (makePublic ? enableInviteSharing(e.id) : disableInviteSharing(e.id))),
+        )
+        refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not update privacy')
       }

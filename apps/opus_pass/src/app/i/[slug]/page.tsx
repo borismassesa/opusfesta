@@ -1,45 +1,15 @@
-import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { getPublicInvite } from '@/lib/dashboard/queries'
-import { formatLongDate, invitePath, publicOrigin } from '@/lib/dashboard/share'
-import PublicInviteClient from './PublicInviteClient'
+import { permanentRedirect } from 'next/navigation'
+import { eventInvitePath } from '@/lib/dashboard/share'
 
-// Always reflect the couple's latest details + sharing state.
-export const dynamic = 'force-dynamic'
-
+// Old couple-wide invite hub path. The migration backfill assigns each
+// couple's existing public_slug to their first event's own invite_slug, so
+// the same slug value keeps resolving under the new path — see
+// 20260718000003_opuspass_invite_event_scoped_link.sql.
 interface PageProps {
   params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export default async function LegacyPublicInvitePage({ params }: PageProps) {
   const { slug } = await params
-  const data = await getPublicInvite(slug)
-  const origin = publicOrigin()
-
-  // Unknown / disabled link: don't index, generic title, no rich preview.
-  if (!data) {
-    return { title: 'Mwaliko — OpusPass', robots: { index: false, follow: false } }
-  }
-
-  const url = `${origin}${invitePath(slug)}`
-  const title = `Karibu kwenye harusi ya ${data.coupleName}`
-  const description =
-    [formatLongDate(data.weddingDate), data.city].filter(Boolean).join(' • ') ||
-    'Tap to view the invitation and RSVP'
-
-  // The sibling opengraph-image route supplies the (absolute) og:image.
-  return {
-    metadataBase: new URL(origin),
-    title,
-    description,
-    openGraph: { type: 'website', url, siteName: 'OpusPass', title, description },
-    twitter: { card: 'summary_large_image', title, description },
-  }
-}
-
-export default async function PublicInvitePage({ params }: PageProps) {
-  const { slug } = await params
-  const data = await getPublicInvite(slug)
-  if (!data) notFound()
-  return <PublicInviteClient data={data} />
+  permanentRedirect(eventInvitePath(slug))
 }

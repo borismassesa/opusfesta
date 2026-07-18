@@ -35,7 +35,7 @@ import {
   createGiftRegistryItem,
   deleteGiftRegistryClaim,
   deleteGiftRegistryItem,
-  enablePublicSharing,
+  enableGiftRegistrySharing,
   markGiftRegistryItemReceived,
   removeGiftRegistryBannerImage,
   removeGiftRegistryCoverImage,
@@ -346,11 +346,12 @@ export default function GiftRegistryManager({
   }
 
   async function onConfirmBannerImage(blob: Blob) {
+    if (!selectedEventId) return
     setBannerUploading(true)
     try {
       const formData = new FormData()
       formData.set('file', new File([blob], 'banner.jpg', { type: 'image/jpeg' }))
-      const url = await uploadGiftRegistryBannerImage(formData)
+      const url = await uploadGiftRegistryBannerImage(selectedEventId, formData)
       setHeroBannerUrl(url)
       toast.success('Banner updated')
     } catch (err) {
@@ -361,10 +362,11 @@ export default function GiftRegistryManager({
   }
 
   function removeHeroBanner() {
+    if (!selectedEventId) return
     setBannerUploading(true)
     startTransition(async () => {
       try {
-        await removeGiftRegistryBannerImage()
+        await removeGiftRegistryBannerImage(selectedEventId)
         setHeroBannerUrl(null)
         toast.success('Banner removed')
       } catch (err) {
@@ -376,11 +378,12 @@ export default function GiftRegistryManager({
   }
 
   async function onConfirmPhotoImage(blob: Blob) {
+    if (!selectedEventId) return
     setPhotoUploading(true)
     try {
       const formData = new FormData()
       formData.set('file', new File([blob], 'photo.jpg', { type: 'image/jpeg' }))
-      const url = await uploadGiftRegistryCoverImage(formData)
+      const url = await uploadGiftRegistryCoverImage(selectedEventId, formData)
       setHeroCoverUrl(url)
       toast.success('Photo updated')
     } catch (err) {
@@ -391,10 +394,11 @@ export default function GiftRegistryManager({
   }
 
   function removeHeroPhoto() {
+    if (!selectedEventId) return
     setPhotoUploading(true)
     startTransition(async () => {
       try {
-        await removeGiftRegistryCoverImage()
+        await removeGiftRegistryCoverImage(selectedEventId)
         setHeroCoverUrl(null)
         toast.success('Photo removed')
       } catch (err) {
@@ -410,14 +414,20 @@ export default function GiftRegistryManager({
       toast.error('Give your registry a header')
       return
     }
+    if (!selectedEventId) {
+      toast.error('Add an event first')
+      return
+    }
     setHeroSaving(true)
     startTransition(async () => {
       try {
         const nextHeader = heroHeaderDraft.trim()
         const nextMessage = heroDraft.trim() || null
         await Promise.all([
-          nextHeader !== (heroHeader ?? hero.coupleName) ? updateGiftRegistryHeader(nextHeader) : Promise.resolve(),
-          updateGiftRegistryWelcomeMessage(nextMessage),
+          nextHeader !== (heroHeader ?? hero.coupleName)
+            ? updateGiftRegistryHeader(selectedEventId, nextHeader)
+            : Promise.resolve(),
+          updateGiftRegistryWelcomeMessage(selectedEventId, nextMessage),
         ])
         setHeroHeader(nextHeader === hero.coupleName ? null : nextHeader)
         setHeroMessage(nextMessage)
@@ -878,7 +888,7 @@ export default function GiftRegistryManager({
           <StatCard label="Purchased" value={claimedCount} icon={<Check className="h-5 w-5" />} />
           <StatCard label="Available" value={items.length - claimedCount} icon={<Tag className="h-5 w-5" />} />
         </div>
-        <ShareLinkCard shareSlug={shareSlug} shareEnabled={shareEnabled} />
+        <ShareLinkCard shareSlug={shareSlug} shareEnabled={shareEnabled} eventId={selectedEventId} />
       </div>
 
       <Slideover
@@ -1663,7 +1673,15 @@ function getServerOrigin() {
   return ''
 }
 
-function ShareLinkCard({ shareSlug, shareEnabled }: { shareSlug: string | null; shareEnabled: boolean }) {
+function ShareLinkCard({
+  shareSlug,
+  shareEnabled,
+  eventId,
+}: {
+  shareSlug: string | null
+  shareEnabled: boolean
+  eventId: string | null
+}) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -1675,8 +1693,9 @@ function ShareLinkCard({ shareSlug, shareEnabled }: { shareSlug: string | null; 
   const shareLink = shareSlug && origin ? `${origin}${giftRegistryPath(shareSlug)}` : null
 
   function onEnable() {
+    if (!eventId) return
     startTransition(async () => {
-      await enablePublicSharing()
+      await enableGiftRegistrySharing(eventId)
       router.refresh()
     })
   }
@@ -1728,7 +1747,7 @@ function ShareLinkCard({ shareSlug, shareEnabled }: { shareSlug: string | null; 
             <button
               type="button"
               onClick={onEnable}
-              disabled={pending}
+              disabled={pending || !eventId}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0] disabled:opacity-50"
             >
               <Link2 className="h-3.5 w-3.5" /> {pending ? 'Generating…' : 'Get my registry link'}

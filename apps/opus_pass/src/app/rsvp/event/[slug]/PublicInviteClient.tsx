@@ -95,7 +95,7 @@ function eventTime(iso: string | null): string {
 function EventCard({ event, t }: { event: PublicInviteEvent; t: Record<string, string> }) {
   const date = formatLongDate(event.starts_at)
   const time = eventTime(event.starts_at)
-  const venue = [event.venue_name, event.city].filter(Boolean).join(', ')
+  const venue = [event.venue_name, event.address].filter(Boolean).join(', ')
   return (
     <div className="rounded-2xl border border-black/[0.08] bg-white p-5 shadow-[0_1px_2px_rgba(20,18,30,0.05)] sm:p-6">
       <div className="text-[11px] uppercase tracking-[0.18em] text-[#8e57b3]">{eventTypeLabel(event.event_type)}</div>
@@ -176,7 +176,7 @@ function RsvpForm({ slug, questions, t }: { slug: string; questions: RsvpQuestio
     e.preventDefault()
     setError(null)
 
-    // Validate + collect answers to the couple's general questions.
+    // Validate + collect answers to this event's questions.
     const answers: { questionId: string; answer_text?: string | null; option_id?: string | null }[] = []
     for (const q of questions) {
       const a = qa[q.id]
@@ -409,16 +409,10 @@ export default function PublicInviteClient({ data }: { data: PublicInviteData })
           {data.city ? <p className="text-[#1A1A1A]/50">{data.city}</p> : null}
         </section>
 
-        {/* Events */}
-        {data.events.length > 0 ? (
-          <section className="mt-8">
-            <div className="grid gap-3 sm:gap-4">
-              {data.events.map((event) => (
-                <EventCard key={event.id} event={event} t={t} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {/* This event's details */}
+        <section className="mt-8">
+          <EventCard event={data.event} t={t} />
+        </section>
 
         {/* RSVP */}
         <section className="mt-6">
@@ -447,9 +441,16 @@ export default function PublicInviteClient({ data }: { data: PublicInviteData })
               </div>
             )}
           </div>
-          <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">
-            <PoweredByLine text={t.powered} iconClassName="h-3 w-3" />
-          </p>
+          <footer className="mt-6 flex flex-col items-center gap-2 text-center">
+            <p className="text-[15px]" style={{ ...serif, color: '#1A1A1A' }}>
+              {data.coupleName}
+            </p>
+            <PoweredByLine
+              text={t.powered}
+              iconClassName="h-3 w-3"
+              className="text-[11px] uppercase tracking-[0.2em] text-[#1A1A1A]/60"
+            />
+          </footer>
         </section>
       </div>
     </main>

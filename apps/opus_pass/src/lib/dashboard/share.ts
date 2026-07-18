@@ -65,14 +65,56 @@ export function coupleSlugBase(partner1: string | null, partner2: string | null)
   return base || 'harusi'
 }
 
-/** Path to the couple's public invitation hub. */
-export function invitePath(slug: string): string {
-  return `/i/${slug}`
+/** Strips a `reserveUniqueSlug` collision suffix ("asha-na-juma-3" ->
+ *  "asha-na-juma") so a stored slug can be compared against a freshly
+ *  computed `coupleSlugBase()` to tell whether it's gone stale. */
+export function slugBaseOf(slug: string): string {
+  return slug.replace(/-\d+$/, '')
 }
 
-/** Absolute public-invite URL given a runtime origin. */
-export function inviteUrl(origin: string, slug: string): string {
-  return `${origin.replace(/\/$/, '')}${invitePath(slug)}`
+/**
+ * The slug base for whatever's actually shown as the registry hero title —
+ * the couple's custom header override when they've set one (e.g. "Boris &
+ * Jane"), otherwise their partner names. Mirrors GiftRegistryHero's own
+ * header-or-names fallback so the public share link never drifts from what
+ * guests actually see.
+ */
+export function heroSlugBase(header: string | null, partner1: string | null, partner2: string | null): string {
+  const slug = header?.trim() ? slugify(header) : ''
+  return slug || coupleSlugBase(partner1, partner2)
+}
+
+/**
+ * Slug base for a single event's own public link ("jamila-send-off"). Unlike
+ * coupleSlugBase this keeps the whole name rather than reducing to first
+ * names — an event name like "Jamila Send-Off" needs to stay recognizable,
+ * not collapse to "jamila".
+ */
+export function eventSlugBase(eventName: string): string {
+  return slugify(eventName) || 'harusi'
+}
+
+/** The slug base for a per-event gift-registry link — the couple's custom
+ *  header override for THIS event when set, otherwise the event's own name. */
+export function eventHeroSlugBase(header: string | null, eventName: string): string {
+  const slug = header?.trim() ? slugify(header) : ''
+  return slug || eventSlugBase(eventName)
+}
+
+/**
+ * Path to a single event's public invite — tied to one wedding_events row
+ * (its own invite_slug/invite_sharing_enabled), not the couple account-wide.
+ * Lives under /rsvp/ (not /rsvp/[token], which is the per-guest token flow)
+ * so the URL reads as what it is to a guest, without colliding with that
+ * route's dynamic segment.
+ */
+export function eventInvitePath(slug: string): string {
+  return `/rsvp/event/${slug}`
+}
+
+/** Absolute event-invite URL given a runtime origin. */
+export function eventInviteUrl(origin: string, slug: string): string {
+  return `${origin.replace(/\/$/, '')}${eventInvitePath(slug)}`
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { Heart, MapPin, Gift, Check } from 'lucide-react'
+import { Heart, MapPin, Gift, Check, Calendar, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   FONT_STACKS,
@@ -13,8 +13,50 @@ import {
   type SiteDoc,
   type Theme,
   type Align,
+  type ShowcaseItem,
 } from '@/lib/builder/types'
+import { guestbookPath, giftRegistryPath } from '@/lib/dashboard/share'
+import type { GiftRegistryItemWithClaims } from '@/lib/dashboard/queries'
+import type { GuestbookEntry } from '@/lib/dashboard/types'
+import Logo from '@/components/ui/Logo'
+import PoweredByLine from '@/components/ui/PoweredByLine'
 import { MotifMark, SectionDivider, cardSurfaceClass } from './Motifs'
+import { ZambarauSite } from './ZambarauSite'
+
+// The Guest Book / Gift Registry pages each persist their own EN/SW choice
+// under these keys (read once on their own mount) — Zambarau's nav toggle
+// writes to both, so whichever tab the guest opens next respects the choice.
+const CHILD_PAGE_LANG_KEYS = ['opuspass-gift-registry-lang', 'opuspass-guestbook-lang']
+
+// Nav pages that route out to their own already-built public page (identical
+// design/data to what the couple's dashboard links to) rather than scrolling
+// to an in-page section. Only wired when a live `slug` is known (§ SiteNav).
+const LINKED_PAGE_PATH: Partial<Record<string, (slug: string) => string>> = {
+  registry: giftRegistryPath,
+  guestbook: guestbookPath,
+}
+
+// apps/wedding_website's Navbar.tsx tab set + order: Home, Gallery, Wishes,
+// Registry, Schedule (Table & Seating has no OpusPass page yet). Fixed and
+// always shown for Zambarau — independent of the generic per-page visibility
+// toggle (Pages panel), which only applies to OpusPass's other 8 templates.
+// `key` is what drives clicks/highlighting/routing — NOT re-derived from
+// label text, so a couple renaming a page's label (Pages panel) can't break it.
+const ZAMBARAU_TABS: { key: string; label: string }[] = [
+  { key: 'home', label: 'Home' },
+  { key: 'gallery', label: 'Gallery' },
+  { key: 'guestbook', label: 'Guest Book' },
+  { key: 'registry', label: 'Gift Registry' },
+  { key: 'schedule', label: 'Schedule' },
+]
+
+/** Nav items to render — Zambarau always shows its fixed tab set (own label,
+ *  key already known); every other template derives {label, key} from
+ *  doc.nav + doc.meta.pages (which does respect the visibility toggle). */
+function navItemsFor(doc: SiteDoc, tabbed?: boolean): { key?: string; label: string }[] {
+  if (tabbed) return ZAMBARAU_TABS
+  return doc.nav.map((label) => ({ label, key: doc.meta.pages.find((p) => p.label === label)?.key }))
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  SiteRenderer — renders a SiteDoc. Used by the editor canvas (editable) and
@@ -40,46 +82,169 @@ export function SiteRenderer({
   doc,
   editable,
   compact,
+  slug,
   selection,
   onSelectBlock,
   onSelectSection,
+  registryItems,
+  guestbookEntries,
 }: {
   doc: SiteDoc
   editable: boolean
   compact: boolean
+  /** The couple's live public_slug — only known on the published /w/[slug]
+   *  route. When set, nav tabs that route out (Gift Registry, Guest Book)
+   *  become real links; otherwise they render inert, same as before. */
+  slug?: string
   selection?: Selection
   onSelectBlock?: (sectionId: string, blockId: string) => void
   onSelectSection?: (sectionId: string) => void
+  /** The couple's real gift-registry items (Zambarau's Registry tab only —
+   *  every other template still uses its static illustrative RegistryBlock). */
+  registryItems?: GiftRegistryItemWithClaims[]
+  /** The couple's real guestbook entries (Zambarau's Guest Book tab only). */
+  guestbookEntries?: GuestbookEntry[]
 }) {
   const ctx: RenderCtx = { theme: doc.theme, editable, compact, selection, onSelectBlock, onSelectSection }
+  const hero = doc.sections.find((s) => s.hero)
+  // Zambarau ports apps/wedding_website's actual page sections (Welcome,
+  // Details, Schedule, Gallery, Registry) verbatim rather than composing them
+  // from the generic block vocabulary the other 8 templates share — see
+  // ZambarauSite.tsx. It also matches the source app's tab-switching Navbar
+  // (one section visible at a time, swapped on click) instead of every other
+  // template's single continuously-scrolling page.
+  const isZambarau = doc.meta.presetId === 'zambarau'
+  const [activeTab, setActiveTab] = useState('home')
   return (
     <div style={{ backgroundColor: doc.theme.palette.surface, color: doc.theme.palette.ink }}>
-      <SiteNav doc={doc} compact={compact} />
-      {doc.sections.map((s) => (
-        <SectionView key={s.id} section={s} ctx={ctx} />
-      ))}
+      <SiteNav doc={doc} compact={compact} slug={slug} tabbed={isZambarau} activeTab={activeTab} onTabClick={setActiveTab} />
+      {isZambarau ? (
+        <>
+          {activeTab === 'home' && hero && <SectionView key={hero.id} section={hero} ctx={ctx} />}
+          <ZambarauSite
+            meta={doc.meta}
+            theme={doc.theme}
+            activeTab={activeTab}
+            registryItems={registryItems}
+            guestbookEntries={guestbookEntries}
+          />
+        </>
+      ) : (
+        <>
+          {hero && <SectionView key={hero.id} section={hero} ctx={ctx} />}
+          {doc.sections.filter((s) => !s.hero).map((s) => <SectionView key={s.id} section={s} ctx={ctx} />)}
+        </>
+      )}
       <SiteFooter doc={doc} />
     </div>
   )
 }
 
-function SiteNav({ doc, compact }: { doc: SiteDoc; compact: boolean }) {
+function SiteNav({
+  doc,
+  compact,
+  slug,
+  tabbed,
+  activeTab,
+  onTabClick,
+}: {
+  doc: SiteDoc
+  compact: boolean
+  slug?: string
+  /** Zambarau: clicking a nav item switches the visible section instead of
+   *  scrolling to it, mirroring apps/wedding_website's tab-switching Navbar. */
+  tabbed?: boolean
+  activeTab?: string
+  onTabClick?: (key: string) => void
+}) {
+  const [lang, setLang] = useState<'en' | 'sw'>('en')
+  useEffect(() => {
+    if (!tabbed || typeof window === 'undefined') return
+    const saved = window.localStorage.getItem(CHILD_PAGE_LANG_KEYS[0])
+    if (saved === 'en' || saved === 'sw') setLang(saved)
+  }, [tabbed])
+  function pickLang(next: 'en' | 'sw') {
+    setLang(next)
+    CHILD_PAGE_LANG_KEYS.forEach((k) => window.localStorage.setItem(k, next))
+  }
+
   return (
     <nav
       className={cn('flex items-center justify-between px-6 py-4', compact && 'px-4 py-3')}
       style={{ backgroundColor: doc.theme.palette.surface }}
     >
-      <span
-        className="text-[15px] font-semibold uppercase tracking-[0.12em]"
-        style={{ fontFamily: FONT_STACKS[doc.theme.headingFont] }}
-      >
-        {doc.title}
-      </span>
+      <div className="flex items-center gap-3">
+        {tabbed ? (
+          <Logo className="h-6 w-auto" />
+        ) : (
+          <span
+            className="text-[15px] font-semibold uppercase tracking-[0.12em]"
+            style={{ fontFamily: FONT_STACKS[doc.theme.headingFont] }}
+          >
+            {doc.title}
+          </span>
+        )}
+      </div>
       {!compact ? (
         <div className="flex items-center gap-6 text-[13px]" style={{ color: doc.theme.palette.ink }}>
-          {doc.nav.map((l) => (
-            <span key={l}>{l}</span>
-          ))}
+          {navItemsFor(doc, tabbed).map(({ key: pageKey, label: l }) => {
+            const buildPath = pageKey ? LINKED_PAGE_PATH[pageKey] : undefined
+            // Gift Registry / Guest Book route out to the real, data-backed
+            // page once the site is live — EXCEPT for Zambarau, whose exact
+            // ported Registry tab (real items, same design) stays in-page,
+            // matching apps/wedding_website's own single-page tab experience.
+            if (slug && buildPath && !tabbed) {
+              return (
+                <a key={l} href={buildPath(slug)} className="transition-opacity hover:opacity-70">
+                  {l}
+                </a>
+              )
+            }
+            if (tabbed && pageKey) {
+              const isActive = activeTab === pageKey
+              return (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTabClick?.(pageKey)
+                  }}
+                  className={cn(
+                    'pb-1 text-[11px] font-bold uppercase tracking-widest transition-colors',
+                    isActive ? 'border-b-2' : 'opacity-60 hover:opacity-100',
+                  )}
+                  style={isActive ? { borderColor: doc.theme.palette.accent, color: doc.theme.palette.accent } : undefined}
+                >
+                  {l}
+                </button>
+              )
+            }
+            return <span key={l}>{l}</span>
+          })}
+          {tabbed && (
+            <div className="inline-flex overflow-hidden rounded-full text-[10px] font-bold" style={{ border: '1px solid rgba(0,0,0,0.15)' }}>
+              {(['en', 'sw'] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    pickLang(l)
+                  }}
+                  className="px-3 py-1 uppercase tracking-wide transition-colors"
+                  style={
+                    lang === l
+                      ? { backgroundColor: doc.theme.palette.accent, color: doc.theme.palette.onAccent }
+                      : { color: doc.theme.palette.ink, opacity: 0.6 }
+                  }
+                  aria-pressed={lang === l}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <span className="flex flex-col gap-1">
@@ -98,15 +263,15 @@ function SiteFooter({ doc }: { doc: SiteDoc }) {
       className="flex flex-col items-center gap-2 px-6 py-10 text-center"
       style={{ backgroundColor: doc.theme.palette.bg, color: doc.theme.palette.ink }}
     >
-      {doc.theme.decor?.motif && doc.theme.decor.motif !== 'minimal' ? (
+      {doc.theme.decor?.motif && doc.theme.decor.motif !== 'minimal' && doc.theme.decor.motif !== 'heart' ? (
         <MotifMark motif={doc.theme.decor.motif} color={doc.theme.palette.accent} className="mb-1" />
-      ) : (
+      ) : doc.theme.decor?.motif !== 'heart' ? (
         <Heart size={16} style={{ color: doc.theme.palette.accent }} />
-      )}
+      ) : null}
       <p className="text-[15px]" style={{ color: doc.theme.palette.ink, fontFamily: FONT_STACKS[doc.theme.headingFont] }}>
         {doc.title}
       </p>
-      <p className="text-[11px] uppercase tracking-[0.2em] opacity-60">Made with OpusPass</p>
+      <PoweredByLine text="Powered with {icon} by OpusPass" className="text-[11px] uppercase tracking-[0.2em] opacity-60" />
     </footer>
   )
 }
@@ -205,6 +370,13 @@ function HeroView({ spec, theme, compact }: { spec: HeroSpec; theme: Theme; comp
   const heading = FONT_STACKS[theme.headingFont]
   const [iA, iB] = spec.monogram.split(' & ')
 
+  // apps/wedding_website's Home.tsx hero: full couple names directly overlaid
+  // on the photo (eyebrow above, thin-rule-flanked date below) — not the
+  // initials-monogram-then-names-panel structure the other templates share.
+  if (theme.decor?.motif === 'heart' && spec.kind !== 'text') {
+    return <ZambarauHero spec={spec} theme={theme} compact={compact} />
+  }
+
   const Monogram = (
     <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
       <span
@@ -266,6 +438,34 @@ function HeroView({ spec, theme, compact }: { spec: HeroSpec; theme: Theme; comp
         {Monogram}
       </div>
       {Names}
+    </div>
+  )
+}
+
+function ZambarauHero({ spec, theme, compact }: { spec: HeroSpec; theme: Theme; compact: boolean }) {
+  const heading = FONT_STACKS[theme.headingFont]
+  return (
+    <div className={cn('relative flex items-center justify-center overflow-hidden', compact ? 'h-[70vh]' : 'h-[92vh]')}>
+      <Image src={spec.photos[0]} alt="" fill sizes="1200px" className="object-cover" priority />
+      <div aria-hidden className="absolute inset-0 bg-black/35" />
+      <div className="relative z-[1] flex flex-col items-center px-6 text-center">
+        <p className="mb-6 text-[13px] font-light uppercase tracking-[0.3em] text-white/90">
+          We invite you to celebrate
+        </p>
+        <h1
+          className="max-w-3xl leading-tight text-white drop-shadow-md"
+          style={{ fontFamily: heading, fontSize: compact ? 34 : 60 }}
+        >
+          {spec.partnerA} <span className="italic">&amp;</span> {spec.partnerB}
+        </h1>
+        <div className="mt-8 flex items-center gap-4 text-white/90">
+          <span className="h-px w-12 bg-white/60" />
+          <p className="italic" style={{ fontFamily: heading, fontSize: compact ? 16 : 22 }}>
+            {spec.dateLabel}
+          </p>
+          <span className="h-px w-12 bg-white/60" />
+        </div>
+      </div>
     </div>
   )
 }
@@ -565,7 +765,9 @@ function BlockBody({ block, ctx, onPhoto }: { block: Block; ctx: RenderCtx; onPh
     case 'registry':
       return <Registry items={block.items} theme={theme} />
     case 'gallery':
-      return <Gallery images={block.images} />
+      return <Gallery images={block.images} theme={theme} />
+    case 'showcase':
+      return <Showcase items={block.items} theme={theme} />
     default:
       return null
   }
@@ -636,7 +838,7 @@ function Countdown({ date, label, theme }: { date: string; label: string; theme:
   )
 }
 
-function RsvpForm({
+export function RsvpForm({
   title,
   note,
   theme,
@@ -780,7 +982,71 @@ function VenueMap({ venue, address, theme }: { venue: string; address: string; t
   )
 }
 
-function Registry({ items, theme }: { items: { id: string; label: string; href: string; hint: string }[]; theme: Theme }) {
+// Cycled per registry item — the block model has no per-item image, so this
+// mirrors apps/wedding_website's Registry.tsx product-card photography.
+const REGISTRY_PHOTOS = ['/assets/images/flowers_pinky.jpg', '/assets/images/hand_rings.jpg', '/assets/images/ring_piano.jpg']
+
+export type RegistryDisplayItem = {
+  id: string
+  label: string
+  href: string
+  hint: string
+  /** Zambarau's product-card branch only — real photo, price and claim state. */
+  image?: string
+  price?: string
+  claimed?: boolean
+}
+
+export function Registry({ items, theme }: { items: RegistryDisplayItem[]; theme: Theme }) {
+  if (theme.decor?.motif === 'heart') {
+    return (
+      <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((it, i) => (
+          <a
+            key={it.id}
+            href={it.href}
+            onClick={(e) => e.stopPropagation()}
+            className={cn('group flex flex-col text-left', it.claimed && 'opacity-70')}
+          >
+            <div className="relative mb-5 aspect-[4/5] overflow-hidden rounded-2xl" style={{ backgroundColor: '#F9F9F9' }}>
+              <Image
+                src={it.image || REGISTRY_PHOTOS[i % REGISTRY_PHOTOS.length]}
+                alt=""
+                fill
+                sizes="320px"
+                className={cn(
+                  'object-cover transition-transform duration-700 ease-in-out',
+                  it.claimed ? 'grayscale' : 'group-hover:scale-105',
+                )}
+              />
+              {it.claimed && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/30 backdrop-blur-[2px]">
+                  <span className="rounded-full bg-white/90 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest shadow-sm" style={{ color: theme.palette.accent }}>
+                    Reserved
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-[17px] font-semibold" style={{ fontFamily: FONT_STACKS[theme.headingFont], color: theme.palette.ink }}>
+                {it.label}
+              </p>
+              {it.price && (
+                <span className="shrink-0 pt-1 text-[11px] font-bold uppercase tracking-widest opacity-60">{it.price}</span>
+              )}
+            </div>
+            <p className="mt-2 text-[13px] leading-relaxed opacity-70">{it.hint}</p>
+            <span
+              className="mt-5 block rounded-sm border py-3.5 text-center text-[10px] font-bold uppercase tracking-widest transition-colors group-hover:border-current"
+              style={{ borderColor: 'rgba(0,0,0,0.15)', color: theme.palette.ink }}
+            >
+              {it.claimed ? 'Thank You' : 'Gift This'}
+            </span>
+          </a>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className="mx-auto grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
       {items.map((it) => (
@@ -810,7 +1076,21 @@ function Registry({ items, theme }: { items: { id: string; label: string; href: 
   )
 }
 
-function Gallery({ images }: { images: string[] }) {
+export function Gallery({ images, theme }: { images: string[]; theme?: Theme }) {
+  // apps/wedding_website's Gallery.tsx: a CSS-columns masonry of plain <img>
+  // tags (varying aspect ratios), not a uniform square grid.
+  if (theme?.decor?.motif === 'heart') {
+    return (
+      <div className="mx-auto w-full max-w-5xl columns-1 gap-6 sm:columns-2 lg:columns-3">
+        {images.map((src, i) => (
+          <div key={`${src}-${i}`} className="mb-6 overflow-hidden rounded-2xl shadow-sm" style={{ breakInside: 'avoid' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- masonry needs intrinsic (varying) aspect ratios, not next/image's fixed box */}
+            <img src={src} alt="" loading="lazy" className="block h-auto w-full object-cover" />
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3">
       {images.map((src, i) => (
@@ -818,6 +1098,48 @@ function Gallery({ images }: { images: string[] }) {
           <Image src={src} alt="" fill sizes="240px" className="object-cover" />
         </div>
       ))}
+    </div>
+  )
+}
+
+const SHOWCASE_ICONS = { calendar: Calendar, pin: MapPin, sparkles: Sparkles } as const
+
+function Showcase({ items, theme }: { items: ShowcaseItem[]; theme: Theme }) {
+  return (
+    <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
+      {items.map((it, i) => {
+        const Icon = SHOWCASE_ICONS[it.icon]
+        return (
+          <div
+            key={i}
+            className={cn('flex flex-col items-center px-6 py-9 text-center md:px-8 md:py-10', cardSurfaceClass(theme.decor?.card))}
+            style={{ backgroundColor: theme.palette.surface }}
+          >
+            <Icon size={30} style={{ color: theme.palette.accent }} strokeWidth={1.4} />
+            <p className="mt-5 text-[22px]" style={{ fontFamily: FONT_STACKS[theme.headingFont], color: theme.palette.ink }}>
+              {it.title}
+            </p>
+            <span className="my-5 h-px w-11" style={{ backgroundColor: theme.palette.accent, opacity: 0.3 }} />
+            <div className="space-y-1">
+              {it.lines.map((l, j) => (
+                <p key={j} className="text-[14px] leading-relaxed opacity-75">
+                  {l}
+                </p>
+              ))}
+            </div>
+            {it.swatches && (
+              <div className="mt-6 flex justify-center gap-4">
+                {it.swatches.map((s, k) => (
+                  <div key={k} className="flex flex-col items-center gap-1.5">
+                    <span className="h-7 w-7 rounded-full shadow-inner ring-1 ring-black/10" style={{ backgroundColor: s.hex }} />
+                    <span className="text-[9px] uppercase tracking-wider opacity-60">{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

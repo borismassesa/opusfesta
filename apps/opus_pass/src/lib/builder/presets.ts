@@ -196,6 +196,26 @@ export const DESIGN_PRESETS: DesignPreset[] = [
     decor: { motif: 'sunrise', eyebrow: 'tracked', divider: 'rule', card: 'soft', headingUpper: false },
     defaultLayoutId: 'slideshow',
   },
+  {
+    id: 'zambarau',
+    name: 'Zambarau',
+    tagline: 'Lavender and clean modern type — refined and romantic.',
+    style: 'Elegant & Formal',
+    color: 'Purple',
+    thumb: 'photo',
+    // OpusPass's own brand lavender (--accent, used platform-wide — see
+    // GiftRegistryPublicClient/GuestbookPublicClient's ACCENT/PRIMARY) in
+    // place of apps/wedding_website's original deep-plum primary, so Zambarau
+    // reads consistently with the real Registry/Guest Book pages it embeds.
+    palette: { bg: '#F9F9F9', surface: '#FFFFFF', ink: '#1D1B20', accent: '#C9A0DC', onAccent: '#1A1A1A' },
+    headingFont: 'Playfair Display',
+    bodyFont: 'Plus Jakarta Sans',
+    heroPhoto: '/assets/images/beautyinbride.jpg',
+    heroOverlay: 34,
+    swatches: ['#F3E8FA', '#C9A0DC', '#7A489E'],
+    decor: { motif: 'heart', eyebrow: 'tracked', divider: 'rule', card: 'soft', headingUpper: false },
+    defaultLayoutId: 'full-width',
+  },
 ]
 
 /** Alias — the catalog is full templates now. */

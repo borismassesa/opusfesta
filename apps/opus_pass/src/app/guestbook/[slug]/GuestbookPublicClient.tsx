@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FocusEvent, type FormEvent } from 'react'
 import Image from 'next/image'
-import { Camera, Check, Mic, Pause, Play, Square, Trash2, Video, X } from 'lucide-react'
+import { Camera, Check, ChevronDown, Mic, Pause, PenLine, Play, Square, Trash2, Video, X } from 'lucide-react'
 import { submitGuestbookEntry } from '@/lib/dashboard/actions'
 import type { PublicGuestbookPage } from '@/lib/dashboard/queries'
 import { GUESTBOOK_RELATIONS, type GuestbookEntry, type GuestbookRelation } from '@/lib/dashboard/types'
@@ -81,6 +81,9 @@ const STR: Record<Lang, Record<string, string>> = {
     empty_body: 'Uwe wa kwanza kuandika ujumbe hapa.',
     powered: 'Inaendeshwa kwa {icon} na OpusPass',
     just_now: 'Sasa hivi',
+    form_collapse: 'Funga fomu',
+    form_expand: 'Fungua fomu',
+    write_wish: 'Andika Ujumbe',
   },
   en: {
     form_title: 'Leave your wishes',
@@ -118,6 +121,9 @@ const STR: Record<Lang, Record<string, string>> = {
     empty_body: 'Be the first to write one.',
     powered: 'Powered with {icon} by OpusPass',
     just_now: 'Just now',
+    form_collapse: 'Close form',
+    form_expand: 'Open form',
+    write_wish: 'Write a Wish',
   },
 }
 
@@ -180,7 +186,19 @@ function baseMimeType(mime: string): string {
   return mime.split(';')[0].trim()
 }
 
-function WishForm({ slug, coupleName, t }: { slug: string; coupleName: string; t: Record<string, string> }) {
+function WishForm({
+  slug,
+  coupleName,
+  t,
+  isOpen,
+  onOpenChange,
+}: {
+  slug: string
+  coupleName: string
+  t: Record<string, string>
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const [name, setName] = useState('')
   const [relation, setRelation] = useState<GuestbookRelation>('Family')
   const [message, setMessage] = useState('')
@@ -483,17 +501,36 @@ function WishForm({ slug, coupleName, t }: { slug: string; coupleName: string; t
     )
   }
 
+  // Collapsed: the toggle pill relocates into WishFeed's filter-chip row (same
+  // row, same size) instead of reserving its own grid row here.
+  if (!isOpen) return null
+
   return (
     <aside className="lg:sticky lg:top-24 lg:col-span-5 lg:self-start">
       <form onSubmit={onSubmit} className="rounded-3xl p-8 lg:p-10" style={cardStyle}>
-        <h2 className="mb-3 text-3xl lg:text-4xl" style={{ ...heading, color: ON_SURFACE }}>
-          {t.form_title}
-        </h2>
-        <p className="mb-6 text-sm leading-relaxed font-light" style={{ ...body, color: SECONDARY }}>
-          {t.form_note.replace('{names}', coupleName)}
-        </p>
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          aria-expanded={true}
+          className="flex w-full items-start justify-between gap-4 text-left"
+          style={NO_NATIVE_BTN_CHROME}
+        >
+          <span>
+            <h2 className="mb-3 text-3xl lg:text-4xl" style={{ ...heading, color: ON_SURFACE }}>
+              {t.form_title}
+            </h2>
+            <p className="text-sm leading-relaxed font-light" style={{ ...body, color: SECONDARY }}>
+              {t.form_note.replace('{names}', coupleName)}
+            </p>
+          </span>
+          <ChevronDown
+            className="mt-2 h-5 w-5 shrink-0 rotate-180 transition-transform duration-200"
+            style={{ color: SECONDARY }}
+            aria-label={t.form_collapse}
+          />
+        </button>
 
-        <div className="space-y-4">
+        <div className="mt-6 space-y-4">
           <div>
             <label
               className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em]"
@@ -928,7 +965,17 @@ function WishCard({ entry, index, t }: { entry: GuestbookEntry; index: number; t
   )
 }
 
-function WishFeed({ data, t }: { data: PublicGuestbookPage; t: Record<string, string> }) {
+function WishFeed({
+  data,
+  t,
+  isFormOpen,
+  onFormOpenChange,
+}: {
+  data: PublicGuestbookPage
+  t: Record<string, string>
+  isFormOpen: boolean
+  onFormOpenChange: (open: boolean) => void
+}) {
   const [filter, setFilter] = useState<Filter>('all')
   const entries = data.entries.filter((e) => {
     switch (filter) {
@@ -954,8 +1001,20 @@ function WishFeed({ data, t }: { data: PublicGuestbookPage; t: Record<string, st
   ]
 
   return (
-    <section className="lg:col-span-7">
+    <section className={isFormOpen ? 'lg:col-span-7' : 'lg:col-span-12'}>
       <div className="no-scrollbar mb-4 flex gap-4 overflow-x-auto pt-1 pb-4 lg:mb-6">
+        {!isFormOpen && (
+          <button
+            type="button"
+            onClick={() => onFormOpenChange(true)}
+            aria-expanded={false}
+            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] whitespace-nowrap transition-opacity hover:opacity-90"
+            style={{ ...body, backgroundColor: ON_SURFACE, color: '#ffffff' }}
+          >
+            <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+            {t.write_wish}
+          </button>
+        )}
         {chips.map((chip) => {
           const active = filter === chip.key
           return (
@@ -1047,9 +1106,19 @@ function Navbar({
 //  Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function GuestbookPublicClient({ data }: { data: PublicGuestbookPage }) {
+export default function GuestbookPublicClient({
+  data,
+  hideNav,
+}: {
+  data: PublicGuestbookPage
+  /** Zambarau embeds this page directly under its own nav (logo + EN/SW
+   *  toggle already there) and above its own footer — skip this page's own
+   *  Navbar and footer to avoid duplicates stacked around it. */
+  hideNav?: boolean
+}) {
   const [lang, setLang] = useState<Lang>('sw')
   const t = STR[lang]
+  const [isFormOpen, setIsFormOpen] = useState(true)
 
   useEffect(() => {
     const saved = window.localStorage.getItem(LANG_KEY)
@@ -1062,22 +1131,27 @@ export default function GuestbookPublicClient({ data }: { data: PublicGuestbookP
 
   return (
     <main className="flex min-h-screen flex-col bg-white" style={{ ...body, color: ON_SURFACE }}>
-      <Navbar lang={lang} onPickLang={pickLang} />
+      {!hideNav && <Navbar lang={lang} onPickLang={pickLang} />}
       {/* One normal scrolling page — mouse wheel / trackpad scrolls anywhere,
           no dedicated pane to hover. The form just stays in view via
           lg:sticky (see WishForm) as you scroll past it. */}
       <div className="mx-auto w-full max-w-[1440px] flex-1 px-8 pt-6 pb-10 sm:pt-8 sm:pb-12 lg:pt-6 lg:pb-8">
         <div className="grid grid-cols-1 items-start gap-16 lg:grid-cols-12">
-          <WishForm slug={data.slug} coupleName={data.coupleName} t={t} />
-          <WishFeed data={data} t={t} />
+          <WishForm slug={data.slug} coupleName={data.coupleName} t={t} isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
+          <WishFeed data={data} t={t} isFormOpen={isFormOpen} onFormOpenChange={setIsFormOpen} />
         </div>
       </div>
-      <footer
-        className="w-full shrink-0 border-t py-4 text-center text-[11px]"
-        style={{ ...body, borderColor: `${OUTLINE_VARIANT}4d`, color: SECONDARY, opacity: 0.7 }}
-      >
-        <PoweredByLine text={t.powered} />
-      </footer>
+      {!hideNav && (
+        <footer
+          className="flex w-full shrink-0 flex-col items-center gap-2 border-t px-6 py-8 text-center"
+          style={{ borderColor: `${OUTLINE_VARIANT}4d` }}
+        >
+          <p className="text-[15px]" style={heading}>
+            {data.coupleName}
+          </p>
+          <PoweredByLine text={t.powered} className="text-[11px] uppercase tracking-[0.2em] opacity-60" />
+        </footer>
+      )}
     </main>
   )
 }

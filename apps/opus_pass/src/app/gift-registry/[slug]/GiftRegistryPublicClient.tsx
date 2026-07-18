@@ -746,7 +746,16 @@ function GiftCard({ item, t, onOpenClaim }: { item: GiftRegistryItemWithClaims; 
   )
 }
 
-export default function GiftRegistryPublicClient({ data }: { data: PublicGiftRegistryPage }) {
+export default function GiftRegistryPublicClient({
+  data,
+  hideNav,
+}: {
+  data: PublicGiftRegistryPage
+  /** Zambarau embeds this page directly under its own nav (logo + EN/SW
+   *  toggle already there) and above its own footer — skip this page's own
+   *  Navbar and footer to avoid duplicates stacked around it. */
+  hideNav?: boolean
+}) {
   const [lang, setLang] = useState<Lang>('sw')
   const [items, setItems] = useState(data.items)
   const [claimTarget, setClaimTarget] = useState<GiftRegistryItemWithClaims | null>(null)
@@ -817,7 +826,7 @@ export default function GiftRegistryPublicClient({ data }: { data: PublicGiftReg
 
   return (
     <main className="flex min-h-screen flex-col bg-white" style={{ ...sans, color: INK }}>
-      <Navbar lang={lang} onPickLang={pickLang} />
+      {!hideNav && <Navbar lang={lang} onPickLang={pickLang} />}
       <Hero data={data} t={t} />
 
       <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 pb-16 pt-8 sm:px-8">
@@ -897,12 +906,17 @@ export default function GiftRegistryPublicClient({ data }: { data: PublicGiftReg
         )}
       </div>
 
-      <footer
-        className="w-full shrink-0 border-t py-4 text-center text-[11px]"
-        style={{ ...sans, borderColor: BORDER, color: SECONDARY }}
-      >
-        <PoweredByLine text={t.powered} />
-      </footer>
+      {!hideNav && (
+        <footer
+          className="flex w-full shrink-0 flex-col items-center gap-2 border-t px-6 py-8 text-center"
+          style={{ borderColor: BORDER, color: INK }}
+        >
+          <p className="text-[15px]" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
+            {data.coupleName}
+          </p>
+          <PoweredByLine text={t.powered} className="text-[11px] uppercase tracking-[0.2em] opacity-60" />
+        </footer>
+      )}
 
       {claimTarget ? (
         <ClaimModal item={claimTarget} slug={data.slug} lang={lang} t={t} onClose={() => setClaimTarget(null)} onClaimed={onClaimed} />
