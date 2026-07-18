@@ -1567,7 +1567,16 @@ export async function getPublicGiftRegistryPage(slug: string): Promise<PublicGif
     console.error('[gift-registry] public list failed', error)
   }
   const names = [profile.partner1_name, profile.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
-  const items = await attachClaimCounts(supabase, (data ?? []) as GiftRegistryItem[])
+  // This page is public and unauthenticated — never let a guest's contact
+  // info reach the client bundle, even though the UI doesn't render it.
+  // React Server Components serialize the whole prop object to the browser,
+  // so stripping has to happen here, not just in what JSX chooses to show.
+  const items = (await attachClaimCounts(supabase, (data ?? []) as GiftRegistryItem[])).map((item) => ({
+    ...item,
+    claimed_by_phone: null,
+    claimed_by_email: null,
+    claimants: [],
+  }))
   return {
     slug,
     coupleName: names.length ? names.join(' & ') : 'The Couple',

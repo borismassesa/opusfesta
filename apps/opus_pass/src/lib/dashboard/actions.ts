@@ -2352,31 +2352,22 @@ export async function claimGiftRegistryItem(
     }
     claimedTitle = claimed.title
   } else {
-    // Quantity > 1 — each unit can go to a different guest. Insert then
-    // re-check the count so two guests racing on the last unit can't both
-    // land inside the requested quantity; the loser's row is rolled back.
-    const { count: beforeCount } = await supabase
-      .from('gift_registry_claims')
-      .select('id', { count: 'exact', head: true })
-      .eq('item_id', itemId)
-    if ((beforeCount ?? 0) >= item.quantity_requested) {
-      return { ok: false, error: 'This gift is fully claimed.' }
-    }
-    const { data: inserted, error: insErr } = await supabase
-      .from('gift_registry_claims')
-      .insert({ item_id: itemId, user_id: profile.user_id, guest_name: name, guest_phone: guestPhone, guest_email: guestEmail })
-      .select('id')
-      .single<{ id: string }>()
-    if (insErr || !inserted) {
-      console.error('[gift-registry] claim insert failed', insErr)
+    // Quantity > 1 — each unit can go to a different guest. The check-and-
+    // insert happens atomically in claim_gift_registry_unit (row lock on the
+    // item), so concurrent claims on the last unit serialize instead of
+    // racing — see supabase/migrations/20260717040000_gift_registry_claim_atomic.sql.
+    const { data: claimId, error: claimErr } = await supabase.rpc('claim_gift_registry_unit', {
+      p_item_id: itemId,
+      p_user_id: profile.user_id,
+      p_guest_name: name,
+      p_guest_phone: guestPhone,
+      p_guest_email: guestEmail,
+    })
+    if (claimErr) {
+      console.error('[gift-registry] claim insert failed', claimErr)
       return { ok: false, error: 'Something went wrong — please try again in a moment.' }
     }
-    const { count: afterCount } = await supabase
-      .from('gift_registry_claims')
-      .select('id', { count: 'exact', head: true })
-      .eq('item_id', itemId)
-    if ((afterCount ?? 0) > item.quantity_requested) {
-      await supabase.from('gift_registry_claims').delete().eq('id', inserted.id)
+    if (!claimId) {
       return { ok: false, error: 'This gift is fully claimed.' }
     }
     claimedTitle = item.title
