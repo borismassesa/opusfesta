@@ -8,6 +8,7 @@ import { formatLongDate } from '@/lib/dashboard/share'
 import { eventTypeLabel } from '@/lib/dashboard/types'
 import type { RsvpStatus } from '@/lib/dashboard/types'
 import Logo from '@/components/ui/Logo'
+import PoweredByLine from '@/components/ui/PoweredByLine'
 
 // OpusPass palette — same family as the couple dashboard and /rsvp/[token].
 const INK = '#1A1A1A'
@@ -50,7 +51,7 @@ const STR: Record<Lang, Record<string, string>> = {
     answer_prefix: 'Tafadhali jibu: ',
     error_generic: 'Kuna hitilafu, tafadhali jaribu tena.',
     optional: '(hiari)',
-    powered: 'Inaendeshwa na OpusPass',
+    powered: 'Inaendeshwa kwa {icon} na OpusPass',
   },
   en: {
     eyebrow: "Karibu, you're invited",
@@ -80,7 +81,7 @@ const STR: Record<Lang, Record<string, string>> = {
     answer_prefix: 'Please answer: ',
     error_generic: 'Something went wrong, please try again.',
     optional: '(optional)',
-    powered: 'Powered by OpusPass',
+    powered: 'Powered with {icon} by OpusPass',
   },
 }
 
@@ -446,7 +447,9 @@ export default function PublicInviteClient({ data }: { data: PublicInviteData })
               </div>
             )}
           </div>
-          <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">{t.powered}</p>
+          <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">
+            <PoweredByLine text={t.powered} iconClassName="h-3 w-3" />
+          </p>
         </section>
       </div>
     </main>

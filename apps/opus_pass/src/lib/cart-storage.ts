@@ -1,6 +1,7 @@
 'use client'
 
 import type { Treatment } from '@/components/guests/InvitationVisual'
+import { parseTemplateCardItemId, type TemplateCardType } from '@/lib/dashboard/pledge-card-templates'
 
 const CONTACT_KEY = 'opuspass.contact.v1'
 const ORDER_KEY = 'opuspass.lastOrder.v1'
@@ -142,6 +143,26 @@ export function getOrders(): StoredOrder[] {
 
 export function getOrder(ref: string): StoredOrder | undefined {
   return getOrders().find((o) => o.ref === ref)
+}
+
+/**
+ * Template-card purchases (pledge/thank-you) whose order is still
+ * `paymentStatus: 'verifying'` — awaiting finance approval. There's no
+ * server-side query for this (only paid orders are re-derived server-side,
+ * see getPurchasedTemplateIds in dashboard/queries.ts), so the "under
+ * review" badge on the card grid relies on this device's local order
+ * history instead.
+ */
+export function getPendingTemplateIds(type: TemplateCardType): Set<string> {
+  const ids = new Set<string>()
+  for (const order of getOrders()) {
+    if (order.paymentStatus !== 'verifying') continue
+    for (const item of order.items) {
+      const parsed = parseTemplateCardItemId(item.id)
+      if (parsed && parsed.type === type) ids.add(parsed.templateId)
+    }
+  }
+  return ids
 }
 
 export function generateOrderRef(): string {

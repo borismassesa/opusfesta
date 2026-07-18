@@ -1,12 +1,14 @@
 import 'server-only'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 
-// Kept in sync with the DB CHECK constraint in migration 20260613000003_notifications.sql.
+// Kept in sync with the DB CHECK constraint in migration 20260613000003_notifications.sql
+// (extended for 'gift_claimed' by 20260716170000_opuspass_gift_registry.sql).
 export type NotificationType =
   | 'rsvp_received'
   | 'pledge_received'
   | 'payment_confirmed'
   | 'guestbook_received'
+  | 'gift_claimed'
   | 'system'
 
 export interface NotificationRecord {

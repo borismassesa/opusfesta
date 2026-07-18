@@ -21,14 +21,11 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarHeart,
-  Copy,
-  Palette,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
-import CollectorShareSlideover from './CollectorShareSlideover'
 import {
   createGuest,
   updateGuest,
@@ -40,7 +37,14 @@ import {
   sendWhatsAppRsvpReminders,
   type GuestInput,
 } from '@/lib/dashboard/actions'
-import { emailShareUrl, firstNameOf, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
+import {
+  emailShareUrl,
+  firstNameOf,
+  inviteMessage,
+  rsvpUrl,
+  smsShareUrl,
+  whatsappShareUrl,
+} from '@/lib/dashboard/share'
 import { fileToImportLines, SpreadsheetError } from '@/lib/dashboard/import-spreadsheet'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { GuestsDashboardCopy } from '@/lib/cms/dashboard-copy'
@@ -177,7 +181,6 @@ export default function GuestsManager({
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<FormTab>('info')
   const [importOpen, setImportOpen] = useState(false)
-  const [collectorOpen, setCollectorOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<GuestWithInvitations | null>(null)
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -283,24 +286,6 @@ export default function GuestsManager({
     }
     return { adults, children }
   }, [eventScopedGuests])
-
-  // Collector share URL — origin is only available client-side, so we
-  // initialise lazily once mounted to avoid a hydration mismatch.
-  const [origin, setOrigin] = useState('')
-  useEffect(() => {
-    setOrigin(window.location.origin)
-  }, [])
-  const collectorLink = collectorToken && origin ? `${origin}/collect/${collectorToken}` : null
-
-  async function copyCollectorLink() {
-    if (!collectorLink) return
-    try {
-      await navigator.clipboard.writeText(collectorLink)
-      toast.success('Collector link copied')
-    } catch {
-      toast.error('Could not copy link')
-    }
-  }
 
   const counts = useMemo(() => {
     const missingContact = filtered.filter((g) => !g.email && !g.phone && !g.whatsapp_phone).length
@@ -670,7 +655,6 @@ export default function GuestsManager({
         view={view}
         onChange={setView}
         notInvitedCount={viewCounts.notInvited}
-        onOpenCollector={collectorToken ? () => setCollectorOpen(true) : undefined}
         copy={copy}
         events={events}
         eventFilter={eventFilter}
@@ -679,67 +663,13 @@ export default function GuestsManager({
       />
 
       {initialGuests.length > 0 ? (
-        <div className="grid gap-3 lg:grid-cols-2">
-          <Card className="px-5 py-4">
-            <div className="grid grid-cols-3 divide-x divide-black/[0.12] text-center">
-              <Stat value={eventScopedGuests.length} label={copy.stat_guests_label} />
-              <Stat value={headCounts.adults} label={copy.stat_adults_label} />
-              <Stat value={headCounts.children} label={copy.stat_children_label} />
-            </div>
-          </Card>
-          <Card className="px-5 py-4">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-xs text-[#1A1A1A]/65">
-                    <span>{copy.collector_heading}</span>
-                    {collectorToken ? (
-                      <button
-                        type="button"
-                        onClick={() => setCollectorOpen(true)}
-                        className="font-semibold text-[#7E5896] underline-offset-2 hover:underline"
-                      >
-                        {copy.collector_edit}
-                      </button>
-                    ) : null}
-                  </div>
-                  {collectorLink ? (
-                    <div className="mt-1 truncate rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-xs text-[#1A1A1A]/80">
-                      {collectorLink.replace(/^https?:\/\//, '')}
-                    </div>
-                  ) : (
-                    <div className="mt-1 text-xs text-[#1A1A1A]/55">{copy.collector_empty}</div>
-                  )}
-                </div>
-                {collectorToken ? (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Link
-                      href="/my/dashboard/guests/customize"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-                    >
-                      <Palette className="h-3.5 w-3.5" /> {copy.collector_customize}
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={copyCollectorLink}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-                    >
-                      <Copy className="h-3.5 w-3.5" /> {copy.collector_copy}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setCollectorOpen(true)}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-                  >
-                    <ClipboardSignature className="h-3.5 w-3.5" /> {copy.collector_setup}
-                  </button>
-                )}
-              </div>
-            </div>
-          </Card>
-        </div>
+        <Card className="px-5 py-4">
+          <div className="grid grid-cols-3 divide-x divide-black/[0.12] text-center">
+            <Stat value={eventScopedGuests.length} label={copy.stat_guests_label} />
+            <Stat value={headCounts.adults} label={copy.stat_adults_label} />
+            <Stat value={headCounts.children} label={copy.stat_children_label} />
+          </div>
+        </Card>
       ) : null}
 
       {view !== 'manage' ? (
@@ -856,9 +786,12 @@ export default function GuestsManager({
                 <Upload className="h-4 w-4" /> {copy.empty_upload_cta}
               </Button>
               {collectorToken ? (
-                <Button variant="secondary" onClick={() => setCollectorOpen(true)}>
+                <Link
+                  href="/my/dashboard/guests/customize"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] ring-1 ring-inset ring-black/[0.12] transition-colors hover:bg-black/[0.03]"
+                >
                   <ClipboardSignature className="h-4 w-4" /> {copy.empty_collect_cta}
-                </Button>
+                </Link>
               ) : null}
             </div>
           }
@@ -1290,13 +1223,6 @@ export default function GuestsManager({
         </div>
       </Slideover>
 
-      <CollectorShareSlideover
-        open={collectorOpen}
-        onClose={() => setCollectorOpen(false)}
-        collectorToken={collectorToken}
-        coupleName={coupleName}
-      />
-
       <ConfirmDialog
         open={pendingDelete !== null}
         onClose={() => setPendingDelete(null)}
@@ -1337,7 +1263,6 @@ function GuestSubNav({
   view,
   onChange,
   notInvitedCount,
-  onOpenCollector,
   copy,
   events,
   eventFilter,
@@ -1347,8 +1272,6 @@ function GuestSubNav({
   view: GuestView
   onChange: (v: GuestView) => void
   notInvitedCount: number
-  /** Opens the Contact Collector slideover. Omit to hide the tab (no token yet). */
-  onOpenCollector?: () => void
   copy: GuestsDashboardCopy
   events: { id: string; name: string }[]
   eventFilter: string
@@ -1394,16 +1317,13 @@ function GuestSubNav({
           </button>
         )
       })}
-      {onOpenCollector ? (
-        <button
-          type="button"
-          onClick={onOpenCollector}
-          className="-mb-[9px] inline-flex items-center gap-2 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
-        >
-          <ClipboardSignature className="h-3.5 w-3.5" />
-          {copy.nav_collector}
-        </button>
-      ) : null}
+      <Link
+        href="/my/dashboard/guests/customize"
+        className="-mb-[9px] inline-flex items-center gap-2 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
+      >
+        <ClipboardSignature className="h-3.5 w-3.5" />
+        {copy.nav_collector}
+      </Link>
       <Link
         href="/my/dashboard/pledges"
         className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"

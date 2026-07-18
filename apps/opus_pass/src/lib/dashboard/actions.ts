@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
-import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
+import type { PledgePageConfig, PledgePaymentMethod, CollectorEventContent } from './pledge-page'
 import { paymentMethodsToText, resolveEventCover, EVENTLESS_COVER_KEY } from './pledge-page'
 import { PLEDGE_TEMPLATE_FREE_TIER_IDS, parseTemplateCardItemId } from './pledge-card-templates'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
@@ -16,6 +16,7 @@ import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import { getSmsProvider } from '@/lib/sms'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import { pledgeRequestEmail } from './pledge-email'
+import { sendGiftClaimReceipts, type ReceiptGift, type ReceiptLang } from './gift-registry-receipt'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -41,6 +42,7 @@ function revalidateDashboard() {
   revalidatePath('/my/dashboard/seating')
   revalidatePath('/my/dashboard/guestbook')
   revalidatePath('/my/dashboard/thank-you')
+  revalidatePath('/my/dashboard/gift-registry')
 }
 
 // ---------------------------------------------------------------- Events
@@ -1192,13 +1194,15 @@ export async function applyThankYouCardTemplate(eventId: string, cardImageUrl: s
   revalidatePath('/my/dashboard/thank-you')
 }
 
-/** Upload a cover image for the pledge page; returns its public URL. */
+/** Upload a cover image OR short video for the pledge page; returns its public URL. */
 export async function uploadPledgeCover(formData: FormData): Promise<string> {
   const user = await requireDashboardUser()
   const file = formData.get('file')
-  if (!(file instanceof File) || file.size === 0) throw new Error('No image selected')
-  if (!file.type.startsWith('image/')) throw new Error('Please choose an image file')
-  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file selected')
+  const isVideo = file.type.startsWith('video/')
+  if (!file.type.startsWith('image/') && !isVideo) throw new Error('Please choose an image or video file')
+  const maxSize = isVideo ? 25 * 1024 * 1024 : 5 * 1024 * 1024
+  if (file.size > maxSize) throw new Error(isVideo ? 'Video must be 25MB or smaller' : 'Image must be 5MB or smaller')
 
   const supabase = createDashboardClient()
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -1212,20 +1216,78 @@ export async function uploadPledgeCover(formData: FormData): Promise<string> {
   return data.publicUrl
 }
 
-/** Save the couple's public Contact Collector page customizations. */
-export async function updateCollectorPageConfig(config: PledgePageConfig): Promise<void> {
+/** Snapshot the legacy top-level Contact Collector fields onto every OTHER
+ *  existing event the first time eventContent is used, mirroring
+ *  backfillLegacyPledgeCover — otherwise events that were implicitly
+ *  sharing the couple's one legacy config would silently go blank the
+ *  moment a different event gets its own customization. */
+async function backfillLegacyCollectorContent(
+  stored: PledgePageConfig,
+  excludeEventId: string | null,
+): Promise<NonNullable<PledgePageConfig['eventContent']>> {
+  const hasAnyEventContent = Boolean(stored.eventContent && Object.keys(stored.eventContent).length > 0)
+  const hasLegacyContent = Boolean(
+    stored.headingLine2?.trim() ||
+      stored.intro?.trim() ||
+      stored.buttonLabel?.trim() ||
+      stored.privacyNote?.trim() ||
+      stored.coverImageUrl ||
+      (stored.questions && stored.questions.length > 0),
+  )
+  if (hasAnyEventContent || !hasLegacyContent) return stored.eventContent ?? {}
+  const events = await getEvents()
+  const legacy: CollectorEventContent = {
+    headingLine2: stored.headingLine2,
+    intro: stored.intro,
+    buttonLabel: stored.buttonLabel,
+    privacyNote: stored.privacyNote,
+    coverImageUrl: stored.coverImageUrl,
+    coverIsFullTemplate: stored.coverIsFullTemplate,
+    questions: stored.questions,
+  }
+  const backfill: NonNullable<PledgePageConfig['eventContent']> = {}
+  for (const e of events) {
+    if (e.id === excludeEventId) continue
+    backfill[e.id] = legacy
+  }
+  return backfill
+}
+
+/** Save one event's Contact Collector content — cover, wording, and
+ *  questions — without touching any other event's, so each event keeps its
+ *  own independent collector page instead of sharing one generic page.
+ *  Mirrors setPledgeCoverImage's targeted-write pattern. */
+export async function updateCollectorEventContent(
+  eventId: string | null,
+  content: CollectorEventContent,
+): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('collector_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ collector_page: PledgePageConfig | null }>()
+  const stored = profile?.collector_page ?? {}
+  const backfilled = await backfillLegacyCollectorContent(stored, eventId)
+  const nextConfig: PledgePageConfig = {
+    ...stored,
+    eventContent: {
+      ...backfilled,
+      [eventId ?? EVENTLESS_COVER_KEY]: content,
+    },
+  }
+
   const { data, error } = await supabase
     .from('couple_profiles')
-    .update({ collector_page: config, updated_at: new Date().toISOString() })
+    .update({ collector_page: nextConfig, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .select('id')
   if (error) throw new Error(error.message)
   if (!data || data.length === 0) {
     const { error: insErr } = await supabase
       .from('couple_profiles')
-      .insert({ user_id: user.id, partner1_name: 'The Couple', collector_page: config })
+      .insert({ user_id: user.id, partner1_name: 'The Couple', collector_page: nextConfig })
     if (insErr) throw new Error(insErr.message)
   }
   revalidatePath('/my/dashboard/guests')
@@ -1804,8 +1866,15 @@ export async function submitGuestbookEntry(
     audioUrl = supabase.storage.from('guestbook-audio').getPublicUrl(path).data.publicUrl
   }
 
+  // The public guestbook has one link for the whole couple (no per-event
+  // URL like pledges) — every message lands on the couple's default (first)
+  // event, same as any other row that needs an event_id but has no explicit
+  // one to work from.
+  const eventId = await resolveEventIdOrDefault(profile.user_id)
+
   const { error: insErr } = await supabase.from('guestbook_entries').insert({
     user_id: profile.user_id,
+    event_id: eventId,
     guest_name: guestName,
     message,
     photo_url: photoUrl,
@@ -1868,6 +1937,494 @@ export async function deleteGuestbookEntry(id: string): Promise<void> {
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
   revalidateDashboard()
+}
+
+// ---------------------------------------------------------------- Gift registry
+
+/** Updates the manage-registry hero's welcome message (null/blank clears it). */
+export async function updateGiftRegistryWelcomeMessage(message: string | null): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('couple_profiles')
+    .update({ registry_welcome_message: message?.trim() || null, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Uploads the manage-registry hero's own photo (separate from the couple's
+ *  shared cover_image_url used by WhatsApp/pledge/invite-hub) and saves it. */
+export async function uploadGiftRegistryCoverImage(formData: FormData): Promise<string> {
+  const user = await requireDashboardUser()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file selected')
+  if (!file.type.startsWith('image/')) throw new Error('Please choose an image file')
+  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller')
+
+  const supabase = createDashboardClient()
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${user.id}/hero-${randomUUID()}.${ext}`
+  const { error: uploadError } = await supabase.storage
+    .from('gift-registry-images')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (uploadError) throw new Error(uploadError.message)
+
+  const { data } = supabase.storage.from('gift-registry-images').getPublicUrl(path)
+  const { error: updateError } = await supabase
+    .from('couple_profiles')
+    .update({ registry_cover_image_url: data.publicUrl, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (updateError) throw new Error(updateError.message)
+
+  revalidateDashboard()
+  return data.publicUrl
+}
+
+/** Updates the manage-registry hero's displayed header (blank/null reverts to the couple's names). */
+export async function updateGiftRegistryHeader(header: string | null): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('couple_profiles')
+    .update({ registry_header: header?.trim() || null, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Uploads the manage-registry hero's wide banner photo (behind the header) and saves it. */
+export async function uploadGiftRegistryBannerImage(formData: FormData): Promise<string> {
+  const user = await requireDashboardUser()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file selected')
+  if (!file.type.startsWith('image/')) throw new Error('Please choose an image file')
+  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller')
+
+  const supabase = createDashboardClient()
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${user.id}/banner-${randomUUID()}.${ext}`
+  const { error: uploadError } = await supabase.storage
+    .from('gift-registry-images')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (uploadError) throw new Error(uploadError.message)
+
+  const { data } = supabase.storage.from('gift-registry-images').getPublicUrl(path)
+  const { error: updateError } = await supabase
+    .from('couple_profiles')
+    .update({ registry_banner_image_url: data.publicUrl, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (updateError) throw new Error(updateError.message)
+
+  revalidateDashboard()
+  return data.publicUrl
+}
+
+/** Clears the manage-registry hero's banner photo. */
+export async function removeGiftRegistryBannerImage(): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('couple_profiles')
+    .update({ registry_banner_image_url: null, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Clears the manage-registry hero's circular photo. */
+export async function removeGiftRegistryCoverImage(): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('couple_profiles')
+    .update({ registry_cover_image_url: null, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+export interface GiftRegistryInput {
+  title: string
+  description?: string | null
+  image_urls?: string[]
+  video_url?: string | null
+  price_label?: string | null
+  product_link?: string | null
+  /** Physical shop/vendor where this gift can be bought — Tanzania-first alternative to product_link. */
+  shop_name?: string | null
+  shop_location?: string | null
+  shop_contact?: string | null
+  category?: string | null
+  quantity_requested?: number
+  most_wanted?: boolean
+  group_gift?: boolean
+  is_cash_fund?: boolean
+  /** Which of the couple's wedding_events this gift belongs to — see event-scope.ts. */
+  event_id?: string | null
+}
+
+export async function createGiftRegistryItem(input: GiftRegistryInput): Promise<string> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { count } = await supabase
+    .from('gift_registry_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  const { data, error } = await supabase
+    .from('gift_registry_items')
+    .insert({
+      user_id: user.id,
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      image_urls: input.image_urls ?? [],
+      video_url: input.video_url || null,
+      price_label: input.price_label?.trim() || null,
+      product_link: input.product_link?.trim() || null,
+      shop_name: input.shop_name?.trim() || null,
+      shop_location: input.shop_location?.trim() || null,
+      shop_contact: input.shop_contact?.trim() || null,
+      category: input.category || null,
+      quantity_requested: Math.max(1, Math.trunc(input.quantity_requested ?? 1)),
+      most_wanted: input.most_wanted ?? false,
+      group_gift: input.group_gift ?? false,
+      is_cash_fund: input.is_cash_fund ?? false,
+      event_id: input.event_id || null,
+      sort_order: count ?? 0,
+    })
+    .select('id')
+    .single<{ id: string }>()
+  if (error || !data) throw new Error(error?.message ?? 'Failed to add gift')
+  revalidateDashboard()
+  return data.id
+}
+
+export async function updateGiftRegistryItem(id: string, input: GiftRegistryInput): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('gift_registry_items')
+    .update({
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      image_urls: input.image_urls ?? [],
+      video_url: input.video_url || null,
+      price_label: input.price_label?.trim() || null,
+      product_link: input.product_link?.trim() || null,
+      shop_name: input.shop_name?.trim() || null,
+      shop_location: input.shop_location?.trim() || null,
+      shop_contact: input.shop_contact?.trim() || null,
+      category: input.category || null,
+      quantity_requested: Math.max(1, Math.trunc(input.quantity_requested ?? 1)),
+      most_wanted: input.most_wanted ?? false,
+      group_gift: input.group_gift ?? false,
+      is_cash_fund: input.is_cash_fund ?? false,
+      event_id: input.event_id || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+export async function deleteGiftRegistryItem(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('gift_registry_items')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Re-open a gift a guest claimed (e.g. they backed out) so it's available again. */
+export async function unclaimGiftRegistryItem(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('gift_registry_items')
+    .update({ claimed_by_name: null, claimed_at: null, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Host-side counterpart to a guest claim — "we already have this" (e.g. bought it themselves, received it off-registry). */
+export async function markGiftRegistryItemReceived(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('gift_registry_items')
+    .update({ claimed_by_name: 'You', claimed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Identifies one row on the Claims table — see GiftRegistryClaimRow. */
+export interface GiftRegistryClaimTarget {
+  kind: 'claim' | 'item'
+  claimId: string
+  itemId: string
+}
+
+/** Host edit of a guest's claim details (name/phone/email) — e.g. fixing a typo'd phone number. */
+export async function updateGiftRegistryClaim(
+  target: GiftRegistryClaimTarget,
+  input: { guestName: string; guestPhone: string | null; guestEmail: string | null },
+): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const guestName = input.guestName.trim().slice(0, 80)
+  if (!guestName) throw new Error('Guest name is required')
+  const guestPhone = normalizePhone(input.guestPhone)
+  const guestEmail = input.guestEmail?.trim() || null
+
+  const { error } =
+    target.kind === 'claim'
+      ? await supabase
+          .from('gift_registry_claims')
+          .update({ guest_name: guestName, guest_phone: guestPhone, guest_email: guestEmail })
+          .eq('id', target.claimId)
+          .eq('user_id', user.id)
+      : await supabase
+          .from('gift_registry_items')
+          .update({
+            claimed_by_name: guestName,
+            claimed_by_phone: guestPhone,
+            claimed_by_email: guestEmail,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', target.itemId)
+          .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Host removes a guest's claim (e.g. they backed out, or it was claimed by mistake) — frees the unit back up. */
+export async function deleteGiftRegistryClaim(target: GiftRegistryClaimTarget): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } =
+    target.kind === 'claim'
+      ? await supabase.from('gift_registry_claims').delete().eq('id', target.claimId).eq('user_id', user.id)
+      : await supabase
+          .from('gift_registry_items')
+          .update({ claimed_by_name: null, claimed_by_phone: null, claimed_by_email: null, claimed_at: null, updated_at: new Date().toISOString() })
+          .eq('id', target.itemId)
+          .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Upload one gift photo (call once per file for a multi-select picker); returns its public URL. */
+export async function uploadGiftRegistryImage(formData: FormData): Promise<string> {
+  const user = await requireDashboardUser()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file selected')
+  if (!file.type.startsWith('image/')) throw new Error('Please choose an image file')
+  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller')
+
+  const supabase = createDashboardClient()
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${user.id}/${randomUUID()}.${ext}`
+  const { error } = await supabase.storage
+    .from('gift-registry-images')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage.from('gift-registry-images').getPublicUrl(path)
+  return data.publicUrl
+}
+
+/** Upload a short video clip of a gift; returns its public URL. */
+export async function uploadGiftRegistryVideo(formData: FormData): Promise<string> {
+  const user = await requireDashboardUser()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file selected')
+  if (!file.type.startsWith('video/')) throw new Error('Please choose a video file')
+  if (file.size > 25 * 1024 * 1024) throw new Error('Video must be 25MB or smaller')
+
+  const supabase = createDashboardClient()
+  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${user.id}/${randomUUID()}.${ext}`
+  const { error } = await supabase.storage
+    .from('gift-registry-videos')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage.from('gift-registry-videos').getPublicUrl(path)
+  return data.publicUrl
+}
+
+/**
+ * Public claim — no auth. The slug resolves the owning couple (same
+ * public_slug / public_sharing_enabled gate as the guestbook), then the
+ * write happens via the service-role client scoped to that resolved
+ * user_id, exactly like submitGuestbookEntry / submitPublicPledge.
+ */
+export interface GiftClaimReceipt {
+  gift: ReceiptGift
+  guestEmailSent: boolean
+  guestWhatsAppSent: boolean
+}
+
+export async function claimGiftRegistryItem(
+  slug: string,
+  itemId: string,
+  guestName: string,
+  guestPhoneRaw: string,
+  guestEmailRaw: string | null,
+  lang: ReceiptLang = 'sw',
+): Promise<{ ok: boolean; error?: string; receipt?: GiftClaimReceipt }> {
+  const name = guestName.trim().slice(0, 80)
+  if (!name) return { ok: false, error: 'Please enter your name.' }
+  const guestPhone = normalizePhone(guestPhoneRaw)
+  if (!guestPhone) return { ok: false, error: 'Please enter a valid phone number.' }
+  const guestEmail = guestEmailRaw?.trim() || null
+
+  const supabase = createDashboardClient()
+  const { data: profile, error: pErr } = await supabase
+    .from('couple_profiles')
+    .select('user_id, public_sharing_enabled, partner1_name, partner2_name, whatsapp_phone')
+    .eq('public_slug', slug)
+    .maybeSingle<{
+      user_id: string
+      public_sharing_enabled: boolean
+      partner1_name: string | null
+      partner2_name: string | null
+      whatsapp_phone: string | null
+    }>()
+  if (pErr) {
+    console.error('[gift-registry] profile lookup failed', pErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
+  if (!profile || !profile.public_sharing_enabled) {
+    return { ok: false, error: 'This registry link is no longer active.' }
+  }
+
+  const { data: item, error: itemErr } = await supabase
+    .from('gift_registry_items')
+    .select('id, title, quantity_requested, price_label, shop_name, shop_location, shop_contact, product_link')
+    .eq('id', itemId)
+    .eq('user_id', profile.user_id)
+    .maybeSingle<{
+      id: string
+      title: string
+      quantity_requested: number
+      price_label: string | null
+      shop_name: string | null
+      shop_location: string | null
+      shop_contact: string | null
+      product_link: string | null
+    }>()
+  if (itemErr || !item) {
+    return { ok: false, error: 'This gift is no longer on the registry.' }
+  }
+
+  let claimedTitle: string
+  if (item.quantity_requested <= 1) {
+    // Only claim if still unclaimed — prevents two guests racing on the same gift.
+    const { data: claimed, error: updErr } = await supabase
+      .from('gift_registry_items')
+      .update({
+        claimed_by_name: name,
+        claimed_by_phone: guestPhone,
+        claimed_by_email: guestEmail,
+        claimed_at: new Date().toISOString(),
+      })
+      .eq('id', itemId)
+      .eq('user_id', profile.user_id)
+      .is('claimed_by_name', null)
+      .select('id, title')
+      .maybeSingle<{ id: string; title: string }>()
+    if (updErr) {
+      console.error('[gift-registry] claim failed', updErr)
+      return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+    }
+    if (!claimed) {
+      return { ok: false, error: 'Someone already claimed this gift.' }
+    }
+    claimedTitle = claimed.title
+  } else {
+    // Quantity > 1 — each unit can go to a different guest. Insert then
+    // re-check the count so two guests racing on the last unit can't both
+    // land inside the requested quantity; the loser's row is rolled back.
+    const { count: beforeCount } = await supabase
+      .from('gift_registry_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('item_id', itemId)
+    if ((beforeCount ?? 0) >= item.quantity_requested) {
+      return { ok: false, error: 'This gift is fully claimed.' }
+    }
+    const { data: inserted, error: insErr } = await supabase
+      .from('gift_registry_claims')
+      .insert({ item_id: itemId, user_id: profile.user_id, guest_name: name, guest_phone: guestPhone, guest_email: guestEmail })
+      .select('id')
+      .single<{ id: string }>()
+    if (insErr || !inserted) {
+      console.error('[gift-registry] claim insert failed', insErr)
+      return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+    }
+    const { count: afterCount } = await supabase
+      .from('gift_registry_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('item_id', itemId)
+    if ((afterCount ?? 0) > item.quantity_requested) {
+      await supabase.from('gift_registry_claims').delete().eq('id', inserted.id)
+      return { ok: false, error: 'This gift is fully claimed.' }
+    }
+    claimedTitle = item.title
+  }
+
+  const coupleNames = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || 'you'
+  await createNotification({
+    userId: profile.user_id,
+    type: 'gift_claimed',
+    title: `${name} claimed a gift from ${coupleNames}'s registry`,
+    body: claimedTitle,
+    href: '/my/dashboard/gift-registry',
+  })
+
+  const receiptGift: ReceiptGift = {
+    title: claimedTitle,
+    priceLabel: item.price_label,
+    shopName: item.shop_name,
+    shopLocation: item.shop_location,
+    shopContact: item.shop_contact,
+    productLink: item.product_link,
+  }
+
+  // Best-effort — a couple with no email on file, or a not-yet-configured
+  // gateway, must never turn a successful claim into an error response.
+  let guestEmailSent = false
+  let guestWhatsAppSent = false
+  try {
+    const { data: coupleUser } = await supabase.from('users').select('email').eq('id', profile.user_id).maybeSingle<{ email: string | null }>()
+    const result = await sendGiftClaimReceipts({
+      gift: receiptGift,
+      coupleName: coupleNames,
+      guestName: name,
+      guestPhone,
+      guestEmail,
+      coupleEmail: coupleUser?.email ?? null,
+      couplePhone: normalizePhone(profile.whatsapp_phone),
+      lang,
+    })
+    guestEmailSent = result.guestEmailSent
+    guestWhatsAppSent = result.guestWhatsAppSent
+  } catch (err) {
+    console.error('[gift-registry] claim receipt send failed', err)
+  }
+
+  revalidatePath(`/gift-registry/${slug}`)
+  revalidatePath('/my/dashboard/gift-registry')
+  return { ok: true, receipt: { gift: receiptGift, guestEmailSent, guestWhatsAppSent } }
 }
 
 // ---------------------------------------------------------------- WhatsApp invitations

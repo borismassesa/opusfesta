@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import { UIStringsProvider } from '@/components/providers/UIStringsProvider'
 import { requireDashboardUser } from '@/lib/dashboard/auth'
-import { getCoupleProfile, coupleDisplayName } from '@/lib/dashboard/queries'
+import { getCoupleProfile, coupleFirstNames } from '@/lib/dashboard/queries'
 import { getLocale } from '@/lib/cms/locale'
 import { loadUiStrings } from '@/lib/cms/ui-strings'
 
@@ -17,7 +17,9 @@ export const metadata: Metadata = {
 export default async function MyLayout({ children }: { children: ReactNode }) {
   const user = await requireDashboardUser('/my/dashboard')
   const profile = await getCoupleProfile()
-  const coupleName = coupleDisplayName(profile)
+  // Sidebar caption reads best short — "Jonathan & Jenifer", not the full
+  // "Jonathan David & Jenifer Kasala".
+  const coupleName = coupleFirstNames(profile)
   const initial = (user.name ?? user.email).charAt(0).toUpperCase()
   const collapsed = (await cookies()).get('sidebar_collapsed')?.value === '1'
   const locale = await getLocale()

@@ -31,10 +31,12 @@ export type OrderRow = {
   payment_label: string | null
   payment_submitted_at: string | null
   paid_at: string | null
+  created_at: string
 }
 
-const SELECT_COLS =
-  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at'
+export const ORDER_SELECT_COLS =
+  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, event_id, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at, created_at'
+const SELECT_COLS = ORDER_SELECT_COLS
 
 export async function createPendingOrder(input: {
   ref: string
@@ -104,7 +106,7 @@ export async function getOrderByRef(ref: string): Promise<OrderRow | null> {
 export function orderRowToStoredOrder(order: OrderRow): StoredOrder {
   return {
     ref: order.ref,
-    paidAt: order.paid_at ?? order.payment_submitted_at ?? new Date().toISOString(),
+    paidAt: order.paid_at ?? order.payment_submitted_at ?? order.created_at,
     eventDate: order.event_date ?? undefined,
     paymentLabel: order.payment_label ?? undefined,
     payment: {

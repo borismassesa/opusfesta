@@ -8,12 +8,15 @@ import { toTzs } from './currency'
 import { resolveEventCover, type PledgePageConfig, type PledgePaymentMethod } from './pledge-page'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import { parseTemplateCardItemId, type TemplateCardType } from './pledge-card-templates'
+import { ORDER_SELECT_COLS, orderRowToStoredOrder, type OrderRow } from '@/lib/payments/orders'
+import type { StoredOrder } from '@/lib/cart-storage'
 import type { SiteDoc } from '@/lib/builder/types'
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import type {
   DashboardStats,
   EventPledge,
   EventType,
+  GiftRegistryItem,
   GuestbookEntry,
   GuestInvitation,
   GuestWithInvitations,
@@ -742,6 +745,18 @@ export function coupleFirstNames(profile: CoupleProfileLite | null): string {
   return names.map(firstNameOf).join(' & ')
 }
 
+/** The signed-in couple's public-sharing state, for the Privacy/URLs settings pages. */
+export async function getPublicShareInfo(): Promise<{ slug: string | null; enabled: boolean }> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('couple_profiles')
+    .select('public_slug, public_sharing_enabled')
+    .eq('user_id', user.id)
+    .maybeSingle<{ public_slug: string | null; public_sharing_enabled: boolean | null }>()
+  return { slug: data?.public_slug ?? null, enabled: data?.public_sharing_enabled ?? false }
+}
+
 /** The signed-in couple's Contact Collector token (shareable via WhatsApp). */
 export async function getMyCollectorToken(): Promise<string | null> {
   const user = await requireDashboardUser()
@@ -1183,14 +1198,16 @@ export async function getMyPublicInvite(): Promise<MyPublicInvite> {
 // ──────────────────────────────────── Guestbook ─────────────────────────────────
 
 /** Every guestbook entry for the signed-in couple, newest first (dashboard moderation queue). */
-export async function getGuestbookEntries(): Promise<GuestbookEntry[]> {
+/** Guestbook messages for the couple's selected event (per the dashboard's
+ *  event-scoping — see event-scope.ts). `eventId: null` returns every
+ *  message regardless of event (0-event couples, or before a scope is
+ *  resolved) — mirrors getGiftRegistryItems. */
+export async function getGuestbookEntries(eventId: string | null): Promise<GuestbookEntry[]> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
-  const { data, error } = await supabase
-    .from('guestbook_entries')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  let query = supabase.from('guestbook_entries').select('*').eq('user_id', user.id)
+  if (eventId) query = query.eq('event_id', eventId)
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) {
     console.error('[guestbook] list failed', error)
     return []
@@ -1256,6 +1273,310 @@ export async function getPublicGuestbookPage(slug: string): Promise<PublicGuestb
     coverImageUrl: profile.cover_image_url,
     city: profile.city,
     entries: (data ?? []) as GuestbookEntry[],
+  }
+}
+
+// ─────────────────────────────── Gift registry ──────────────────────────────────
+
+/** The manage-registry page's "hero" card — couple names, wedding date, and
+ *  the registry's own customizable header/banner/photo/welcome message. Kept
+ *  separate from MyPublicInvite (shared across RSVPs/guestbook) since these
+ *  fields are registry-specific. */
+export interface GiftRegistryHero {
+  coupleName: string
+  /** Couple's override for the displayed header — falls back to coupleName when unset. */
+  registryHeader: string | null
+  /**
+   * The selected event's own start date (wedding_events.starts_at), not a
+   * couple-level "wedding date" — a multi-event couple's registry countdown
+   * should track whichever event is currently in scope. Supplied by the
+   * caller (page.tsx already has the resolved event scope), not fetched here.
+   */
+  eventDate: string | null
+  /** Wide banner photo behind the header. */
+  registryBannerImageUrl: string | null
+  /** Small circular photo overlapping the banner's bottom edge. */
+  registryCoverImageUrl: string | null
+  registryWelcomeMessage: string | null
+}
+
+/** Everything except eventDate, which the caller merges in from the resolved event scope. */
+export async function getGiftRegistryHero(): Promise<Omit<GiftRegistryHero, 'eventDate'>> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name, registry_header, registry_banner_image_url, registry_cover_image_url, registry_welcome_message')
+    .eq('user_id', user.id)
+    .maybeSingle<{
+      partner1_name: string | null
+      partner2_name: string | null
+      registry_header: string | null
+      registry_banner_image_url: string | null
+      registry_cover_image_url: string | null
+      registry_welcome_message: string | null
+    }>()
+  const names = [data?.partner1_name, data?.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
+  return {
+    coupleName: names.length ? names.join(' & ') : 'The Couple',
+    registryHeader: data?.registry_header ?? null,
+    registryBannerImageUrl: data?.registry_banner_image_url ?? null,
+    registryCoverImageUrl: data?.registry_cover_image_url ?? null,
+    registryWelcomeMessage: data?.registry_welcome_message ?? null,
+  }
+}
+
+/** Count-only lookup (no row fetch) for the registry's "add your guest count" nudge. */
+export async function getGuestCount(): Promise<number> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { count } = await supabase
+    .from('guest_contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  return count ?? 0
+}
+
+/** Gifts for the couple's selected event (per the dashboard's event-scoping — see event-scope.ts).
+ *  `eventId: null` returns every gift regardless of event (0-event couples, or before a scope is resolved). */
+export async function getGiftRegistryItems(eventId: string | null): Promise<GiftRegistryItemWithClaims[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  let query = supabase.from('gift_registry_items').select('*').eq('user_id', user.id)
+  if (eventId) query = query.eq('event_id', eventId)
+  const { data, error } = await query.order('sort_order', { ascending: true }).order('created_at', { ascending: true })
+  if (error) {
+    console.error('[gift-registry] list failed', error)
+    return []
+  }
+  return attachClaimCounts(supabase, (data ?? []) as GiftRegistryItem[])
+}
+
+/** One guest's claim on one unit of a gift — the couple-facing contact record. */
+export interface GiftClaimant {
+  name: string
+  phone: string | null
+  email: string | null
+  claimedAt: string
+}
+
+/**
+ * A gift with its total claimed-unit count and the list of claimants
+ * attached. For quantity_requested <= 1 (the common case) this is derived
+ * straight from the item's own claimed_by_* columns — for gifts asking for
+ * more than one, it comes from gift_registry_claims (one row per guest who
+ * claimed a unit). See attachClaimCounts.
+ */
+export type GiftRegistryItemWithClaims = GiftRegistryItem & { claimedCount: number; claimants: GiftClaimant[] }
+
+/** Batches the gift_registry_claims lookup for every multi-unit item in one
+ *  query rather than N+1, and folds a claimedCount + claimants list onto
+ *  each item (single-unit items derive theirs from their own columns). */
+async function attachClaimCounts(
+  supabase: ReturnType<typeof createDashboardClient>,
+  items: GiftRegistryItem[],
+): Promise<GiftRegistryItemWithClaims[]> {
+  const multiUnitIds = items.filter((i) => i.quantity_requested > 1).map((i) => i.id)
+  const claimantsById = new Map<string, GiftClaimant[]>()
+  if (multiUnitIds.length) {
+    const { data } = await supabase
+      .from('gift_registry_claims')
+      .select('item_id, guest_name, guest_phone, guest_email, claimed_at')
+      .in('item_id', multiUnitIds)
+      .order('claimed_at', { ascending: true })
+    for (const row of (data ?? []) as {
+      item_id: string
+      guest_name: string
+      guest_phone: string | null
+      guest_email: string | null
+      claimed_at: string
+    }[]) {
+      const list = claimantsById.get(row.item_id) ?? []
+      list.push({ name: row.guest_name, phone: row.guest_phone, email: row.guest_email, claimedAt: row.claimed_at })
+      claimantsById.set(row.item_id, list)
+    }
+  }
+  return items.map((i) => {
+    const claimsTableEntries = claimantsById.get(i.id) ?? []
+    // claimed_by_name is written for single-unit guest claims AND for the
+    // host's "already have this" action (markGiftRegistryItemReceived) —
+    // folding it in here (instead of gating it to quantity_requested <= 1)
+    // keeps a guest's claim from being silently dropped once a gift's
+    // quantity is bumped above 1. But the two cases mean different things:
+    // a real guest's name is exactly one claimed unit, same as any row in
+    // gift_registry_claims — only markGiftRegistryItemReceived's literal
+    // 'You' means the whole request is satisfied, not just one unit.
+    const legacyClaimant: GiftClaimant[] = i.claimed_by_name
+      ? [{ name: i.claimed_by_name, phone: i.claimed_by_phone, email: i.claimed_by_email, claimedAt: i.claimed_at ?? i.created_at }]
+      : []
+    const claimants = [...legacyClaimant, ...claimsTableEntries]
+    const claimedCount = i.claimed_by_name === 'You' ? Math.max(i.quantity_requested, claimants.length) : claimants.length
+    return { ...i, claimedCount, claimants }
+  })
+}
+
+/**
+ * One row per guest claim, flattened across every gift the couple owns, for
+ * the Claims management table. Unlike `GiftClaimant` (the read-only DTO
+ * folded onto each gift card), this carries a stable identity — `claimId` +
+ * `kind` — so the UI can target the right row for edit/delete: `kind:
+ * 'claim'` rows live in gift_registry_claims (multi-unit gifts), `kind:
+ * 'item'` rows are a single-unit gift's own claimed_by_* columns. The host's
+ * own "already have this" marker (claimed_by_name === 'You') is excluded —
+ * it isn't a guest.
+ */
+export interface GiftRegistryClaimRow {
+  claimId: string
+  kind: 'claim' | 'item'
+  itemId: string
+  itemTitle: string
+  itemImageUrl: string | null
+  guestName: string
+  guestPhone: string | null
+  guestEmail: string | null
+  claimedAt: string
+}
+
+/** Every guest claim for the couple's selected event, newest first. See GiftRegistryClaimRow. */
+export async function getGiftRegistryClaims(eventId: string | null): Promise<GiftRegistryClaimRow[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  let itemQuery = supabase
+    .from('gift_registry_items')
+    .select('id, title, image_urls, claimed_by_name, claimed_by_phone, claimed_by_email, claimed_at, created_at')
+    .eq('user_id', user.id)
+  if (eventId) itemQuery = itemQuery.eq('event_id', eventId)
+  const { data: items, error: itemsError } = await itemQuery
+  if (itemsError) {
+    console.error('[gift-registry] claims item lookup failed', itemsError)
+    return []
+  }
+  const rows = (items ?? []) as {
+    id: string
+    title: string
+    image_urls: string[]
+    claimed_by_name: string | null
+    claimed_by_phone: string | null
+    claimed_by_email: string | null
+    claimed_at: string | null
+    created_at: string
+  }[]
+  const itemIds = rows.map((i) => i.id)
+  const titleById = new Map(rows.map((i) => [i.id, i.title]))
+  const imageById = new Map(rows.map((i) => [i.id, i.image_urls[0] ?? null]))
+
+  const claims: GiftRegistryClaimRow[] = rows
+    .filter((i) => i.claimed_by_name && i.claimed_by_name !== 'You')
+    .map((i) => ({
+      claimId: i.id,
+      kind: 'item' as const,
+      itemId: i.id,
+      itemTitle: i.title,
+      itemImageUrl: i.image_urls[0] ?? null,
+      guestName: i.claimed_by_name as string,
+      guestPhone: i.claimed_by_phone,
+      guestEmail: i.claimed_by_email,
+      claimedAt: i.claimed_at ?? i.created_at,
+    }))
+
+  if (itemIds.length) {
+    const { data: claimRows, error: claimsError } = await supabase
+      .from('gift_registry_claims')
+      .select('id, item_id, guest_name, guest_phone, guest_email, claimed_at')
+      .in('item_id', itemIds)
+    if (claimsError) {
+      console.error('[gift-registry] claims lookup failed', claimsError)
+    } else {
+      for (const row of (claimRows ?? []) as {
+        id: string
+        item_id: string
+        guest_name: string
+        guest_phone: string | null
+        guest_email: string | null
+        claimed_at: string
+      }[]) {
+        claims.push({
+          claimId: row.id,
+          kind: 'claim',
+          itemId: row.item_id,
+          itemTitle: titleById.get(row.item_id) ?? '',
+          itemImageUrl: imageById.get(row.item_id) ?? null,
+          guestName: row.guest_name,
+          guestPhone: row.guest_phone,
+          guestEmail: row.guest_email,
+          claimedAt: row.claimed_at,
+        })
+      }
+    }
+  }
+
+  return claims.sort((a, b) => (a.claimedAt < b.claimedAt ? 1 : -1))
+}
+
+/**
+ * Public, slug-scoped data for the standalone /gift-registry/<slug> page.
+ * Gated on the same `public_sharing_enabled` flag as the guestbook and
+ * invite hub — no separate registry-specific toggle. Returns null when the
+ * slug is unknown or sharing is off, so the page 404s.
+ */
+export interface PublicGiftRegistryPage {
+  slug: string
+  coupleName: string
+  registryHeader: string | null
+  weddingDate: string | null
+  registryBannerImageUrl: string | null
+  registryCoverImageUrl: string | null
+  registryWelcomeMessage: string | null
+  items: GiftRegistryItemWithClaims[]
+}
+
+export async function getPublicGiftRegistryPage(slug: string): Promise<PublicGiftRegistryPage | null> {
+  if (!slug) return null
+  const supabase = createDashboardClient()
+  const { data: profile, error: profileErr } = await supabase
+    .from('couple_profiles')
+    .select(
+      'user_id, partner1_name, partner2_name, public_sharing_enabled, registry_header, wedding_date, registry_banner_image_url, registry_cover_image_url, registry_welcome_message',
+    )
+    .eq('public_slug', slug)
+    .maybeSingle<{
+      user_id: string
+      partner1_name: string | null
+      partner2_name: string | null
+      public_sharing_enabled: boolean
+      registry_header: string | null
+      wedding_date: string | null
+      registry_banner_image_url: string | null
+      registry_cover_image_url: string | null
+      registry_welcome_message: string | null
+    }>()
+  if (profileErr) {
+    console.error('[gift-registry] public page lookup failed', profileErr)
+    return null
+  }
+  if (!profile || !profile.public_sharing_enabled) return null
+
+  const { data, error } = await supabase
+    .from('gift_registry_items')
+    .select('*')
+    .eq('user_id', profile.user_id)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error('[gift-registry] public list failed', error)
+  }
+  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean).map((n) => firstNameOf(n as string))
+  const items = await attachClaimCounts(supabase, (data ?? []) as GiftRegistryItem[])
+  return {
+    slug,
+    coupleName: names.length ? names.join(' & ') : 'The Couple',
+    registryHeader: profile.registry_header,
+    weddingDate: profile.wedding_date,
+    registryBannerImageUrl: profile.registry_banner_image_url,
+    registryCoverImageUrl: profile.registry_cover_image_url,
+    registryWelcomeMessage: profile.registry_welcome_message,
+    items,
   }
 }
 
@@ -1364,6 +1685,39 @@ export async function fetchPaidOrdersForCouple(
     .or(ors.join(','))
     .order('paid_at', { ascending: false })
   return (data ?? []) as PaidOrderRow[]
+}
+
+/**
+ * Every order that belongs to this couple — paid, still processing, or
+ * awaiting manual payment review — for the dashboard's Orders page. Mirrors
+ * fetchPaidOrdersForCouple's user/email/phone matching, but (a) returns full
+ * StoredOrder objects instead of the trimmed row used for event-linking, and
+ * (b) isn't restricted to status='paid', so an order still under review still
+ * shows up instead of the page looking empty until it clears. Only genuinely
+ * dead orders (failed/expired) are excluded. Returns [] for a signed-out caller.
+ */
+export async function getOrdersForDashboard(): Promise<StoredOrder[]> {
+  const user = await getDashboardUser()
+  if (!user) return []
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+
+  const guestCheckoutOrs: string[] = []
+  if (user.email) guestCheckoutOrs.push(`and(user_id.is.null,contact_email.eq.${user.email})`)
+  if (profile?.whatsapp_phone) guestCheckoutOrs.push(`and(user_id.is.null,contact_phone.eq.${profile.whatsapp_phone})`)
+  const ors = [`user_id.eq.${user.id}`, ...guestCheckoutOrs]
+
+  const { data } = await supabase
+    .from('invitation_orders')
+    .select(ORDER_SELECT_COLS)
+    .not('status', 'in', '(failed,expired)')
+    .or(ors.join(','))
+    .order('created_at', { ascending: false })
+  return ((data ?? []) as OrderRow[]).map(orderRowToStoredOrder)
 }
 
 /** Which pledge-card / thank-you-card template designs this couple has

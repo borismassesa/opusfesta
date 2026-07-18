@@ -2,13 +2,20 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Send, CheckCircle2 } from 'lucide-react'
+import { Send, CheckCircle2, Heart } from 'lucide-react'
 import { submitPublicPledge } from './actions'
+import { firstNameOf } from '@/lib/dashboard/share'
 import { useT } from '@/components/providers/UIStringsProvider'
 import { LocaleToggle } from '@/components/LocaleToggle'
 import Logo from '@/components/ui/Logo'
 import type { Locale } from '@/lib/cms/localized'
-import { resolvePledgePage, COVER_TONES, accentInk, type PledgePageConfig } from '@/lib/dashboard/pledge-page'
+import {
+  resolvePledgePage,
+  COVER_TONES,
+  accentInk,
+  isVideoCoverUrl,
+  type PledgePageConfig,
+} from '@/lib/dashboard/pledge-page'
 
 interface Props {
   token: string
@@ -63,6 +70,7 @@ export default function PledgeForm({
   // into the image itself — overlaying our own dynamic text on top of it
   // (as we do for a plain uploaded photo) would duplicate/collide with it.
   const isFullTemplate = hasCover && cfg.coverIsFullTemplate
+  const isVideo = hasCover && isVideoCoverUrl(cfg.coverImageUrl!)
   const onAccent = accentInk(cfg.accent)
 
   const dateStr = dotDate(weddingDate)
@@ -70,6 +78,9 @@ export default function PledgeForm({
     .split(/\s*(?:&|and|\bna\b|\+)\s*/i)
     .map((p) => p.trim())
     .filter(Boolean)
+  // First names only for the privacy note ("Jonathan & Jenifer"), not full names.
+  const firstNameParts = parts.map((p) => firstNameOf(p))
+  const shortCoupleName = firstNameParts.length >= 2 ? `${firstNameParts[0]} & ${firstNameParts[1]}` : coupleName
 
   // Cover colors flip to light when a photo backs the panel.
   const ink = hasCover ? '#FFFFFF' : tone.ink
@@ -77,11 +88,13 @@ export default function PledgeForm({
   const rule = hasCover ? 'rgba(255,255,255,0.6)' : tone.rule
   const leaf = hasCover ? 'rgba(255,255,255,0.7)' : tone.leaf
   const coverStyle: React.CSSProperties = hasCover
-    ? {
-        backgroundImage: `linear-gradient(rgba(20,12,28,0.42),rgba(20,12,28,0.55)), url("${cfg.coverImageUrl}")`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
+    ? isVideo
+      ? { backgroundColor: '#000' } // the <video> element paints the visual; this is just the load-in fallback
+      : {
+          backgroundImage: `linear-gradient(rgba(20,12,28,0.42),rgba(20,12,28,0.55)), url("${cfg.coverImageUrl}")`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }
     : { backgroundImage: tone.gradient, backgroundColor: tone.base }
 
   function submit(e: React.FormEvent) {
@@ -122,19 +135,48 @@ export default function PledgeForm({
           decorative "save the date" panel with dynamic text when there's no
           full template. ── */}
       {isFullTemplate ? (
-        <aside className="flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#F1F4EB] to-[#EDF0E7] px-5 py-8 sm:px-10 sm:py-14 lg:sticky lg:top-0 lg:h-screen lg:min-h-0 lg:px-16 lg:py-16">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={cfg.coverImageUrl!}
-            alt={coupleName}
-            className="max-h-[65vh] w-auto max-w-full rounded-2xl object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)] sm:max-h-[75vh] lg:max-h-[calc(100vh-8rem)]"
-          />
+        <aside className="flex items-center justify-center overflow-y-auto bg-gradient-to-br from-[#F1F4EB] to-[#EDF0E7] px-5 pb-8 pt-24 sm:px-10 sm:py-14 lg:sticky lg:top-0 lg:h-screen lg:min-h-0 lg:px-16 lg:py-16">
+          {isVideo ? (
+            <video
+              src={cfg.coverImageUrl!}
+              className="max-h-[65vh] w-auto max-w-full rounded-2xl bg-[#E5E3DE] object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)] sm:max-h-[75vh] lg:max-h-[calc(100vh-8rem)]"
+              muted
+              loop
+              autoPlay
+              playsInline
+              controls
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={cfg.coverImageUrl!}
+              alt={coupleName}
+              className="max-h-[65vh] w-auto max-w-full rounded-2xl object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)] sm:max-h-[75vh] lg:max-h-[calc(100vh-8rem)]"
+            />
+          )}
         </aside>
       ) : (
         <aside
           className="relative flex min-h-[360px] flex-col justify-center overflow-hidden px-8 py-14 sm:min-h-[420px] lg:sticky lg:top-0 lg:h-screen lg:px-14"
           style={{ ...coverStyle, color: ink }}
         >
+          {isVideo ? (
+            <>
+              <video
+                src={cfg.coverImageUrl!}
+                className="absolute inset-0 h-full w-full object-cover"
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
+              {/* Uniform dark tint, matching the photo backdrop's darkened background-image */}
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{ background: 'linear-gradient(rgba(20,12,28,0.42),rgba(20,12,28,0.55))' }}
+              />
+            </>
+          ) : null}
           {!hasCover ? (
             <>
               <Sprig className="pointer-events-none absolute -left-5 -top-8 w-32 opacity-90 sm:w-44" style={{ color: leaf }} />
@@ -247,7 +289,7 @@ export default function PledgeForm({
                 </span>
                 <div className="mx-auto mt-3 flex items-center justify-center gap-2.5" aria-hidden>
                   <span className="h-px w-8" style={{ backgroundColor: cfg.accent, opacity: 0.5 }} />
-                  <span className="h-1.5 w-1.5 rotate-45" style={{ backgroundColor: cfg.accent }} />
+                  <Heart className="h-3 w-3 shrink-0" style={{ color: cfg.accent }} fill="currentColor" strokeWidth={0} />
                   <span className="h-px w-8" style={{ backgroundColor: cfg.accent, opacity: 0.5 }} />
                 </div>
                 <span className="mt-3 block font-serif text-2xl text-[#1A1A1A]/80 sm:text-[26px]">
@@ -338,7 +380,7 @@ export default function PledgeForm({
                 </button>
 
                 <p className="text-center text-[11px] leading-relaxed text-[#1A1A1A]/45">
-                  {cfg.privacyNote.replace(/\{couple\}/g, coupleName)}
+                  {cfg.privacyNote.replace(/\{couple\}/g, shortCoupleName)}
                 </p>
               </form>
             </>

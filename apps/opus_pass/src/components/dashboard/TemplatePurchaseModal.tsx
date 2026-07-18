@@ -64,7 +64,7 @@ export default function TemplatePurchaseModal({
   paymentStrings: CheckoutPaymentStrings
   onClose: () => void
   /** Called once the payment resolves (paid, or submitted for manual review). */
-  onPurchaseSubmitted: (result: { status: 'paid' | 'processing' | 'failed' }) => void
+  onPurchaseSubmitted: (result: { status: 'paid' | 'processing' | 'failed'; order?: StoredOrder }) => void
 }) {
   const [method, setMethod] = useState<'mpesa' | 'card'>('mpesa')
   const [mpesaMode, setMpesaMode] = useState<'push' | 'lipa'>(SELCOM_ENABLED ? 'push' : 'lipa')
@@ -175,9 +175,11 @@ export default function TemplatePurchaseModal({
           // Promote the local snapshot to paid so the dashboard's Orders list
           // reads 'paid' immediately, before the server re-confirms.
           const stored = getLastOrder()
-          if (stored && stored.ref === ref) setLastOrder({ ...stored, paymentStatus: 'paid' })
+          const paidOrder: StoredOrder =
+            stored && stored.ref === ref ? { ...stored, paymentStatus: 'paid' } : buildLocalOrder(ref, 'paid')
+          setLastOrder(paidOrder)
           toast.success(`${target.templateName} unlocked`)
-          onPurchaseSubmitted({ status: 'paid' })
+          onPurchaseSubmitted({ status: 'paid', order: paidOrder })
           return
         }
         if (data.status === 'failed' || data.status === 'expired') {
@@ -247,9 +249,10 @@ export default function TemplatePurchaseModal({
           setPayError(data.message ?? 'Payment could not be submitted. Please try again.')
           return
         }
-        setLastOrder(buildLocalOrder(data.ref, 'verifying'))
+        const localOrder = buildLocalOrder(data.ref, 'verifying')
+        setLastOrder(localOrder)
         toast.success('Payment submitted for review')
-        onPurchaseSubmitted({ status: 'processing' })
+        onPurchaseSubmitted({ status: 'processing', order: localOrder })
       } finally {
         setSubmitting(false)
       }

@@ -668,7 +668,7 @@ export interface FormsRsvpStrings {
   send_pending: string
   send_cta: string
   // Footer
-  powered_by: string // uses {coupleName}
+  powered_by: string // uses {coupleName} and {icon}
 }
 
 // ── Pledge form (public contribution pledge at /pledge/[token]) ───────────────
@@ -1727,7 +1727,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     message_optional: '(optional)',
     send_pending: 'Sending…',
     send_cta: 'Send my RSVP',
-    powered_by: 'Powered by OpusPass · {coupleName}',
+    powered_by: 'Powered with {icon} by OpusPass · {coupleName}',
   },
   'forms-pledge': {
     label_name: 'Your name',
@@ -1841,7 +1841,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     delete_event: 'Delete event',
     btn_saving: 'Saving…',
     btn_save_changes: 'Save changes',
-    btn_add_event: 'Add event',
+    btn_add_event: 'Save event',
     preview_label: 'Preview',
     preview_visible: 'Visible to guests',
     preview_name_placeholder: 'Your event name',

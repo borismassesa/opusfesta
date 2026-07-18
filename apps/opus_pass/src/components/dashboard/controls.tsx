@@ -74,7 +74,11 @@ export function Dialog({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {/* data-lenis-prevent: the root SmoothScrollProvider (Lenis) hijacks
+            wheel events app-wide and preventDefaults them unless the target
+            opts out — without this, mouse-wheel scrolling in this panel does
+            nothing and only dragging the native scrollbar works. */}
+        <div data-lenis-prevent className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
         {footer ? (
           <div className="flex items-center justify-end gap-2 border-t border-black/[0.06] px-6 py-4">
             {footer}
@@ -223,7 +227,11 @@ export function Slideover({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {/* data-lenis-prevent: the root SmoothScrollProvider (Lenis) hijacks
+            wheel events app-wide and preventDefaults them unless the target
+            opts out — without this, mouse-wheel scrolling in this panel does
+            nothing and only dragging the native scrollbar works. */}
+        <div data-lenis-prevent className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
         {footer ? (
           <div className="flex items-center justify-end gap-2 border-t border-black/[0.06] px-6 py-4">
             {footer}

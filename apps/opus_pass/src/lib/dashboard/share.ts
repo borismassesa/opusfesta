@@ -89,6 +89,43 @@ export function guestbookUrl(origin: string, slug: string): string {
   return `${origin.replace(/\/$/, '')}${guestbookPath(slug)}`
 }
 
+/**
+ * Path to the couple's public gift registry — shares the same public_slug /
+ * public_sharing_enabled gate as the guestbook and invite hub, so there's no
+ * separate "enable" step once the couple has turned public sharing on.
+ */
+export function giftRegistryPath(slug: string): string {
+  return `/gift-registry/${slug}`
+}
+
+/** Absolute public-gift-registry URL given a runtime origin. */
+export function giftRegistryUrl(origin: string, slug: string): string {
+  return `${origin.replace(/\/$/, '')}${giftRegistryPath(slug)}`
+}
+
+/**
+ * A gift's price is free text (couples can type "Any amount" for open
+ * contributions), but when it's just digits we want "TZS" in front of it
+ * without couples having to type the currency themselves, and to abbreviate
+ * amounts of a million or more (10,000,000 → "TZS 10M") so card labels don't
+ * wrap. Leaves anything that already states a currency beyond "TZS", or
+ * isn't a plain number, untouched.
+ */
+export function formatGiftPrice(label: string | null | undefined): string | null {
+  const trimmed = label?.trim()
+  if (!trimmed) return null
+  const withoutPrefix = trimmed.replace(/^tzs\s*/i, '')
+  if (!/^[\d][\d,.\s]*$/.test(withoutPrefix)) return trimmed
+  const numeric = Number(withoutPrefix.replace(/[,\s]/g, ''))
+  if (!Number.isFinite(numeric)) return `TZS ${withoutPrefix}`
+  if (numeric >= 1_000_000) {
+    const millions = numeric / 1_000_000
+    const roundedMillions = Math.round(millions * 10) / 10
+    return `TZS ${Number.isInteger(roundedMillions) ? roundedMillions : roundedMillions.toFixed(1)}M`
+  }
+  return `TZS ${withoutPrefix}`
+}
+
 /** Bilingual (SW/EN) broadcast message for the public, forwardable invite link. */
 export function publicInviteMessage(coupleNames: string, link: string): string {
   return (
@@ -188,14 +225,16 @@ export function rsvpUrl(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}${rsvpPath(token)}`
 }
 
-/** Path to the couple's public Contact Collector page. */
-export function collectorPath(token: string): string {
-  return `/collect/${token}`
+/** Path to the couple's public Contact Collector page. The optional eventId
+ *  routes guests to that event's own cover/wording/questions for multi-event
+ *  couples — see resolveCollectorEventContent(). */
+export function collectorPath(token: string, eventId?: string | null): string {
+  return `/collect/${token}${eventId ? `?event=${eventId}` : ''}`
 }
 
 /** Absolute Contact Collector URL given a browser/runtime origin. */
-export function collectorUrl(origin: string, token: string): string {
-  return `${origin.replace(/\/$/, '')}${collectorPath(token)}`
+export function collectorUrl(origin: string, token: string, eventId?: string | null): string {
+  return `${origin.replace(/\/$/, '')}${collectorPath(token, eventId)}`
 }
 
 export function collectorShareMessage(coupleNames: string, link: string): string {

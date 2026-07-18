@@ -22,6 +22,19 @@ function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
 }
 
+/** Combine the server's orders (authoritative — covers every device) with
+ *  this browser's localStorage cache (may know about a just-submitted order
+ *  a beat before the server snapshot picked it up). Same ref wins to the
+ *  server copy, since its status is the current source of truth. */
+function mergeOrders(serverOrders: StoredOrder[], localOrders: StoredOrder[]): StoredOrder[] {
+  const byRef = new Map<string, StoredOrder>()
+  for (const o of localOrders) byRef.set(o.ref, o)
+  for (const o of serverOrders) byRef.set(o.ref, o)
+  return Array.from(byRef.values()).sort(
+    (a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime(),
+  )
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
@@ -216,17 +229,25 @@ function OrderCard({ order, strings }: { order: StoredOrder; strings: DashboardO
   )
 }
 
-export default function OrdersManager({ strings }: { strings: DashboardOrdersStrings }) {
-  const [orders, setOrders] = useState<StoredOrder[]>([])
-  const [mounted, setMounted] = useState(false)
+export default function OrdersManager({
+  strings,
+  initialOrders,
+}: {
+  strings: DashboardOrdersStrings
+  initialOrders: StoredOrder[]
+}) {
+  const [orders, setOrders] = useState<StoredOrder[]>(initialOrders)
+
+  // initialOrders is stable, deterministic server data — safe to render on
+  // first paint. This effect only enriches it with this browser's
+  // localStorage cache (e.g. an order just submitted here, a beat ahead of
+  // the server snapshot), so it never causes a hydration mismatch.
+  useEffect(() => {
+    setOrders(mergeOrders(initialOrders, getOrders()))
+  }, [initialOrders])
 
   useEffect(() => {
-    setOrders(getOrders())
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted || orders.length === 0) return
+    if (orders.length === 0) return
     let cancelled = false
     async function sync() {
       let changed = false
@@ -248,13 +269,13 @@ export default function OrdersManager({ strings }: { strings: DashboardOrdersStr
           /* keep the local order snapshot if the status check fails */
         }
       }
-      if (!cancelled && changed) setOrders(getOrders())
+      if (!cancelled && changed) setOrders(mergeOrders(initialOrders, getOrders()))
     }
     void sync()
     return () => {
       cancelled = true
     }
-  }, [mounted, orders])
+  }, [orders, initialOrders])
 
   const stats = useMemo(() => {
     const inProgress = orders.filter((o) => ORDER_STAGES[currentStageIndex(o)].id !== 'delivered').length
@@ -271,7 +292,7 @@ export default function OrdersManager({ strings }: { strings: DashboardOrdersStr
         <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_subtitle}</p>
       </header>
 
-      {!mounted ? null : orders.length === 0 ? (
+      {orders.length === 0 ? (
         <EmptyState
           icon={<Receipt className="h-7 w-7" />}
           title={strings.empty_title}

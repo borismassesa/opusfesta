@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Clock, Check, PartyPopper, Heart } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import PoweredByLine from '@/components/ui/PoweredByLine'
 import { useT } from '@/components/providers/UIStringsProvider'
 import { submitPublicRsvp, type PublicRsvpResponse, type PublicRsvpAnswerInput } from '@/lib/dashboard/actions'
 import { eventTypeLabel, type RsvpStatus, type RsvpQuestion } from '@/lib/dashboard/types'
@@ -469,7 +470,9 @@ function Shell({
         <div className="rounded-3xl bg-white/70 p-6 shadow-[0_8px_40px_rgba(0,0,0,0.06)] backdrop-blur sm:p-8">
           {children}
         </div>
-        <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">{poweredBy}</p>
+        <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">
+          <PoweredByLine text={poweredBy} />
+        </p>
       </div>
     </div>
   )

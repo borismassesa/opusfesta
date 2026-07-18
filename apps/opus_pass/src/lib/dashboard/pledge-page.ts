@@ -13,6 +13,32 @@ import { DEFAULT_LOCALE, type Locale } from '@/lib/cms/localized'
 
 export type PledgeCoverTone = 'cream' | 'sage' | 'blush' | 'lavender' | 'charcoal'
 
+/** A cover can be an uploaded photo OR a short video — both stored in the
+ *  same `coverImageUrl` field; this tells the guest-facing renderers which
+ *  element to use based on the file extension. */
+export function isVideoCoverUrl(url: string): boolean {
+  return /\.(mp4|webm|mov|m4v)($|\?)/i.test(url)
+}
+
+/** 'short_answer' is free text; 'multiple_choice' asks the guest to pick one of `options`. */
+export type CollectorQuestionKind = 'short_answer' | 'multiple_choice'
+
+export interface CollectorQuestionOption {
+  id: string
+  label: string
+}
+
+/** One custom question the couple adds to their Contact Collector form, on
+ *  top of the fixed name/WhatsApp/email fields. */
+export interface CollectorQuestion {
+  id: string
+  prompt: string
+  kind: CollectorQuestionKind
+  required: boolean
+  /** Only meaningful for 'multiple_choice'. */
+  options: CollectorQuestionOption[]
+}
+
 export interface PledgePageConfig {
   eyebrow?: string
   headingLine2?: string
@@ -39,6 +65,29 @@ export interface PledgePageConfig {
    *  what actually makes the "Pledge Card Templates" picker per-event instead
    *  of clobbering every event with the same cover. */
   eventCovers?: Record<string, { coverImageUrl: string | null; coverIsFullTemplate: boolean }>
+  /** Custom questions asked on the Contact Collector form, in display order.
+   *  Legacy top-level field — see eventContent below for the per-event
+   *  scoped version couples on the per-event flow actually read from. */
+  questions?: CollectorQuestion[]
+  /** Per-event Contact Collector content — cover, wording, and questions —
+   *  keyed by event id (or EVENTLESS_COVER_KEY for couples with no events).
+   *  Each event gets its own independent collector page instead of sharing
+   *  one generic page: a couple's Kitchen Party and Send-off can look and
+   *  ask for completely different things. Mirrors eventCovers, but scopes
+   *  every editable field, not just the cover. */
+  eventContent?: Record<string, CollectorEventContent>
+}
+
+/** One event's worth of Contact Collector content — everything the customize
+ *  editor lets a couple change for their guests' contact-collection page. */
+export interface CollectorEventContent {
+  headingLine2?: string
+  intro?: string
+  buttonLabel?: string
+  privacyNote?: string
+  coverImageUrl?: string | null
+  coverIsFullTemplate?: boolean
+  questions?: CollectorQuestion[]
 }
 
 /** Map key used for eventCovers when there's no selected event (couples with
@@ -73,6 +122,52 @@ export function resolveEventCover(
     return { coverImageUrl: stored.coverImageUrl, coverIsFullTemplate: Boolean(stored.coverIsFullTemplate) }
   }
   return { coverImageUrl: null, coverIsFullTemplate: false }
+}
+
+/** Resolve the Contact Collector content — cover, wording, and questions —
+ *  that applies to one event from the couple's raw stored collector_page
+ *  config. Mirrors resolveEventCover's fallback/guard logic exactly, but
+ *  across every editable field instead of just the cover:
+ *
+ *   - a matching eventContent entry wins outright;
+ *   - if the couple has never used the per-event editor at all, fall back
+ *     to the legacy top-level fields (pre-dates event scoping — don't lose
+ *     a couple's existing customization the day this ships);
+ *   - once they're on the per-event flow, a *different*, unconfigured event
+ *     gets nothing here (all fields undefined) rather than silently
+ *     inheriting another event's wording/cover/questions — the caller's
+ *     resolveCollectorPage() then fills every blank from the locale's
+ *     built-in defaults, same as a couple who never customized anything. */
+export function resolveCollectorEventContent(
+  stored: PledgePageConfig | null | undefined,
+  eventId: string | null,
+): CollectorEventContent {
+  const key = eventId ?? EVENTLESS_COVER_KEY
+  const content = stored?.eventContent?.[key]
+  if (content) return content
+
+  const hasAnyEventContent = Boolean(stored?.eventContent && Object.keys(stored.eventContent).length > 0)
+  if (hasAnyEventContent) {
+    return {
+      headingLine2: undefined,
+      intro: undefined,
+      buttonLabel: undefined,
+      privacyNote: undefined,
+      coverImageUrl: undefined,
+      coverIsFullTemplate: undefined,
+      questions: undefined,
+    }
+  }
+
+  return {
+    headingLine2: stored?.headingLine2,
+    intro: stored?.intro,
+    buttonLabel: stored?.buttonLabel,
+    privacyNote: stored?.privacyNote,
+    coverImageUrl: stored?.coverImageUrl,
+    coverIsFullTemplate: stored?.coverIsFullTemplate,
+    questions: stored?.questions,
+  }
 }
 
 type PledgePageTextDefaults = Pick<
@@ -127,14 +222,19 @@ const PLEDGE_PAGE_SHARED_DEFAULTS = {
   coverTone: 'cream' as PledgeCoverTone,
   coverImageUrl: null as string | null,
   coverIsFullTemplate: false,
+  questions: [] as CollectorQuestion[],
 }
 
 /** Shared (locale-independent) defaults for the collector page. */
 const COLLECTOR_PAGE_SHARED_DEFAULTS = {
   accent: '#C9A0DC',
   coverTone: 'sage' as PledgeCoverTone,
-  coverImageUrl: '/assets/covers/floral-rose-invite.png' as string | null,
-  coverIsFullTemplate: true,
+  // No default cover image — an uncustomized collector page shows a plain
+  // backdrop rather than a stand-in stock photo/template the couple never
+  // chose (see CollectorForm's hasCover branch).
+  coverImageUrl: null as string | null,
+  coverIsFullTemplate: false,
+  questions: [] as CollectorQuestion[],
 }
 
 /** English defaults — kept for callers that don't care about locale (e.g. the
@@ -150,6 +250,19 @@ function mergeConfig(
   sharedDefaults: typeof PLEDGE_PAGE_SHARED_DEFAULTS,
 ): ResolvedPledgePage {
   const c = config ?? {}
+  // coverImageUrl needs undefined ("never customized — use the default
+  // cover") to resolve differently from an explicit null ("couple removed
+  // their cover — show the plain tone"). A bare `|| default` can't tell
+  // those apart, which meant clicking "Remove" on the Collector's default
+  // template image silently brought the same image right back.
+  const coverImageUrl =
+    c.coverImageUrl === undefined ? sharedDefaults.coverImageUrl : c.coverImageUrl?.trim() || null
+  const coverIsFullTemplate =
+    c.coverImageUrl === undefined
+      ? sharedDefaults.coverIsFullTemplate
+      : coverImageUrl
+        ? Boolean(c.coverIsFullTemplate)
+        : false
   return {
     eyebrow: c.eyebrow?.trim() || textDefaults.eyebrow,
     headingLine2: c.headingLine2?.trim() || textDefaults.headingLine2,
@@ -158,8 +271,9 @@ function mergeConfig(
     privacyNote: c.privacyNote?.trim() || textDefaults.privacyNote,
     accent: c.accent?.trim() || sharedDefaults.accent,
     coverTone: c.coverTone || sharedDefaults.coverTone,
-    coverImageUrl: c.coverImageUrl?.trim() || sharedDefaults.coverImageUrl,
-    coverIsFullTemplate: c.coverImageUrl?.trim() ? Boolean(c.coverIsFullTemplate) : sharedDefaults.coverIsFullTemplate,
+    coverImageUrl,
+    coverIsFullTemplate,
+    questions: c.questions ?? sharedDefaults.questions,
   }
 }
 
