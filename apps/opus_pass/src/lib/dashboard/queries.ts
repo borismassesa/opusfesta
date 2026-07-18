@@ -8,7 +8,7 @@ import { toTzs } from './currency'
 import { resolveEventCover, type PledgePageConfig, type PledgePaymentMethod } from './pledge-page'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import { parseTemplateCardItemId, type TemplateCardType } from './pledge-card-templates'
-import { ORDER_SELECT_COLS, orderRowToStoredOrder, type OrderRow } from '@/lib/payments/orders'
+import { getOrdersForUser, orderRowToStoredOrder } from '@/lib/payments/orders'
 import type { StoredOrder } from '@/lib/cart-storage'
 import type { SiteDoc } from '@/lib/builder/types'
 import type { Treatment } from '@/components/guests/InvitationVisual'
@@ -1696,39 +1696,6 @@ export async function fetchPaidOrdersForCouple(
   return (data ?? []) as PaidOrderRow[]
 }
 
-/**
- * Every order that belongs to this couple — paid, still processing, or
- * awaiting manual payment review — for the dashboard's Orders page. Mirrors
- * fetchPaidOrdersForCouple's user/email/phone matching, but (a) returns full
- * StoredOrder objects instead of the trimmed row used for event-linking, and
- * (b) isn't restricted to status='paid', so an order still under review still
- * shows up instead of the page looking empty until it clears. Only genuinely
- * dead orders (failed/expired) are excluded. Returns [] for a signed-out caller.
- */
-export async function getOrdersForDashboard(): Promise<StoredOrder[]> {
-  const user = await getDashboardUser()
-  if (!user) return []
-  const supabase = createDashboardClient()
-  const { data: profile } = await supabase
-    .from('couple_profiles')
-    .select('whatsapp_phone')
-    .eq('user_id', user.id)
-    .maybeSingle<{ whatsapp_phone: string | null }>()
-
-  const guestCheckoutOrs: string[] = []
-  if (user.email) guestCheckoutOrs.push(`and(user_id.is.null,contact_email.eq.${user.email})`)
-  if (profile?.whatsapp_phone) guestCheckoutOrs.push(`and(user_id.is.null,contact_phone.eq.${profile.whatsapp_phone})`)
-  const ors = [`user_id.eq.${user.id}`, ...guestCheckoutOrs]
-
-  const { data } = await supabase
-    .from('invitation_orders')
-    .select(ORDER_SELECT_COLS)
-    .not('status', 'in', '(failed,expired)')
-    .or(ors.join(','))
-    .order('created_at', { ascending: false })
-  return ((data ?? []) as OrderRow[]).map(orderRowToStoredOrder)
-}
-
 /** Which pledge-card / thank-you-card template designs this couple has
  *  already bought (via the per-template checkout — see
  *  templateCardItemId()). Paid orders aren't scoped to a single event
@@ -1756,6 +1723,27 @@ export async function getPurchasedTemplateIds(
     }
   }
   return ids
+}
+
+/**
+ * Every order that belongs to this couple — paid, still processing, or
+ * awaiting manual payment review — for the dashboard's Orders page. Mirrors
+ * fetchPaidOrdersForCouple's user/email/phone matching via getOrdersForUser,
+ * but isn't restricted to status='paid', so an order still under review still
+ * shows up instead of the page looking empty until it clears. Dead orders
+ * (failed/expired/refunded) are excluded — see getOrdersForUser. Redirects to
+ * sign-in when signed out (dashboard page, not an API route).
+ */
+export async function getOrdersForDashboard(): Promise<StoredOrder[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null }>()
+  const rows = await getOrdersForUser(user.id, user.email, profile?.whatsapp_phone ?? null)
+  return rows.map(orderRowToStoredOrder)
 }
 
 export interface PaidOrderSummary {

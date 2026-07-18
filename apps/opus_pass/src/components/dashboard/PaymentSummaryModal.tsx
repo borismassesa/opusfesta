@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock, CheckCircle2, ArrowRight, Receipt } from 'lucide-react'
+import { Clock, CheckCircle2, ArrowRight, Receipt, Download } from 'lucide-react'
 import { Dialog, Button } from '@/components/dashboard/controls'
 import type { StoredOrder } from '@/lib/cart-storage'
+import { downloadInvoice } from '@/lib/invoice'
 import { cn } from '@/lib/utils'
 
 function formatTzs(n: number): string {
@@ -49,6 +50,9 @@ export default function PaymentSummaryModal({ order, onClose }: { order: StoredO
       title={paid ? 'Payment confirmed' : 'Payment under review'}
       footer={
         <>
+          <Button variant="secondary" onClick={() => downloadInvoice(order)}>
+            <Download className="h-4 w-4" /> Download receipt
+          </Button>
           <Link href="/my/dashboard/orders">
             <Button variant="secondary">
               <Receipt className="h-4 w-4" /> View in Orders

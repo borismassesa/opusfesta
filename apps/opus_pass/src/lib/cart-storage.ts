@@ -2,6 +2,7 @@
 
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import { parseTemplateCardItemId, type TemplateCardType } from '@/lib/dashboard/pledge-card-templates'
+import type { FulfillmentStatus } from '@/lib/payments/types'
 
 const CONTACT_KEY = 'opuspass.contact.v1'
 const ORDER_KEY = 'opuspass.lastOrder.v1'
@@ -73,6 +74,11 @@ export type StoredOrder = {
    * confirm the transaction before the order counts as paid.
    */
   paymentStatus?: 'verifying' | 'paid'
+  /** Design-fulfillment progress once paid — set by the admin team. Only
+   *  populated on orders fetched server-side (see orderRowToStoredOrder in
+   *  lib/payments/orders.ts); a locally-built optimistic snapshot won't have
+   *  it yet, which currentStageIndex() treats the same as 'not_started'. */
+  fulfillmentStatus?: FulfillmentStatus
   contact: StoredOrderContact
   items: StoredOrderItem[]
   subtotal: number

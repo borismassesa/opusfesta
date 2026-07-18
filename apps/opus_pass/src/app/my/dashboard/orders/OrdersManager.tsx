@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Receipt, Download, Check, Clock, Package, ArrowRight, Ticket } from 'lucide-react'
@@ -236,6 +237,7 @@ export default function OrdersManager({
   strings: DashboardOrdersStrings
   initialOrders: StoredOrder[]
 }) {
+  const router = useRouter()
   const [orders, setOrders] = useState<StoredOrder[]>(initialOrders)
 
   // initialOrders is stable, deterministic server data — safe to render on
@@ -246,36 +248,44 @@ export default function OrdersManager({
     setOrders(mergeOrders(initialOrders, getOrders()))
   }, [initialOrders])
 
+  // Orders are fetched server-side (the real source of truth, including any
+  // admin-set fulfillment_status). The only thing that can change without a
+  // fresh page load is a payment that was still under verification when this
+  // page rendered — do one round of status checks (only for orders not
+  // already paid) and let the server re-render with the canonical result,
+  // while also updating the localStorage cache so it doesn't keep showing a
+  // stale "verifying" badge elsewhere (e.g. the template-card grid).
   useEffect(() => {
-    if (orders.length === 0) return
+    const pending = orders.filter((o) => o.paymentStatus !== 'paid')
+    if (pending.length === 0) return
     let cancelled = false
-    async function sync() {
-      let changed = false
-      for (const order of orders) {
+    ;(async () => {
+      for (const order of pending) {
         try {
           const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(order.ref)}`, {
             cache: 'no-store',
           })
           if (!res.ok) continue
           const data = (await res.json()) as StatusResponse
-          if (data.status !== 'paid' || order.paymentStatus === 'paid') continue
-          setLastOrder({
-            ...order,
-            paidAt: data.paidAt ?? order.paidAt,
-            paymentStatus: 'paid',
-          })
-          changed = true
+          if (data.status === 'paid' && !cancelled) {
+            setLastOrder({
+              ...order,
+              paidAt: data.paidAt ?? order.paidAt,
+              paymentStatus: 'paid',
+            })
+            router.refresh()
+            return
+          }
         } catch {
-          /* keep the local order snapshot if the status check fails */
+          /* transient — leave as-is, the next visit will retry */
         }
       }
-      if (!cancelled && changed) setOrders(mergeOrders(initialOrders, getOrders()))
-    }
-    void sync()
+    })()
     return () => {
       cancelled = true
     }
-  }, [orders, initialOrders])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders])
 
   const stats = useMemo(() => {
     const inProgress = orders.filter((o) => ORDER_STAGES[currentStageIndex(o)].id !== 'delivered').length

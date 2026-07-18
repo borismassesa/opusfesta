@@ -1900,6 +1900,7 @@ function InviteSection({
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // After a card-redirect purchase, Selcom bounces the buyer back here with
