@@ -7,6 +7,12 @@ export interface CollectorEntryInput {
   full_name: string
   phone: string | null
   email: string | null
+  /** Answers to the couple's custom questions, in the order asked. */
+  answers?: { prompt: string; answer: string }[]
+  /** Which event this submission was collected for, if the guest arrived via
+   *  an event-tagged link (?event=<id>). Re-verified against the token's
+   *  owner below — never trusted as-is from an unauthenticated client. */
+  eventId?: string | null
 }
 
 /**
@@ -31,8 +37,35 @@ export async function submitCollectorEntry(token: string, input: CollectorEntryI
   }
   if (!owner) throw new Error('Invalid collector link')
 
+  // A guest-supplied event id must never be trusted as-is — re-verify it
+  // actually belongs to this token's owner before using it for the group
+  // tag below, so one couple's submission can never get attributed to
+  // another couple's event.
+  let eventName: string | null = null
+  if (input.eventId) {
+    const { data: event } = await supabase
+      .from('wedding_events')
+      .select('name')
+      .eq('id', input.eventId)
+      .eq('user_id', owner.id)
+      .maybeSingle<{ name: string | null }>()
+    eventName = event?.name?.trim() || null
+  }
+
   const phone = input.phone?.trim() || null
   const email = input.email?.trim() || null
+
+  // Public, unauthenticated endpoint — cap what an anonymous submitter can
+  // stuff into a couple's guest notes rather than trusting the payload shape.
+  const answerLines = (input.answers ?? [])
+    .slice(0, 20)
+    .map((a) => ({ prompt: a.prompt.trim().slice(0, 300), answer: a.answer.trim().slice(0, 2000) }))
+    .filter((a) => a.prompt && a.answer)
+    .map((a) => `${a.prompt}: ${a.answer}`)
+  const notes = answerLines.length
+    ? `Self-submitted via /collect link\n\n${answerLines.join('\n')}`
+    : 'Self-submitted via /collect link'
+  const groupTag = eventName ? `From Contact Collector — ${eventName}` : 'From Contact Collector'
 
   const { error } = await supabase.from('guest_contacts').insert({
     user_id: owner.id,
@@ -40,8 +73,8 @@ export async function submitCollectorEntry(token: string, input: CollectorEntryI
     phone,
     whatsapp_phone: phone,
     email,
-    group_tag: 'From Contact Collector',
-    notes: 'Self-submitted via /collect link',
+    group_tag: groupTag,
+    notes,
   })
   if (error) throw new Error(error.message)
 

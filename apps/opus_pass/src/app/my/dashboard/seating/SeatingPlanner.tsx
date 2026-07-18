@@ -50,11 +50,9 @@ function mealLine(g: SeatableGuest): string {
 }
 
 export default function SeatingPlanner({
-  events,
   data,
   strings,
 }: {
-  events: EventLite[]
   data: SeatingData
   strings: DashboardSeatingStrings
 }) {
@@ -256,34 +254,15 @@ export default function SeatingPlanner({
 
   return (
     <div className="space-y-5">
-      {/* Toolbar: event selector + actions */}
+      {/* Stats + actions — one row (the event selector lives in the page header, top right) */}
       <div className="flex flex-wrap items-center gap-3">
-        {events.length > 1 ? (
-          <label className="relative inline-flex items-center">
-            <span className="pointer-events-none absolute left-3 text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/40">
-              {strings.toolbar_event_label}
-            </span>
-            <select
-              value={eventId}
-              onChange={(e) => {
-                setActiveEventCookie(e.target.value)
-                router.push(`/my/dashboard/seating?event=${e.target.value}`)
-              }}
-              className="appearance-none rounded-xl border border-black/[0.12] bg-white py-2.5 pl-[68px] pr-9 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/30"
-            >
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#1A1A1A]/40" />
-          </label>
-        ) : (
-          <span className="text-sm font-semibold text-[#1A1A1A]">{data.event.name}</span>
-        )}
-
-        <div className="ml-auto flex items-center gap-2">
+        <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label={strings.stat_seated} value={seatedTotal} />
+          <Stat label={strings.stat_to_seat} value={toSeatTotal} />
+          <Stat label={strings.stat_tables} value={tables.length} />
+          <Stat label={strings.stat_seats_used} value={`${seatedTotal} / ${totalCapacity}`} />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <Button variant="secondary" onClick={exportPdf} disabled={noGuests}>
             <Download className="h-4 w-4" /> {strings.toolbar_export}
           </Button>
@@ -291,14 +270,6 @@ export default function SeatingPlanner({
             <Share2 className="h-4 w-4" /> {strings.toolbar_share}
           </Button>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label={strings.stat_seated} value={seatedTotal} />
-        <Stat label={strings.stat_to_seat} value={toSeatTotal} />
-        <Stat label={strings.stat_tables} value={tables.length} />
-        <Stat label={strings.stat_seats_used} value={`${seatedTotal} / ${totalCapacity}`} />
       </div>
 
       {noGuests ? (
@@ -475,6 +446,50 @@ export default function SeatingPlanner({
         pending={busy}
       />
     </div>
+  )
+}
+
+/** Event selector for the seating page header (top right) — same bordered
+ *  "EVENT | Name ⌄" control that used to sit in the toolbar, just relocated
+ *  so it reads next to the page title instead of above the stat tiles. */
+export function SeatingEventPicker({
+  events,
+  eventId,
+  eventName,
+  strings,
+}: {
+  events: EventLite[]
+  eventId: string
+  eventName: string
+  strings: DashboardSeatingStrings
+}) {
+  const router = useRouter()
+
+  if (events.length <= 1) {
+    return <span className="text-sm font-semibold text-[#1A1A1A]">{eventName}</span>
+  }
+
+  return (
+    <label className="relative inline-flex items-center">
+      <span className="pointer-events-none absolute left-3 text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/40">
+        {strings.toolbar_event_label}
+      </span>
+      <select
+        value={eventId}
+        onChange={(e) => {
+          setActiveEventCookie(e.target.value)
+          router.push(`/my/dashboard/seating?event=${e.target.value}`)
+        }}
+        className="appearance-none rounded-xl border border-black/[0.12] bg-white py-2.5 pl-[68px] pr-9 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/30"
+      >
+        {events.map((ev) => (
+          <option key={ev.id} value={ev.id}>
+            {ev.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#1A1A1A]/40" />
+    </label>
   )
 }
 

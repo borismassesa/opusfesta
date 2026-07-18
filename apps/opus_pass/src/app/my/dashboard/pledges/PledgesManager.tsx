@@ -2290,7 +2290,7 @@ function InviteSection({
                             'group/btn inline-flex w-full items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
                             isApplied
                               ? 'border-[#9FE870] bg-[#9FE870]/20 text-[#3f6b1f] hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600'
-                              : 'border-black/[0.14] bg-white text-[#1A1A1A] hover:bg-black/[0.03]',
+                              : 'border-transparent bg-[#C9A0DC] text-[#1A1A1A] hover:bg-[#b97fd0]',
                           )}
                         >
                           {isApplying ? (

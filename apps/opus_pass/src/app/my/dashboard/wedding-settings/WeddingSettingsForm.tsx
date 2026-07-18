@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import Link from 'next/link'
 import { toast } from 'sonner'
-import { Heart, Wallet, ArrowLeft } from 'lucide-react'
+import { Heart, Wallet } from 'lucide-react'
 import { Button, Field, inputClass } from '@/components/dashboard/controls'
 import { upsertCoupleProfile } from '@/lib/dashboard/actions'
 import type { CoupleProfileLite } from '@/lib/dashboard/queries'
@@ -44,15 +43,9 @@ export default function WeddingSettingsForm({ profile }: { profile: CoupleProfil
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-7 pb-16">
+    <div className="space-y-7">
       <div>
-        <Link
-          href="/my/dashboard/settings"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
-        >
-          <ArrowLeft className="h-4 w-4" /> Account profile
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#1A1A1A]">Wedding settings</h1>
+        <h2 className="text-lg font-bold text-[#1A1A1A]">Your wedding</h2>
         <p className="mt-1 text-sm text-[#1A1A1A]/55">
           Your celebration details and how contributors pay you.
         </p>

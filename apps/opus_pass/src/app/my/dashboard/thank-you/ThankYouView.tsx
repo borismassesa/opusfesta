@@ -776,8 +776,8 @@ const css = `
 .ty .cardlockbadge.pending{ background:rgba(138,109,26,.72); }
 .ty .cardpendingbtn{ border-color:var(--amber-bd); background:var(--amber-bg); color:var(--amber-tx); cursor:not-allowed; }
 .ty .cardname{ margin-top:6px; font-size:11px; font-weight:600; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ty .cardbtn{ margin-top:6px; width:100%; border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 8px; font-size:10.5px; font-weight:600; color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; }
-.ty .cardbtn:hover:not(:disabled){ background:var(--hover); }
+.ty .cardbtn{ margin-top:6px; width:100%; border:1px solid var(--purple); background:var(--purple); border-radius:999px; padding:6px 8px; font-size:10.5px; font-weight:600; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.ty .cardbtn:hover:not(:disabled){ background:var(--purple-d); border-color:var(--purple-d); }
 .ty .cardbtn:disabled{ opacity:.5; cursor:not-allowed; }
 .ty .cardtile.on .cardbtn{ border-color:var(--wa); color:var(--ok-tx); background:var(--ok-bg); }
 .ty .cardbuybtn{ border-color:var(--ink); background:var(--ink); color:#fff; }

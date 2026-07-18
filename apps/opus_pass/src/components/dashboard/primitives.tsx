@@ -5,12 +5,15 @@ import type { RsvpStatus } from '@/lib/dashboard/types'
 export function Card({
   children,
   className,
+  id,
 }: {
   children: ReactNode
   className?: string
+  id?: string
 }) {
   return (
     <div
+      id={id}
       className={cn(
         'rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]',
         className

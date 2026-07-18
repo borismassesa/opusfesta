@@ -10,7 +10,10 @@ export const metadata = {
 }
 
 export default async function OrdersPage() {
-  const [locale, orders] = await Promise.all([getLocale(), getOrdersForDashboard()])
-  const strings = await loadUiStrings('dashboard-orders', locale)
-  return <OrdersManager strings={strings} orders={orders} />
+  const locale = await getLocale()
+  const [strings, initialOrders] = await Promise.all([
+    loadUiStrings('dashboard-orders', locale),
+    getOrdersForDashboard(),
+  ])
+  return <OrdersManager strings={strings} initialOrders={initialOrders} />
 }

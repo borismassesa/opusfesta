@@ -139,6 +139,8 @@ prisma/migrations/
 
 # Design source / reference folder (not part of the marketplace app)
 apps/opusfesta (1)/
+# Scaffolded Expo app — build/cache artifacts only, not yet part of the workspace
+apps/mobile/
 # Backups & one-off data exports (never commit)
 *.bak
 *.pre-theme

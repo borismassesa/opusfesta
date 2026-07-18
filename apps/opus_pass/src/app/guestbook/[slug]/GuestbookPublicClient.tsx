@@ -6,6 +6,8 @@ import { Camera, Check, Mic, Pause, Play, Square, Trash2, Video, X } from 'lucid
 import { submitGuestbookEntry } from '@/lib/dashboard/actions'
 import type { PublicGuestbookPage } from '@/lib/dashboard/queries'
 import { GUESTBOOK_RELATIONS, type GuestbookEntry, type GuestbookRelation } from '@/lib/dashboard/types'
+import Logo from '@/components/ui/Logo'
+import PoweredByLine from '@/components/ui/PoweredByLine'
 
 // Ported from apps/wedding_website's "Wishes" tab (WishForm.tsx + WishFeed.tsx
 // + the @theme tokens in src/index.css) — same stationery-card composer, same
@@ -45,7 +47,7 @@ const LANG_KEY = 'opuspass-guestbook-lang'
 const STR: Record<Lang, Record<string, string>> = {
   sw: {
     form_title: 'Acha ujumbe wako',
-    form_note: 'Shiriki kumbukumbu, ushauri, au ujumbe kwa mwanzo wao mpya.',
+    form_note: 'Shiriki kumbukumbu, ushauri, au ujumbe kwa mwanzo mpya wa {names}.',
     name: 'Jina lako',
     name_ph: 'Andika jina lako',
     relation: 'Uhusiano',
@@ -77,12 +79,12 @@ const STR: Record<Lang, Record<string, string>> = {
     voice_notes: 'Sauti',
     empty_title: 'Bado hakuna ujumbe',
     empty_body: 'Uwe wa kwanza kuandika ujumbe hapa.',
-    powered: 'Inaendeshwa na OpusPass',
+    powered: 'Inaendeshwa kwa {icon} na OpusPass',
     just_now: 'Sasa hivi',
   },
   en: {
     form_title: 'Leave your wishes',
-    form_note: 'Share a memory, advice, or message for their new beginning.',
+    form_note: "Share a memory, advice, or message for {names}'s new beginning.",
     name: 'Your name',
     name_ph: 'Enter your name',
     relation: 'Relation',
@@ -114,7 +116,7 @@ const STR: Record<Lang, Record<string, string>> = {
     voice_notes: 'Voice Notes',
     empty_title: 'No wishes yet',
     empty_body: 'Be the first to write one.',
-    powered: 'Powered by OpusPass',
+    powered: 'Powered with {icon} by OpusPass',
     just_now: 'Just now',
   },
 }
@@ -178,7 +180,7 @@ function baseMimeType(mime: string): string {
   return mime.split(';')[0].trim()
 }
 
-function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
+function WishForm({ slug, coupleName, t }: { slug: string; coupleName: string; t: Record<string, string> }) {
   const [name, setName] = useState('')
   const [relation, setRelation] = useState<GuestbookRelation>('Family')
   const [message, setMessage] = useState('')
@@ -488,7 +490,7 @@ function WishForm({ slug, t }: { slug: string; t: Record<string, string> }) {
           {t.form_title}
         </h2>
         <p className="mb-6 text-sm leading-relaxed font-light" style={{ ...body, color: SECONDARY }}>
-          {t.form_note}
+          {t.form_note.replace('{names}', coupleName)}
         </p>
 
         <div className="space-y-4">
@@ -1003,11 +1005,9 @@ function WishFeed({ data, t }: { data: PublicGuestbookPage; t: Record<string, st
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Navbar({
-  coupleName,
   lang,
   onPickLang,
 }: {
-  coupleName: string
   lang: Lang
   onPickLang: (l: Lang) => void
 }) {
@@ -1017,9 +1017,7 @@ function Navbar({
       style={{ backgroundColor: '#ffffff', borderColor: `${OUTLINE_VARIANT}4d` }}
     >
       <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between px-8">
-        <span className="text-2xl tracking-tight md:text-3xl" style={{ ...heading, color: ON_SURFACE }}>
-          {coupleName}
-        </span>
+        <Logo />
         <div
           className="inline-flex overflow-hidden rounded-full text-[11px] font-bold"
           style={{ border: `1px solid ${OUTLINE_VARIANT}` }}
@@ -1064,18 +1062,21 @@ export default function GuestbookPublicClient({ data }: { data: PublicGuestbookP
 
   return (
     <main className="flex min-h-screen flex-col bg-white" style={{ ...body, color: ON_SURFACE }}>
-      <Navbar coupleName={data.coupleName} lang={lang} onPickLang={pickLang} />
+      <Navbar lang={lang} onPickLang={pickLang} />
       {/* One normal scrolling page — mouse wheel / trackpad scrolls anywhere,
           no dedicated pane to hover. The form just stays in view via
           lg:sticky (see WishForm) as you scroll past it. */}
       <div className="mx-auto w-full max-w-[1440px] flex-1 px-8 pt-6 pb-10 sm:pt-8 sm:pb-12 lg:pt-6 lg:pb-8">
         <div className="grid grid-cols-1 items-start gap-16 lg:grid-cols-12">
-          <WishForm slug={data.slug} t={t} />
+          <WishForm slug={data.slug} coupleName={data.coupleName} t={t} />
           <WishFeed data={data} t={t} />
         </div>
       </div>
-      <footer className="w-full shrink-0 border-t py-4 text-center text-[11px]" style={{ ...body, borderColor: `${OUTLINE_VARIANT}4d`, color: SECONDARY, opacity: 0.7 }}>
-        {t.powered}
+      <footer
+        className="w-full shrink-0 border-t py-4 text-center text-[11px]"
+        style={{ ...body, borderColor: `${OUTLINE_VARIANT}4d`, color: SECONDARY, opacity: 0.7 }}
+      >
+        <PoweredByLine text={t.powered} />
       </footer>
     </main>
   )

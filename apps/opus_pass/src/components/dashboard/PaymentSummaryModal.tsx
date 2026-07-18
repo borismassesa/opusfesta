@@ -11,6 +11,27 @@ function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
 }
 
+type PaymentRow = { label: string; value: string; emphasize?: boolean }
+
+/** Structured label/value rows, mirroring the invoice's payment card. Falls
+ * back to splitting the legacy one-line paymentLabel for older orders that
+ * predate the structured `payment` field. */
+function paymentRows(order: StoredOrder): PaymentRow[] {
+  const pay = order.payment
+  if (pay) {
+    const rows: PaymentRow[] = []
+    if (pay.cardLast4) rows.push({ label: 'Card', value: `•••• ${pay.cardLast4}` })
+    if (pay.payerName) rows.push({ label: 'Paid by', value: pay.payerName })
+    if (pay.payerPhone) rows.push({ label: 'Phone', value: pay.payerPhone })
+    if (pay.reference) rows.push({ label: 'Reference', value: pay.reference, emphasize: true })
+    return rows
+  }
+  return (order.paymentLabel ?? '')
+    .split(' · ')
+    .filter(Boolean)
+    .map((value) => ({ label: 'Payment', value }))
+}
+
 /**
  * Shown right after a pledge/thank-you card template purchase resolves —
  * a receipt-style summary of that one order, plus its live status (payment
@@ -20,6 +41,7 @@ function formatTzs(n: number): string {
 export default function PaymentSummaryModal({ order, onClose }: { order: StoredOrder; onClose: () => void }) {
   const paid = order.paymentStatus === 'paid'
   const item = order.items[0]
+  const rows = paymentRows(order)
 
   return (
     <Dialog
@@ -92,13 +114,33 @@ export default function PaymentSummaryModal({ order, onClose }: { order: StoredO
             <dt className="text-xs text-[#1A1A1A]/50">Total</dt>
             <dd className="font-semibold text-[#1A1A1A] tabular-nums">{formatTzs(order.total)}</dd>
           </div>
-          {order.paymentLabel ? (
-            <div className="col-span-2">
-              <dt className="text-xs text-[#1A1A1A]/50">Payment</dt>
-              <dd className="text-[#1A1A1A]">{order.paymentLabel}</dd>
-            </div>
-          ) : null}
         </dl>
+
+        {rows.length > 0 ? (
+          <div className="overflow-hidden rounded-xl border border-black/[0.08]">
+            {order.payment?.provider ? (
+              <div className="flex items-center justify-between border-b border-black/[0.08] bg-black/[0.02] px-3 py-2">
+                <span className="text-xs font-medium text-[#1A1A1A]/50">Payment method</span>
+                <span className="text-sm font-semibold text-[#1A1A1A]">{order.payment.provider}</span>
+              </div>
+            ) : null}
+            <div className="divide-y divide-black/[0.06] px-3">
+              {rows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="text-[#1A1A1A]/55">{row.label}</span>
+                  <span
+                    className={cn(
+                      'text-right text-[#1A1A1A]',
+                      row.emphasize ? 'font-semibold tabular-nums' : 'font-medium',
+                    )}
+                  >
+                    {row.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </Dialog>
   )

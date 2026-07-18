@@ -639,7 +639,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     message_optional: '(optional)',
     send_pending: 'Sending…',
     send_cta: 'Send my RSVP',
-    powered_by: 'Powered by OpusPass · {coupleName}',
+    powered_by: 'Powered with {icon} by OpusPass · {coupleName}',
   },
   'forms-pledge': {
     label_name: 'Your name',
@@ -753,7 +753,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     delete_event: 'Delete event',
     btn_saving: 'Saving…',
     btn_save_changes: 'Save changes',
-    btn_add_event: 'Add event',
+    btn_add_event: 'Save event',
     preview_label: 'Preview',
     preview_visible: 'Visible to guests',
     preview_name_placeholder: 'Your event name',
@@ -1909,7 +1909,13 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
     {
       legend: 'Footer',
       fields: [
-        { key: 'powered_by', label: 'Powered-by line', kind: 'text', max: 60, hint: 'Use {coupleName} for the couple’s name.' },
+        {
+          key: 'powered_by',
+          label: 'Powered-by line',
+          kind: 'text',
+          max: 60,
+          hint: 'Use {coupleName} for the couple’s name and {icon} for the heart icon.',
+        },
       ],
     },
   ],

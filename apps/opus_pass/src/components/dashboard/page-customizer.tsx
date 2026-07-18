@@ -2,16 +2,16 @@
 
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Monitor, Tablet, Smartphone, Trash2, Image as ImageIcon } from 'lucide-react'
+import { Monitor, Tablet, Smartphone, Trash2, Image as ImageIcon, PenLine, ListChecks, Plus, X, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Field, inputClass } from '@/components/dashboard/controls'
 import { uploadPledgeCover } from '@/lib/dashboard/actions'
-import {
-  COVER_TONES,
-  ACCENT_SWATCHES,
-  type PledgeCoverTone,
-  type PledgePageConfig,
+import type {
+  CollectorQuestion,
+  CollectorQuestionKind,
+  PledgePageConfig,
 } from '@/lib/dashboard/pledge-page'
+import { isVideoCoverUrl } from '@/lib/dashboard/pledge-page'
 
 // Shared building blocks for the pledge / collector page customizers.
 
@@ -110,17 +110,24 @@ export function PageConfigFields({
 }) {
   const set = (patch: Partial<PledgePageConfig>) => setCfg((c) => ({ ...c, ...patch }))
   return (
-    <div className="space-y-6">
-      <section className="space-y-3">
-        <h4 className="text-sm font-semibold text-[#1A1A1A]">Wording</h4>
-        <Field label="Eyebrow">
-          <input
-            className={inputClass}
-            value={cfg.eyebrow ?? ''}
-            onChange={(e) => set({ eyebrow: e.target.value })}
-            placeholder="To celebrate the wedding of"
-          />
-        </Field>
+    <div className="space-y-5">
+      <Field label="Cover photo or video" hint="Upload a photo or short video for your cover. Leave empty to use the default cover.">
+        {/* This uploader is always a plain photo backdrop (never a
+            pre-designed template with names baked in) — clearing
+            coverIsFullTemplate here ensures the guest page overlays the
+            couple's live name/date text on top, instead of silently
+            hiding it because a previous default/template cover had the
+            flag set. */}
+        <CoverUploader
+          value={cfg.coverImageUrl ?? null}
+          onChange={(url) => set({ coverImageUrl: url, coverIsFullTemplate: false })}
+        />
+      </Field>
+
+      <section className="space-y-4 rounded-2xl border border-black/[0.08] bg-white p-4">
+        <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1A1A1A]">
+          <PenLine className="h-3.5 w-3.5 text-[#8e57b3]" /> Wording
+        </h4>
         <Field label="Heading — second line" hint="Shown under the couple’s names">
           <input
             className={inputClass}
@@ -155,65 +162,198 @@ export function PageConfigFields({
         </Field>
       </section>
 
-      <section className="space-y-3 border-t border-black/[0.06] pt-5">
-        <h4 className="text-sm font-semibold text-[#1A1A1A]">Appearance</h4>
-
-        <Field label="Accent color">
-          <div className="flex flex-wrap items-center gap-2">
-            {ACCENT_SWATCHES.map((hex) => (
-              <button
-                key={hex}
-                type="button"
-                onClick={() => set({ accent: hex })}
-                aria-label={`Accent ${hex}`}
-                className={cn(
-                  'h-8 w-8 rounded-full ring-2 ring-offset-2 transition',
-                  cfg.accent === hex ? 'ring-[#1A1A1A]' : 'ring-transparent',
-                )}
-                style={{ backgroundColor: hex }}
-              />
-            ))}
-            <input
-              type="text"
-              value={cfg.accent ?? ''}
-              onChange={(e) => set({ accent: e.target.value })}
-              placeholder="#C9A0DC"
-              className={`${inputClass} w-28`}
-            />
-          </div>
-        </Field>
-
-        <Field label="Cover background">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {(Object.keys(COVER_TONES) as PledgeCoverTone[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => set({ coverTone: t })}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
-                  cfg.coverTone === t
-                    ? 'border-[#C9A0DC] bg-[#F0DFF6] text-[#5d3a78]'
-                    : 'border-black/[0.12] text-[#1A1A1A]/70 hover:bg-black/[0.03]',
-                )}
-              >
-                <span
-                  className="h-5 w-5 shrink-0 rounded-full ring-1 ring-black/10"
-                  style={{ background: COVER_TONES[t].gradient }}
-                />
-                {COVER_TONES[t].label}
-              </button>
-            ))}
-          </div>
-        </Field>
-
-        <Field
-          label="Cover photo"
-          hint="Upload a photo to use instead of the color. Leave empty to keep the color background."
-        >
-          <CoverUploader value={cfg.coverImageUrl ?? null} onChange={(url) => set({ coverImageUrl: url })} />
-        </Field>
+      <section className="space-y-4 rounded-2xl border border-black/[0.08] bg-white p-4">
+        <div>
+          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1A1A1A]">
+            <ListChecks className="h-3.5 w-3.5 text-[#8e57b3]" /> Questions
+          </h4>
+          <p className="mt-1 text-xs text-[#1A1A1A]/50">
+            Name, WhatsApp, and email are always asked first. Add anything extra below.
+          </p>
+        </div>
+        <BuiltInQuestions />
+        <QuestionsEditor questions={cfg.questions ?? []} onChange={(questions) => set({ questions })} />
       </section>
+    </div>
+  )
+}
+
+/** The three fields CollectorForm always asks first — not part of `questions`,
+ *  shown here (locked, non-removable) so the couple sees the full list guests
+ *  will actually get, not just custom questions layered on top of it. */
+const BUILT_IN_FIELDS = [
+  { label: 'Your name', required: true },
+  { label: 'WhatsApp / mobile', required: false },
+  { label: 'Email', required: false },
+]
+
+function BuiltInQuestions() {
+  return (
+    <div className="space-y-2">
+      {BUILT_IN_FIELDS.map((field, i) => (
+        <div
+          key={field.label}
+          className="flex items-center gap-2 rounded-xl border border-black/[0.08] bg-black/[0.015] px-3 py-2.5"
+        >
+          <span className="shrink-0 text-xs font-semibold text-[#1A1A1A]/35">{i + 1}</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-[#1A1A1A]/70">
+            {field.label}
+            {field.required ? <span className="text-[#b97fd0]"> *</span> : null}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#1A1A1A]/35">
+            <Lock className="h-3 w-3" /> Always asked
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Add/edit/remove custom questions for the Contact Collector form. */
+function QuestionsEditor({
+  questions,
+  onChange,
+}: {
+  questions: CollectorQuestion[]
+  onChange: (next: CollectorQuestion[]) => void
+}) {
+  function addQuestion() {
+    onChange([
+      ...questions,
+      { id: crypto.randomUUID(), prompt: '', kind: 'short_answer', required: false, options: [] },
+    ])
+  }
+
+  function updateQuestion(id: string, patch: Partial<CollectorQuestion>) {
+    onChange(questions.map((q) => (q.id === id ? { ...q, ...patch } : q)))
+  }
+
+  function removeQuestion(id: string) {
+    onChange(questions.filter((q) => q.id !== id))
+  }
+
+  function addOption(questionId: string) {
+    onChange(
+      questions.map((q) =>
+        q.id === questionId
+          ? { ...q, options: [...q.options, { id: crypto.randomUUID(), label: '' }] }
+          : q,
+      ),
+    )
+  }
+
+  function updateOption(questionId: string, optionId: string, label: string) {
+    onChange(
+      questions.map((q) =>
+        q.id === questionId
+          ? { ...q, options: q.options.map((o) => (o.id === optionId ? { ...o, label } : o)) }
+          : q,
+      ),
+    )
+  }
+
+  function removeOption(questionId: string, optionId: string) {
+    onChange(
+      questions.map((q) =>
+        q.id === questionId ? { ...q, options: q.options.filter((o) => o.id !== optionId) } : q,
+      ),
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {questions.map((q, i) => (
+        <div key={q.id} className="flex items-start gap-2 rounded-xl border border-black/[0.1] p-3">
+          <span className="mt-2.5 shrink-0 text-xs font-semibold text-[#1A1A1A]/35">
+            {i + 1 + BUILT_IN_FIELDS.length}
+          </span>
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <input
+              className={inputClass}
+              value={q.prompt}
+              onChange={(e) => updateQuestion(q.id, { prompt: e.target.value })}
+              placeholder="e.g. Which side of the family are you on?"
+            />
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                className={`${inputClass} w-auto`}
+                value={q.kind}
+                onChange={(e) => {
+                  const kind = e.target.value as CollectorQuestionKind
+                  updateQuestion(q.id, {
+                    kind,
+                    options:
+                      kind === 'multiple_choice' && q.options.length === 0
+                        ? [
+                            { id: crypto.randomUUID(), label: '' },
+                            { id: crypto.randomUUID(), label: '' },
+                          ]
+                        : q.options,
+                  })
+                }}
+              >
+                <option value="short_answer">Short answer</option>
+                <option value="multiple_choice">Multiple choice</option>
+              </select>
+              <label className="inline-flex items-center gap-1.5 text-sm text-[#1A1A1A]/70">
+                <input
+                  type="checkbox"
+                  checked={q.required}
+                  onChange={(e) => updateQuestion(q.id, { required: e.target.checked })}
+                  className="h-4 w-4 rounded border-black/20 accent-[#C9A0DC]"
+                />
+                Required
+              </label>
+            </div>
+
+            {q.kind === 'multiple_choice' ? (
+              <div className="space-y-1.5 pl-1">
+                {q.options.map((opt, oi) => (
+                  <div key={opt.id} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-black/20" />
+                    <input
+                      className={`${inputClass} py-1.5 text-sm`}
+                      value={opt.label}
+                      onChange={(e) => updateOption(q.id, opt.id, e.target.value)}
+                      placeholder={`Option ${oi + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeOption(q.id, opt.id)}
+                      aria-label="Remove option"
+                      className="shrink-0 text-[#1A1A1A]/35 hover:text-rose-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addOption(q.id)}
+                  className="text-xs font-medium text-[#8e57b3] hover:underline"
+                >
+                  + Add option
+                </button>
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => removeQuestion(q.id)}
+            aria-label="Remove question"
+            className="shrink-0 rounded-lg p-1.5 text-[#1A1A1A]/40 hover:bg-rose-50 hover:text-rose-500"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addQuestion}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-black/[0.18] px-4 py-2.5 text-sm font-medium text-[#1A1A1A]/70 hover:bg-black/[0.02]"
+      >
+        <Plus className="h-4 w-4" /> Add a question
+      </button>
     </div>
   )
 }
@@ -238,7 +378,7 @@ export function CoverUploader({
       try {
         const url = await uploadPledgeCover(fd)
         onChange(url)
-        toast.success('Cover photo uploaded')
+        toast.success('Cover uploaded')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Upload failed')
       }
@@ -246,11 +386,16 @@ export function CoverUploader({
   }
 
   if (value) {
+    const isVideo = isVideoCoverUrl(value)
     return (
       <div className="space-y-2">
         <div className="relative overflow-hidden rounded-xl border border-black/[0.12]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="Cover preview" className="h-32 w-full object-cover" />
+          {isVideo ? (
+            <video src={value} className="h-32 w-full object-cover" muted loop autoPlay playsInline />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={value} alt="Cover preview" className="h-32 w-full object-cover" />
+          )}
           <button
             type="button"
             onClick={() => onChange(null)}
@@ -264,12 +409,12 @@ export function CoverUploader({
           onClick={() => inputRef.current?.click()}
           className="text-xs font-medium text-[#8e57b3] hover:underline"
         >
-          {uploading ? 'Uploading…' : 'Replace photo'}
+          {uploading ? 'Uploading…' : 'Replace'}
         </button>
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
@@ -302,15 +447,15 @@ export function CoverUploader({
         ) : (
           <>
             <ImageIcon className="h-5 w-5 text-[#1A1A1A]/40" />
-            <span className="text-sm font-medium text-[#1A1A1A]/70">Drop an image here, or click to upload</span>
-            <span className="text-xs text-[#1A1A1A]/40">JPG, PNG or WebP · up to 5MB</span>
+            <span className="text-sm font-medium text-[#1A1A1A]/70">Drop an image or video here, or click to upload</span>
+            <span className="text-xs text-[#1A1A1A]/40">JPG, PNG, WebP · up to 5MB — or MP4, WebM · up to 25MB</span>
           </>
         )}
       </button>
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />

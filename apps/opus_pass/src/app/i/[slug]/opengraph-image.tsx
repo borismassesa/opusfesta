@@ -66,6 +66,8 @@ export default async function OgImage({ params }: Props) {
             <div
               style={{
                 display: 'flex',
+                alignItems: 'center',
+                gap: 8,
                 background: '#9FE870',
                 color: '#14342B',
                 fontSize: 24,
@@ -74,7 +76,9 @@ export default async function OgImage({ params }: Props) {
                 borderRadius: 999,
               }}
             >
-              Powered by OpusPass
+              <span style={{ display: 'flex' }}>Powered with</span>
+              <span style={{ display: 'flex', color: '#C9A0DC' }}>&#10084;</span>
+              <span style={{ display: 'flex' }}>by OpusPass</span>
             </div>
           </div>
         </div>

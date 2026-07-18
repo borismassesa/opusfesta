@@ -134,6 +134,8 @@ export interface GuestbookEntry {
   relation: GuestbookRelation | null
   review_status: GuestbookReviewStatus
   reviewed_at: string | null
+  /** Which of the couple's wedding_events this message is for — null only for pre-events legacy rows. */
+  event_id: string | null
   created_at: string
   updated_at: string
 }
@@ -142,6 +144,59 @@ export const GUESTBOOK_STATUS_LABELS: Record<GuestbookReviewStatus, string> = {
   pending: 'Needs review',
   approved: 'Approved',
   hidden: 'Hidden',
+}
+
+// ─────────────────────────────── Gift registry ──────────────────────────────────
+
+export const GIFT_REGISTRY_CATEGORIES = [
+  'Kitchen',
+  'Tabletop',
+  'Bed & Bath',
+  'Home',
+  'Weekend',
+  'Experiences & Gift Cards',
+] as const
+
+export type GiftRegistryCategory = (typeof GIFT_REGISTRY_CATEGORIES)[number]
+
+export interface GiftRegistryItem {
+  id: string
+  title: string
+  description: string | null
+  /** Ordered gallery — the first photo is the card's default cover. */
+  image_urls: string[]
+  /** One optional short clip of the gift. */
+  video_url: string | null
+  /** Free text, e.g. "TZS 250,000" or "Any amount" — not a fixed currency amount. */
+  price_label: string | null
+  /** Optional URL to the actual product a guest can buy from (online alternative to the shop fields below). */
+  product_link: string | null
+  /** Physical shop/vendor where this gift can be bought — Tanzania-first: most gifts are bought in person, not shipped. */
+  shop_name: string | null
+  /** Free-text address/area for shop_name. */
+  shop_location: string | null
+  /** Phone/WhatsApp number for shop_name. */
+  shop_contact: string | null
+  /** One of GIFT_REGISTRY_CATEGORIES, or null if uncategorized. */
+  category: string | null
+  /** How many of this gift the couple is asking for (e.g. a set of 2). */
+  quantity_requested: number
+  /** Highlighted as a top priority on both the dashboard and the public page. */
+  most_wanted: boolean
+  /** Flagged as something guests can coordinate to give together (no pooled payments — just a hint). */
+  group_gift: boolean
+  /** A cash fund (honeymoon, house deposit, etc.) rather than a physical gift — claiming still works the same, this is just categorization. */
+  is_cash_fund: boolean
+  /** Which of the couple's wedding_events this gift is for — null only for pre-events legacy rows. */
+  event_id: string | null
+  claimed_by_name: string | null
+  /** Only set for quantity_requested <= 1 — multi-unit claimants live in gift_registry_claims instead. */
+  claimed_by_phone: string | null
+  claimed_by_email: string | null
+  claimed_at: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
 }
 
 // ──────────────────────────────── RSVP questions ────────────────────────────────

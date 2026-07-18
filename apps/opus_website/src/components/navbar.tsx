@@ -46,10 +46,23 @@ import {
   Gift,
   PartyPopper,
   ShoppingBag,
+  Wallet,
+  Home,
+  Plane,
+  Sofa,
+  Bed,
+  Wine,
 } from 'lucide-react'
 
 type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: string[] }
 type PhotoGridItem = { label: string; image: string; href?: string }
+
+const registryPhotoGrid: PhotoGridItem[] = [
+  { label: 'Kitchen & Dining', image: 'https://images.unsplash.com/photo-1556909212-d5b604d0c90d?auto=format&fit=crop&w=400&q=80', href: '/registry/kitchen-dining' },
+  { label: 'Tabletop & Bar', image: 'https://images.unsplash.com/photo-1630527152680-500b5453fb04?auto=format&fit=crop&w=400&q=80', href: '/registry/tabletop-bar' },
+  { label: 'Bed & Bath', image: 'https://images.unsplash.com/photo-1601276174812-63280a55656e?auto=format&fit=crop&w=400&q=80', href: '/registry/bed-bath' },
+  { label: 'Cash Funds', image: 'https://images.unsplash.com/photo-1608111283577-43d930222227?auto=format&fit=crop&w=400&q=80', href: '/registry/cash-funds' },
+]
 
 const attirePhotoGrid: PhotoGridItem[] = [
   { label: 'Wedding Dresses', image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=400&q=80' },
@@ -294,6 +307,37 @@ const navItems: Array<{
         ],
       },
     ],
+  },
+  {
+    label: 'Registry',
+    card: {
+      image: 'https://images.unsplash.com/photo-1630527152680-500b5453fb04?auto=format&fit=crop&w=800&q=80',
+      title: 'REGISTRY',
+      description: 'Build your gift registry and let guests give exactly what you need.',
+      linkText: 'Start your registry',
+      href: '/registry',
+    },
+    columns: [
+      {
+        title: 'Shop by Room',
+        links: [
+          { Icon: Utensils, label: 'Kitchen & Dining' },
+          { Icon: Wine, label: 'Tabletop & Bar' },
+          { Icon: Bed, label: 'Bed & Bath' },
+          { Icon: Sofa, label: 'Furniture & Décor' },
+        ],
+      },
+      {
+        title: 'More Ways to Give',
+        links: [
+          { Icon: Home, label: 'Home Essentials' },
+          { Icon: Plane, label: 'Experiences & Honeymoon' },
+          { Icon: Wallet, label: 'Cash Funds' },
+        ],
+      },
+    ],
+    photoGridTitle: 'Popular Picks',
+    photoGrid: registryPhotoGrid,
   },
   {
     label: 'Attire & Rings',

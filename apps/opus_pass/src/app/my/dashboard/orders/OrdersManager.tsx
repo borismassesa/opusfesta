@@ -1,12 +1,12 @@
 'use client'
 
-import { Fragment, useEffect, useMemo } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Receipt, Download, Check, Clock, Package, ArrowRight, Ticket } from 'lucide-react'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
-import type { StoredOrder, StoredOrderItem } from '@/lib/cart-storage'
+import { getOrders, setLastOrder, type StoredOrder, type StoredOrderItem } from '@/lib/cart-storage'
 import { downloadInvoice } from '@/lib/invoice'
 import { ORDER_STAGES, currentStageIndex, stageTone, type OrderStatusTone } from '@/lib/order-status'
 import type { StatusResponse } from '@/lib/payments/types'
@@ -21,6 +21,19 @@ const fmt = (t: string, v: Record<string, string | number>) =>
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
+}
+
+/** Combine the server's orders (authoritative — covers every device) with
+ *  this browser's localStorage cache (may know about a just-submitted order
+ *  a beat before the server snapshot picked it up). Same ref wins to the
+ *  server copy, since its status is the current source of truth. */
+function mergeOrders(serverOrders: StoredOrder[], localOrders: StoredOrder[]): StoredOrder[] {
+  const byRef = new Map<string, StoredOrder>()
+  for (const o of localOrders) byRef.set(o.ref, o)
+  for (const o of serverOrders) byRef.set(o.ref, o)
+  return Array.from(byRef.values()).sort(
+    (a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime(),
+  )
 }
 
 function formatDate(iso: string): string {
@@ -219,18 +232,29 @@ function OrderCard({ order, strings }: { order: StoredOrder; strings: DashboardO
 
 export default function OrdersManager({
   strings,
-  orders,
+  initialOrders,
 }: {
   strings: DashboardOrdersStrings
-  orders: StoredOrder[]
+  initialOrders: StoredOrder[]
 }) {
   const router = useRouter()
+  const [orders, setOrders] = useState<StoredOrder[]>(initialOrders)
+
+  // initialOrders is stable, deterministic server data — safe to render on
+  // first paint. This effect only enriches it with this browser's
+  // localStorage cache (e.g. an order just submitted here, a beat ahead of
+  // the server snapshot), so it never causes a hydration mismatch.
+  useEffect(() => {
+    setOrders(mergeOrders(initialOrders, getOrders()))
+  }, [initialOrders])
 
   // Orders are fetched server-side (the real source of truth, including any
   // admin-set fulfillment_status). The only thing that can change without a
   // fresh page load is a payment that was still under verification when this
-  // page rendered — do one round of status checks and let the server
-  // re-render with the canonical result rather than patching client state.
+  // page rendered — do one round of status checks (only for orders not
+  // already paid) and let the server re-render with the canonical result,
+  // while also updating the localStorage cache so it doesn't keep showing a
+  // stale "verifying" badge elsewhere (e.g. the template-card grid).
   useEffect(() => {
     const pending = orders.filter((o) => o.paymentStatus !== 'paid')
     if (pending.length === 0) return
@@ -244,6 +268,11 @@ export default function OrdersManager({
           if (!res.ok) continue
           const data = (await res.json()) as StatusResponse
           if (data.status === 'paid' && !cancelled) {
+            setLastOrder({
+              ...order,
+              paidAt: data.paidAt ?? order.paidAt,
+              paymentStatus: 'paid',
+            })
             router.refresh()
             return
           }
