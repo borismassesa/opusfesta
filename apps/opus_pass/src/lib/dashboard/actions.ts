@@ -108,12 +108,13 @@ export async function updateEvent(id: string, input: EventInput): Promise<void> 
   // — otherwise the link silently keeps pointing guests at the couple's old
   // name, same bug as a stale account-level slug, just triggered by a rename
   // instead of a header edit.
-  const { data: existingEvent } = await supabase
+  const { data: existingEvent, error: existingEventErr } = await supabase
     .from('wedding_events')
     .select('gift_registry_header, gift_registry_slug, guestbook_slug')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle<{ gift_registry_header: string | null; gift_registry_slug: string | null; guestbook_slug: string | null }>()
+  if (existingEventErr) throw new Error(existingEventErr.message)
   const expectedSlugBase = eventHeroSlugBase(existingEvent?.gift_registry_header ?? null, trimmedName)
   let giftRegistrySlug = existingEvent?.gift_registry_slug ?? null
   if (giftRegistrySlug && slugBaseOf(giftRegistrySlug) !== expectedSlugBase) {
@@ -966,11 +967,12 @@ export async function upsertCoupleProfile(input: CoupleProfileInput): Promise<vo
   // couple's current names — it's otherwise frozen at whatever names existed
   // the first time sharing was enabled, which is often a placeholder set
   // before the couple filled in their real names.
-  const { data: existing } = await supabase
+  const { data: existing, error: existingErr } = await supabase
     .from('couple_profiles')
     .select('public_slug, registry_header')
     .eq('user_id', user.id)
     .maybeSingle<{ public_slug: string | null; registry_header: string | null }>()
+  if (existingErr) throw new Error(existingErr.message)
   const expectedSlugBase = heroSlugBase(existing?.registry_header ?? null, partner1Name, partner2Name)
   let publicSlug = existing?.public_slug ?? null
   if (!publicSlug || slugBaseOf(publicSlug) !== expectedSlugBase) {
@@ -1545,11 +1547,12 @@ async function reserveUniqueSlug(
 ): Promise<string> {
   for (let n = 1; n < 50; n++) {
     const candidate = n === 1 ? base : `${base}-${n}`
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('couple_profiles')
       .select('id')
       .eq('public_slug', candidate)
       .maybeSingle<{ id: string }>()
+    if (error) throw new Error(error.message)
     if (!data) return candidate
   }
   // Extremely unlikely; fall back to a random suffix.
@@ -1817,11 +1820,12 @@ async function reserveUniqueInviteSlug(
 ): Promise<string> {
   for (let n = 1; n < 50; n++) {
     const candidate = n === 1 ? base : `${base}-${n}`
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('wedding_events')
       .select('id')
       .eq('invite_slug', candidate)
       .maybeSingle<{ id: string }>()
+    if (error) throw new Error(error.message)
     if (!data) return candidate
   }
   return `${base}-${Math.floor(Date.now() % 100000)}`
@@ -1884,11 +1888,13 @@ function extForVideoMime(mime: string): string {
 }
 
 /**
- * Public, no-auth submission from a guest visiting the published wedding site
- * (SiteRenderer's guestbook block). Mirrors submitPublicInviteRsvp: resolves
- * the owning couple from the slug, gates on sharing being enabled, and writes
- * via the service-role client since the guest has no session. Entries land
- * `pending` — the couple moderates them into view on their dashboard.
+ * Public, no-auth submission from a guest visiting the standalone
+ * /guestbook/<slug> page. Mirrors submitPublicInviteRsvp: resolves the
+ * one wedding_events row the slug belongs to (guestbook_slug, not the
+ * couple-wide invite slug), gates on that event's own sharing flag, and
+ * writes via the service-role client since the guest has no session.
+ * Entries land `pending` — the couple moderates them into view on their
+ * dashboard, scoped to this same event.
  */
 export async function submitGuestbookEntry(
   slug: string,
@@ -1905,21 +1911,21 @@ export async function submitGuestbookEntry(
 
   const supabase = createDashboardClient()
 
-  const { data: profile, error: pErr } = await supabase
-    .from('couple_profiles')
-    .select('user_id, public_sharing_enabled, partner1_name, partner2_name')
-    .eq('public_slug', slug)
+  const { data: event, error: eErr } = await supabase
+    .from('wedding_events')
+    .select('id, user_id, name, guestbook_sharing_enabled')
+    .eq('guestbook_slug', slug)
     .maybeSingle<{
+      id: string
       user_id: string
-      public_sharing_enabled: boolean
-      partner1_name: string | null
-      partner2_name: string | null
+      name: string
+      guestbook_sharing_enabled: boolean
     }>()
-  if (pErr) {
-    console.error('[guestbook] profile lookup failed', pErr)
+  if (eErr) {
+    console.error('[guestbook] event lookup failed', eErr)
     return { ok: false, error: 'Something went wrong — please try again in a moment.' }
   }
-  if (!profile || !profile.public_sharing_enabled) {
+  if (!event || !event.guestbook_sharing_enabled) {
     return { ok: false, error: 'This invitation link is no longer active.' }
   }
 
@@ -1937,7 +1943,7 @@ export async function submitGuestbookEntry(
         return { ok: false, error: 'Video must be 50MB or smaller.' }
       }
       const ext = extForVideoMime(media.type)
-      const path = `${profile.user_id}/${randomUUID()}.${ext}`
+      const path = `${event.user_id}/${randomUUID()}.${ext}`
       const { error: upErr } = await supabase.storage
         .from('guestbook-videos')
         .upload(path, media, { contentType: media.type })
@@ -1954,7 +1960,7 @@ export async function submitGuestbookEntry(
         return { ok: false, error: 'Photo must be 8MB or smaller.' }
       }
       const ext = media.type === 'image/png' ? 'png' : media.type === 'image/webp' ? 'webp' : 'jpg'
-      const path = `${profile.user_id}/${randomUUID()}.${ext}`
+      const path = `${event.user_id}/${randomUUID()}.${ext}`
       const { error: upErr } = await supabase.storage
         .from('guestbook-photos')
         .upload(path, media, { contentType: media.type })
@@ -1976,7 +1982,7 @@ export async function submitGuestbookEntry(
       return { ok: false, error: 'Voice note must be 10MB or smaller.' }
     }
     const ext = extForAudioMime(audio.type)
-    const path = `${profile.user_id}/${randomUUID()}.${ext}`
+    const path = `${event.user_id}/${randomUUID()}.${ext}`
     const { error: upErr } = await supabase.storage
       .from('guestbook-audio')
       .upload(path, audio, { contentType: audio.type || 'audio/webm' })
@@ -1987,15 +1993,9 @@ export async function submitGuestbookEntry(
     audioUrl = supabase.storage.from('guestbook-audio').getPublicUrl(path).data.publicUrl
   }
 
-  // The public guestbook has one link for the whole couple (no per-event
-  // URL like pledges) — every message lands on the couple's default (first)
-  // event, same as any other row that needs an event_id but has no explicit
-  // one to work from.
-  const eventId = await resolveEventIdOrDefault(profile.user_id)
-
   const { error: insErr } = await supabase.from('guestbook_entries').insert({
-    user_id: profile.user_id,
-    event_id: eventId,
+    user_id: event.user_id,
+    event_id: event.id,
     guest_name: guestName,
     message,
     photo_url: photoUrl,
@@ -2009,11 +2009,10 @@ export async function submitGuestbookEntry(
     return { ok: false, error: 'Something went wrong — please try again in a moment.' }
   }
 
-  const coupleNames = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || 'you'
   await createNotification({
-    userId: profile.user_id,
+    userId: event.user_id,
     type: 'guestbook_received',
-    title: `${guestName} left ${coupleNames} a guestbook message`,
+    title: `${guestName} left ${event.name} a guestbook message`,
     body: message.length > 120 ? `${message.slice(0, 117)}…` : message,
     href: '/my/dashboard/guestbook',
   })
@@ -2106,11 +2105,12 @@ async function reserveUniqueGiftRegistrySlug(
 ): Promise<string> {
   for (let n = 1; n < 50; n++) {
     const candidate = n === 1 ? base : `${base}-${n}`
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('wedding_events')
       .select('id')
       .eq('gift_registry_slug', candidate)
       .maybeSingle<{ id: string }>()
+    if (error) throw new Error(error.message)
     if (!data) return candidate
   }
   return `${base}-${Math.floor(Date.now() % 100000)}`
@@ -2161,11 +2161,12 @@ async function reserveUniqueGuestbookSlug(
 ): Promise<string> {
   for (let n = 1; n < 50; n++) {
     const candidate = n === 1 ? base : `${base}-${n}`
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('wedding_events')
       .select('id')
       .eq('guestbook_slug', candidate)
       .maybeSingle<{ id: string }>()
+    if (error) throw new Error(error.message)
     if (!data) return candidate
   }
   return `${base}-${Math.floor(Date.now() % 100000)}`
