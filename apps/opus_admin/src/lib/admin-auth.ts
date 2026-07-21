@@ -277,6 +277,9 @@ const ALL_PERMISSION_KEYS: readonly PermissionKey[] = [
   // Pledge Concierge: staff-run pledge campaigns for Elegant/Signature couples.
   'opuspass.pledges.read',
   'opuspass.pledges.write',
+  // Couple Accounts: the cross-couple directory + per-couple event console.
+  'opuspass.couples.read',
+  'opuspass.couples.write',
   // MD Daily Tracker: each engine's MD can only write their own engine's rows.
   'md_tracker.opusfesta.write',
   'md_tracker.opusstudio.write',
@@ -347,6 +350,8 @@ function fallbackRolePermissions(role: AdminAccessRole): Set<PermissionKey> {
         'opuspass.tickets',
         'opuspass.pledges.read',
         'opuspass.pledges.write',
+        'opuspass.couples.read',
+        'opuspass.couples.write',
         'md_tracker.opusfesta.write',
         'md_tracker.opusstudio.write',
         'md_tracker.opuspass.write',

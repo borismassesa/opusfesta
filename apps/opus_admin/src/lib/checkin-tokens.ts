@@ -1,6 +1,7 @@
 import 'server-only'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import QRCode from 'qrcode'
+import { CODE_ALPHABET, CODE_LENGTH } from './checkin-code'
 
 /**
  * Door-staff scanner access tokens + guest entry-pass signing.
@@ -21,10 +22,24 @@ export interface GeneratedScannerAccessToken {
   tokenHash: string
 }
 
+/**
+ * Mint a door-staff code that a human can actually type.
+ *
+ * Deliberately short: an attendant reads this off a screen and enters it on
+ * a phone at the door, so the previous 32-character base64url string was
+ * hostile to use. 8 symbols over 32 is ~2^40 combinations, which alongside
+ * per-event scoping and a hard expiry is far beyond feasible online guessing.
+ */
 export function generateScannerAccessToken(): GeneratedScannerAccessToken {
-  const rawToken = randomBytes(24).toString('base64url')
+  // 32 divides 256 exactly, so the modulo introduces no bias.
+  const bytes = randomBytes(CODE_LENGTH)
+  let rawToken = ''
+  for (let i = 0; i < CODE_LENGTH; i += 1) {
+    rawToken += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length]
+  }
   return { rawToken, tokenHash: hashScannerAccessToken(rawToken) }
 }
+
 
 export function hashScannerAccessToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex')

@@ -1,20 +1,20 @@
-import { useUser } from '@clerk/clerk-expo';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AttendanceDonut } from '@/components/dashboard/AttendanceDonut';
 import { HomeHeader } from '@/components/dashboard/HomeHeader';
+import { IdeasAdvice } from '@/components/dashboard/IdeasAdvice';
+import { PlanChecklist } from '@/components/dashboard/PlanChecklist';
+import { QuickStatsBand } from '@/components/dashboard/QuickStatsBand';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { useCoupleProfile, useDashboardStats, useUpcomingEvents } from '@/hooks/useDashboard';
 import { formatShortDate } from '@/lib/format-date';
-import { EVENT_TYPE_LABELS, coupleFirstNames } from '@/types/dashboard';
+import { EVENT_TYPE_LABELS } from '@/types/dashboard';
 
 export default function Home() {
-  const { user } = useUser();
   const profile = useCoupleProfile();
   const stats = useDashboardStats();
   const upcoming = useUpcomingEvents();
 
-  const greetingName = profile.data ? coupleFirstNames(profile.data) : (user?.firstName ?? 'there');
   const isLoading = profile.isPending || stats.isPending || upcoming.isPending;
 
   if (isLoading) {
@@ -57,9 +57,9 @@ export default function Home() {
       >
         <HomeHeader />
 
-        {/* Greeting */}
-        <Text className="mt-6 font-work-sans text-sm text-ed-on-surface-variant">Welcome back,</Text>
-        <Text className="mt-0.5 font-playfair-bold text-2xl text-ed-on-surface">{greetingName}</Text>
+        <QuickStatsBand attending={s.attending} />
+        <PlanChecklist />
+        <IdeasAdvice />
 
         {hasAnyData ? (
           <>

@@ -141,7 +141,7 @@ export default function ProfileScreen() {
           <ProfileRow
             icon="globe-outline"
             label="Wedding Website"
-            onPress={() => goToComingSoon('Wedding Website')}
+            onPress={() => router.push('/website')}
             last
           />
         </ProfileSection>
@@ -172,6 +172,11 @@ export default function ProfileScreen() {
             icon="share-social-outline"
             label="Invite a co-planner"
             onPress={() => goToComingSoon('Invite a co-planner')}
+          />
+          <ProfileRow
+            icon="receipt-outline"
+            label="Cancellation & Refund Policy"
+            onPress={() => router.push('/cancellation')}
             last
           />
         </ProfileSection>

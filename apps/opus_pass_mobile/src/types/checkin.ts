@@ -1,0 +1,74 @@
+/** Mirrors the response shapes of apps/opus_pass `/api/checkin/*`. */
+
+export interface ScannerEvent {
+  id: string;
+  name: string | null;
+  event_type: string | null;
+  venue_name: string | null;
+  starts_at: string | null;
+}
+
+export interface RosterEntry {
+  invitationId: string;
+  fullName: string;
+  /** Short code printed on the ticket, for the manual fallback. */
+  entryCode: string | null;
+  /** Headcount the guest RSVP'd for — the default offered at the door. */
+  partySize: number;
+  checkedInAt: string | null;
+  /** How many actually arrived, once scanned. Null until then. */
+  checkedInPartySize: number | null;
+  /** Which door admitted them, for the arrivals log. */
+  checkedInDoor: string | null;
+  /** Audit label of who admitted them, e.g. "Asha (Main Gate) (manual: …)". */
+  checkedInBy: string | null;
+  /** Free-text guest-list grouping the couple entered, e.g. "Bride's Family". */
+  groupTag: string | null;
+  /** Heuristic: the couple wrote "VIP" in the group tag. Not a real tier. */
+  isVip: boolean;
+}
+
+export type ResolveCodeResult =
+  | { ok: true; eventId: string }
+  | { ok: false; error: string };
+
+export type ValidateSessionResult =
+  | {
+      ok: true;
+      doorLabel: string;
+      /** Set when an admin assigned this code to a named attendant — the
+       *  app must then skip asking who is scanning. */
+      attendantName: string | null;
+      event: ScannerEvent | null;
+      roster: RosterEntry[];
+    }
+  | { ok: false; error: string };
+
+/**
+ * Outcome of one scan.
+ *  - success: admitted, `checkedInPartySize` recorded
+ *  - duplicate: this pass was already used (first scan wins)
+ *  - invalid: not a genuine pass, wrong event, or no longer attending
+ *  - error: transport/server failure — retryable, nothing was recorded
+ */
+export interface CheckinScanResult {
+  status: 'success' | 'duplicate' | 'invalid' | 'error';
+  message?: string;
+  guestName?: string;
+  /** What they RSVP'd for. */
+  partySize?: number;
+  /** What was actually admitted. */
+  checkedInPartySize?: number | null;
+  checkedInAt?: string | null;
+  isVip?: boolean;
+  groupTag?: string | null;
+}
+
+/** A validated door session, persisted so a mid-shift restart doesn't force re-login. */
+export interface ScannerSession {
+  eventId: string;
+  accessToken: string;
+  doorLabel: string;
+  attendantName: string | null;
+  eventName: string | null;
+}

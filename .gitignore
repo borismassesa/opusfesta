@@ -147,6 +147,9 @@ apps/mobile/
 clerk-*.json
 *-export-*.json
 clerk-import-errors-*.json
+# Real user PII / restore dumps from admin cleanups (emails, tokens) — keep local only
+supabase/manual/*.csv
+supabase/manual/restore_*.sql
 
 # Claude Code temporary worktrees
 .worktrees/

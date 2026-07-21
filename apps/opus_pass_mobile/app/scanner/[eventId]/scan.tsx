@@ -1,0 +1,674 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Haptics from 'expo-haptics';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { BackButton } from '@/components/navigation/BackButton';
+import { ManualCheckinSheet } from '@/components/scanner/ManualCheckinSheet';
+import { amendPartySize, submitScan, validateScannerSession } from '@/lib/api/checkin';
+import { useScannerSession } from '@/hooks/useScannerSession';
+import { useTheme } from '@/theme/useTheme';
+import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
+
+/** Ignore repeat decodes of the same code for this long — a QR held in frame
+ *  fires continuously, and without this every guest triggers a burst of
+ *  identical requests that all resolve as "duplicate". */
+const RESCAN_COOLDOWN_MS = 2500;
+
+/** Brand green, matching the live/active pills used elsewhere in the product. */
+const LIVE_GREEN = '#9FE870';
+
+/** Side of the square scan target the corner brackets frame. */
+const RETICLE_SIZE = 256;
+
+const RESULT_STYLES: Record<
+  CheckinScanResult['status'],
+  { bg: string; icon: keyof typeof Ionicons.glyphMap; title: string }
+> = {
+  success: { bg: '#1B7F4C', icon: 'checkmark-circle', title: 'Checked in' },
+  duplicate: { bg: '#B4751A', icon: 'alert-circle', title: 'Already scanned' },
+  invalid: { bg: '#B3261E', icon: 'close-circle', title: 'Not valid' },
+  error: { bg: '#5A5A5A', icon: 'cloud-offline', title: "Couldn't check in" },
+};
+
+export default function ScanScreen() {
+  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const router = useRouter();
+  const { editorial } = useTheme();
+  const { session, isLoading } = useScannerSession();
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const [result, setResult] = useState<CheckinScanResult | null>(null);
+  const [pending, setPending] = useState(false);
+  /** Party-size prompt, shown only when the guest RSVP'd for more than one. */
+  const [partyPrompt, setPartyPrompt] = useState<{
+    qrToken: string;
+    guestName: string;
+    partySize: number;
+  } | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  /** Which way the manual sheet opens: typing the printed code (the usual
+   *  case, reached from "QR not working") or searching a name. */
+  const [manualMode, setManualMode] = useState<'code' | 'name'>('code');
+
+  // Refs, not state: the camera callback fires many times a second and must
+  // read the latest value without re-subscribing or re-rendering.
+  const lastScanRef = useRef<{ token: string; at: number } | null>(null);
+  const busyRef = useRef(false);
+
+  const queryClient = useQueryClient();
+
+  /**
+   * Arrival progress for the header. Shares a cache key with the guest-list
+   * screen, so moving between the two doesn't refetch, and one invalidation
+   * after a scan updates both.
+   */
+  const rosterQuery = useQuery({
+    queryKey: ['scanner', 'roster', eventId],
+    enabled: Boolean(session && session.eventId === eventId),
+    queryFn: async () => {
+      const validated = await validateScannerSession(session!.eventId, session!.accessToken);
+      if (!validated.ok) throw new Error(validated.error);
+      return validated.roster;
+    },
+  });
+
+  const totalGuests = rosterQuery.data?.length ?? 0;
+  const arrivedGuests = (rosterQuery.data ?? []).filter((g) => g.checkedInAt).length;
+
+  useEffect(() => {
+    if (!permission?.granted && permission?.canAskAgain) requestPermission();
+  }, [permission, requestPermission]);
+
+  const runScan = useCallback(
+    async (args: { qrToken: string; checkedInPartySize?: number }) => {
+      if (!session) return;
+      busyRef.current = true;
+      setPending(true);
+      try {
+        const scanResult = await submitScan({
+          eventId: session.eventId,
+          accessToken: session.accessToken,
+          qrToken: args.qrToken,
+          checkedInPartySize: args.checkedInPartySize,
+          doorLabel: session.doorLabel,
+          attendantName: session.attendantName ?? undefined,
+        });
+        setResult(scanResult);
+        if (scanResult.status === 'success') {
+          // Keep the header count honest without blocking the next scan.
+          void queryClient.invalidateQueries({ queryKey: ['scanner', 'roster', eventId] });
+        }
+        // Haptics matter here: attendants work in the dark, often not looking
+        // at the screen between guests.
+        await Haptics.notificationAsync(
+          scanResult.status === 'success'
+            ? Haptics.NotificationFeedbackType.Success
+            : scanResult.status === 'duplicate'
+              ? Haptics.NotificationFeedbackType.Warning
+              : Haptics.NotificationFeedbackType.Error
+        );
+      } catch (err) {
+        setResult({
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } finally {
+        setPending(false);
+        busyRef.current = false;
+      }
+    },
+    [session, queryClient, eventId]
+  );
+
+  /**
+   * Correct the headcount after the pass is already scanned in.
+   *
+   * Uses the amend endpoint rather than re-scanning: check-in is
+   * first-scan-wins, so a second scan would just report a duplicate and leave
+   * the original full-party figure in place.
+   */
+  const correctPartySize = useCallback(
+    async (qrToken: string, arrived: number) => {
+      if (!session) return;
+      setPartyPrompt(null);
+      setPending(true);
+      try {
+        const amended = await amendPartySize({
+          eventId: session.eventId,
+          accessToken: session.accessToken,
+          qrToken,
+          checkedInPartySize: arrived,
+          doorLabel: session.doorLabel,
+        });
+        setResult(amended);
+      } catch (err) {
+        setResult({
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        });
+      } finally {
+        setPending(false);
+      }
+    },
+    [session]
+  );
+
+  /**
+   * Admit a guest picked from the manual sheet. Sends `invitationId` rather
+   * than a QR token, plus the reason that marks it scan-less in the audit
+   * trail. Returns the result so the sheet can hand it back and the standard
+   * result overlay reports it exactly like a scan.
+   */
+  const admitManually = useCallback(
+    async (guest: RosterEntry): Promise<CheckinScanResult> => {
+      if (!session) return { status: 'error', message: 'Session expired' };
+      try {
+        const manualResult = await submitScan({
+          eventId: session.eventId,
+          accessToken: session.accessToken,
+          invitationId: guest.invitationId,
+          manualReason: 'QR could not be scanned',
+          doorLabel: session.doorLabel,
+          attendantName: session.attendantName ?? undefined,
+        });
+        if (manualResult.status === 'success') {
+          void queryClient.invalidateQueries({ queryKey: ['scanner', 'roster', eventId] });
+        }
+        return manualResult;
+      } catch (err) {
+        return {
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        };
+      }
+    },
+    [session, queryClient, eventId]
+  );
+
+  /** Admit by the short code printed on the ticket. Resolved server-side, so
+   *  this works even when the roster failed to load on this device. */
+  const admitByCode = useCallback(
+    async (entryCode: string): Promise<CheckinScanResult> => {
+      if (!session) return { status: 'error', message: 'Session expired' };
+      try {
+        const codeResult = await submitScan({
+          eventId: session.eventId,
+          accessToken: session.accessToken,
+          entryCode,
+          manualReason: 'Checked in with ticket code',
+          doorLabel: session.doorLabel,
+          attendantName: session.attendantName ?? undefined,
+        });
+        if (codeResult.status === 'success') {
+          void queryClient.invalidateQueries({ queryKey: ['scanner', 'roster', eventId] });
+        }
+        return codeResult;
+      } catch (err) {
+        return {
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        };
+      }
+    },
+    [session, queryClient, eventId]
+  );
+
+  /** Show the manual admission through the same overlay a scan produces. */
+  const handleManualAdmitted = useCallback(async (manualResult: CheckinScanResult) => {
+    // Cleared so the party-size prompt doesn't fire off a stale QR token from
+    // an earlier camera scan.
+    lastScanRef.current = null;
+    setResult(manualResult);
+    await Haptics.notificationAsync(
+      manualResult.status === 'success'
+        ? Haptics.NotificationFeedbackType.Success
+        : manualResult.status === 'duplicate'
+          ? Haptics.NotificationFeedbackType.Warning
+          : Haptics.NotificationFeedbackType.Error
+    );
+  }, []);
+
+  const handleBarcode = useCallback(
+    ({ data }: { data: string }) => {
+      if (!data || busyRef.current || partyPrompt || result) return;
+
+      const now = Date.now();
+      const last = lastScanRef.current;
+      if (last && last.token === data && now - last.at < RESCAN_COOLDOWN_MS) return;
+      lastScanRef.current = { token: data, at: now };
+
+      // We can't know the party size until the server resolves the token, so
+      // scan first and let the result drive whether we need to ask.
+      void runScan({ qrToken: data });
+    },
+    [runScan, partyPrompt, result]
+  );
+
+  // Once a successful scan comes back for a multi-person party, offer the
+  // correction step rather than assuming everyone arrived together.
+  useEffect(() => {
+    if (
+      result?.status === 'success' &&
+      (result.partySize ?? 1) > 1 &&
+      lastScanRef.current &&
+      !partyPrompt
+    ) {
+      setPartyPrompt({
+        qrToken: lastScanRef.current.token,
+        guestName: result.guestName ?? 'Guest',
+        partySize: result.partySize ?? 1,
+      });
+    }
+  }, [result, partyPrompt]);
+
+  const dismiss = () => {
+    setResult(null);
+    setPartyPrompt(null);
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-ed-bg">
+        <ActivityIndicator color={editorial.secondary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!session || session.eventId !== eventId) {
+    return (
+      <SafeAreaView className="flex-1 bg-ed-bg" edges={['top']}>
+        <View className="flex-1 items-center justify-center px-10">
+          <Ionicons name="lock-closed-outline" size={32} color={editorial.onSurfaceVariant} />
+          <Text className="mt-3 text-center font-work-sans text-sm text-ed-on-surface-variant">
+            This shift has ended. Enter your access code again to keep scanning.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.replace('/scanner')}
+            className="mt-5 rounded-full bg-ed-primary-container px-6 py-3"
+          >
+            <Text className="font-work-sans-bold text-xs uppercase tracking-[1px] text-ed-on-primary">
+              Enter code
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!permission?.granted) {
+    return (
+      <SafeAreaView className="flex-1 bg-ed-bg" edges={['top']}>
+        <View className="px-4 pt-2">
+          <BackButton />
+        </View>
+        <View className="flex-1 items-center justify-center px-10">
+          <Ionicons name="camera-outline" size={32} color={editorial.onSurfaceVariant} />
+          <Text className="mt-3 text-center font-work-sans text-sm text-ed-on-surface-variant">
+            {permission?.canAskAgain === false
+              ? 'Camera access is blocked. Enable it for OpusPass in your device settings to scan guest passes.'
+              : 'OpusPass needs your camera to scan guest entry passes.'}
+          </Text>
+          {permission?.canAskAgain !== false ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={requestPermission}
+              className="mt-5 rounded-full bg-ed-primary-container px-6 py-3"
+            >
+              <Text className="font-work-sans-bold text-xs uppercase tracking-[1px] text-ed-on-primary">
+                Allow camera
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const resultStyle = result ? RESULT_STYLES[result.status] : null;
+
+  return (
+    <View className="flex-1 bg-black">
+      <CameraView
+        style={{ flex: 1 }}
+        facing="back"
+        barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+        onBarcodeScanned={
+          result || partyPrompt || manualOpen ? undefined : handleBarcode
+        }
+      />
+
+      {/* Header. A scrim, not per-button pills: white text over a live camera
+          feed is unreadable the moment someone walks past in a light shirt,
+          and a gradient keeps it legible without boxing in every element. */}
+      <View pointerEvents="box-none" className="absolute left-0 right-0 top-0">
+        <LinearGradient
+          colors={['rgba(0,0,0,0.78)', 'rgba(0,0,0,0.45)', 'transparent']}
+          pointerEvents="box-none"
+        >
+          <SafeAreaView edges={['top']}>
+            <View className="flex-row items-center gap-3 px-4 pb-6 pt-1">
+              {/* Matches BackButton's shape and icon, but can't use it
+                  directly: that component fills with a light surface token,
+                  which disappears against a camera feed. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                onPress={() => router.back()}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                className="h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
+              >
+                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              </Pressable>
+
+              <View className="min-w-0 flex-1">
+                <Text
+                  className="text-center font-work-sans-bold text-[15px] text-white"
+                  numberOfLines={1}
+                >
+                  {session.eventName ?? 'Check-in'}
+                </Text>
+                {/* Icon-led facts rather than a dot-joined string, matching
+                    the shift card on the entry screen. */}
+                <View className="mt-1 flex-row items-center justify-center gap-3">
+                  <View className="flex-row items-center gap-1">
+                    <MaterialCommunityIcons
+                      name="door-open"
+                      size={12}
+                      color="rgba(255,255,255,0.65)"
+                    />
+                    <Text
+                      className="font-work-sans text-[11px]"
+                      style={{ color: 'rgba(255,255,255,0.65)' }}
+                      numberOfLines={1}
+                    >
+                      {session.doorLabel}
+                    </Text>
+                  </View>
+                  {session.attendantName ? (
+                    <View className="flex-row items-center gap-1">
+                      <Ionicons
+                        name="person-outline"
+                        size={11}
+                        color="rgba(255,255,255,0.65)"
+                      />
+                      <Text
+                        className="font-work-sans text-[11px]"
+                        style={{ color: 'rgba(255,255,255,0.65)' }}
+                        numberOfLines={1}
+                      >
+                        {session.attendantName}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open the guest list"
+                onPress={() => router.push(`/scanner/${eventId}/guests`)}
+                hitSlop={12}
+                className="h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
+              >
+                {/* Not a magnifier: over a camera that reads as zoom. */}
+                <Ionicons name="people-outline" size={20} color="#FFFFFF" />
+              </Pressable>
+            </View>
+
+            {/* Arrival progress — the one number an attendant is asked for all
+                night ("how many are in?"), so it belongs on the scanning
+                screen rather than only in the guest list. */}
+            {totalGuests > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="See who has arrived"
+                onPress={() => router.push(`/scanner/${eventId}/arrivals`)}
+                className="-mt-3 px-4 pb-2"
+              >
+                <View className="flex-row items-baseline justify-between">
+                  <Text className="font-work-sans-bold text-[13px] text-white">
+                    {arrivedGuests} of {totalGuests} arrived
+                  </Text>
+                  <View className="flex-row items-center gap-1">
+                    <Text
+                      className="font-work-sans text-[11px]"
+                      style={{ color: 'rgba(255,255,255,0.65)' }}
+                    >
+                      See who
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={11}
+                      color="rgba(255,255,255,0.65)"
+                    />
+                  </View>
+                </View>
+                <View
+                  className="mt-1.5 h-1 overflow-hidden rounded-full"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.22)' }}
+                >
+                  <View
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.round((arrivedGuests / totalGuests) * 100)}%`,
+                      backgroundColor: LIVE_GREEN,
+                    }}
+                  />
+                </View>
+              </Pressable>
+            ) : null}
+          </SafeAreaView>
+        </LinearGradient>
+      </View>
+
+      {/* Reticle. Dimming everything outside it both aims the attendant at
+          the right spot and stops a busy venue background reading as part of
+          the UI — a bare outline on a live feed looked unfinished. */}
+      {!result && !partyPrompt && !manualOpen ? (
+        <>
+          <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+            <View
+              className="items-center justify-center"
+              style={{ width: RETICLE_SIZE, height: RETICLE_SIZE }}
+            >
+              {/* Corner brackets rather than a full box: they frame the target
+                  without drawing a hard edge across the guest's ticket. */}
+              {(
+                [
+                  { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 20 },
+                  { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 20 },
+                  { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 20 },
+                  { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 20 },
+                ] as const
+              ).map((corner, i) => (
+                <View
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    width: 44,
+                    height: 44,
+                    borderColor: '#FFFFFF',
+                    ...corner,
+                  }}
+                />
+              ))}
+            </View>
+            <Text
+              className="mt-7 font-work-sans text-sm"
+              style={{ color: 'rgba(255,255,255,0.85)' }}
+            >
+              Point at the QR code on the guest&apos;s ticket
+            </Text>
+          </View>
+
+          {/* Manual fallback, always visible rather than hidden behind the
+              header icon: a QR that won't scan (cracked screen, dead phone,
+              printed ticket in bad light) is exactly when the attendant is
+              under pressure and shouldn't have to hunt for the way out. */}
+          <View className="absolute bottom-0 left-0 right-0">
+            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']}>
+              <SafeAreaView edges={['bottom']}>
+                <View className="px-5 pb-3 pt-10">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Check a guest in manually"
+                    onPress={() => {
+                      setManualMode('code');
+                      setManualOpen(true);
+                    }}
+                    className="h-14 flex-row items-center justify-center gap-2 rounded-full"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
+                  >
+                    <Ionicons name="create-outline" size={17} color="#FFFFFF" />
+                    <Text className="font-work-sans-bold text-sm text-white">
+                      QR not working? Check in manually
+                    </Text>
+                  </Pressable>
+                </View>
+              </SafeAreaView>
+            </LinearGradient>
+          </View>
+        </>
+      ) : null}
+
+      {pending ? (
+        <View className="absolute inset-0 items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <ActivityIndicator color="#FFFFFF" size="large" />
+        </View>
+      ) : null}
+
+      {/* Party-size correction */}
+      {partyPrompt ? (
+        <View className="absolute inset-0 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View className="rounded-t-3xl bg-ed-bg p-6 pb-10">
+            <Text className="font-playfair-bold text-xl text-ed-on-surface">
+              How many arrived?
+            </Text>
+            <Text className="mt-1 font-work-sans text-sm text-ed-on-surface-variant">
+              {partyPrompt.guestName} was expected with {partyPrompt.partySize} in
+              their party. All {partyPrompt.partySize} were counted in.
+            </Text>
+            <View className="mt-5 flex-row flex-wrap gap-2">
+              {Array.from({ length: partyPrompt.partySize }, (_, i) => i + 1).map((n) => (
+                <Pressable
+                  key={n}
+                  accessibilityRole="button"
+                  onPress={() => void correctPartySize(partyPrompt.qrToken, n)}
+                  className="h-12 w-12 items-center justify-center rounded-full border border-ed-outline-variant bg-ed-surface"
+                >
+                  <Text className="font-work-sans-bold text-base text-ed-on-surface">{n}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={dismiss}
+              className="mt-6 h-13 items-center justify-center rounded-full bg-ed-primary-container py-4"
+            >
+              <Text className="font-work-sans-bold text-xs uppercase tracking-[1px] text-ed-on-primary">
+                All {partyPrompt.partySize} arrived
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Scan result */}
+      {result && resultStyle && !partyPrompt ? (
+        <Pressable
+          onPress={dismiss}
+          className="absolute inset-0 items-center justify-center px-8"
+          style={{ backgroundColor: resultStyle.bg }}
+        >
+          <Ionicons name={resultStyle.icon} size={72} color="#FFFFFF" />
+          <Text className="mt-4 text-center font-playfair-bold text-3xl text-white">
+            {resultStyle.title}
+          </Text>
+          {result.guestName ? (
+            <Text className="mt-2 text-center font-work-sans-bold text-lg text-white">
+              {result.guestName}
+            </Text>
+          ) : null}
+          {result.isVip ? (
+            <View className="mt-3 rounded-full bg-white/25 px-3 py-1">
+              <Text className="font-work-sans-bold text-[11px] uppercase tracking-[1px] text-white">
+                {result.groupTag || 'VIP'}
+              </Text>
+            </View>
+          ) : null}
+          {result.status === 'success' && result.checkedInPartySize ? (
+            <Text className="mt-3 text-center font-work-sans text-base text-white/90">
+              {result.checkedInPartySize} of {result.partySize} admitted
+            </Text>
+          ) : null}
+          {result.message ? (
+            <Text className="mt-3 text-center font-work-sans text-sm text-white/90">
+              {result.message}
+            </Text>
+          ) : null}
+          {/* An explicit control, not just the tap-anywhere hint that was
+              here before: at a busy door the attendant needs an obvious,
+              thumb-sized target to move to the next guest, and a hint that
+              only reads as text is easy to miss mid-queue. Tapping the
+              backdrop still works as a shortcut. */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={dismiss}
+            className="mt-9 h-14 w-full max-w-[320px] flex-row items-center justify-center gap-2 rounded-full"
+            style={{ backgroundColor: '#FFFFFF' }}
+          >
+            <Ionicons name="qr-code" size={17} color={resultStyle.bg} />
+            <Text
+              className="font-work-sans-bold text-sm uppercase tracking-[1px]"
+              style={{ color: resultStyle.bg }}
+            >
+              Scan next guest
+            </Text>
+          </Pressable>
+
+          {/* The manual path stays reachable without going back to the camera
+              first — a guest whose pass just failed is still standing there. */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              dismiss();
+              setManualMode('name');
+              setManualOpen(true);
+            }}
+            className="mt-3 flex-row items-center gap-1.5 py-2"
+          >
+            <Ionicons name="people-outline" size={15} color="rgba(255,255,255,0.85)" />
+            <Text
+              className="font-work-sans-medium text-sm"
+              style={{ color: 'rgba(255,255,255,0.85)' }}
+            >
+              Find guest by name
+            </Text>
+          </Pressable>
+        </Pressable>
+      ) : null}
+
+      <ManualCheckinSheet
+        visible={manualOpen}
+        initialMode={manualMode}
+        onClose={() => setManualOpen(false)}
+        roster={rosterQuery.data ?? []}
+        isLoading={rosterQuery.isPending}
+        isError={rosterQuery.isError}
+        onRetry={() => void rosterQuery.refetch()}
+        onAdmit={admitManually}
+        onAdmitByCode={admitByCode}
+        onAdmitted={handleManualAdmitted}
+      />
+    </View>
+  );
+}
