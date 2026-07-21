@@ -245,8 +245,12 @@ export default function CardsScreen() {
   useEffect(() => {
     if (initialTabParam && TOP_TABS.some((tab) => tab.key === initialTabParam)) {
       setActiveTab(initialTabParam);
+      // Consume the param so navigating here again with the same tab value
+      // (e.g. tapping Favorites twice) still triggers this effect instead
+      // of being ignored as an unchanged dependency.
+      router.setParams({ tab: undefined });
     }
-  }, [initialTabParam]);
+  }, [initialTabParam, router]);
 
   useEffect(() => {
     if (!activeCategory && categories.data && categories.data.length > 0) {
