@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInvitationProducts } from '@/hooks/useInvitationProducts';
 import { useInvitationCategories } from '@/hooks/useInvitationCategories';
 import { useFromGuestPrice } from '@/hooks/useFromGuestPrice';
@@ -30,6 +30,17 @@ const TOP_TABS: { key: TopTab; label: string }[] = [
 ];
 
 const PAGE_SIZE = 12;
+
+// The Filters screen's "Price" options are the only facet backed by real
+// product data (`price_now`) today — the rest (style, color, photo, foil,
+// orientation, paper/digital) are placeholder options with no matching
+// product field yet, so they round-trip through the Filters screen but
+// don't narrow results here.
+const PRICE_RANGES: Record<string, (price: number) => boolean> = {
+  'Under TZS 5,000': (price) => price < 5000,
+  'TZS 5,000–10,000': (price) => price >= 5000 && price <= 10000,
+  'TZS 10,000+': (price) => price > 10000,
+};
 
 // Sized off screen width so this many swatches sit fully visible plus a
 // partial peek of the next one, hinting there's more to scroll to.
@@ -199,6 +210,10 @@ function EmptyState({
 
 export default function CardsScreen() {
   const router = useRouter();
+  const { filters: filtersParam, tab: initialTabParam } = useLocalSearchParams<{
+    filters?: string;
+    tab?: TopTab;
+  }>();
   const { editorial } = useTheme();
   const products = useInvitationProducts();
   const categories = useInvitationCategories();
@@ -228,6 +243,12 @@ export default function CardsScreen() {
   };
 
   useEffect(() => {
+    if (initialTabParam && TOP_TABS.some((tab) => tab.key === initialTabParam)) {
+      setActiveTab(initialTabParam);
+    }
+  }, [initialTabParam]);
+
+  useEffect(() => {
     if (!activeCategory && categories.data && categories.data.length > 0) {
       setActiveCategory(categories.data[0].slug);
     }
@@ -236,20 +257,49 @@ export default function CardsScreen() {
   const activeCategoryDef =
     categories.data?.find((c) => c.slug === activeCategory) ?? null;
 
+  const activeFilters = useMemo<Record<string, string[]>>(() => {
+    if (!filtersParam) return {};
+    try {
+      return JSON.parse(filtersParam) as Record<string, string[]>;
+    } catch {
+      return {};
+    }
+  }, [filtersParam]);
+
   const favoriteDesigns = useMemo(
     () => (products.data ?? []).filter((p) => liked.has(p.id)),
     [products.data, liked]
   );
 
-  const categoryDesigns = useMemo(
-    () =>
-      activeCategoryDef
-        ? (products.data ?? []).filter((p) =>
-            matchesCategory(p, activeCategoryDef)
-          )
-        : [],
-    [products.data, activeCategoryDef]
-  );
+  const categoryDesigns = useMemo(() => {
+    if (!activeCategoryDef) return [];
+    let matches = (products.data ?? []).filter((p) =>
+      matchesCategory(p, activeCategoryDef)
+    );
+
+    const trimmedQuery = query.trim().toLowerCase();
+    if (trimmedQuery) {
+      matches = matches.filter((p) =>
+        [p.name, p.designer]
+          .filter((value): value is string => !!value)
+          .some((value) => value.toLowerCase().includes(trimmedQuery))
+      );
+    }
+
+    const priceLabels = activeFilters.price ?? [];
+    if (priceLabels.length > 0) {
+      const priceChecks = priceLabels
+        .map((label) => PRICE_RANGES[label])
+        .filter((check): check is (price: number) => boolean => !!check);
+      if (priceChecks.length > 0) {
+        matches = matches.filter((p) =>
+          priceChecks.some((check) => check(p.price_now))
+        );
+      }
+    }
+
+    return matches;
+  }, [products.data, activeCategoryDef, query, activeFilters]);
 
   const totalPages = Math.max(1, Math.ceil(categoryDesigns.length / PAGE_SIZE));
   const pagedDesigns = useMemo(
@@ -260,7 +310,7 @@ export default function CardsScreen() {
   useEffect(() => {
     setPage(1);
     setOpenFaqs(new Set());
-  }, [activeCategory, query]);
+  }, [activeCategory, query, activeFilters]);
 
   const faqs = useMemo(
     () =>
@@ -444,7 +494,12 @@ export default function CardsScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Filters"
-                onPress={() => router.push('/filters')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/filters',
+                    params: { selected: JSON.stringify(activeFilters) },
+                  })
+                }
                 className="flex-row items-center gap-1.5 rounded-full border border-ed-outline-variant bg-ed-surface px-3.5 py-2.5"
               >
                 <Ionicons name="options-outline" size={16} color="#1A1A1A" />

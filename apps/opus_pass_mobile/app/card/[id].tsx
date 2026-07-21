@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BackButton } from '@/components/navigation/BackButton';
 import { useInvitationProducts } from '@/hooks/useInvitationProducts';
+import { useLikedDesigns } from '@/hooks/useLikedDesigns';
 import { useTheme } from '@/theme/useTheme';
 import type { InvitationProduct } from '@/types/invitations';
 
@@ -72,7 +73,7 @@ export default function CardDetailScreen() {
   const { editorial } = useTheme();
   const products = useInvitationProducts();
   const { width: windowWidth } = useWindowDimensions();
-  const [liked, setLiked] = useState(false);
+  const { liked: likedIds, toggleLike } = useLikedDesigns();
   const [slide, setSlide] = useState(0);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
@@ -125,6 +126,7 @@ export default function CardDetailScreen() {
   const description = product.description ? stripHtml(product.description) : null;
   const hasDiscount =
     product.price_was != null && product.price_was > product.price_now;
+  const liked = likedIds.has(product.id);
 
   return (
     <SafeAreaView className="flex-1 bg-ed-bg" edges={['top']}>
@@ -134,7 +136,7 @@ export default function CardDetailScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={liked ? 'Unlike design' : 'Like design'}
-            onPress={() => setLiked((v) => !v)}
+            onPress={() => toggleLike(product.id)}
             hitSlop={8}
             className="h-10 w-10 items-center justify-center rounded-full bg-ed-surface-container"
           >

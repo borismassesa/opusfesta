@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/useTheme';
 
@@ -111,11 +111,28 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
+function parseInitialSelection(raw: string | undefined) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string[]>;
+    return Object.fromEntries(
+      Object.entries(parsed).map(([key, values]) => [key, new Set(values)])
+    );
+  } catch {
+    return {};
+  }
+}
+
 export default function FiltersScreen() {
   const router = useRouter();
   const { editorial } = useTheme();
+  const { selected: initialSelected } = useLocalSearchParams<{
+    selected?: string;
+  }>();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<Record<string, Set<string>>>({});
+  const [selected, setSelected] = useState<Record<string, Set<string>>>(() =>
+    parseInitialSelection(initialSelected)
+  );
 
   const toggleExpanded = (key: string) => {
     setExpanded((prev) => {
@@ -251,7 +268,17 @@ export default function FiltersScreen() {
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => {
+            const serialized = Object.fromEntries(
+              Object.entries(selected)
+                .filter(([, values]) => values.size > 0)
+                .map(([key, values]) => [key, [...values]])
+            );
+            router.navigate({
+              pathname: '/(tabs)/cards',
+              params: { filters: JSON.stringify(serialized) },
+            });
+          }}
           className="rounded-full bg-ed-primary-container px-6 py-3"
         >
           <Text className="font-work-sans-semibold text-sm text-ed-on-primary">

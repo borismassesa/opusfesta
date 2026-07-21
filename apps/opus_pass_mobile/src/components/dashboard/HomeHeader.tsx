@@ -75,7 +75,9 @@ export function HomeHeader() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Favorites"
-          onPress={() => router.push({ pathname: '/coming-soon', params: { title: 'Favorites' } })}
+          onPress={() =>
+            router.push({ pathname: '/(tabs)/cards', params: { tab: 'favorites' } })
+          }
           style={{ width: 44, height: 52, alignItems: 'center', justifyContent: 'center' }}
         >
           <Ionicons name="heart-outline" size={20} color={iconColor} />
