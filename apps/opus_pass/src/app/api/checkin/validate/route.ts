@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { candidateScannerAccessHashes } from '@/lib/checkin/tokens'
+import { clientIp, withinRateLimit } from '@/lib/checkin/rate-limit'
 
 export interface RosterEntry {
   invitationId: string
@@ -47,6 +48,16 @@ export async function POST(request: Request) {
   }
 
   const supabase = createSupabaseServerClient()
+
+  // Loose per-IP cap: the arrivals screen legitimately polls this every 15s
+  // per device and a venue's attendants share one NAT, so this only stops
+  // scripted hammering, not real use.
+  if (!(await withinRateLimit(supabase, `validate:${clientIp(request)}`, 240, 60))) {
+    return NextResponse.json(
+      { ok: false, error: 'Too many attempts — wait a moment and try again' },
+      { status: 429 }
+    )
+  }
 
   const { data: row, error } = await supabase
     .from('scanner_access_tokens')
