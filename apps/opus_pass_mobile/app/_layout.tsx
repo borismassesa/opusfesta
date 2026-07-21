@@ -6,6 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { ActivityIndicator, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { queryClient } from '@/lib/query-client';
 import { tokenCache } from '@/lib/auth';
 import { hasSupabaseEnv, missingSupabaseEnvVars } from '@/lib/supabase';
@@ -113,9 +114,11 @@ function RootLayoutInner() {
     <ClerkProvider publishableKey={clerkPublishableKey} tokenCache={tokenCache}>
       <QueryClientProvider client={queryClient}>
         <ThemedStatusBar />
-        <View className="flex-1">
+        {/* Required by react-native-gesture-handler for swipe actions
+            (checklist rows) to receive touches — must wrap the whole tree. */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
           <Slot />
-        </View>
+        </GestureHandlerRootView>
       </QueryClientProvider>
     </ClerkProvider>
   );

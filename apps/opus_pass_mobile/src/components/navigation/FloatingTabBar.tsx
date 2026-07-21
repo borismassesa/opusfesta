@@ -4,16 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/useTheme';
+import { PlanningMenu } from './PlanningMenu';
+import { SearchDiscoverGrid } from './SearchDiscoverGrid';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const TAB_CONFIG: Record<string, { label: string; icon: IoniconName }> = {
   index: { label: 'Home', icon: 'home' },
   cards: { label: 'Cards', icon: 'mail' },
-  guests: { label: 'Guests', icon: 'people' },
   registry: { label: 'Registry', icon: 'cart' },
-  chat: { label: 'Chat', icon: 'chatbubbles' },
+  vendors: { label: 'Vendors', icon: 'storefront' },
 };
+
+/** Rendered specially below — a raised button that opens the radial
+ * PlanningMenu instead of navigating like the other tabs. */
+const PLANNING_ROUTE_NAME = 'planning';
 
 const BAR_HEIGHT = 52;
 
@@ -37,6 +42,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [planningOpen, setPlanningOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -56,172 +62,232 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
     if (searchOpen) inputRef.current?.focus();
   }, [searchOpen]);
 
-  const closeSearch = () => {
+  const dismissSearch = () => {
     setSearchOpen(false);
     setQuery('');
     Keyboard.dismiss();
-    if (!state.routes[state.index] || state.routes[state.index].name !== 'index') {
+  };
+
+  const closeSearch = () => {
+    dismissSearch();
+    if (
+      !state.routes[state.index] ||
+      state.routes[state.index].name !== 'index'
+    ) {
       navigation.navigate('index');
     }
   };
 
   return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: (keyboardOffset > 0 ? keyboardOffset : insets.bottom) + 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        gap: 10,
-      }}
-    >
-      {searchOpen ? (
-        <>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close search"
-            onPress={closeSearch}
-            style={[
-              {
-                width: BAR_HEIGHT,
-                height: BAR_HEIGHT,
-                borderRadius: BAR_HEIGHT / 2,
-                backgroundColor: 'rgba(255,255,255,0.94)',
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-              FLOATING_SHADOW,
-            ]}
-          >
-            <Ionicons name="home" size={20} color={editorial.onSurface} />
-          </Pressable>
+    <>
+      {searchOpen ? <SearchDiscoverGrid onNavigate={dismissSearch} /> : null}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: (keyboardOffset > 0 ? keyboardOffset : insets.bottom) + 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          gap: 10,
+        }}
+      >
+        {searchOpen ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close search"
+              onPress={closeSearch}
+              style={[
+                {
+                  width: BAR_HEIGHT,
+                  height: BAR_HEIGHT,
+                  borderRadius: BAR_HEIGHT / 2,
+                  backgroundColor: 'rgba(255,255,255,0.94)',
+                  borderWidth: 1,
+                  borderColor: editorial.outlineVariant,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                FLOATING_SHADOW,
+              ]}
+            >
+              <Ionicons name="home" size={20} color={editorial.onSurface} />
+            </Pressable>
 
-          <View
-            style={[
-              {
-                flex: 1,
-                height: BAR_HEIGHT,
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255,255,255,0.94)',
-                borderRadius: BAR_HEIGHT / 2,
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                paddingHorizontal: 18,
-              },
-              FLOATING_SHADOW,
-            ]}
-          >
-            <Ionicons name="search" size={18} color={editorial.onSurfaceVariant} />
-            <TextInput
-              ref={inputRef}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search OpusPass"
-              placeholderTextColor={editorial.onSurfaceVariant}
-              returnKeyType="search"
-              style={{
-                flex: 1,
-                marginLeft: 10,
-                fontFamily: 'WorkSans-Regular',
-                fontSize: 15,
-                color: editorial.onSurface,
-              }}
-            />
-          </View>
-        </>
-      ) : (
-        <>
-          <View
-            style={[
-              {
-                flex: 1,
-                flexDirection: 'row',
-                backgroundColor: 'rgba(255,255,255,0.94)',
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                paddingVertical: 6,
-                paddingHorizontal: 6,
-              },
-              FLOATING_SHADOW,
-            ]}
-          >
-            {state.routes.map((route, index) => {
-              const config = TAB_CONFIG[route.name];
-              if (!config) return null;
-              const focused = state.index === index;
-              const color = focused ? editorial.secondary : editorial.onSurface;
+            <View
+              style={[
+                {
+                  flex: 1,
+                  height: BAR_HEIGHT,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.94)',
+                  borderRadius: BAR_HEIGHT / 2,
+                  borderWidth: 1,
+                  borderColor: editorial.outlineVariant,
+                  paddingHorizontal: 18,
+                },
+                FLOATING_SHADOW,
+              ]}
+            >
+              <Ionicons
+                name="search"
+                size={18}
+                color={editorial.onSurfaceVariant}
+              />
+              <TextInput
+                ref={inputRef}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search OpusPass"
+                placeholderTextColor={editorial.onSurfaceVariant}
+                returnKeyType="search"
+                style={{
+                  flex: 1,
+                  marginLeft: 10,
+                  fontFamily: 'WorkSans-Regular',
+                  fontSize: 15,
+                  color: editorial.onSurface,
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <View
+              style={[
+                {
+                  flex: 1,
+                  flexDirection: 'row',
+                  backgroundColor: 'rgba(255,255,255,0.94)',
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: editorial.outlineVariant,
+                  paddingVertical: 6,
+                  paddingHorizontal: 6,
+                },
+                FLOATING_SHADOW,
+              ]}
+            >
+              {state.routes.map((route, index) => {
+                if (route.name === PLANNING_ROUTE_NAME) {
+                  const color = planningOpen
+                    ? editorial.secondary
+                    : editorial.onSurface;
 
-              return (
-                <Pressable
-                  key={route.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={config.label}
-                  onPress={() => {
-                    const event = navigation.emit({
-                      type: 'tabPress',
-                      target: route.key,
-                      canPreventDefault: true,
-                    });
-                    if (!focused && !event.defaultPrevented) {
-                      navigation.navigate(route.name);
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingVertical: 8,
-                    borderRadius: 999,
-                    backgroundColor: focused ? editorial.surfaceContainer : 'transparent',
-                  }}
-                >
-                  <Ionicons name={config.icon} size={22} color={color} />
-                  <Text
-                    numberOfLines={1}
+                  return (
+                    <Pressable
+                      key={route.key}
+                      accessibilityRole="button"
+                      accessibilityLabel="Planning"
+                      onPress={() => setPlanningOpen((prev) => !prev)}
+                      style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingVertical: 8,
+                        borderRadius: 999,
+                        backgroundColor: planningOpen
+                          ? editorial.surfaceContainer
+                          : 'transparent',
+                      }}
+                    >
+                      <Ionicons name="sparkles" size={22} color={color} />
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          marginTop: 4,
+                          fontSize: 11,
+                          fontFamily: 'WorkSans-SemiBold',
+                          color,
+                        }}
+                      >
+                        Planning
+                      </Text>
+                    </Pressable>
+                  );
+                }
+
+                const config = TAB_CONFIG[route.name];
+                if (!config) return null;
+                const focused = state.index === index;
+                const color = focused
+                  ? editorial.secondary
+                  : editorial.onSurface;
+
+                return (
+                  <Pressable
+                    key={route.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={config.label}
+                    onPress={() => {
+                      const event = navigation.emit({
+                        type: 'tabPress',
+                        target: route.key,
+                        canPreventDefault: true,
+                      });
+                      if (!focused && !event.defaultPrevented) {
+                        navigation.navigate(route.name);
+                      }
+                    }}
                     style={{
-                      marginTop: 4,
-                      fontSize: 11,
-                      fontFamily: 'WorkSans-SemiBold',
-                      color,
+                      flex: 1,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      backgroundColor: focused
+                        ? editorial.surfaceContainer
+                        : 'transparent',
                     }}
                   >
-                    {config.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <Ionicons name={config.icon} size={22} color={color} />
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        marginTop: 4,
+                        fontSize: 11,
+                        fontFamily: 'WorkSans-SemiBold',
+                        color,
+                      }}
+                    >
+                      {config.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Search"
-            onPress={() => setSearchOpen(true)}
-            style={[
-              {
-                width: BAR_HEIGHT,
-                height: BAR_HEIGHT,
-                borderRadius: BAR_HEIGHT / 2,
-                backgroundColor: 'rgba(255,255,255,0.94)',
-                borderWidth: 1,
-                borderColor: editorial.outlineVariant,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-              FLOATING_SHADOW,
-            ]}
-          >
-            <Ionicons name="search" size={20} color={editorial.onSurface} />
-          </Pressable>
-        </>
-      )}
-    </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Search"
+              onPress={() => setSearchOpen(true)}
+              style={[
+                {
+                  width: BAR_HEIGHT,
+                  height: BAR_HEIGHT,
+                  borderRadius: BAR_HEIGHT / 2,
+                  backgroundColor: 'rgba(255,255,255,0.94)',
+                  borderWidth: 1,
+                  borderColor: editorial.outlineVariant,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                FLOATING_SHADOW,
+              ]}
+            >
+              <Ionicons name="search" size={20} color={editorial.onSurface} />
+            </Pressable>
+          </>
+        )}
+      </View>
+      <PlanningMenu
+        visible={planningOpen}
+        onClose={() => setPlanningOpen(false)}
+      />
+    </>
   );
 }

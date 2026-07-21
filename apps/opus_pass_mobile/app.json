@@ -20,7 +20,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.opusfesta.opuspass",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "OpusPass uses the camera to scan guest entry passes at your event door."
       }
     },
     "android": {
@@ -39,7 +40,14 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "OpusPass uses the camera to scan guest entry passes at your event door.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

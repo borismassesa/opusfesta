@@ -48,7 +48,9 @@ export default function EventConsoleClient({
   }
 
   return (
-    <div className="space-y-5 p-6">
+    // Padding comes from operations/layout.tsx — adding p-6 here stacked on
+    // top of it, pushing the content 24px in and down from the page header.
+    <div className="space-y-5">
       {/* Event header — the global page header hides the event name while
           "back" mode is active, so without this the admin has no on-page
           confirmation of which event they're managing. */}

@@ -295,18 +295,14 @@ function AdjustForm({
         <div className="flex justify-end gap-2">
           <button
             type="submit"
-            name="direction"
-            value="revoke"
-            formAction={adjustEntitlementCredits}
+            formAction={adjustEntitlementCredits.bind(null, 'revoke')}
             className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
           >
             <Minus className="h-3.5 w-3.5" /> Revoke
           </button>
           <button
             type="submit"
-            name="direction"
-            value="grant"
-            formAction={adjustEntitlementCredits}
+            formAction={adjustEntitlementCredits.bind(null, 'grant')}
             className="inline-flex items-center gap-1 rounded-lg bg-[#7E5896] px-2.5 py-1.5 font-semibold text-white transition hover:bg-[#6c4884]"
           >
             <Plus className="h-3.5 w-3.5" /> Grant

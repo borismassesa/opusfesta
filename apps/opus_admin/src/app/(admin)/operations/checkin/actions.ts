@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requirePermission, getCallerEmail } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { generateEntryPassQrDataUrl, generateScannerAccessToken } from '@/lib/checkin-tokens'
+import { accessCodeExpiry, type AccessCodeValidity } from '@/lib/checkin-code'
 import { renderGuestTicketSvg } from '@/lib/ticket-render'
 import { MAX_IMPORT_ROWS, parseGuestRows } from '@/lib/guest-csv'
 
@@ -41,7 +42,7 @@ export async function assignAttendant(
   eventId: string,
   attendantName: string,
   doorLabel: string,
-  hoursValid = 24,
+  validity: AccessCodeValidity = 'event',
 ): Promise<AssignAttendantResult> {
   await requirePermission('opuspass.checkin')
   const name = attendantName.trim()
@@ -51,14 +52,14 @@ export async function assignAttendant(
 
   const { data: event, error: eventErr } = await supabase
     .from('wedding_events')
-    .select('id, user_id')
+    .select('id, user_id, starts_at')
     .eq('id', eventId)
-    .maybeSingle<{ id: string; user_id: string }>()
+    .maybeSingle<{ id: string; user_id: string; starts_at: string | null }>()
   if (eventErr) return { ok: false, error: eventErr.message }
   if (!event) return { ok: false, error: 'Event not found' }
 
   const { rawToken, tokenHash } = generateScannerAccessToken()
-  const expiresAt = new Date(Date.now() + Math.max(1, hoursValid) * 60 * 60 * 1000).toISOString()
+  const expiresAt = accessCodeExpiry(validity, event.starts_at)
 
   const { error } = await supabase.from('scanner_access_tokens').insert({
     user_id: event.user_id,

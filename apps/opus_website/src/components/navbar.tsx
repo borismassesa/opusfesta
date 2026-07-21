@@ -481,9 +481,12 @@ export default function Navbar() {
                   single entry to it. NavAnchor uses a plain <a> to cross the
                   /opuspass zone boundary (308 → subdomain); the session is shared
                   (one Clerk apex). */}
+              {/* Accent-filled, matching the signed-out "Sign up" CTA: it's the
+                  primary destination for a signed-in couple, so it shouldn't
+                  read as just another nav link. */}
               <NavAnchor
                 href="/opuspass/my/dashboard"
-                className="hidden min-[1340px]:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
+                className="hidden min-[1340px]:flex items-center gap-1.5 shrink-0 rounded-full bg-(--accent) px-5 py-2.5 text-sm font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover)"
               >
                 Dashboard
               </NavAnchor>
@@ -722,10 +725,12 @@ export default function Navbar() {
                 </>
               ) : isLoaded ? (
                 <div className="flex flex-col gap-2.5">
+                  {/* Primary destination here too, so it matches the desktop
+                      nav rather than sitting level with the link below it. */}
                   <NavAnchor
                     href="/opuspass/my/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="w-full text-center py-3 rounded-full bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) text-sm font-bold transition-colors"
                   >
                     Dashboard
                   </NavAnchor>

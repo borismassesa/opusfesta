@@ -68,13 +68,73 @@ export interface GeneratedScannerAccessToken {
   tokenHash: string
 }
 
-/** Mint a new door-staff device credential. */
+/**
+ * Crockford-style base32: digits + uppercase letters, minus I, L, O and U.
+ * I/L/O are dropped because they're indistinguishable from 1/1/0 when an
+ * attendant is reading a code off a phone screen in a dark venue; U is
+ * dropped because excluding it makes accidental profanity far less likely.
+ * Exactly 32 symbols, which also makes `byte % 32` an unbiased pick.
+ */
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+const CODE_LENGTH = 8
+
+/**
+ * Mint a new door-staff device credential.
+ *
+ * Short and typable on purpose: this gets read aloud or copied by hand at a
+ * venue door, so the previous 32-character base64url string was hostile to
+ * enter on a phone. 8 symbols over a 32-symbol alphabet is ~2^40
+ * combinations; combined with per-event scoping and a hard expiry, that is a
+ * long way beyond feasible online guessing, while staying quick to type.
+ */
 export function generateScannerAccessToken(): GeneratedScannerAccessToken {
-  const rawToken = randomBytes(24).toString('base64url')
+  // 32 divides 256 exactly, so the modulo introduces no bias.
+  const bytes = randomBytes(CODE_LENGTH)
+  let rawToken = ''
+  for (let i = 0; i < CODE_LENGTH; i += 1) {
+    rawToken += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length]
+  }
   return { rawToken, tokenHash: hashScannerAccessToken(rawToken) }
+}
+
+/**
+ * Fold the many ways a human might type a code into the one canonical form
+ * that was hashed at generation: uppercase, no separators, and with the
+ * look-alike characters folded onto the symbol actually in the alphabet.
+ */
+export function normalizeScannerAccessCode(input: string): string {
+  return input
+    .trim()
+    .toUpperCase()
+    .replace(/[^0-9A-Z]/g, '')
+    .replace(/O/g, '0')
+    .replace(/[IL]/g, '1')
+}
+
+/** Display form, grouped for legibility: ABCD-EFGH. */
+export function formatScannerAccessCode(rawToken: string): string {
+  if (rawToken.length !== CODE_LENGTH) return rawToken
+  return `${rawToken.slice(0, 4)}-${rawToken.slice(4)}`
 }
 
 /** Hash a bearer token the same way at generation time and at verification time. */
 export function hashScannerAccessToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex')
+}
+
+/**
+ * Every hash a submitted code could legitimately match.
+ *
+ * Codes minted before the short-code format was introduced are 32-character
+ * base64url strings that are case-sensitive and would be mangled by
+ * normalization, so the raw input is still checked as well. Callers pass
+ * this to a single `.in('token_hash', ...)` lookup rather than querying
+ * twice.
+ */
+export function candidateScannerAccessHashes(input: string): string[] {
+  const raw = input.trim()
+  const normalized = normalizeScannerAccessCode(input)
+  const hashes = [hashScannerAccessToken(raw)]
+  if (normalized && normalized !== raw) hashes.push(hashScannerAccessToken(normalized))
+  return hashes
 }

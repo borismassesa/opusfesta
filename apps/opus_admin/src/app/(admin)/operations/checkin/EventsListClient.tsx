@@ -118,7 +118,9 @@ export default function EventsListClient({ events }: { events: CheckinEventRow[]
   }, [events, query, typeFilter, timeFilter, sort, now])
 
   return (
-    <div className="space-y-5 px-8 pt-4 pb-12">
+    // Padding comes from operations/layout.tsx — adding it here too double-inset
+    // the content past the page header.
+    <div className="space-y-5">
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Total events" value={String(counts.total)} icon={<CalendarCheck className="h-4 w-4" />} />

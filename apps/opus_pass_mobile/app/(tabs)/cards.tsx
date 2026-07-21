@@ -16,8 +16,10 @@ import { useInvitationProducts } from '@/hooks/useInvitationProducts';
 import { useInvitationCategories } from '@/hooks/useInvitationCategories';
 import { useFromGuestPrice } from '@/hooks/useFromGuestPrice';
 import { useLikedDesigns } from '@/hooks/useLikedDesigns';
+import { useCart } from '@/hooks/useCart';
 import type { InvitationProduct } from '@/types/invitations';
 import { matchesCategory } from '@/lib/api/invitation-categories';
+import { ACCENT, ON_ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
 
 type TopTab = 'designs' | 'favorites' | 'drafts' | 'orders';
@@ -230,6 +232,7 @@ export default function CardsScreen() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const { liked, toggleLike } = useLikedDesigns();
+  const { count: cartCount } = useCart();
   const [page, setPage] = useState(1);
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(new Set());
 
@@ -243,7 +246,10 @@ export default function CardsScreen() {
   };
 
   useEffect(() => {
-    if (initialTabParam && TOP_TABS.some((tab) => tab.key === initialTabParam)) {
+    if (
+      initialTabParam &&
+      TOP_TABS.some((tab) => tab.key === initialTabParam)
+    ) {
       setActiveTab(initialTabParam);
       // Consume the param so navigating here again with the same tab value
       // (e.g. tapping Favorites twice) still triggers this effect instead
@@ -333,12 +339,7 @@ export default function CardsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Scan ticket"
-            onPress={() =>
-              router.push({
-                pathname: '/coming-soon',
-                params: { title: 'Scanner' },
-              })
-            }
+            onPress={() => router.push('/scanner')}
             className="h-10 w-9 items-center justify-center"
           >
             <MaterialCommunityIcons
@@ -366,27 +367,37 @@ export default function CardsScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Favorites"
-            onPress={() => setActiveTab('favorites')}
+            accessibilityLabel="Chat"
+            onPress={() => router.navigate('/chat')}
             className="h-10 w-9 items-center justify-center"
           >
             <Ionicons
-              name="heart-outline"
+              name="chatbubbles"
               size={18}
               color={editorial.onSurface}
             />
           </Pressable>
+          {/* Registry lives in the bottom nav — this slot is the cart only. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Registry"
-            onPress={() => router.navigate('/registry')}
+            accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} designs` : 'Cart, empty'}
+            onPress={() => router.push('/cart')}
             className="h-10 w-9 items-center justify-center"
           >
-            <Ionicons
-              name="cart-outline"
-              size={18}
-              color={editorial.onSurface}
-            />
+            <Ionicons name="cart-outline" size={18} color={editorial.onSurface} />
+            {cartCount > 0 ? (
+              <View
+                className="absolute right-0 top-1 h-[17px] min-w-[17px] items-center justify-center rounded-full px-1"
+                style={{ backgroundColor: ACCENT }}
+              >
+                <Text
+                  className="font-work-sans-bold text-[10px]"
+                  style={{ color: ON_ACCENT }}
+                >
+                  {cartCount}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
       </View>

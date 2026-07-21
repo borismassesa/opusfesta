@@ -155,6 +155,7 @@ const sections: NavSection[] = [
     label: "OpusPass",
     icon: CreditCard,
     items: [
+      { icon: Users, label: "Couple Accounts", href: "/opus-pass/couples", requiredPermission: "opuspass.couples.read" },
       { icon: QrCode, label: "Event Check-in", href: "/operations/checkin", requiredPermission: "opuspass.checkin" },
       { icon: CreditCard, label: "Invitation Payments", href: "/finance/payments", requiredPermission: "finance.read" },
       { icon: Package, label: "Order Fulfilment", href: "/finance/orders", requiredPermission: "finance.read" },

@@ -1,7 +1,9 @@
-import { Image, Pressable, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
+import { useCart } from '@/hooks/useCart';
+import { ACCENT, ON_ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
 
 const SHADOW = {
@@ -16,6 +18,7 @@ export function HomeHeader() {
   const { editorial } = useTheme();
   const { user } = useUser();
   const router = useRouter();
+  const { count: cartCount } = useCart();
 
   const iconColor = editorial.onSurface;
 
@@ -39,7 +42,10 @@ export function HomeHeader() {
         ]}
       >
         {user?.imageUrl ? (
-          <Image source={{ uri: user.imageUrl }} style={{ width: 52, height: 52 }} />
+          <Image
+            source={{ uri: user.imageUrl }}
+            style={{ width: 52, height: 52 }}
+          />
         ) : (
           <Ionicons name="person-circle-outline" size={30} color={iconColor} />
         )}
@@ -59,36 +65,75 @@ export function HomeHeader() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Scan ticket"
-          onPress={() => router.push({ pathname: '/coming-soon', params: { title: 'Scanner' } })}
-          style={{ width: 44, height: 52, alignItems: 'center', justifyContent: 'center' }}
+          onPress={() => router.push('/scanner')}
+          style={{
+            width: 44,
+            height: 52,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <MaterialCommunityIcons name="barcode-scan" size={20} color={iconColor} />
+          <MaterialCommunityIcons
+            name="barcode-scan"
+            size={20}
+            color={iconColor}
+          />
         </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Notifications"
-          onPress={() => router.push({ pathname: '/coming-soon', params: { title: 'Notifications' } })}
-          style={{ width: 44, height: 52, alignItems: 'center', justifyContent: 'center' }}
+          onPress={() =>
+            router.push({
+              pathname: '/coming-soon',
+              params: { title: 'Notifications' },
+            })
+          }
+          style={{
+            width: 44,
+            height: 52,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Ionicons name="notifications-outline" size={20} color={iconColor} />
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Favorites"
-          onPress={() =>
-            router.push({ pathname: '/(tabs)/cards', params: { tab: 'favorites' } })
-          }
-          style={{ width: 44, height: 52, alignItems: 'center', justifyContent: 'center' }}
+          accessibilityLabel="Chat"
+          onPress={() => router.navigate('/chat')}
+          style={{
+            width: 44,
+            height: 52,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Ionicons name="heart-outline" size={20} color={iconColor} />
+          <Ionicons name="chatbubbles" size={20} color={iconColor} />
         </Pressable>
+        {/* Registry has its own bottom-nav tab, so this slot goes to the cart —
+            which is otherwise only reachable from the Cards screens. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Registry"
-          onPress={() => router.navigate('/registry')}
-          style={{ width: 44, height: 52, alignItems: 'center', justifyContent: 'center' }}
+          accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} designs` : 'Cart, empty'}
+          onPress={() => router.push('/cart')}
+          style={{
+            width: 44,
+            height: 52,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Ionicons name="cart-outline" size={20} color={iconColor} />
+          {cartCount > 0 ? (
+            <View
+              className="absolute right-1.5 top-2 h-[17px] min-w-[17px] items-center justify-center rounded-full px-1"
+              style={{ backgroundColor: ACCENT }}
+            >
+              <Text className="font-work-sans-bold text-[10px]" style={{ color: ON_ACCENT }}>
+                {cartCount}
+              </Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
     </View>

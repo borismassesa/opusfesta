@@ -3,7 +3,9 @@ import type { ReactNode } from 'react'
 import { Mail, Package, Phone, Search, ReceiptText, Loader2, CheckCircle2, Truck } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import { getAdminAccessRole, hasPermission, isAdminDashboardRole } from '@/lib/admin-auth'
+import OrdersHeading from './OrdersHeading'
 import { updateFulfillmentStatus } from './actions'
 import {
   getFulfillmentOrders,
@@ -135,9 +137,7 @@ function FulfillmentControl({ order, canWrite }: { order: FulfillmentOrder; canW
           <button
             key={opt}
             type="submit"
-            name="status"
-            value={opt}
-            formAction={updateFulfillmentStatus}
+            formAction={updateFulfillmentStatus.bind(null, opt)}
             disabled={order.fulfillmentStatus === opt}
             className={cn(
               'inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-default',
@@ -238,16 +238,18 @@ export default async function FulfillmentOrdersPage({
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Order fulfilment</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Every paid order, any payment method — track and update design progress. Payment approvals stay in{' '}
-          <Link href="/finance/payments" className="text-[#7E5896] underline">
-            Invitation Payments
-          </Link>
-          .
-        </p>
-      </div>
+      <OrdersHeading />
+      {/* Payment approvals live on the sibling page; keep the route one click
+          away now that the pointer is out of the in-page subtitle. */}
+      <HeaderActionsSlot>
+        <Link
+          href="/finance/payments"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          <ReceiptText className="h-4 w-4" />
+          Invitation Payments
+        </Link>
+      </HeaderActionsSlot>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Not started" value={String(summary.notStarted)} href={filterHref('not_started', q)} active={filter === 'not_started'} />

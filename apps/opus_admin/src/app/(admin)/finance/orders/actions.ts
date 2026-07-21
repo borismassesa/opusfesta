@@ -114,11 +114,19 @@ async function sendDesignReadyEmail(order: OrderEmailRow, kind: 'ready' | 'deliv
   })
 }
 
-export async function updateFulfillmentStatus(formData: FormData): Promise<void> {
+/**
+ * `next` is a bound argument rather than a form field: React overwrites the
+ * `name` of a submit button that carries `formAction` (it needs the attribute
+ * to encode which action to invoke), so a `name="status"` button would send
+ * nothing and every status change would fail validation.
+ */
+export async function updateFulfillmentStatus(
+  next: FulfillmentStatus,
+  formData: FormData,
+): Promise<void> {
   await requirePermission('finance.write')
 
   const id = String(formData.get('id') ?? '').trim()
-  const next = String(formData.get('status') ?? '').trim() as FulfillmentStatus
   if (!id) throw new Error('Missing order id.')
   if (!FULFILLMENT_STATUSES.includes(next)) throw new Error('Invalid fulfilment status.')
 

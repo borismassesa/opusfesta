@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCallerEmail, requirePermission } from '@/lib/admin-auth'
+import { insertEntitlementAdjustment } from '@/lib/entitlements'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import { renderEmail, plaintextLines } from '@/lib/email-shell'
 import type { InvitationPaymentStatus } from './queries'
@@ -234,42 +235,31 @@ export async function rejectInvitationPayment(formData: FormData): Promise<void>
 
 /**
  * Grant or revoke send credits (invite or entrance-pass pool) for a couple's
- * event, on top of what they purchased. Never edits invitation_orders — see
- * entitlement_adjustments (migration 20260711000003): every adjustment is its
- * own audit-trailed row with a required reason and the acting admin's email.
- * To reverse one, add an opposite-sign adjustment rather than editing/deleting.
+ * event, on top of what they purchased. Validation and the insert itself live
+ * in insertEntitlementAdjustment (@/lib/entitlements), shared with the Couple
+ * Accounts console — this wrapper only owns the permission gate, the FormData
+ * unpacking and the revalidation path.
+ *
+ * `direction` is a bound argument rather than a form field because React
+ * overwrites the `name` of a submit button that carries `formAction` (it needs
+ * that attribute to encode which action to invoke), so a `name="direction"`
+ * button would send nothing and every adjustment would fail validation.
  */
-export async function adjustEntitlementCredits(formData: FormData): Promise<void> {
+export async function adjustEntitlementCredits(
+  direction: 'grant' | 'revoke',
+  formData: FormData,
+): Promise<void> {
   await requirePermission('finance.write')
 
-  const userId = clean(formData.get('userId'))
-  const eventId = clean(formData.get('eventId'))
-  const kind = clean(formData.get('kind'))
-  const direction = clean(formData.get('direction'))
-  const quantityRaw = clean(formData.get('quantity'))
-  const reason = clean(formData.get('reason'))
-
-  if (!userId || !eventId) throw new Error('Missing user or event — this order must be approved and assigned to an event first.')
-  if (kind !== 'invite' && kind !== 'entrance_pass') throw new Error('Invalid credit kind.')
-  if (direction !== 'grant' && direction !== 'revoke') throw new Error('Invalid adjustment direction.')
-  const quantity = Number(quantityRaw)
-  if (!Number.isInteger(quantity) || quantity <= 0) {
-    throw new Error('Enter a whole number of credits greater than zero.')
-  }
-  if (!reason) throw new Error('Add a reason for this adjustment — it becomes part of the audit trail.')
-
-  const delta = direction === 'grant' ? quantity : -quantity
-  const adminEmail = (await getCallerEmail()) ?? 'admin'
-  const supabase = createSupabaseAdminClient()
-  const { error } = await supabase.from('entitlement_adjustments').insert({
-    user_id: userId,
-    event_id: eventId,
-    kind,
-    delta,
-    reason,
-    admin_email: adminEmail,
+  await insertEntitlementAdjustment({
+    userId: clean(formData.get('userId')),
+    eventId: clean(formData.get('eventId')),
+    kind: clean(formData.get('kind')),
+    direction,
+    quantity: Number(clean(formData.get('quantity'))),
+    reason: clean(formData.get('reason')),
+    adminEmail: (await getCallerEmail()) ?? 'admin',
   })
-  if (error) throw new Error(error.message)
 
   revalidatePath('/finance/payments')
 }
