@@ -23,10 +23,12 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseServerClient()
 
-  // Door-code login is the brute-force surface, so it gets the tightest
-  // per-IP limit. Generous enough for a venue's worth of attendants logging
-  // in behind one NAT at doors-open (each types their code once or twice).
-  if (!(await withinRateLimit(supabase, `resolve:${clientIp(request)}`, 30, 60))) {
+  // Door-code login is the brute-force surface. The budget is shared by the
+  // whole venue NAT, so it's sized for the worst legitimate minute — every
+  // attendant logging in at doors-open with a typo or two each. Typing an
+  // 8-char code takes seconds, so 60/min can't be reached by honest use,
+  // while against a 2^40 code space it's no gift to a brute-forcer.
+  if (!(await withinRateLimit(supabase, `resolve:${clientIp(request)}`, 60, 60))) {
     return NextResponse.json(
       { ok: false, error: 'Too many attempts — wait a moment and try again' },
       { status: 429 }
