@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { CalendarDays, MapPin, ShieldCheck, UserRound } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import {
   createGuestAdmin,
@@ -35,6 +37,13 @@ const STATUS_CLASS: Record<string, string> = {
 
 function formatTzs(value: number): string {
   return `TZS ${value.toLocaleString('en-US')}`
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return 'No date set'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return 'No date set'
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const TABS = ['Overview', 'Pledges', 'Contributors', 'Send', 'Settings'] as const
@@ -71,16 +80,66 @@ export default function PledgeConsole({
   const totalReceived = pledges.reduce((sum, p) => sum + toTzs(p.amountReceived, p.currency), 0)
   const outstanding = pledges.filter((p) => p.status !== 'paid' && p.status !== 'declined').length
   const goalPct = couple.pledgeGoalAmount ? Math.min(100, Math.round((totalReceived / couple.pledgeGoalAmount) * 100)) : null
+  // Same fallback the list page uses (couple_profiles.wedding_date is often
+  // null while the event carries the real date) so the two never disagree.
+  const displayDate = couple.weddingDate ?? events.find((e) => e.startsAt)?.startsAt ?? null
+  const collectedPct = totalPledged > 0 ? Math.min(100, Math.round((totalReceived / totalPledged) * 100)) : 0
+  // Onboarding writes placeholder values into couple_profiles.city; rendering
+  // "other" next to a location pin reads as a bug rather than as no answer.
+  const city = couple.city && !['other', 'undisclosed'].includes(couple.city.trim().toLowerCase()) ? couple.city : null
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center rounded-full border border-[#C9A0DC] bg-[#F0DFF6] px-2.5 py-1 text-xs font-semibold text-[#5d3a78]">
-          {tier === 'signature' ? 'Signature' : 'Elegant'}
-        </span>
-      </div>
-      <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-        You&rsquo;re managing this campaign as staff — every action here is logged.
+      {/* The shared header renders "< Pledge Concierge" in place of the title
+          on detail pages, so the couple's identity has to live here — without
+          it the tier pill was floating on its own with nothing to qualify. */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold tracking-tight text-gray-900">{couple.coupleName}</h1>
+          <p className="mt-1 inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
+            {formatDate(displayDate)}
+            {city ? (
+              <>
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
+                {city}
+              </>
+            ) : null}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full border border-[#C9A0DC] bg-[#F0DFF6] px-2.5 py-1 text-xs font-semibold text-[#5d3a78]">
+              {tier === 'signature' ? 'Signature' : 'Elegant'}
+            </span>
+            {outstanding > 0 ? (
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                {outstanding} outstanding
+              </span>
+            ) : pledges.length > 0 ? (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                Fully collected
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500">
+                Not started
+              </span>
+            )}
+            {/* Replaces a full-width amber banner that said the same thing.
+                Staff-initiated logging is a standing fact about this console,
+                not an alert, so it gets pill weight not banner weight. */}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500">
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+              Staff-managed, every action logged
+            </span>
+          </div>
+        </div>
+
+        <Link
+          href={`/opus-pass/couples/${userId}`}
+          className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 transition hover:border-[#C9A0DC] hover:text-[#7E5896]"
+        >
+          <UserRound className="h-4 w-4" />
+          Open account
+        </Link>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-1.5 border-b border-gray-200">
@@ -104,14 +163,35 @@ export default function PledgeConsole({
           <StatCard label="Received" value={formatTzs(totalReceived)} accent="text-emerald-700" />
           <StatCard label="Outstanding pledges" value={String(outstanding)} accent="text-amber-700" />
           <StatCard label="Contributors" value={String(guests.length)} />
+          {/* Collection always renders (received against what was actually
+              pledged); goal progress only when the couple set a target. */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] sm:col-span-2 lg:col-span-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-semibold text-gray-900">Collected against pledges</span>
+              <span className="tabular-nums text-gray-500">
+                {collectedPct}% · {formatTzs(totalReceived)} of {formatTzs(totalPledged)}
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${collectedPct}%` }} />
+            </div>
+            {pledges.length === 0 ? (
+              <p className="mt-3 text-sm text-gray-500">
+                No pledges recorded yet. Add contributors, then record their pledges from the Pledges tab.
+              </p>
+            ) : null}
+          </div>
+
           {goalPct !== null ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] sm:col-span-2 lg:col-span-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold text-gray-900">Goal progress</span>
-                <span className="text-gray-500">{formatTzs(totalReceived)} of {formatTzs(couple.pledgeGoalAmount!)}</span>
+                <span className="tabular-nums text-gray-500">
+                  {goalPct}% · {formatTzs(totalReceived)} of {formatTzs(couple.pledgeGoalAmount!)}
+                </span>
               </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full bg-[#7E5896]" style={{ width: `${goalPct}%` }} />
+                <div className="h-full rounded-full bg-[#7E5896]" style={{ width: `${goalPct}%` }} />
               </div>
             </div>
           ) : null}
@@ -662,7 +742,7 @@ function ReminderPanel({
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Custom message (optional — a default reminder is used if left blank; ignored for WhatsApp, which always uses the approved template)"
+        placeholder="Custom message (optional). A default reminder is used if left blank, and it is ignored for WhatsApp, which always uses the approved template."
         rows={2}
         className="mt-3 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm"
       />
@@ -673,7 +753,7 @@ function ReminderPanel({
         ) : (
           outstanding.map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-2 border-b border-gray-50 px-3 py-2 text-sm last:border-0">
-              <span className="min-w-0 truncate">{p.guestName} — owes {formatTzs(p.pledgedAmount - p.amountReceived)}</span>
+              <span className="min-w-0 truncate">{p.guestName} owes {formatTzs(p.pledgedAmount - p.amountReceived)}</span>
               {canWrite ? (
                 <button
                   type="button"

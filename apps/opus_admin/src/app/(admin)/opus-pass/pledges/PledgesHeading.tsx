@@ -7,7 +7,7 @@ import { useSetPageHeading } from '@/components/PageHeading'
 export default function PledgesHeading() {
   useSetPageHeading({
     title: 'Pledge Concierge',
-    subtitle: 'Run pledge campaigns on behalf of Elegant and Signature couples — every action here is logged as staff-initiated.',
+    subtitle: 'Run pledge campaigns on behalf of Elegant and Signature couples. Every action here is logged as staff-initiated.',
   })
   return null
 }
