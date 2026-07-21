@@ -121,9 +121,10 @@ export async function POST(request: Request) {
     .from('guest_invitations')
     .select('id, event_id, guest_contact_id, party_size, checked_in_at, checked_in_party_size, rsvp_status')
     .eq('id', targetInvitationId)
+    .eq('event_id', eventId)
     .maybeSingle()
 
-  if (!invitation || invitation.event_id !== eventId) {
+  if (!invitation) {
     return NextResponse.json({ status: 'invalid', message: 'This pass is not for this event' })
   }
   if (invitation.rsvp_status !== 'attending') {

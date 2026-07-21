@@ -46,6 +46,20 @@ export async function insertEntitlementAdjustment(input: EntitlementAdjustmentIn
   if (!reason.trim()) throw new Error('Add a reason for this adjustment — it becomes part of the audit trail.')
 
   const supabase = createSupabaseAdminClient()
+
+  // Both call sites source userId/eventId from hidden form fields — cheap to
+  // spoof on a directly-POSTed server action. Confirm the event actually
+  // belongs to the couple before writing, so a mismatched pair fails loudly
+  // instead of landing as a silently-orphaned audit row.
+  const { data: event, error: eventErr } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle<{ id: string }>()
+  if (eventErr) throw new Error(eventErr.message)
+  if (!event) throw new Error('This event does not belong to the selected couple.')
+
   const { error } = await supabase.from('entitlement_adjustments').insert({
     user_id: userId,
     event_id: eventId,
