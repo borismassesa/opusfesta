@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { candidateScannerAccessHashes, verifyEntryPassToken } from '@/lib/checkin/tokens'
 import { broadcastCheckin } from '@/lib/checkin/broadcast'
+import { RATE_LIMITED_RESPONSE, withinRateLimit } from '@/lib/checkin/rate-limit'
 
 interface AmendBody {
   eventId?: string
@@ -51,6 +52,12 @@ export async function POST(request: Request) {
       { status: 'error', message: 'Scanner session expired — log in again' },
       { status: 401 }
     )
+  }
+
+  // Corrections are rare, deliberate actions — a tight per-token cap costs
+  // legitimate use nothing.
+  if (!(await withinRateLimit(supabase, `amend:${access.id}`, 30, 60))) {
+    return NextResponse.json(RATE_LIMITED_RESPONSE, { status: 429 })
   }
 
   let targetInvitationId: string

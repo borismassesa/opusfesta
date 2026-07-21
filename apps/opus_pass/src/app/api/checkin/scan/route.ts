@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { candidateScannerAccessHashes, verifyEntryPassToken } from '@/lib/checkin/tokens'
 import { broadcastCheckin } from '@/lib/checkin/broadcast'
+import { RATE_LIMITED_RESPONSE, withinRateLimit } from '@/lib/checkin/rate-limit'
 
 interface ScanBody {
   eventId?: string
@@ -77,6 +78,18 @@ export async function POST(request: Request) {
       { status: 'error', message: 'Scanner session expired — log in again' },
       { status: 401 }
     )
+  }
+
+  // Keyed on the verified door token, not IP — attendants share venue wifi.
+  // 120/min comfortably covers a busy door (a scan every couple of seconds);
+  // the entry-code path below gets its own much tighter budget because a
+  // typed 6-char code is the one credential-shaped thing short enough to
+  // enumerate, and manual entry is never faster than a few seconds per try.
+  if (!(await withinRateLimit(supabase, `scan:${access.id}`, 120, 60))) {
+    return NextResponse.json(RATE_LIMITED_RESPONSE, { status: 429 })
+  }
+  if (entryCode && !(await withinRateLimit(supabase, `scan-code:${access.id}`, 15, 60))) {
+    return NextResponse.json(RATE_LIMITED_RESPONSE, { status: 429 })
   }
 
   // An admin-assigned code carries its own authoritative name; the device

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { candidateScannerAccessHashes } from '@/lib/checkin/tokens'
+import { clientIp, withinRateLimit } from '@/lib/checkin/rate-limit'
 
 /**
  * Resolves a bare door-staff code (typed into the mobile scanner) to its
@@ -21,6 +22,18 @@ export async function POST(request: Request) {
   if (!token) return NextResponse.json({ ok: false, error: 'Missing code' }, { status: 400 })
 
   const supabase = createSupabaseServerClient()
+
+  // Door-code login is the brute-force surface. The budget is shared by the
+  // whole venue NAT, so it's sized for the worst legitimate minute — every
+  // attendant logging in at doors-open with a typo or two each. Typing an
+  // 8-char code takes seconds, so 60/min can't be reached by honest use,
+  // while against a 2^40 code space it's no gift to a brute-forcer.
+  if (!(await withinRateLimit(supabase, `resolve:${clientIp(request)}`, 60, 60))) {
+    return NextResponse.json(
+      { ok: false, error: 'Too many attempts — wait a moment and try again' },
+      { status: 429 }
+    )
+  }
   const { data: row, error } = await supabase
     .from('scanner_access_tokens')
     .select('event_id, revoked_at, expires_at')
