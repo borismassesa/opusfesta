@@ -13,6 +13,15 @@ export type EventType =
 
 export type RsvpStatus = 'pending' | 'attending' | 'declined' | 'maybe'
 
+/** Language the entrance-pass ticket image renders in. */
+export type TicketLanguage = 'en' | 'sw'
+
+/** Entrance passes are a Single/Double product — no invitation covers, and
+ *  no guest can RSVP, more than this many seats. Pre-cap rows with larger
+ *  parties keep their stored count (the scanner admits it), but every new
+ *  write clamps here. */
+export const MAX_TICKET_PARTY = 2
+
 export type SendChannel = 'whatsapp' | 'sms' | 'email' | 'link'
 
 /** How a guest entered the roster. 'public' = self-registered via /rsvp/event/<slug>. */
@@ -26,6 +35,15 @@ export interface WeddingEvent {
   name: string
   event_type: EventType
   description: string | null
+  /** The celebrants' names as shown on the entrance-pass ticket (first names
+   *  are derived via firstNameOf). Event-level because a multi-event account
+   *  can celebrate different people per event; null falls back to the
+   *  profile/host-name chain. */
+  partner1_name: string | null
+  partner2_name: string | null
+  /** Language the rendered entrance-pass ticket image uses ('en' | 'sw').
+   *  The WhatsApp message body stays Swahili regardless. */
+  ticket_language: TicketLanguage
   venue_name: string | null
   address: string | null
   city: string | null
@@ -305,6 +323,46 @@ export const EVENT_TYPE_LABELS_SW: Record<EventType, string> = {
 /** Swahili display label for a stored `event_type`, for the WhatsApp template's {{3}}. */
 export function eventTypeLabelSw(value: string): string {
   return EVENT_TYPE_LABELS_SW[value as EventType] ?? 'sherehe'
+}
+
+/** English entrance-pass intro phrases ("<intro> Claudia & Daniel"). Types
+ *  with no natural "The X of" phrasing fall back to "The celebration of". */
+const EVENT_TYPE_TICKET_INTRO_EN: Partial<Record<EventType, string>> = {
+  wedding: 'The wedding of',
+  muslim_wedding: 'The wedding of',
+  send_off: 'The sendoff of',
+  kitchen_party: 'The kitchen party of',
+  anniversary: 'The anniversary of',
+  birthday: 'The birthday of',
+  gala_dinner: 'The gala dinner of',
+}
+
+/**
+ * Swahili intro phrases. Written out rather than derived from
+ * EVENT_TYPE_LABELS_SW: several of those nouns already contain "ya"
+ * ("kumbukumbu ya ndoa", "siku ya kuzaliwa"), so appending another one
+ * produces "Kumbukumbu ya ndoa ya Claudia & Daniel".
+ */
+const EVENT_TYPE_TICKET_INTRO_SW: Partial<Record<EventType, string>> = {
+  wedding: 'Harusi ya',
+  muslim_wedding: 'Harusi ya',
+  send_off: 'Sendoff ya',
+  kitchen_party: 'Kitchen party ya',
+  anniversary: 'Kumbukumbu ya',
+  birthday: 'Sherehe ya kuzaliwa ya',
+  gala_dinner: 'Gala dinner ya',
+  communio: 'Komunyo ya',
+}
+
+/**
+ * The entrance-pass ticket's intro line for an event type, in the ticket's
+ * language — "The sendoff of" / "Sendoff ya". A custom free-text type (the
+ * "other" flow stores whatever the couple typed) gets the generic phrasing
+ * rather than risking broken grammar around their custom noun.
+ */
+export function ticketIntroLabel(eventType: string, lang: TicketLanguage): string {
+  if (lang === 'sw') return EVENT_TYPE_TICKET_INTRO_SW[eventType as EventType] ?? 'Sherehe ya'
+  return EVENT_TYPE_TICKET_INTRO_EN[eventType as EventType] ?? 'The celebration of'
 }
 
 export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {

@@ -23,6 +23,16 @@ const nextConfig: NextConfig = {
   // Lets tooling build/serve from an alternate dist dir (e.g. .next-preview)
   // without fighting a dev server that holds .next. Unset in normal use.
   distDir: process.env.OPUS_PASS_DIST_DIR || '.next',
+  // The entrance-pass route reads its ticket template + fonts from public/
+  // at runtime (readFile, not URL fetch — next/og needs raw buffers). On
+  // Vercel, public/ is only uploaded to the CDN; it is NOT part of a
+  // serverless function's bundle, and the dynamic path.join() defeats
+  // static file tracing. Without this, the deployed route 500s with
+  // "Ticket temporarily unavailable" and every WhatsApp entrance-pass send
+  // dies with Meta error 131053 (media upload error).
+  outputFileTracingIncludes: {
+    '/entrance-pass/[token]': ['./public/entrance-pass/**', './public/fonts/**'],
+  },
   // opus_pass is served at the root of its own subdomain (opuspass.opusfesta.com).
   // The marketing site links straight to that subdomain; opusfesta.com/opuspass/*
   // is kept alive as a 308 redirect to the subdomain (see opus_website/next.config.ts),
