@@ -245,6 +245,13 @@ export default function SendInvitesView({
   // the server snapshot each time it OPENS, so switching events (same mounted
   // component, fresh props) can never leak another event's values in.
   const [ticketForm, setTicketForm] = useState<NonNullable<SendInvitesData['event']['ticketFields']> | null>(null)
+  // Close the editor whenever the selected event changes (dropdown switch,
+  // browser back/forward) — this component stays mounted across those
+  // client navigations, so without this a stale open form could be saved
+  // against the newly selected event's id.
+  useEffect(() => {
+    setTicketForm(null)
+  }, [selectedEventId])
   function openTicketEditor() {
     if (data.event.ticketFields) setTicketForm({ ...data.event.ticketFields })
   }

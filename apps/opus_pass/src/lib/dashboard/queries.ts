@@ -1,7 +1,7 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
-import { eventInviteUrl, firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
+import { eatDateParts, eventInviteUrl, firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw, ticketIntroLabel } from './types'
 import type { TicketLanguage } from './types'
@@ -2211,15 +2211,18 @@ export interface SendInvitesData {
  * sort order) when not given, so single-event couples never see a switcher
  * and nothing changes for them.
  */
-/** Local-timezone YYYY-MM-DD of an ISO timestamp, '' when unset/invalid —
- *  prefills the Ticket Details date input the same way EventsManager's
- *  splitLocal does, so both editors agree on what day an event is. */
+/** EAT-zone YYYY-MM-DD of an ISO timestamp, '' when unset/invalid — prefills
+ *  the Ticket Details date input. Must resolve in East Africa Time, NOT the
+ *  runtime zone: this runs server-side (Vercel = UTC), so a getTimezoneOffset
+ *  shift would be a no-op and a date-only event stored at EAT midnight
+ *  (21:00Z the prior day) would prefill a day early. eatDateParts is the same
+ *  EAT extractor updateEventTicketDetails uses to preserve time-of-day. */
 function localDatePart(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 10)
+  const { year, month, day } = eatDateParts(d)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 export async function getSendInvitesData(
