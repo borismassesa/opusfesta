@@ -181,10 +181,23 @@ export default function ScannerGuestsScreen() {
                   key: 'pending',
                   icon: 'time-outline',
                   label: 'Still to arrive',
+                  caption: 'waiting',
                   count: inGroup.length - arrivedCount,
                 },
-                { key: 'arrived', icon: 'checkmark', label: 'Checked in', count: arrivedCount },
-                { key: 'all', icon: 'people-outline', label: 'On the list', count: inGroup.length },
+                {
+                  key: 'arrived',
+                  icon: 'checkmark',
+                  label: 'Checked in',
+                  caption: 'in',
+                  count: arrivedCount,
+                },
+                {
+                  key: 'all',
+                  icon: 'people-outline',
+                  label: 'On the list',
+                  caption: 'all',
+                  count: inGroup.length,
+                },
               ]}
             />
           </View>

@@ -5,8 +5,12 @@ import { useTheme } from '@/theme/useTheme';
 export interface CountSegment {
   key: string;
   icon: keyof typeof Ionicons.glyphMap;
-  /** Screen-reader label — the bar itself is icon-and-number only. */
+  /** Full screen-reader label ("Still to arrive"). */
   label: string;
+  /** One word printed under the count ("waiting"). Attendants are one-shift
+   *  workers: a bare icon bar asks them to already know the iconography, and
+   *  at the start of a night two of the three counts are the same number. */
+  caption: string;
   count: number;
 }
 
@@ -58,16 +62,28 @@ export function CountSegments({
             accessibilityLabel={`${segment.label}: ${segment.count}`}
             accessibilityState={{ selected: active }}
             onPress={() => onSelect(segment.key)}
-            className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl"
-            style={{
-              backgroundColor: active ? activeColor : 'transparent',
+            className="h-[52px] flex-1 items-center justify-center rounded-xl"
+            // A visible press response is the only affordance this control
+            // gets: three numbers in a row read as a readout, and nothing
+            // else tells a first-time attendant they are buttons.
+            style={({ pressed }) => ({
+              backgroundColor: active ? activeColor : pressed ? activeColor : 'transparent',
               borderWidth: active ? 1.5 : 0,
               borderColor: active ? activeBorder : 'transparent',
-            }}
+              opacity: pressed && !active ? 0.85 : 1,
+            })}
           >
-            <Ionicons name={segment.icon} size={16} color={color} />
-            <Text className="font-work-sans-semibold text-[15px]" style={{ color }}>
-              {segment.count}
+            <View className="flex-row items-center justify-center gap-1.5">
+              <Ionicons name={segment.icon} size={15} color={color} />
+              <Text className="font-work-sans-semibold text-[15px]" style={{ color }}>
+                {segment.count}
+              </Text>
+            </View>
+            <Text
+              className="font-work-sans-medium text-[10px] uppercase tracking-[0.5px]"
+              style={{ color: idleColor, marginTop: 1 }}
+            >
+              {segment.caption}
             </Text>
           </Pressable>
         );

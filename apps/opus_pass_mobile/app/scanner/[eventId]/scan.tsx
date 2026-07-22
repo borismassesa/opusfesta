@@ -24,9 +24,6 @@ import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
  *  identical requests that all resolve as "duplicate". */
 const RESCAN_COOLDOWN_MS = 2500;
 
-/** Brand green, matching the live/active pills used elsewhere in the product. */
-const LIVE_GREEN = '#9FE870';
-
 /** Side of the square scan target the corner brackets frame. */
 const RETICLE_SIZE = 256;
 
@@ -111,6 +108,10 @@ export default function ScanScreen() {
         if (scanResult.status === 'success') {
           // Keep the header count honest without blocking the next scan.
           void queryClient.invalidateQueries({ queryKey: ['scanner', 'roster', eventId] });
+          // A successful scan is proof the coaching worked: retire the tips
+          // banner on its own rather than leaving it to fight the reticle
+          // for attention all night.
+          if (tips.bannerVisible) tips.dismissBanner();
         }
         // Haptics matter here: attendants work in the dark, often not looking
         // at the screen between guests.
@@ -132,7 +133,7 @@ export default function ScanScreen() {
         busyRef.current = false;
       }
     },
-    [session, queryClient, eventId]
+    [session, queryClient, eventId, tips]
   );
 
   /**
@@ -448,33 +449,40 @@ export default function ScanScreen() {
                       key: 'pending',
                       icon: 'time-outline',
                       label: 'Still to arrive',
+                      caption: 'waiting',
                       count: totalGuests - arrivedGuests,
                     },
                     {
                       key: 'arrived',
                       icon: 'checkmark',
                       label: 'Checked in',
+                      caption: 'in',
                       count: arrivedGuests,
                     },
-                    { key: 'all', icon: 'people-outline', label: 'On the list', count: totalGuests },
+                    {
+                      key: 'all',
+                      icon: 'people-outline',
+                      label: 'On the list',
+                      caption: 'invited',
+                      count: totalGuests,
+                    },
                   ]}
                   onSelect={(key) => {
                     if (key === 'arrived') router.push(`/scanner/${eventId}/arrivals`);
                     else router.push(`/scanner/${eventId}/guests?filter=${key}`);
                   }}
                 />
-                <View className="mt-1.5 flex-row items-center justify-center gap-1.5">
-                  <View
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: LIVE_GREEN }}
-                  />
+                {/* Headcount only once there is one: at zero it's a third row
+                    of chrome saying nothing the bar doesn't. No status dot —
+                    it implied "live" without anything establishing that. */}
+                {headsIn > 0 ? (
                   <Text
-                    className="font-work-sans text-[11px]"
+                    className="mt-1.5 text-center font-work-sans text-[11px]"
                     style={{ color: 'rgba(255,255,255,0.65)' }}
                   >
                     {headsIn} {headsIn === 1 ? 'person' : 'people'} through the door
                   </Text>
-                </View>
+                ) : null}
               </View>
             ) : null}
 
