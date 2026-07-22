@@ -1,0 +1,126 @@
+import { Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/theme/useTheme';
+
+export interface CountSegment {
+  key: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  /** Screen-reader label — the bar itself is icon-and-number only. */
+  label: string;
+  count: number;
+}
+
+interface CountSegmentsProps {
+  segments: CountSegment[];
+  /** Highlighted segment. Omit on screens where the bar only navigates. */
+  activeKey?: string | null;
+  onSelect: (key: string) => void;
+  /** `camera` renders in translucent white for use over a live camera feed. */
+  tone?: 'camera' | 'surface';
+}
+
+/**
+ * Icon-and-count bar: the whole state of the door in one glance.
+ *
+ * Numbers rather than words because an attendant reads this between guests,
+ * often at arm's length, and because the three counts answer the only
+ * questions asked at a door all night — how many are still to come, how many
+ * are in, how many were invited. Every segment is a target, so the count is
+ * also the way into the matching list.
+ */
+export function CountSegments({
+  segments,
+  activeKey,
+  onSelect,
+  tone = 'surface',
+}: CountSegmentsProps) {
+  const { editorial } = useTheme();
+  const onCamera = tone === 'camera';
+
+  const trackColor = onCamera ? 'rgba(255,255,255,0.14)' : editorial.surfaceContainer;
+  const activeColor = onCamera ? 'rgba(255,255,255,0.20)' : editorial.surface;
+  const activeBorder = onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface;
+  const textColor = onCamera ? '#FFFFFF' : editorial.onSurface;
+  const idleColor = onCamera ? 'rgba(255,255,255,0.72)' : editorial.onSurfaceVariant;
+
+  return (
+    <View
+      className="flex-row items-center rounded-2xl p-1"
+      style={{ backgroundColor: trackColor }}
+    >
+      {segments.map((segment) => {
+        const active = activeKey === segment.key;
+        const color = active ? textColor : idleColor;
+        return (
+          <Pressable
+            key={segment.key}
+            accessibilityRole="button"
+            accessibilityLabel={`${segment.label}: ${segment.count}`}
+            accessibilityState={{ selected: active }}
+            onPress={() => onSelect(segment.key)}
+            className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl"
+            style={{
+              backgroundColor: active ? activeColor : 'transparent',
+              borderWidth: active ? 1.5 : 0,
+              borderColor: active ? activeBorder : 'transparent',
+            }}
+          >
+            <Ionicons name={segment.icon} size={16} color={color} />
+            <Text className="font-work-sans-semibold text-[15px]" style={{ color }}>
+              {segment.count}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+interface GroupChipProps {
+  /** Null means no group filter is applied. */
+  activeTag: string | null;
+  onPress: () => void;
+  tone?: 'camera' | 'surface';
+}
+
+/** Companion to the bar: which slice of the roster the counts are describing. */
+export function GroupChip({ activeTag, onPress, tone = 'surface' }: GroupChipProps) {
+  const { editorial } = useTheme();
+  const onCamera = tone === 'camera';
+  const filtered = Boolean(activeTag);
+
+  const background = onCamera
+    ? filtered
+      ? 'rgba(255,255,255,0.24)'
+      : 'rgba(255,255,255,0.14)'
+    : filtered
+      ? editorial.surface
+      : editorial.surfaceContainer;
+  const color = onCamera ? '#FFFFFF' : editorial.onSurface;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={activeTag ? `Filtering by ${activeTag}. Change group` : 'Filter by group'}
+      onPress={onPress}
+      className="h-[52px] max-w-[150px] flex-row items-center gap-1.5 rounded-2xl px-3.5"
+      style={{
+        backgroundColor: background,
+        borderWidth: filtered ? 1.5 : 0,
+        borderColor: filtered ? (onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface) : 'transparent',
+      }}
+    >
+      <Ionicons name="people-circle-outline" size={19} color={color} />
+      {activeTag ? (
+        <Text
+          className="shrink font-work-sans-semibold text-[13px]"
+          style={{ color }}
+          numberOfLines={1}
+        >
+          {activeTag}
+        </Text>
+      ) : null}
+      <Ionicons name="chevron-down" size={14} color={color} />
+    </Pressable>
+  );
+}
