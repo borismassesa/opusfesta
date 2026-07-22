@@ -187,6 +187,24 @@ export function formatLongDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const ENGLISH_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/** Entrance-pass ticket date, month-first, e.g. "December 12, 2026". Empty if
+ *  null. Kept separate from formatLongDate (which reads day-first everywhere
+ *  else in the app) so only the ticket carries this house style. Reads the
+ *  date in East Africa Time via eatDateParts (same as formatLongDateSw) so a
+ *  midnight-boundary event never prints a day early on Vercel's UTC runtime. */
+export function formatTicketDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const { day, month, year } = eatDateParts(d)
+  return `${ENGLISH_MONTHS[month - 1]} ${day}, ${year}`
+}
+
 const SWAHILI_MONTHS = [
   'Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni',
   'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba',

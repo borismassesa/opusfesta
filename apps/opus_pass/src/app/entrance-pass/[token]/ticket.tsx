@@ -56,7 +56,7 @@ const LABELS = {
 } as const
 
 export interface TicketInput {
-  pass: Pick<EntrancePassData, 'coupleName' | 'dateLabel' | 'venue' | 'partySize' | 'introLabel' | 'ticketLanguage'>
+  pass: Pick<EntrancePassData, 'coupleName' | 'dateLabel' | 'venue' | 'city' | 'partySize' | 'introLabel' | 'ticketLanguage'>
   /** data: URI of public/entrance-pass/ticket-template.png */
   templateDataUri: string
   /** data: URL PNG of the guest's real check-in QR */
@@ -74,7 +74,16 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
   const dateSize = dateValue.length > 26 ? 46 : 56
 
   const venueValue = pass.venue || labels.venueTbc
-  const venueSize = venueValue.length > 56 ? 46 : 56
+  const cityValue = pass.city || ''
+  // The city sits on its own second row, so the label + venue value must
+  // stay on one line — size it to fit rather than let it wrap into the
+  // city's row and overflow the slot. Without a city the venue keeps the
+  // roomier two-line budget.
+  const venueSize = cityValue
+    ? fitFontSize(`${labels.venue} ${venueValue}`, TICKET_WIDTH - VENUE_ROW.sidePad * 2, 56, 0.54, 40)
+    : venueValue.length > 56
+      ? 46
+      : 56
 
   const qrInner = QR_BOX.size - QR_BOX.pad * 2
 
@@ -146,6 +155,9 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
         <span style={{ color: WHITE }}>{dateValue}</span>
       </div>
 
+      {/* Venue name on the first row, the city on its own second row beneath
+          it — the whole block stays vertically centered in the slot whether
+          or not a city is set. */}
       <div
         style={{
           position: 'absolute',
@@ -154,16 +166,24 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
           width: TICKET_WIDTH - VENUE_ROW.sidePad * 2,
           height: VENUE_ROW.height,
           display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           justifyContent: 'center',
-          gap: 16,
+          gap: 8,
           overflow: 'hidden',
           fontFamily: 'Playfair Display',
           fontWeight: 700,
           fontSize: venueSize,
+          lineHeight: 1.25,
         }}
       >
-        <span style={{ color: YELLOW }}>{labels.venue}</span>
-        <div style={{ maxWidth: 840, color: WHITE, lineHeight: 1.35 }}>{venueValue}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, maxWidth: '100%' }}>
+          <span style={{ color: YELLOW }}>{labels.venue}</span>
+          {/* With a city on row two the venue is pre-sized to one line, so
+              give it the full width; without one it may wrap inside 840. */}
+          <div style={{ maxWidth: cityValue ? '100%' : 840, color: WHITE }}>{venueValue}</div>
+        </div>
+        {cityValue ? <span style={{ color: WHITE }}>{cityValue}</span> : null}
       </div>
 
       <div
