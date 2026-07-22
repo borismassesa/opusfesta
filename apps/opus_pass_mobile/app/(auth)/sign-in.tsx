@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSignIn } from '@clerk/clerk-expo';
+import type { SignInResource, SignInSecondFactor, AttemptSecondFactorParams } from '@clerk/types';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '@/components/navigation/BackButton';
@@ -10,10 +11,22 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+type SecondFactorStrategy = 'totp' | 'phone_code' | 'email_code' | 'backup_code';
+
+const SECOND_FACTOR_PRIORITY: SecondFactorStrategy[] = ['totp', 'phone_code', 'email_code', 'backup_code'];
+
+const SECOND_FACTOR_LABEL: Record<SecondFactorStrategy, string> = {
+  totp: 'Authenticator code',
+  phone_code: 'Verification code',
+  email_code: 'Verification code',
+  backup_code: 'Backup code',
+};
+
 type Step =
   | { name: 'identifier' }
   | { name: 'password' }
-  | { name: 'email_code'; emailAddressId: string };
+  | { name: 'email_code'; emailAddressId: string }
+  | { name: 'second_factor'; strategy: SecondFactorStrategy };
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -30,6 +43,45 @@ export default function SignInScreen() {
     if (!setActive) return;
     await setActive({ session: createdSessionId });
     router.replace('/');
+  };
+
+  const prepareSecondFactor = async (
+    strategy: 'phone_code' | 'email_code',
+    factors: SignInSecondFactor[],
+  ) => {
+    if (!signIn) return;
+    if (strategy === 'phone_code') {
+      const factor = factors.find((f) => f.strategy === 'phone_code');
+      if (factor) await signIn.prepareSecondFactor({ strategy: 'phone_code', phoneNumberId: factor.phoneNumberId });
+    } else {
+      const factor = factors.find((f) => f.strategy === 'email_code');
+      if (factor) await signIn.prepareSecondFactor({ strategy: 'email_code', emailAddressId: factor.emailAddressId });
+    }
+  };
+
+  // Returns true once `result` has been fully handled (session started, second
+  // factor step shown, or an error set) so callers don't need their own
+  // fallback branch for the "needs verification" case.
+  const handleFirstFactorResult = async (result: SignInResource) => {
+    if (result.status === 'complete' && result.createdSessionId) {
+      await finishSignIn(result.createdSessionId);
+      return true;
+    }
+    if (result.status === 'needs_second_factor') {
+      const factors = result.supportedSecondFactors ?? [];
+      const strategy = SECOND_FACTOR_PRIORITY.find((s) => factors.some((f) => f.strategy === s));
+      if (!strategy) {
+        setError("This account requires a two-factor method that isn't supported here yet. Contact support.");
+        return true;
+      }
+      if (strategy === 'phone_code' || strategy === 'email_code') {
+        await prepareSecondFactor(strategy, factors);
+      }
+      setCode('');
+      setStep({ name: 'second_factor', strategy });
+      return true;
+    }
+    return false;
   };
 
   const handleContinue = async () => {
@@ -73,10 +125,9 @@ export default function SignInScreen() {
     setError('');
     try {
       const result = await signIn.attemptFirstFactor({ strategy: 'password', password });
-      if (result.status === 'complete' && result.createdSessionId) {
-        await finishSignIn(result.createdSessionId);
-      } else {
-        setError("This account needs an extra verification step that isn't supported here yet.");
+      const handled = await handleFirstFactorResult(result);
+      if (!handled) {
+        setError('Sign in could not be completed. Please try again.');
       }
     } catch (err) {
       setError(getErrorMessage(err, 'Incorrect password'));
@@ -91,9 +142,8 @@ export default function SignInScreen() {
     setError('');
     try {
       const result = await signIn.attemptFirstFactor({ strategy: 'email_code', code });
-      if (result.status === 'complete' && result.createdSessionId) {
-        await finishSignIn(result.createdSessionId);
-      } else {
+      const handled = await handleFirstFactorResult(result);
+      if (!handled) {
         setError("That code didn't work. Please try again.");
       }
     } catch (err) {
@@ -113,19 +163,61 @@ export default function SignInScreen() {
     }
   };
 
+  const handleSecondFactorSubmit = async () => {
+    if (!isLoaded || !signIn || step.name !== 'second_factor' || code.length === 0 || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: step.strategy,
+        code,
+      } as AttemptSecondFactorParams);
+      if (result.status === 'complete' && result.createdSessionId) {
+        await finishSignIn(result.createdSessionId);
+      } else {
+        setError("That code didn't work. Please try again.");
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Verification failed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendSecondFactorCode = async () => {
+    if (!isLoaded || !signIn || step.name !== 'second_factor' || loading) return;
+    if (step.strategy !== 'phone_code' && step.strategy !== 'email_code') return;
+    setError('');
+    try {
+      await prepareSecondFactor(step.strategy, signIn.supportedSecondFactors ?? []);
+    } catch (err) {
+      setError(getErrorMessage(err, "Couldn't resend the code"));
+    }
+  };
+
   const heading =
     step.name === 'identifier'
       ? 'Welcome back'
       : step.name === 'password'
         ? 'Enter your password'
-        : 'Check your email';
+        : step.name === 'email_code'
+          ? 'Check your email'
+          : 'Two-factor verification';
 
   const subheading =
     step.name === 'identifier'
       ? 'Sign in to see your wedding dashboard.'
       : step.name === 'password'
         ? `Signing in as ${email}.`
-        : `We sent a 6-digit code to ${email}.`;
+        : step.name === 'email_code'
+          ? `We sent a 6-digit code to ${email}.`
+          : step.strategy === 'totp'
+            ? 'Enter the 6-digit code from your authenticator app.'
+            : step.strategy === 'phone_code'
+              ? 'We sent a 6-digit code to your phone.'
+              : step.strategy === 'email_code'
+                ? `We sent a 6-digit code to ${email}.`
+                : 'Enter one of your backup codes.';
 
   return (
     <SafeAreaView className="flex-1 bg-ed-bg">
@@ -199,6 +291,29 @@ export default function SignInScreen() {
               </View>
             ) : null}
 
+            {step.name === 'second_factor' ? (
+              <View>
+                <Text className="mb-1.5 font-work-sans-medium text-xs uppercase tracking-wide text-ed-on-surface-variant">
+                  {SECOND_FACTOR_LABEL[step.strategy]}
+                </Text>
+                <TextInput
+                  value={code}
+                  onChangeText={setCode}
+                  placeholder={step.strategy === 'backup_code' ? 'Enter backup code' : '123456'}
+                  keyboardType={step.strategy === 'backup_code' ? 'default' : 'number-pad'}
+                  autoCapitalize="none"
+                  maxLength={step.strategy === 'backup_code' ? undefined : 6}
+                  autoFocus
+                  className="rounded-xl border border-ed-outline-variant bg-ed-surface px-4 py-3 font-work-sans text-base tracking-[4px] text-ed-on-surface"
+                />
+                {step.strategy === 'phone_code' || step.strategy === 'email_code' ? (
+                  <Pressable onPress={handleResendSecondFactorCode} className="mt-2 self-start">
+                    <Text className="font-work-sans-medium text-sm text-ed-secondary">Resend code</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
             {error ? <Text className="font-work-sans text-sm text-ed-error">{error}</Text> : null}
 
             <Pressable
@@ -207,7 +322,9 @@ export default function SignInScreen() {
                   ? handleContinue
                   : step.name === 'password'
                     ? handlePasswordSubmit
-                    : handleCodeSubmit
+                    : step.name === 'email_code'
+                      ? handleCodeSubmit
+                      : handleSecondFactorSubmit
               }
               disabled={loading}
               className={`mt-2 items-center rounded-xl bg-ed-primary-container py-3.5 ${
