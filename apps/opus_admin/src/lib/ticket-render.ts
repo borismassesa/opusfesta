@@ -23,7 +23,8 @@ export interface TicketFields {
   coupleName: string
   /** Pre-formatted long date, e.g. "12 July 2026"; '' when the event has no date. */
   dateLabel: string
-  /** Venue name + street address (no city), e.g. "Holy Family Basilica"; '' when unset. */
+  /** Venue name only (the editable "Venue" field), e.g. "Holy Family Basilica";
+   *  '' when unset. Excludes the event's free-form address. */
   venue: string
   /** City on its own — drawn on the ticket's second venue row; '' when unset. */
   city: string

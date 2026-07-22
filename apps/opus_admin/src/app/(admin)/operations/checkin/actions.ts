@@ -207,9 +207,11 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
     dateLabel: hasValidDate
       ? startsAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       : '',
-    // Venue name + street address on the first ticket row, the city on its
-    // own second row — matches apps/opus_pass's getEntrancePassData split.
-    venue: [event.venue_name, event.address].filter(Boolean).join(', '),
+    // Venue name on the first ticket row, the city on its own second row —
+    // matches apps/opus_pass's getEntrancePassData. The event's free-form
+    // `address` is intentionally left off the ticket (not part of the
+    // ticket-details form the couple edits).
+    venue: event.venue_name || '',
     city: event.city || '',
   }
 
