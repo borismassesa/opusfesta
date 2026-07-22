@@ -26,7 +26,9 @@ const OUT = path.join(appDir, 'public/entrance-pass/ticket-template.png')
 const OUT_WIDTH = 1300
 
 // Sample-data groups to strip; the route redraws each one with real data.
-const DYNAMIC_GROUPS = ['Couple_Names', 'Date', 'Venue', 'QR_CODE', 'Ticket_Type_bg', 'Ticket_Type_Text']
+// IntroText ("The wedding of") + its flanking dashes (Intr_Text_Element) are
+// dynamic too — the line follows the event's category and language.
+const DYNAMIC_GROUPS = ['Couple_Names', 'Date', 'Venue', 'QR_CODE', 'Ticket_Type_bg', 'Ticket_Type_Text', 'IntroText', 'Intr_Text_Element']
 
 /** Remove a top-level `<g id="...">...</g>` block, balancing nested <g>. */
 function stripGroup(svg, id) {

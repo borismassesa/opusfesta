@@ -202,7 +202,7 @@ const SWAHILI_MONTHS = [
 // formatter rather than the ambient runtime zone.
 const EAT_TIME_ZONE = 'Africa/Dar_es_Salaam'
 
-function eatDateParts(d: Date): { day: number; month: number; year: number; hour: number; minute: number } {
+export function eatDateParts(d: Date): { day: number; month: number; year: number; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: EAT_TIME_ZONE,
     year: 'numeric',

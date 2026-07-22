@@ -7,7 +7,7 @@ import Logo from '@/components/ui/Logo'
 import PoweredByLine from '@/components/ui/PoweredByLine'
 import { useT } from '@/components/providers/UIStringsProvider'
 import { submitPublicRsvp, type PublicRsvpResponse, type PublicRsvpAnswerInput } from '@/lib/dashboard/actions'
-import { eventTypeLabel, type RsvpStatus, type RsvpQuestion } from '@/lib/dashboard/types'
+import { eventTypeLabel, MAX_TICKET_PARTY, type RsvpStatus, type RsvpQuestion } from '@/lib/dashboard/types'
 import type { PublicRsvpData } from '@/lib/dashboard/queries'
 
 const inputClass =
@@ -297,7 +297,9 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                           value={a.party_size}
                           onChange={(ev) => update(e.invitation.id, { party_size: Number(ev.target.value) })}
                         >
-                          {Array.from({ length: data.guest.max_party_size }, (_, i) => i + 1).map((n) => (
+                          {/* Pre-cap guests may carry a larger stored max —
+                              tickets are Single/Double, so never offer more. */}
+                          {Array.from({ length: Math.min(data.guest.max_party_size, MAX_TICKET_PARTY) }, (_, i) => i + 1).map((n) => (
                             <option key={n} value={n}>
                               {n === 1 ? t('party_size_one', { n }) : t('party_size_other', { n })}
                             </option>

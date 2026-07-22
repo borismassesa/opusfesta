@@ -785,6 +785,11 @@ export interface DashboardEventsStrings {
   placeholder_custom_type: string
   field_event_name: string
   placeholder_event_name: string
+  field_partner1: string
+  field_partner2: string
+  placeholder_partner1: string
+  placeholder_partner2: string
+  hint_partner_names: string
   hint_max_100: string
   field_start_date: string
   field_start_time: string
@@ -1075,6 +1080,20 @@ export interface DashboardSendStrings {
   entrance_needs_whatsapp: string
   entrance_status_sent: string
   entrance_status_notsent: string
+  ticket_legend: string
+  ticket_note: string
+  ticket_field_category: string
+  ticket_field_partner1: string
+  ticket_field_partner2: string
+  ticket_field_date: string
+  ticket_field_venue: string
+  ticket_field_city: string
+  ticket_field_language: string
+  ticket_lang_en: string
+  ticket_lang_sw: string
+  party_single: string
+  party_double: string
+  toast_ticket_saved: string
   row_edit: string
   add_guest: string
   row_delete: string
@@ -1816,6 +1835,11 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     placeholder_custom_type: 'Name this event type (e.g. Welcome Dinner)',
     field_event_name: 'Event name',
     placeholder_event_name: 'Our ceremony',
+    field_partner1: 'Partner 1 name',
+    field_partner2: 'Partner 2 name (optional)',
+    placeholder_partner1: 'e.g. Claudia Mrema',
+    placeholder_partner2: 'e.g. Daniel Kileo',
+    hint_partner_names: 'Printed on the Entrance Pass Ticket as first names, e.g. "Claudia & Daniel".',
     hint_max_100: 'Maximum 100 characters',
     field_start_date: 'Event date',
     field_start_time: 'Start time',
@@ -2082,6 +2106,20 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     entrance_needs_whatsapp: 'Entrance passes are sent by WhatsApp only — add a WhatsApp number for this guest',
     entrance_status_sent: 'Sent',
     entrance_status_notsent: 'Not sent',
+    ticket_legend: 'Ticket details',
+    ticket_note: 'These appear on every Entrance Pass Ticket for this event. Changes update the event itself, so invites and RSVP pages stay in sync.',
+    ticket_field_category: 'Event category',
+    ticket_field_partner1: 'Partner 1 name',
+    ticket_field_partner2: 'Partner 2 name (optional)',
+    ticket_field_date: 'Event date',
+    ticket_field_venue: 'Venue',
+    ticket_field_city: 'City',
+    ticket_field_language: 'Ticket language',
+    ticket_lang_en: 'English',
+    ticket_lang_sw: 'Swahili',
+    party_single: 'Single',
+    party_double: 'Double',
+    toast_ticket_saved: 'Ticket details saved',
     row_edit: 'Edit guest',
     add_guest: 'Add guest',
     row_delete: 'Remove guest',

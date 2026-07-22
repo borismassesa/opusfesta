@@ -11,6 +11,7 @@ import { PLEDGE_TEMPLATE_FREE_TIER_IDS, parseTemplateCardItemId } from './pledge
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
 import {
   coupleSlugBase,
+  eatDateParts,
   eventHeroSlugBase,
   eventSlugBase,
   firstNameOf,
@@ -21,13 +22,14 @@ import {
   publicOrigin,
   slugBaseOf,
 } from './share'
-import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit } from './queries'
+import { getMyCollectorToken, getMyPledgeToken, getWhatsAppEntitlement, getEvents, fetchPaidOrdersForCouple, ownedEventIds, resolveOwnedEventId, resolveEventIdOrDefault, computeEntrancePassVars, consumeSendCredit, releaseSendCredit, entranceCoupleName } from './queries'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type { LinkRequestKind } from '@/lib/whatsapp/types'
 import { getSmsProvider } from '@/lib/sms'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import { pledgeRequestEmail } from './pledge-email'
 import { sendGiftClaimReceipts, type ReceiptGift, type ReceiptLang } from './gift-registry-receipt'
+import { MAX_TICKET_PARTY } from './types'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -40,6 +42,7 @@ import type {
   RsvpQuestionOption,
   RsvpStatus,
   SendChannel,
+  TicketLanguage,
 } from './types'
 
 function revalidateDashboard() {
@@ -62,6 +65,10 @@ export interface EventInput {
   name: string
   event_type: EventType
   description?: string | null
+  /** Celebrants' names for the entrance-pass ticket (second one optional —
+   *  a kitchen party or birthday has a single celebrant). */
+  partner1_name?: string | null
+  partner2_name?: string | null
   venue_name?: string | null
   address?: string | null
   city?: string | null
@@ -83,6 +90,8 @@ export async function createEvent(input: EventInput): Promise<void> {
     name: input.name.trim(),
     event_type: input.event_type,
     description: input.description || null,
+    partner1_name: input.partner1_name?.trim() || null,
+    partner2_name: input.partner2_name?.trim() || null,
     venue_name: input.venue_name || null,
     address: input.address || null,
     city: input.city || null,
@@ -132,6 +141,8 @@ export async function updateEvent(id: string, input: EventInput): Promise<void> 
       name: trimmedName,
       event_type: input.event_type,
       description: input.description || null,
+      partner1_name: input.partner1_name?.trim() || null,
+      partner2_name: input.partner2_name?.trim() || null,
       venue_name: input.venue_name || null,
       address: input.address || null,
       city: input.city || null,
@@ -338,10 +349,12 @@ function guestColumnsFromInput(input: GuestInput): Record<string, unknown> {
     }))
     .filter((c) => c.first_name || c.last_name)
 
-  // Derive a sensible max_party_size if the caller didn't pin one.
+  // Derive a sensible max_party_size if the caller didn't pin one, capped at
+  // the Single/Double ticket limit (a plus-one + children can push the
+  // derived count higher, but an invite never covers more than two seats).
   const hasPlusOne = plusOneNameUnknown || Boolean(plusOneFirst) || Boolean(plusOneLast)
   const derivedParty = 1 + (hasPlusOne ? 1 : 0) + children.length
-  const max_party_size = input.max_party_size ?? Math.max(1, derivedParty)
+  const max_party_size = Math.min(MAX_TICKET_PARTY, Math.max(1, input.max_party_size ?? derivedParty))
 
   return {
     full_name,
@@ -588,6 +601,9 @@ export async function updateRsvp(invitationId: string, update: RsvpUpdate): Prom
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const patch: Record<string, unknown> = { ...update }
+  if (typeof update.party_size === 'number') {
+    patch.party_size = Math.min(MAX_TICKET_PARTY, Math.max(1, update.party_size))
+  }
   if (update.rsvp_status) patch.responded_at = new Date().toISOString()
   const { error } = await supabase
     .from('guest_invitations')
@@ -1450,7 +1466,7 @@ export async function submitPublicRsvp(
   let attendingParty = 0
   for (const r of responses) {
     if (!ownedIds.has(r.invitationId)) continue
-    const partySize = Math.max(1, Math.min(r.party_size || 1, guest.max_party_size))
+    const partySize = Math.max(1, Math.min(r.party_size || 1, guest.max_party_size, MAX_TICKET_PARTY))
     const { error } = await supabase
       .from('guest_invitations')
       .update({
@@ -1664,7 +1680,7 @@ export async function submitPublicInviteRsvp(
     return { ok: false, error: 'RSVPs for this celebration have closed.' }
   }
 
-  const partySize = Math.max(1, Math.min(Number(input.partySize) || 1, 20))
+  const partySize = Math.max(1, Math.min(Number(input.partySize) || 1, MAX_TICKET_PARTY))
 
   // Reuse this phone's prior self-registration; never touch a host-added guest.
   const { data: existing } = await supabase
@@ -2880,13 +2896,15 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
   const [{ data: event }, { data: profile }] = await Promise.all([
     supabase
       .from('wedding_events')
-      .select('name, starts_at, event_type, venue_name, address, city')
+      .select('name, starts_at, event_type, partner1_name, partner2_name, venue_name, address, city')
       .eq('id', resolvedEventId)
       .eq('user_id', user.id)
       .maybeSingle<{
         name: string
         starts_at: string | null
         event_type: EventType | null
+        partner1_name: string | null
+        partner2_name: string | null
         venue_name: string | null
         address: string | null
         city: string | null
@@ -2904,9 +2922,9 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
   ])
   if (!event) return summary
 
-  const hostOverride = profile?.invite_host_name?.trim() || null
-  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
-  const coupleName = hostOverride ?? (names.length ? names.join(' & ') : event.name)
+  // Celebrant first names — same derivation the ticket image and the
+  // dashboard preview use, so message and ticket always agree.
+  const coupleName = entranceCoupleName(event, profile)
   const categoryOverride = profile?.invite_event_category?.trim() || null
   const { eventCategory, dateLabel, timeLabel, venue } = computeEntrancePassVars(event, categoryOverride)
 
@@ -3335,6 +3353,72 @@ export async function unassignOrderFromEvent(orderId: string): Promise<void> {
  * {{3}} event category. Sending is blocked until these are saved once; the
  * confirm step saves them on every bulk send so edits stick.
  */
+/** The Pass Ticket tab's Ticket Details editor payload — edits the REAL
+ *  wedding_events row (single source of truth: the same values feed the
+ *  ticket image, the WhatsApp pass message, invites and the RSVP hub). */
+export interface TicketDetailsInput {
+  event_type: string
+  partner1_name: string | null
+  partner2_name: string | null
+  /** YYYY-MM-DD; '' clears the event date. */
+  start_date: string
+  venue_name: string | null
+  city: string | null
+  ticket_language: TicketLanguage
+}
+
+export async function updateEventTicketDetails(eventId: string, input: TicketDetailsInput): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: existing, error: readErr } = await supabase
+    .from('wedding_events')
+    .select('starts_at')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ starts_at: string | null }>()
+  if (readErr) throw new Error(readErr.message)
+  if (!existing) throw new Error('Event not found')
+
+  // The editor only exposes the DATE — carry the stored time-of-day (EAT
+  // wall clock; Tanzania has no DST, so a fixed +03:00 is always right)
+  // across a date change instead of silently resetting it to midnight.
+  let starts_at: string | null = existing.starts_at
+  const newDate = input.start_date.trim()
+  if (!newDate) {
+    starts_at = null
+  } else {
+    let hour = 0
+    let minute = 0
+    if (existing.starts_at) {
+      const d = new Date(existing.starts_at)
+      if (!Number.isNaN(d.getTime())) {
+        const parts = eatDateParts(d)
+        hour = parts.hour
+        minute = parts.minute
+      }
+    }
+    const combined = new Date(`${newDate}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+03:00`)
+    if (!Number.isNaN(combined.getTime())) starts_at = combined.toISOString()
+  }
+
+  const { error } = await supabase
+    .from('wedding_events')
+    .update({
+      event_type: input.event_type.trim() || 'other',
+      partner1_name: input.partner1_name?.trim() || null,
+      partner2_name: input.partner2_name?.trim() || null,
+      starts_at,
+      venue_name: input.venue_name?.trim() || null,
+      city: input.city?.trim() || null,
+      ticket_language: input.ticket_language === 'sw' ? 'sw' : 'en',
+    })
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
 export async function saveInviteSendSettings(hostName: string, eventCategory: string): Promise<void> {
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()

@@ -33,6 +33,7 @@ import {
   sendWhatsAppTestInvite,
   sendEntrancePasses,
   saveInviteSendSettings,
+  updateEventTicketDetails,
   assignOrderToEvent,
   updateGuestPhone,
   updateGuestBasics,
@@ -52,10 +53,21 @@ import {
   fullNameOf,
 } from '@/lib/dashboard/share'
 import { INVITE_TEMPLATE, ENTRANCE_PASS_TEMPLATE } from '@/lib/whatsapp/types'
-import { EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
+import { EVENT_TYPE_LABELS, EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
+import type { EventType, TicketLanguage } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
 import { setActiveEventCookie } from '@/components/dashboard/EventScope'
+
+/** Short stable digest of the ticket's visible fields — appended to the
+ *  preview image URL so a save produces a new URL, and the browser can
+ *  never serve a stale thumbnail of the previous details. */
+function fieldsDigest(parts: (string | null | undefined)[]): string {
+  let h = 5381
+  const joined = parts.join('|')
+  for (let i = 0; i < joined.length; i++) h = ((h << 5) + h + joined.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
 
 const STATUS_CLASS: Record<SendGuestRow['status'], string> = {
   none: 's-none',
@@ -212,6 +224,52 @@ export default function SendInvitesView({
   // once saved it collapses into a confirmed summary.
   const [editingSettings, setEditingSettings] = useState(!data.sendSettings.confirmed)
 
+  // The Pass Ticket tab's thumbnail: this event's real ticket art. Falls
+  // back to the packaged sample only when there's no event to render yet.
+  const tf = data.event.ticketFields
+  const ticketPreviewSrc =
+    eventId && tf
+      ? `/entrance-pass/preview?event=${eventId}&v=${fieldsDigest([
+          tf.eventType,
+          tf.partner1Name,
+          tf.partner2Name,
+          tf.startDate,
+          tf.venueName,
+          tf.city,
+          tf.ticketLanguage,
+        ])}`
+      : '/entrance-pass/ticket-preview.png'
+
+  // Pass Ticket tab's Ticket Details editor — edits the real wedding_events
+  // row (category, partner names, date, venue, ticket language). Seeded from
+  // the server snapshot each time it OPENS, so switching events (same mounted
+  // component, fresh props) can never leak another event's values in.
+  const [ticketForm, setTicketForm] = useState<NonNullable<SendInvitesData['event']['ticketFields']> | null>(null)
+  function openTicketEditor() {
+    if (data.event.ticketFields) setTicketForm({ ...data.event.ticketFields })
+  }
+  function saveTicketDetails() {
+    if (!ticketForm || !eventId) return
+    startTransition(async () => {
+      try {
+        await updateEventTicketDetails(eventId, {
+          event_type: ticketForm.eventType,
+          partner1_name: ticketForm.partner1Name || null,
+          partner2_name: ticketForm.partner2Name || null,
+          start_date: ticketForm.startDate,
+          venue_name: ticketForm.venueName || null,
+          city: ticketForm.city || null,
+          ticket_language: ticketForm.ticketLanguage,
+        })
+        toast.success(strings.toast_ticket_saved)
+        setTicketForm(null)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : strings.toast_ticket_saved)
+      }
+    })
+  }
+
   // "Awaiting" = invited but not yet replied (delivered or seen, no RSVP).
   const isAwaiting = (s: SendGuestRow['status']) => s === 'sent' || s === 'viewed'
   const hasPhone = (g: SendGuestRow) => Boolean(g.whatsappPhone || g.phone)
@@ -286,7 +344,7 @@ export default function SendInvitesView({
   const entrancePreviewBody = ENTRANCE_PASS_TEMPLATE.body
     .replace('{{1}}', entrancePreviewGuest ? fullNameOf(entrancePreviewGuest.name) : 'Amina')
     .replace('{{2}}', event.eventCategorySw)
-    .replace('{{3}}', event.coupleName)
+    .replace('{{3}}', event.entranceCoupleName)
     .replace('{{4}}', event.entranceDateLabel)
     .replace('{{5}}', event.entranceTimeLabel)
     .replace('{{6}}', event.entranceVenue)
@@ -753,12 +811,16 @@ export default function SendInvitesView({
         <div className="ctxbody">
           {sendTab === 'ticket' ? (
             <div className="ccard ticket">
+              {/* This event's own ticket, rendered from its saved details —
+                  not a generic sample — so the card always shows what the
+                  next send will actually look like. */}
               <Image
-                src="/entrance-pass/ticket-preview.png"
+                src={ticketPreviewSrc}
                 alt={strings.entrance_tag}
                 fill
                 sizes="112px"
                 className="object-cover"
+                unoptimized
               />
             </div>
           ) : (
@@ -796,6 +858,11 @@ export default function SendInvitesView({
                 </div>
               ) : sendTab === 'ticket' ? (
                 <div className="ctxhead">
+                  {data.event.ticketFields && !ticketForm ? (
+                    <button className="btn ghost" disabled={pending} onClick={openTicketEditor}>
+                      <Pencil size={13} /> {strings.settings_edit}
+                    </button>
+                  ) : null}
                   <button
                     className="btn ghost"
                     disabled={!entrancePreviewGuest}
@@ -942,6 +1009,92 @@ export default function SendInvitesView({
                 <span>{strings.dryrun_note}</span>
               </div>
             ) : null}
+          </div>
+        ) : sendTab === 'ticket' && ticketForm ? (
+          <div className="ctxsend">
+            <div className="vars">
+              <div className="vlegend">{strings.ticket_legend}</div>
+              <div className="vgrid two">
+                <label className="vfield">
+                  <span>{strings.ticket_field_category}</span>
+                  <select
+                    value={ticketForm.eventType}
+                    onChange={(e) => setTicketForm({ ...ticketForm, eventType: e.target.value })}
+                  >
+                    {/* A custom free-text type (the "other" flow) isn't in the
+                        known map — keep it selectable so opening the editor
+                        never silently rewrites it. */}
+                    {!(ticketForm.eventType in EVENT_TYPE_LABELS) ? (
+                      <option value={ticketForm.eventType}>{ticketForm.eventType}</option>
+                    ) : null}
+                    {(Object.keys(EVENT_TYPE_LABELS) as EventType[]).map((t) => (
+                      <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="vfield">
+                  <span>{strings.ticket_field_language}</span>
+                  <select
+                    value={ticketForm.ticketLanguage}
+                    onChange={(e) => setTicketForm({ ...ticketForm, ticketLanguage: e.target.value as TicketLanguage })}
+                  >
+                    <option value="en">{strings.ticket_lang_en}</option>
+                    <option value="sw">{strings.ticket_lang_sw}</option>
+                  </select>
+                </label>
+                <label className="vfield">
+                  <span>{strings.ticket_field_partner1}</span>
+                  <input
+                    value={ticketForm.partner1Name}
+                    maxLength={60}
+                    onChange={(e) => setTicketForm({ ...ticketForm, partner1Name: e.target.value })}
+                  />
+                </label>
+                <label className="vfield">
+                  <span>{strings.ticket_field_partner2}</span>
+                  <input
+                    value={ticketForm.partner2Name}
+                    maxLength={60}
+                    onChange={(e) => setTicketForm({ ...ticketForm, partner2Name: e.target.value })}
+                  />
+                </label>
+                <label className="vfield">
+                  <span>{strings.ticket_field_date}</span>
+                  <input
+                    type="date"
+                    value={ticketForm.startDate}
+                    onChange={(e) => setTicketForm({ ...ticketForm, startDate: e.target.value })}
+                  />
+                </label>
+                <label className="vfield">
+                  <span>{strings.ticket_field_venue}</span>
+                  <input
+                    value={ticketForm.venueName}
+                    maxLength={80}
+                    onChange={(e) => setTicketForm({ ...ticketForm, venueName: e.target.value })}
+                  />
+                </label>
+                <label className="vfield">
+                  <span>{strings.ticket_field_city}</span>
+                  <input
+                    value={ticketForm.city}
+                    maxLength={40}
+                    onChange={(e) => setTicketForm({ ...ticketForm, city: e.target.value })}
+                  />
+                </label>
+              </div>
+              <div className="vsave">
+                <p className="mutedp">{strings.ticket_note}</p>
+                <div className="vbtns">
+                  <button className="btn ghost" title={strings.preview_close} onClick={() => setTicketForm(null)}>
+                    <X size={14} />
+                  </button>
+                  <button className="btn solid" disabled={pending} onClick={saveTicketDetails}>
+                    <Check size={14} /> {strings.save_number}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         ) : null}
       </div>
@@ -1125,7 +1278,17 @@ export default function SendInvitesView({
                   ) : (
                   <tr key={g.id}>
                     <td><input type="checkbox" className="ck" checked={selected.has(g.id)} onChange={() => toggleSelect(g.id)} /></td>
-                    <td className="who">{g.name}</td>
+                    <td className="who">
+                      {g.name}
+                      {/* Cards tab: the invite type the couple assigned.
+                          Pass Ticket tab: what the guest confirmed at RSVP —
+                          the same Single/Double their ticket pill shows. */}
+                      <span className="ppill">
+                        {(sendTab === 'ticket' ? (g.rsvpPartySize ?? g.assignedPartySize) : g.assignedPartySize) >= 2
+                          ? strings.party_double
+                          : strings.party_single}
+                      </span>
+                    </td>
                     <td className="contact">
                       {g.phone ?? g.whatsappPhone ?? (
                         phoneEdit?.id === g.id ? (
@@ -1749,6 +1912,8 @@ const css = `
 .si .dglabel.failed{ color:var(--bad-tx); } .si .dglabel.blocked, .si .dglabel.skipped{ color:var(--amber-tx); }
 .si .drow{ display:flex; align-items:baseline; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap; }
 .si .dname{ font-weight:600; }
+.si .ppill{ display:inline-flex; align-items:center; margin-left:8px; padding:2px 9px; border-radius:999px;
+  background:var(--green); color:var(--green-tx); font-size:10.5px; font-weight:700; letter-spacing:.3px; }
 .si .dtag{ font-size:10.5px; font-weight:600; color:var(--purple-d); background:var(--lav-soft); padding:2px 8px; border-radius:999px; }
 .si .derr{ font-size:11.5px; color:var(--bad-tx); }
 

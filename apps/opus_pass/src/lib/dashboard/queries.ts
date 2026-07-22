@@ -3,7 +3,8 @@ import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
 import { eventInviteUrl, firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
-import { eventTypeLabel, eventTypeLabelSw } from './types'
+import { eventTypeLabel, eventTypeLabelSw, ticketIntroLabel } from './types'
+import type { TicketLanguage } from './types'
 import { toTzs } from './currency'
 import { resolveEventCover, type PledgePageConfig, type PledgePaymentMethod } from './pledge-page'
 import { THANK_YOU_FREE_TIER_IDS, resolveThankYouCover, type ThankYouCardConfig } from './thank-you'
@@ -745,6 +746,30 @@ export function coupleFirstNames(profile: CoupleProfileLite | null): string {
   return names.map(firstNameOf).join(' & ')
 }
 
+/**
+ * The celebrant names printed on the entrance-pass ticket and used for the
+ * pass message's couple placeholder — always FIRST names when derived from
+ * structured name fields ("Claudia & Daniel", never full names).
+ *
+ * Precedence: the event's own partner names (most specific — a multi-event
+ * account celebrates different people per event) → the couple's confirmed
+ * host-name override (free text, kept verbatim) → profile partner first
+ * names → the event's display name. Shared by the ticket image, the real
+ * send and the dashboard preview so all three always agree.
+ */
+export function entranceCoupleName(
+  event: { name: string; partner1_name: string | null; partner2_name: string | null },
+  profile: { partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null } | null,
+): string {
+  const eventNames = [event.partner1_name, event.partner2_name].filter(Boolean) as string[]
+  if (eventNames.length) return eventNames.map(firstNameOf).join(' & ')
+  const hostOverride = profile?.invite_host_name?.trim()
+  if (hostOverride) return hostOverride
+  const profileNames = [profile?.partner1_name, profile?.partner2_name].filter(Boolean) as string[]
+  if (profileNames.length) return profileNames.map(firstNameOf).join(' & ')
+  return event.name
+}
+
 /** The signed-in couple's account-wide public-sharing state (also backs the
  *  wedding-website builder's publish flow) — for the Privacy settings page.
  *  The invite hub itself is event-scoped; see getInviteShareInfo. */
@@ -924,15 +949,19 @@ export interface EntrancePassData {
   guestName: string
   invitationId: string
   guestContactId: string
+  /** Celebrant first names ("Claudia & Daniel") — see entranceCoupleName. */
   coupleName: string
   eventName: string
   venue: string | null
+  /** Formatted in the ticket's language (formatLongDate vs formatLongDateSw). */
   dateLabel: string | null
-  /** e.g. "5:00 PM" — starts_at's time component, for templates that show
-   *  date and time as separate lines. Null when starts_at has no time set. */
-  timeLabel: string | null
+  /** Ticket intro line for the event's category, already in the ticket's
+   *  language — "The sendoff of" / "Sendoff ya". */
+  introLabel: string
+  /** Language the ticket image renders in (labels + date formatting). */
+  ticketLanguage: TicketLanguage
   /** Seats this invitation admits (>= 1) — drives the ticket's
-   *  SINGLE / DOUBLE / PARTY OF N label. */
+   *  SINGLE / DOUBLE label. */
   partySize: number
 }
 
@@ -963,12 +992,15 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
 
   const { data: event } = await supabase
     .from('wedding_events')
-    .select('name, event_type, venue_name, address, city, starts_at')
+    .select('name, event_type, partner1_name, partner2_name, ticket_language, venue_name, address, city, starts_at')
     .eq('id', eventId)
     .eq('user_id', guest.user_id)
     .maybeSingle<{
       name: string
       event_type: string
+      partner1_name: string | null
+      partner2_name: string | null
+      ticket_language: TicketLanguage | null
       venue_name: string | null
       address: string | null
       city: string | null
@@ -982,27 +1014,72 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     .eq('user_id', guest.user_id)
     .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>()
 
-  // Same precedence as getWhatsAppEntitlement: the couple's explicitly
-  // confirmed template host name wins over their profile's partner names.
-  const hostOverride = profile?.invite_host_name?.trim() || null
-  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
-
-  // A bare date (no time picked) parses to local midnight — treat that as
-  // "no time set" rather than printing a misleading "12:00 AM".
-  const startsAt = event.starts_at ? new Date(event.starts_at) : null
-  const hasTime = startsAt && !Number.isNaN(startsAt.getTime()) && (startsAt.getHours() !== 0 || startsAt.getMinutes() !== 0)
-  const timeLabel = hasTime ? startsAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null
+  const lang: TicketLanguage = event.ticket_language === 'sw' ? 'sw' : 'en'
 
   return {
     guestName: guest.full_name,
     invitationId: invitation.id,
     guestContactId: guest.id,
-    coupleName: hostOverride ?? (names.length ? names.join(' & ') : event.name),
+    coupleName: entranceCoupleName(event, profile),
     eventName: event.name,
     venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
-    dateLabel: formatLongDate(event.starts_at) || null,
-    timeLabel,
+    dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
+    introLabel: ticketIntroLabel(event.event_type, lang),
+    ticketLanguage: lang,
     partySize: Math.max(1, invitation.party_size ?? 1),
+  }
+}
+
+/** What the ticket renderer needs, minus anything guest-specific. */
+export type EntrancePassPreviewData = Pick<
+  EntrancePassData,
+  'coupleName' | 'venue' | 'dateLabel' | 'introLabel' | 'ticketLanguage' | 'partySize'
+>
+
+/**
+ * The couple's own event-level ticket preview — the same artwork a guest
+ * gets, drawn from the event's saved details, with no guest name, party
+ * size or real QR involved. Backs the Pass Ticket tab's thumbnail so it
+ * always reflects what was last saved, even before anyone is attending.
+ * Owner-scoped: returns null for an event this user doesn't own.
+ */
+export async function getEntrancePassPreviewData(eventId: string): Promise<EntrancePassPreviewData | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('name, event_type, partner1_name, partner2_name, ticket_language, venue_name, address, city, starts_at')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{
+      name: string
+      event_type: string
+      partner1_name: string | null
+      partner2_name: string | null
+      ticket_language: TicketLanguage | null
+      venue_name: string | null
+      address: string | null
+      city: string | null
+      starts_at: string | null
+    }>()
+  if (!event) return null
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name, invite_host_name')
+    .eq('user_id', user.id)
+    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>()
+
+  const lang: TicketLanguage = event.ticket_language === 'sw' ? 'sw' : 'en'
+  return {
+    coupleName: entranceCoupleName(event, profile),
+    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
+    dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
+    introLabel: ticketIntroLabel(event.event_type, lang),
+    ticketLanguage: lang,
+    // The preview is a sample of the design, not anyone's actual admission.
+    partySize: 1,
   }
 }
 
@@ -1638,6 +1715,9 @@ export interface WhatsAppEntitlement {
   addOns: string[]
   /** Couple/honoree display name for the template body ({{2}}). */
   coupleName: string
+  /** Celebrant first names for entrance-pass contexts ({{3}} of the pass
+   *  template + the ticket image) — see entranceCoupleName. */
+  entranceCoupleName: string
   /** Swahili event category noun for the template body ({{3}}), e.g. "harusi". */
   eventCategory: string
   /** True once the couple has explicitly confirmed {{2}}/{{3}} — sends are
@@ -1864,10 +1944,10 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
   // earliest event," now that a couple can be sending for any of several.
   const { data: primaryEvent } = await supabase
     .from('wedding_events')
-    .select('name, event_type')
+    .select('name, event_type, partner1_name, partner2_name')
     .eq('user_id', user.id)
     .eq('id', eventId)
-    .maybeSingle<{ name: string | null; event_type: string }>()
+    .maybeSingle<{ name: string | null; event_type: string; partner1_name: string | null; partner2_name: string | null }>()
   const eventCategory = categoryOverride ?? eventTypeLabelSw(primaryEvent?.event_type ?? 'other')
 
   // No partner names on the profile yet? Fall back to the event's own title
@@ -1875,6 +1955,16 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
   const coupleName =
     hostOverride ??
     (coupleNames.length ? coupleNames.join(' & ') : primaryEvent?.name?.trim() || 'The Couple')
+
+  // Entrance-pass contexts use first names with the event's own partner
+  // names winning — distinct from the invite-template coupleName above,
+  // which the couple confirms as free text in the send console.
+  const entranceNames = primaryEvent
+    ? entranceCoupleName(
+        { name: primaryEvent.name?.trim() || 'The Couple', partner1_name: primaryEvent.partner1_name, partner2_name: primaryEvent.partner2_name },
+        profile ?? null,
+      )
+    : coupleName
 
   const allPaidOrders = await fetchPaidOrdersForCouple(supabase, user.id, user.email, profile?.whatsapp_phone ?? null)
 
@@ -1963,6 +2053,7 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
     cardName,
     addOns,
     coupleName,
+    entranceCoupleName: entranceNames,
     eventCategory,
     sendSettingsConfirmed: Boolean(hostOverride && categoryOverride),
     alreadySentIds,
@@ -2036,6 +2127,12 @@ export interface SendGuestRow {
   /** True once this guest has been sent an entrance pass for this event —
    *  drives the persistent Sent/Not sent status on the Pass Ticket tab. */
   entrancePassSent: boolean
+  /** Seats the couple's invite covers (guest_contacts.max_party_size,
+   *  clamped 1..2 on new writes) — the "Single/Double card sent" badge. */
+  assignedPartySize: number
+  /** Seats the guest confirmed at RSVP for THIS event — the ticket's pill
+   *  and the door scanner's count. Null until they're attending. */
+  rsvpPartySize: number | null
 }
 
 export interface SendInvitesData {
@@ -2057,6 +2154,21 @@ export interface SendInvitesData {
     entranceDateLabel: string
     entranceTimeLabel: string
     entranceVenue: string
+    /** Celebrant first names for the entrance-pass preview's {{3}} — the
+     *  same entranceCoupleName derivation the real send uses. */
+    entranceCoupleName: string
+    /** Raw event fields prefilling the Pass Ticket tab's Ticket Details
+     *  editor (it edits the real wedding_events row, not overrides). */
+    ticketFields: {
+      eventType: string
+      partner1Name: string
+      partner2Name: string
+      /** YYYY-MM-DD (local) of starts_at, '' when unset. */
+      startDate: string
+      venueName: string
+      city: string
+      ticketLanguage: TicketLanguage
+    } | null
     cardTier: string | null
     /** The paid card/product name (e.g. "The Couple"). */
     cardName: string | null
@@ -2099,6 +2211,17 @@ export interface SendInvitesData {
  * sort order) when not given, so single-event couples never see a switcher
  * and nothing changes for them.
  */
+/** Local-timezone YYYY-MM-DD of an ISO timestamp, '' when unset/invalid —
+ *  prefills the Ticket Details date input the same way EventsManager's
+ *  splitLocal does, so both editors agree on what day an event is. */
+function localDatePart(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
+}
+
 export async function getSendInvitesData(
   eventId?: string,
   preloadedEvents?: WeddingEvent[],
@@ -2138,6 +2261,8 @@ export async function getSendInvitesData(
         entranceDateLabel: 'Tarehe itatangazwa hivi karibuni',
         entranceTimeLabel: 'Muda utatangazwa hivi karibuni',
         entranceVenue: 'Mahali patatangazwa hivi karibuni',
+        entranceCoupleName: coupleFirstNames(profile),
+        ticketFields: null,
         cardTier: null,
         cardName: null,
         cardImageUrl: null,
@@ -2222,6 +2347,8 @@ export async function getSendInvitesData(
       rsvpUrl: `${origin}/rsvp/${g.public_token}`,
       entrancePassUrl: `${origin}/entrance-pass/${g.public_token}?event=${selectedEventId}`,
       entrancePassSent: entranceSentSet.has(g.id),
+      assignedPartySize: Math.max(1, g.max_party_size ?? 1),
+      rsvpPartySize: attending ? Math.max(1, attending.party_size ?? 1) : null,
     }
   })
 
@@ -2250,6 +2377,16 @@ export async function getSendInvitesData(
       entranceDateLabel: entranceVars.dateLabel,
       entranceTimeLabel: entranceVars.timeLabel,
       entranceVenue: entranceVars.venue,
+      entranceCoupleName: entitlement.entranceCoupleName,
+      ticketFields: {
+        eventType: selectedEvent.event_type,
+        partner1Name: selectedEvent.partner1_name ?? '',
+        partner2Name: selectedEvent.partner2_name ?? '',
+        startDate: localDatePart(selectedEvent.starts_at),
+        venueName: selectedEvent.venue_name ?? '',
+        city: selectedEvent.city ?? '',
+        ticketLanguage: selectedEvent.ticket_language === 'sw' ? 'sw' : 'en',
+      },
       cardTier: entitlement.cardTier,
       cardName: entitlement.cardName,
       cardImageUrl: entitlement.cardImageUrl,

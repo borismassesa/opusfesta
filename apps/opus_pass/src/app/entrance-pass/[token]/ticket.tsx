@@ -4,11 +4,11 @@ import type { EntrancePassData } from '@/lib/dashboard/queries'
 /**
  * The OpusPass entrance-pass ticket, drawn from the designer's portrait
  * artwork (src/assets/svg/opuspass_entrance_tickets.svg). The static art
- * (background, ornaments, logo, "The wedding of", perforation) ships as a
- * pre-rasterized template PNG (scripts/build-entrance-pass-template.mjs);
- * this module draws the per-guest data in the slots the sample content
- * occupied: couple names, date, venue, SINGLE/DOUBLE party pill and the
- * real check-in QR.
+ * (background, ornaments, logo, perforation) ships as a pre-rasterized
+ * template PNG (scripts/build-entrance-pass-template.mjs); this module
+ * draws the per-event/per-guest data in the slots the sample content
+ * occupied: category intro line, couple first names, date, venue,
+ * SINGLE/DOUBLE party pill and the real check-in QR.
  *
  * Kept free of server-only imports so a plain script can render it with
  * sample data outside a request (fonts, template and QR come in as args).
@@ -24,6 +24,10 @@ const YELLOW = '#FFF24D'
 const WHITE = '#FFFFFF'
 const PURPLE = '#5C2D8D'
 
+// The artwork's "The wedding of" line + flanking dashes were stripped from
+// the template (they follow the event's category and language now); this is
+// their measured slot.
+const INTRO_ROW = { top: 410, height: 76, dashWidth: 75 }
 const NAME_BAND = { top: 486, height: 292, sidePad: 60 }
 const DATE_ROW = { top: 770, height: 110 }
 const VENUE_ROW = { top: 916, height: 190, sidePad: 60 }
@@ -44,8 +48,15 @@ function fitFontSize(text: string, maxWidth: number, base: number, em: number, f
   return Math.max(floor, Math.min(base, fitted))
 }
 
+/** Static label copy per ticket language — the intro line itself arrives
+ *  pre-localized in pass.introLabel. */
+const LABELS = {
+  en: { date: 'Date:', venue: 'Venue:', dateTbc: 'Date TBC', venueTbc: 'Venue TBC' },
+  sw: { date: 'Tarehe:', venue: 'Mahali:', dateTbc: 'Tarehe itatangazwa', venueTbc: 'Mahali patatangazwa' },
+} as const
+
 export interface TicketInput {
-  pass: Pick<EntrancePassData, 'coupleName' | 'dateLabel' | 'venue' | 'partySize'>
+  pass: Pick<EntrancePassData, 'coupleName' | 'dateLabel' | 'venue' | 'partySize' | 'introLabel' | 'ticketLanguage'>
   /** data: URI of public/entrance-pass/ticket-template.png */
   templateDataUri: string
   /** data: URL PNG of the guest's real check-in QR */
@@ -53,14 +64,16 @@ export interface TicketInput {
 }
 
 export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketInput): ReactElement {
+  const labels = LABELS[pass.ticketLanguage] ?? LABELS.en
+
   const nameWidth = TICKET_WIDTH - NAME_BAND.sidePad * 2
   const nameSize = fitFontSize(pass.coupleName, nameWidth, 160, 0.46, 64)
 
   // Date only — the ticket never shows a time.
-  const dateValue = pass.dateLabel || 'Date TBC'
+  const dateValue = pass.dateLabel || labels.dateTbc
   const dateSize = dateValue.length > 26 ? 46 : 56
 
-  const venueValue = pass.venue || 'Venue TBC'
+  const venueValue = pass.venue || labels.venueTbc
   const venueSize = venueValue.length > 56 ? 46 : 56
 
   const qrInner = QR_BOX.size - QR_BOX.pad * 2
@@ -69,6 +82,30 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
     <div style={{ display: 'flex', width: '100%', height: '100%', position: 'relative' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={templateDataUri} width={TICKET_WIDTH} height={TICKET_HEIGHT} style={{ position: 'absolute', inset: 0 }} alt="" />
+
+      {/* Category intro line ("The sendoff of" / "Sendoff ya") with the
+          artwork's flanking dashes, redrawn so the dashes hug whatever
+          length the localized phrase has. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: INTRO_ROW.top,
+          width: TICKET_WIDTH,
+          height: INTRO_ROW.height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 26,
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ width: INTRO_ROW.dashWidth, height: 3, background: WHITE, opacity: 0.85 }} />
+        <span style={{ fontFamily: 'Playfair Display', fontWeight: 700, fontSize: 58, color: WHITE }}>
+          {pass.introLabel}
+        </span>
+        <div style={{ width: INTRO_ROW.dashWidth, height: 3, background: WHITE, opacity: 0.85 }} />
+      </div>
 
       <div
         style={{
@@ -105,7 +142,7 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
           fontSize: dateSize,
         }}
       >
-        <span style={{ color: YELLOW }}>Date:</span>
+        <span style={{ color: YELLOW }}>{labels.date}</span>
         <span style={{ color: WHITE }}>{dateValue}</span>
       </div>
 
@@ -125,7 +162,7 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
           fontSize: venueSize,
         }}
       >
-        <span style={{ color: YELLOW }}>Venue:</span>
+        <span style={{ color: YELLOW }}>{labels.venue}</span>
         <div style={{ maxWidth: 840, color: WHITE, lineHeight: 1.35 }}>{venueValue}</div>
       </div>
 

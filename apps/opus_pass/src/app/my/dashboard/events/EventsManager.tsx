@@ -54,6 +54,11 @@ type FormState = {
   event_type: EventType
   /** Free-text label used when event_type is 'other'. */
   custom_type: string
+  /** Celebrants' names — printed (as first names) on the Entrance Pass
+   *  Ticket. Second is optional: a kitchen party or birthday has one
+   *  celebrant. */
+  partner1_name: string
+  partner2_name: string
   startDate: string
   venue_name: string
   address: string
@@ -73,6 +78,8 @@ const EMPTY_FORM: FormState = {
   name: '',
   event_type: 'wedding',
   custom_type: '',
+  partner1_name: '',
+  partner2_name: '',
   startDate: '',
   venue_name: '',
   address: '',
@@ -112,6 +119,8 @@ function fromEvent(e: WeddingEvent): FormState {
     name: e.name,
     event_type: known ? e.event_type : 'other',
     custom_type: known ? '' : e.event_type,
+    partner1_name: e.partner1_name ?? '',
+    partner2_name: e.partner2_name ?? '',
     startDate: start.date,
     venue_name: e.venue_name ?? '',
     address: e.address ?? '',
@@ -134,6 +143,8 @@ function toPayload(f: FormState): EventInput {
     name: f.name.trim(),
     event_type,
     description: f._description,
+    partner1_name: f.partner1_name.trim() || null,
+    partner2_name: f.partner2_name.trim() || null,
     venue_name: f.venue_name.trim() || null,
     address: f.address.trim() || null,
     city: f.city.trim() || null,
@@ -374,6 +385,28 @@ export default function EventsManager({
               />
               <CounterRow value={form.name.length} max={NAME_MAX} hint={strings.hint_max_100} />
             </Field>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={strings.field_partner1}>
+                <input
+                  className={inputClass}
+                  value={form.partner1_name}
+                  maxLength={NAME_MAX}
+                  onChange={(e) => set('partner1_name', e.target.value)}
+                  placeholder={strings.placeholder_partner1}
+                />
+              </Field>
+              <Field label={strings.field_partner2}>
+                <input
+                  className={inputClass}
+                  value={form.partner2_name}
+                  maxLength={NAME_MAX}
+                  onChange={(e) => set('partner2_name', e.target.value)}
+                  placeholder={strings.placeholder_partner2}
+                />
+              </Field>
+            </div>
+            <p className="text-xs text-[#1A1A1A]/55">{strings.hint_partner_names}</p>
 
             <Field label={strings.field_start_date}>
               <input
