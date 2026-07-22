@@ -1,6 +1,7 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ACCENT, ON_ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
 
 /** Side of the square the corner brackets frame. */
@@ -129,12 +130,19 @@ export function ScanTipsModal({ visible, onClose }: ScanTipsModalProps) {
         </View>
 
         <View className="border-t border-ed-outline-variant px-4 pb-2 pt-3">
+          {/* The scanner's primary CTA colour, matching "Continue scanning"
+              on the entry screen: this is the button that starts the shift's
+              real work, so it should look like the one that resumes it. */}
           <Pressable
             accessibilityRole="button"
             onPress={onClose}
-            className="h-14 items-center justify-center rounded-2xl bg-ed-primary-container"
+            className="h-14 items-center justify-center rounded-full"
+            style={{ backgroundColor: ACCENT }}
           >
-            <Text className="font-work-sans-bold text-base text-ed-on-primary">
+            <Text
+              className="font-work-sans-bold text-sm uppercase tracking-[1px]"
+              style={{ color: ON_ACCENT }}
+            >
               Got it
             </Text>
           </Pressable>
