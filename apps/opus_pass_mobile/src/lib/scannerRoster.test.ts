@@ -93,3 +93,56 @@ test('party badges speak the language the tickets are sold in', () => {
   // Hand-entered special invitations can exceed a Double; fall back to count.
   assert.equal(partySizeLabel(6), 'Party of 6');
 });
+
+test('grouping preserves every row, so no guest becomes unreachable', () => {
+  // An invisible guest is one nobody can check in, so this is the property
+  // that matters more than any individual count.
+  const roster = [
+    guest({ fullName: 'Asha Mwakalinga', groupTag: 'Bus A' }),
+    guest({ fullName: 'Neema Kileo', groupTag: null }),
+    guest({ fullName: 'Tumaini Sanga', groupTag: '   ' }),
+    guest({ fullName: 'Zawadi Mrema', groupTag: 'Bus A' }),
+    guest({ fullName: 'Baraka Lyimo', groupTag: 'Family' }),
+  ];
+  const groups = groupRoster(roster);
+  const regrouped = groups.flatMap((g) => g.guests);
+
+  assert.equal(regrouped.length, roster.length);
+  assert.deepEqual(
+    new Set(regrouped.map((g) => g.invitationId)),
+    new Set(roster.map((g) => g.invitationId))
+  );
+  // Heads survive the split too, or a group total would disagree with the bar.
+  assert.equal(
+    groups.reduce((sum, g) => sum + g.heads, 0),
+    expectedHeads(roster)
+  );
+});
+
+test('arrived and pending partition the roster at every head count', () => {
+  const roster = [
+    // Full party arrived.
+    guest({ fullName: 'Asha Mwakalinga', partySize: 3, checkedInAt: 'now', checkedInPartySize: 3 }),
+    // Part of a party arrived — the couple is billed for 2, not 4.
+    guest({ fullName: 'Neema Kileo', partySize: 4, checkedInAt: 'now', checkedInPartySize: 2 }),
+    // Scanned with no recorded count, so the RSVP'd party stands in.
+    guest({ fullName: 'Zawadi Mrema', partySize: 2, checkedInAt: 'now', checkedInPartySize: null }),
+    // Never turned up.
+    guest({ fullName: 'Baraka Lyimo', partySize: 5 }),
+  ];
+  const arrived = roster.filter((g) => g.checkedInAt);
+  const pending = roster.filter((g) => !g.checkedInAt);
+
+  assert.equal(arrived.length + pending.length, roster.length);
+  assert.equal(arrivedHeads(arrived), 3 + 2 + 2);
+  // Pending guests contribute nothing to the arrived figure even though the
+  // reducer sees the whole roster.
+  assert.equal(arrivedHeads(roster), arrivedHeads(arrived));
+  assert.equal(expectedHeads(roster), 3 + 4 + 2 + 5);
+});
+
+test('an empty roster reads as zero rather than throwing', () => {
+  assert.deepEqual(groupRoster([]), []);
+  assert.equal(expectedHeads([]), 0);
+  assert.equal(arrivedHeads([]), 0);
+});

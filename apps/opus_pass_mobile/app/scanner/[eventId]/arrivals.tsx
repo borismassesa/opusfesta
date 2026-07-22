@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BackButton } from '@/components/navigation/BackButton';
 import { validateScannerSession } from '@/lib/api/checkin';
+import { arrivedHeads, expectedHeads } from '@/lib/scannerRoster';
 import { useScannerSession } from '@/hooks/useScannerSession';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
@@ -122,8 +123,10 @@ export default function ArrivalsScreen() {
   }, [visible]);
 
   const totalGuests = rosterQuery.data?.length ?? 0;
-  // Headcount, not row count: a party of 3 arriving is 3 people through the door.
-  const headsIn = arrived.reduce((sum, g) => sum + (g.checkedInPartySize ?? g.partySize), 0);
+  // Headcount, not row count: a party of 3 arriving is 3 people through the
+  // door. Shared with the other scanner screens — these are the numbers the
+  // couple is catered and billed against, so they derive in exactly one place.
+  const headsIn = arrivedHeads(arrived);
 
   /**
    * End-of-night summary, handed off through the native share sheet (WhatsApp,
@@ -133,13 +136,13 @@ export default function ArrivalsScreen() {
   const shareReport = () => {
     const roster = rosterQuery.data ?? [];
     const notArrived = roster.filter((g) => !g.checkedInAt);
-    const expectedHeads = roster.reduce((sum, g) => sum + g.partySize, 0);
+    const expected = expectedHeads(roster);
 
     const lines = [
       `${session?.eventName ?? 'Event'} — arrivals`,
       reportStamp(new Date()),
       '',
-      `${headsIn} of ${expectedHeads} guests through the door`,
+      `${headsIn} of ${expected} guests through the door`,
       `${arrived.length} of ${totalGuests} invitations scanned`,
       '',
       `ARRIVED (${arrived.length})`,
