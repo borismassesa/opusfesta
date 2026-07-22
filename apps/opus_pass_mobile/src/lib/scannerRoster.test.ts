@@ -7,6 +7,7 @@ import {
   expectedHeads,
   groupRoster,
   initialsOf,
+  partySizeLabel,
   UNGROUPED_LABEL,
 } from './scannerRoster';
 import type { RosterEntry } from '../types/checkin';
@@ -83,5 +84,12 @@ test('untagged guests collect under one heading and sort last', () => {
 test('the head count is dropped when it says nothing beyond the row count', () => {
   assert.equal(countLabel(1, 1), '1 guest');
   assert.equal(countLabel(5, 5), '5 guests');
-  assert.equal(countLabel(5, 12), '5 guests (12 ct)');
+  assert.equal(countLabel(5, 12), '5 guests · 12 people');
+});
+
+test('party badges speak the language the tickets are sold in', () => {
+  assert.equal(partySizeLabel(1), 'Single');
+  assert.equal(partySizeLabel(2), 'Double');
+  // Hand-entered special invitations can exceed a Double; fall back to count.
+  assert.equal(partySizeLabel(6), 'Party of 6');
 });

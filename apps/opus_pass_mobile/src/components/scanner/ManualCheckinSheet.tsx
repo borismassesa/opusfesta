@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
 import { GuestConfirmCard } from '@/components/scanner/GuestConfirmCard';
+import { partySizeLabel } from '@/lib/scannerRoster';
 import { ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
 import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
@@ -427,23 +428,27 @@ export function ManualCheckinSheet({
                             ) : null}
                           </View>
 
-                          <View className="mt-1 flex-row items-center gap-2">
-                            {item.entryCode ? (
-                              <Text className="font-work-sans-bold text-[11px] tracking-[1px] text-ed-on-surface-variant">
-                                {item.entryCode}
-                              </Text>
-                            ) : null}
-                            <Text
-                              className="shrink font-work-sans text-xs text-ed-on-surface-variant"
-                              numberOfLines={1}
-                            >
-                              {arrived
-                                ? `Already checked in · ${item.checkedInPartySize ?? item.partySize} of ${item.partySize}`
-                                : item.partySize > 1
-                                  ? `Party of ${item.partySize}`
-                                  : 'Single guest'}
-                            </Text>
-                          </View>
+                          {/* The badge names the ticket type, so this row
+                              only carries the printed code and, once used,
+                              the arrival detail. */}
+                          {item.entryCode || arrived ? (
+                            <View className="mt-1 flex-row items-center gap-2">
+                              {item.entryCode ? (
+                                <Text className="font-work-sans-bold text-[11px] tracking-[1px] text-ed-on-surface-variant">
+                                  {item.entryCode}
+                                </Text>
+                              ) : null}
+                              {arrived ? (
+                                <Text
+                                  className="shrink font-work-sans text-xs text-ed-on-surface-variant"
+                                  numberOfLines={1}
+                                >
+                                  Already checked in ·{' '}
+                                  {item.checkedInPartySize ?? item.partySize} of {item.partySize}
+                                </Text>
+                              ) : null}
+                            </View>
+                          ) : null}
                         </View>
 
                         {arrived ? (
@@ -454,7 +459,7 @@ export function ManualCheckinSheet({
                             style={{ backgroundColor: editorial.surfaceContainerHigh }}
                           >
                             <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                              {item.partySize} ct
+                              {partySizeLabel(item.partySize)}
                             </Text>
                           </View>
                         )}

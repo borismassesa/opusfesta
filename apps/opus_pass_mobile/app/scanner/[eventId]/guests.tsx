@@ -17,7 +17,7 @@ import { GroupFilterSheet } from '@/components/scanner/GroupFilterSheet';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
 import { GuestConfirmCard } from '@/components/scanner/GuestConfirmCard';
 import { submitScan, validateScannerSession } from '@/lib/api/checkin';
-import { countLabel, groupRoster, UNGROUPED_LABEL } from '@/lib/scannerRoster';
+import { countLabel, groupRoster, partySizeLabel, UNGROUPED_LABEL } from '@/lib/scannerRoster';
 import { useScannerSession } from '@/hooks/useScannerSession';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
@@ -305,13 +305,16 @@ export default function ScannerGuestsScreen() {
                       </View>
                     ) : null}
                   </View>
-                  <Text className="mt-0.5 font-work-sans text-xs text-ed-on-surface-variant">
-                    {arrived
-                      ? `Arrived · ${item.checkedInPartySize ?? item.partySize} of ${item.partySize}`
-                      : item.entryCode
-                        ? `${item.entryCode} · party of ${item.partySize}`
-                        : `Party of ${item.partySize}`}
-                  </Text>
+                  {/* The badge names the ticket type, so the subtitle only
+                      carries what the badge can't: arrival detail or the
+                      printed code for the manual fallback. */}
+                  {arrived || item.entryCode ? (
+                    <Text className="mt-0.5 font-work-sans text-xs text-ed-on-surface-variant">
+                      {arrived
+                        ? `Arrived · ${item.checkedInPartySize ?? item.partySize} of ${item.partySize}`
+                        : item.entryCode}
+                    </Text>
+                  ) : null}
                 </View>
 
                 {arrived ? (
@@ -322,7 +325,7 @@ export default function ScannerGuestsScreen() {
                     style={{ backgroundColor: editorial.surfaceContainerHigh }}
                   >
                     <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                      {item.partySize} ct
+                      {partySizeLabel(item.partySize)}
                     </Text>
                   </View>
                 )}

@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
+import { partySizeLabel } from '@/lib/scannerRoster';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
 
@@ -145,18 +146,22 @@ export function GuestConfirmCard({
                 <Text className="font-playfair-bold text-[26px] leading-8 text-ed-on-surface">
                   {guest.fullName}
                 </Text>
-                <Text className="mt-1 font-work-sans text-sm text-ed-on-surface-variant">
-                  {guest.partySize > 1 ? `Party of ${guest.partySize}` : 'Single guest'}
-                  {guest.entryCode ? ` · ${guest.entryCode}` : ''}
-                </Text>
+                {/* The badge beside the name states the ticket type, so the
+                    subtitle carries only the printed code. */}
+                {guest.entryCode ? (
+                  <Text className="mt-1 font-work-sans text-sm text-ed-on-surface-variant">
+                    {guest.entryCode}
+                  </Text>
+                ) : null}
               </View>
-              {/* The "1 ct" badge, in the unit that matters here: heads. */}
+              {/* Named in the language the tickets are sold in — the guest is
+                  holding a Single or a Double, not "1 ct". */}
               <View
                 className="shrink-0 rounded-lg px-2.5 py-1"
                 style={{ backgroundColor: editorial.surfaceContainerHigh }}
               >
                 <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                  {guest.partySize} ct
+                  {partySizeLabel(guest.partySize)}
                 </Text>
               </View>
             </View>

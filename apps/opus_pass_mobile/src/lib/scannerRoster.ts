@@ -102,8 +102,20 @@ export function groupRoster(roster: RosterEntry[]): RosterGroup[] {
     });
 }
 
-/** "12 guests (28 ct)" — rows and heads together, the way the door counts. */
+/** "12 guests · 28 people" — rows and heads together, the way the door counts. */
 export function countLabel(guestCount: number, heads: number): string {
   const rows = `${guestCount} ${guestCount === 1 ? 'guest' : 'guests'}`;
-  return heads === guestCount ? rows : `${rows} (${heads} ct)`;
+  return heads === guestCount ? rows : `${rows} · ${heads} people`;
+}
+
+/**
+ * Badge text for a party size, in the language the tickets are sold in:
+ * passes come as Single or Double, so those words are what the guest is
+ * holding and what the attendant should read. Larger parties (special
+ * invitations the couple entered by hand) fall back to the count.
+ */
+export function partySizeLabel(partySize: number): string {
+  if (partySize === 1) return 'Single';
+  if (partySize === 2) return 'Double';
+  return `Party of ${partySize}`;
 }

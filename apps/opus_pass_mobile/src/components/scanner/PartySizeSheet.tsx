@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
+import { partySizeLabel } from '@/lib/scannerRoster';
 import { useTheme } from '@/theme/useTheme';
 
 /** The success green used by the scan result overlay, so an accepted pass
@@ -135,7 +136,7 @@ export function PartySizeSheet({
                   style={{ backgroundColor: editorial.surfaceContainerHigh }}
                 >
                   <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                    {partySize} ct
+                    {partySizeLabel(partySize)}
                   </Text>
                 </View>
               </View>
