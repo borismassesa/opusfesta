@@ -952,7 +952,9 @@ export interface EntrancePassData {
   /** Celebrant first names ("Claudia & Daniel") — see entranceCoupleName. */
   coupleName: string
   eventName: string
-  /** Venue name + street address (no city) — the ticket's first venue row. */
+  /** Venue name only (the editable "Venue" field) — the ticket's first venue
+   *  row. Deliberately excludes the event's free-form `address`, which isn't
+   *  part of the ticket-details form the couple edits. */
   venue: string | null
   /** City on its own — drawn on the ticket's second venue row. */
   city: string | null
@@ -1025,7 +1027,7 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     guestContactId: guest.id,
     coupleName: entranceCoupleName(event, profile),
     eventName: event.name,
-    venue: [event.venue_name, event.address].filter(Boolean).join(', ') || null,
+    venue: event.venue_name || null,
     city: event.city || null,
     dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
     introLabel: ticketIntroLabel(event.event_type, lang),
@@ -1078,7 +1080,7 @@ export async function getEntrancePassPreviewData(eventId: string): Promise<Entra
   const lang: TicketLanguage = event.ticket_language === 'sw' ? 'sw' : 'en'
   return {
     coupleName: entranceCoupleName(event, profile),
-    venue: [event.venue_name, event.address].filter(Boolean).join(', ') || null,
+    venue: event.venue_name || null,
     city: event.city || null,
     dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
     introLabel: ticketIntroLabel(event.event_type, lang),
