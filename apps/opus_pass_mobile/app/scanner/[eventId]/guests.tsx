@@ -16,8 +16,9 @@ import { CountSegments, GroupChip } from '@/components/scanner/CountSegments';
 import { GroupFilterSheet } from '@/components/scanner/GroupFilterSheet';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
 import { GuestConfirmCard } from '@/components/scanner/GuestConfirmCard';
+import { PartyBadge } from '@/components/scanner/PartyBadge';
 import { submitScan, validateScannerSession } from '@/lib/api/checkin';
-import { countLabel, groupRoster, partySizeLabel, UNGROUPED_LABEL } from '@/lib/scannerRoster';
+import { countLabel, groupRoster, UNGROUPED_LABEL } from '@/lib/scannerRoster';
 import { useScannerSession } from '@/hooks/useScannerSession';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
@@ -320,14 +321,7 @@ export default function ScannerGuestsScreen() {
                 {arrived ? (
                   <Ionicons name="checkmark-circle" size={24} color="#1B7F4C" />
                 ) : (
-                  <View
-                    className="shrink-0 rounded-lg px-2.5 py-1"
-                    style={{ backgroundColor: editorial.surfaceContainerHigh }}
-                  >
-                    <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                      {partySizeLabel(item.partySize)}
-                    </Text>
-                  </View>
+                  <PartyBadge partySize={item.partySize} />
                 )}
               </Pressable>
             );

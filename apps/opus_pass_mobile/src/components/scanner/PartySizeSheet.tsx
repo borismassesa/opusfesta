@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
-import { partySizeLabel } from '@/lib/scannerRoster';
+import { PartyBadge } from '@/components/scanner/PartyBadge';
 import { useTheme } from '@/theme/useTheme';
 
 /** The success green used by the scan result overlay, so an accepted pass
@@ -131,14 +131,7 @@ export function PartySizeSheet({
                     {groupTag ? `${groupTag} · ` : ''}Invited {partySize}
                   </Text>
                 </View>
-                <View
-                  className="shrink-0 rounded-lg px-2.5 py-1"
-                  style={{ backgroundColor: editorial.surfaceContainerHigh }}
-                >
-                  <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                    {partySizeLabel(partySize)}
-                  </Text>
-                </View>
+                <PartyBadge partySize={partySize} />
               </View>
             </View>
 

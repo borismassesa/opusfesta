@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
-import { partySizeLabel } from '@/lib/scannerRoster';
+import { PartyBadge } from '@/components/scanner/PartyBadge';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
 
@@ -156,14 +156,7 @@ export function GuestConfirmCard({
               </View>
               {/* Named in the language the tickets are sold in — the guest is
                   holding a Single or a Double, not "1 ct". */}
-              <View
-                className="shrink-0 rounded-lg px-2.5 py-1"
-                style={{ backgroundColor: editorial.surfaceContainerHigh }}
-              >
-                <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                  {partySizeLabel(guest.partySize)}
-                </Text>
-              </View>
+              <PartyBadge partySize={guest.partySize} />
             </View>
 
             {arrived ? (

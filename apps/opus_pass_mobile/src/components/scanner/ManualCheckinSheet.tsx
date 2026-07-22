@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GuestAvatar } from '@/components/scanner/GuestAvatar';
 import { GuestConfirmCard } from '@/components/scanner/GuestConfirmCard';
-import { partySizeLabel } from '@/lib/scannerRoster';
+import { PartyBadge } from '@/components/scanner/PartyBadge';
 import { ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
 import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
@@ -454,14 +454,7 @@ export function ManualCheckinSheet({
                         {arrived ? (
                           <Ionicons name="checkmark-circle" size={24} color="#1B7F4C" />
                         ) : (
-                          <View
-                            className="shrink-0 rounded-lg px-2.5 py-1"
-                            style={{ backgroundColor: editorial.surfaceContainerHigh }}
-                          >
-                            <Text className="font-work-sans-semibold text-[13px] text-ed-on-surface">
-                              {partySizeLabel(item.partySize)}
-                            </Text>
-                          </View>
+                          <PartyBadge partySize={item.partySize} />
                         )}
                       </Pressable>
                     );

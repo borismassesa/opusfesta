@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/useTheme';
@@ -46,18 +47,37 @@ export function CountSegments({
   const activeBorder = onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface;
   const textColor = onCamera ? '#FFFFFF' : editorial.onSurface;
   const idleColor = onCamera ? 'rgba(255,255,255,0.72)' : editorial.onSurfaceVariant;
+  const separatorColor = onCamera ? 'rgba(255,255,255,0.28)' : editorial.outlineVariant;
 
   return (
     <View
       className="flex-row items-center rounded-2xl p-1"
       style={{ backgroundColor: trackColor }}
     >
-      {segments.map((segment) => {
+      {segments.map((segment, index) => {
         const active = activeKey === segment.key;
         const color = active ? textColor : idleColor;
+        // Inset divider: shorter than the segment so it floats between the
+        // counts instead of slicing the track into boxes. Hidden beside the
+        // active segment, whose own border already marks that edge.
+        const separatorHidden =
+          index === 0 ||
+          activeKey === segment.key ||
+          activeKey === segments[index - 1].key;
         return (
-          <Pressable
-            key={segment.key}
+          <Fragment key={segment.key}>
+            {index > 0 ? (
+              <View
+                style={{
+                  width: 1,
+                  height: 22,
+                  borderRadius: 0.5,
+                  backgroundColor: separatorColor,
+                  opacity: separatorHidden ? 0 : 1,
+                }}
+              />
+            ) : null}
+            <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${segment.label}: ${segment.count}`}
             accessibilityState={{ selected: active }}
@@ -85,7 +105,8 @@ export function CountSegments({
             >
               {segment.caption}
             </Text>
-          </Pressable>
+            </Pressable>
+          </Fragment>
         );
       })}
     </View>
