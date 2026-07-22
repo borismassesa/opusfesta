@@ -263,22 +263,32 @@ export default function TicketGenerationClient({ eventId }: { eventId: string })
               <Printer className="h-3.5 w-3.5" /> Print
             </button>
           </div>
-          {/* Tickets render as full artwork (612x198 source viewBox) — a
-              wide ticket shape, not a square QR card, so these stack one
-              per row rather than a grid. Each is meant to be cut/handed
-              out individually. */}
-          <div className="mt-4 flex flex-col gap-5 print:mt-0 print:gap-8">
+          {/* Tickets render as full artwork (1300x1881 viewBox) — a tall
+              portrait pass, so they sit in a grid rather than stacking
+              full-width. Two per row when printing puts two cut-apart
+              tickets on each page. */}
+          <div className="mt-4 grid grid-cols-2 gap-5 md:grid-cols-3 print:mt-0 print:grid-cols-2 print:gap-8">
             {tickets.map((t) => (
-              <div key={t.invitationId} className="relative mx-auto w-full max-w-2xl break-inside-avoid">
+              <div key={t.invitationId} className="relative break-inside-avoid">
                 {t.isNewGuest ? (
                   <span className="absolute -top-2 -right-2 z-10 inline-flex items-center rounded-full bg-[#F0DFF6] px-2 py-0.5 text-[10px] font-semibold text-[#8e57b3] shadow-sm print:hidden">
                     New guest
                   </span>
                 ) : null}
+                {/* No border/card chrome — the artwork carries its own
+                    rounded ticket edge and side notches. */}
                 <div
-                  className="w-full overflow-hidden rounded-lg border border-gray-200 shadow-sm print:border-0 print:shadow-none [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+                  className="w-full [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
                   dangerouslySetInnerHTML={{ __html: t.ticketSvg }}
                 />
+                {/* Screen-only: the artwork deliberately carries no guest
+                    name (identification is by QR alone), so this caption is
+                    the only way to tell whose ticket is whose in the list.
+                    Kept off print — the handed-out ticket stays clean. */}
+                <p className="mt-1.5 truncate text-center text-xs font-medium text-gray-600 print:hidden">
+                  {t.fullName}
+                  {t.groupTag ? <span className="text-gray-400"> · {t.groupTag}</span> : null}
+                </p>
               </div>
             ))}
           </div>
