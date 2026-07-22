@@ -5,7 +5,7 @@ import { requirePermission, getCallerEmail } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { generateEntryPassQrDataUrl, generateScannerAccessToken } from '@/lib/checkin-tokens'
 import { accessCodeExpiry, type AccessCodeValidity } from '@/lib/checkin-code'
-import { renderGuestTicketSvg } from '@/lib/ticket-render'
+import { renderGuestTicketSvg, ticketIntroLabel, formatTicketDate, type TicketLanguage } from '@/lib/ticket-render'
 import { MAX_IMPORT_ROWS, parseGuestRows } from '@/lib/guest-csv'
 
 export interface AttendantAssignment {
@@ -174,12 +174,14 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
 
   const { data: event, error: eventErr } = await supabase
     .from('wedding_events')
-    .select('id, user_id, name, venue_name, address, city, starts_at')
+    .select('id, user_id, name, event_type, ticket_language, venue_name, address, city, starts_at')
     .eq('id', eventId)
     .maybeSingle<{
       id: string
       user_id: string
       name: string
+      event_type: string | null
+      ticket_language: string | null
       venue_name: string | null
       address: string | null
       city: string | null
@@ -194,25 +196,27 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
     .eq('user_id', event.user_id)
     .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>()
 
-  // Same labels and precedence as apps/opus_pass's getEntrancePassData(),
-  // so a manually-admitted guest's ticket reads exactly like the
-  // WhatsApp-sent pass: confirmed host name > partner names > event name.
-  // Date only — the ticket never carries a time.
+  // Same labels, precedence and formats as apps/opus_pass's
+  // getEntrancePassData(), so a manually-admitted guest's ticket reads
+  // exactly like the WhatsApp-sent pass: confirmed host name > partner names
+  // > event name; the category intro line and date honor the event's ticket
+  // language. Date only — the ticket never carries a time.
+  const lang: TicketLanguage = event.ticket_language === 'sw' ? 'sw' : 'en'
   const hostOverride = couple?.invite_host_name?.trim() || null
   const partnerNames = [couple?.partner1_name, couple?.partner2_name].filter(Boolean)
   const startsAt = event.starts_at ? new Date(event.starts_at) : null
   const hasValidDate = startsAt !== null && !Number.isNaN(startsAt.getTime())
   const ticketBaseFields = {
+    introLabel: ticketIntroLabel(event.event_type || 'other', lang),
     coupleName: hostOverride ?? (partnerNames.length ? partnerNames.join(' & ') : event.name),
-    dateLabel: hasValidDate
-      ? startsAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-      : '',
+    dateLabel: hasValidDate ? formatTicketDate(startsAt, lang) : '',
     // Venue name on the first ticket row, the city on its own second row —
     // matches apps/opus_pass's getEntrancePassData. The event's free-form
     // `address` is intentionally left off the ticket (not part of the
     // ticket-details form the couple edits).
     venue: event.venue_name || '',
     city: event.city || '',
+    ticketLanguage: lang,
   }
 
   if (!rawText.trim()) return { ok: false, error: 'Paste or upload at least one guest row' }
