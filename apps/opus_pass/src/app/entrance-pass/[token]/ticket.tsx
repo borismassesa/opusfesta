@@ -155,9 +155,9 @@ export function buildTicketElement({ pass, templateDataUri, qrDataUrl }: TicketI
         <span style={{ color: WHITE }}>{dateValue}</span>
       </div>
 
-      {/* Venue name + address on the first row, the city on its own second
-          row beneath it — the whole block stays vertically centered in the
-          slot whether or not a city is set. */}
+      {/* Venue name on the first row, the city on its own second row beneath
+          it — the whole block stays vertically centered in the slot whether
+          or not a city is set. */}
       <div
         style={{
           position: 'absolute',
