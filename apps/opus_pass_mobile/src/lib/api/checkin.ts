@@ -22,8 +22,22 @@ function checkinUrl(path: string): string {
   return `${publicOrigin()}/api/checkin/${path}`;
 }
 
+/**
+ * Cap on any check-in request. Without it, a host that silently drops
+ * packets — the classic case is a dev URL pointing at an IP from a previous
+ * network — spins for the OS's TCP timeout, over a minute on iOS, and the
+ * attendant just sees a spinner that never ends. Generous enough for venue
+ * networks, which are slow but not minute-slow.
+ */
+const REQUEST_TIMEOUT_MS = 15000;
+
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const url = checkinUrl(path);
+
+  // AbortController + timer rather than AbortSignal.timeout: the static
+  // helper isn't in Hermes, and this file runs on-device.
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
@@ -31,13 +45,19 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: abort.signal,
     });
   } catch {
-    // The request never landed: wrong network, server down, or a URL the
-    // device can't route to. Naming the host is the whole point here — the
-    // usual cause is the app pointing somewhere it can't reach, and a
-    // generic "check your connection" hides exactly the detail needed.
+    // The request never landed: wrong network, server down, a URL the
+    // device can't route to, or the timeout above. Naming the host is the
+    // whole point here — the usual cause is the app pointing somewhere it
+    // can't reach, and a generic "check your connection" hides exactly the
+    // detail needed.
     throw new Error(`Can't reach ${hostOf(url)}. Check the network and that the server is running.`);
+  } finally {
+    // A settled fetch no longer needs its abort timer; without this every
+    // successful call leaves a timer waiting to abort a dead controller.
+    clearTimeout(timer);
   }
 
   // These endpoints return a JSON body on failure too (401 for an expired
