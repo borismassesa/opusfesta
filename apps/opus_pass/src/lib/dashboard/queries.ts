@@ -1,7 +1,7 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { getDashboardUser, requireDashboardUser } from './auth'
-import { eatDateParts, eventInviteUrl, firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, hasEatTimeComponent, publicOrigin } from './share'
+import { eatDateParts, eventInviteUrl, firstNameOf, formatLongDate, formatLongDateSw, formatSwahiliTime, formatTicketDate, hasEatTimeComponent, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel, eventTypeLabelSw, ticketIntroLabel } from './types'
 import type { TicketLanguage } from './types'
@@ -1029,7 +1029,7 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     eventName: event.name,
     venue: event.venue_name || null,
     city: event.city || null,
-    dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
+    dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatTicketDate(event.starts_at)) || null,
     introLabel: ticketIntroLabel(event.event_type, lang),
     ticketLanguage: lang,
     partySize: Math.max(1, invitation.party_size ?? 1),
@@ -1082,7 +1082,7 @@ export async function getEntrancePassPreviewData(eventId: string): Promise<Entra
     coupleName: entranceCoupleName(event, profile),
     venue: event.venue_name || null,
     city: event.city || null,
-    dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
+    dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatTicketDate(event.starts_at)) || null,
     introLabel: ticketIntroLabel(event.event_type, lang),
     ticketLanguage: lang,
     // The preview is a sample of the design, not anyone's actual admission.
