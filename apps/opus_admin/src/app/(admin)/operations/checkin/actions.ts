@@ -205,7 +205,7 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
   const ticketBaseFields = {
     coupleName: hostOverride ?? (partnerNames.length ? partnerNames.join(' & ') : event.name),
     dateLabel: hasValidDate
-      ? startsAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      ? startsAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : '',
     // Venue name on the first ticket row, the city on its own second row —
     // matches apps/opus_pass's getEntrancePassData. The event's free-form
