@@ -433,10 +433,12 @@ export default function ScannerEntryScreen() {
 
                   <View className="mt-6">
                     <FieldLabel>Your name</FieldLabel>
+                    {/* One line, no caveat: the "code already has a name"
+                        case resolves itself server-side, so spelling it out
+                        only asked the attendant to hold a rule they can't
+                        act on. */}
                     <Text className="mt-1.5 font-work-sans text-xs leading-5 text-ed-on-surface-variant">
-                      Recorded against each guest you check in. Skipped
-                      automatically if the team already assigned this code to
-                      someone.
+                      Recorded against every guest you check in.
                     </Text>
                     <Field
                       icon="person-outline"
