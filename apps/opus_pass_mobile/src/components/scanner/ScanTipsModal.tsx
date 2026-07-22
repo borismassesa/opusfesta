@@ -1,8 +1,49 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/useTheme';
+
+/** Side of the square the corner brackets frame. */
+const RETICLE_SIZE = 132;
+
+/**
+ * The camera's own reticle, drawn at rest.
+ *
+ * A picture of the thing the tips are describing, rather than decoration: the
+ * attendant meets these exact brackets a second later on the live feed, so the
+ * screen teaches the target it is about to hand them. Line art in theme
+ * tokens, so it stays legible in both schemes without carrying a colour block.
+ */
+function ScanReticle() {
+  const { editorial } = useTheme();
+  return (
+    <View
+      className="items-center justify-center"
+      style={{ width: RETICLE_SIZE, height: RETICLE_SIZE }}
+    >
+      {(
+        [
+          { top: 0, left: 0, borderTopWidth: 2.5, borderLeftWidth: 2.5, borderTopLeftRadius: 14 },
+          { top: 0, right: 0, borderTopWidth: 2.5, borderRightWidth: 2.5, borderTopRightRadius: 14 },
+          { bottom: 0, left: 0, borderBottomWidth: 2.5, borderLeftWidth: 2.5, borderBottomLeftRadius: 14 },
+          { bottom: 0, right: 0, borderBottomWidth: 2.5, borderRightWidth: 2.5, borderBottomRightRadius: 14 },
+        ] as const
+      ).map((corner, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 34,
+            height: 34,
+            borderColor: editorial.outline,
+            ...corner,
+          }}
+        />
+      ))}
+      <MaterialCommunityIcons name="qrcode" size={56} color={editorial.onSurface} />
+    </View>
+  );
+}
 
 const TIPS: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -44,49 +85,40 @@ export function ScanTipsModal({ visible, onClose }: ScanTipsModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView className="flex-1 bg-ed-bg" edges={['bottom']}>
-        {/* Illustrated hero rather than another icon list: it signals "read
-            this once" instead of "another dialog to dismiss". */}
-        <LinearGradient
-          colors={['#7E5896', '#4A2E63']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ height: 220, alignItems: 'center', justifyContent: 'center' }}
-        >
+      <SafeAreaView className="flex-1 bg-ed-bg">
+        <View className="flex-row px-4 pt-4">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close"
             onPress={onClose}
             hitSlop={12}
-            className="absolute left-4 top-4 h-9 w-9 items-center justify-center rounded-full"
-            style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+            className="h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: editorial.surfaceContainer }}
           >
-            <Ionicons name="close" size={20} color="#FFFFFF" />
+            <Ionicons name="close" size={20} color={editorial.onSurface} />
           </Pressable>
+        </View>
 
-          <View className="items-center justify-center">
-            <View
-              className="h-[132px] w-[104px] items-center justify-center rounded-[20px]"
-              style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
-            >
-              <MaterialCommunityIcons name="qrcode-scan" size={52} color="#FFFFFF" />
-            </View>
+        <View className="flex-1 px-6">
+          <View className="items-center py-7">
+            <ScanReticle />
           </View>
-        </LinearGradient>
 
-        <View className="flex-1 px-6 pt-7">
           <Text className="font-playfair-bold text-[30px] leading-9 text-ed-on-surface">
-            Scan the pass to{'\n'}check a guest in
+            Scan the pass to check a guest in
           </Text>
 
-          <View className="mt-8">
+          <View className="mt-7">
             {TIPS.map((tip) => (
-              <View key={tip.icon} className="mb-6 flex-row items-start gap-4">
+              <View key={tip.icon} className="mb-5 flex-row items-start gap-4">
+                {/* Soft circles, not filled ones: three solid discs down the
+                    left read as buttons and drag the eye off the words they
+                    are labelling. */}
                 <View
-                  className="h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: editorial.onSurface }}
+                  className="h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: editorial.surfaceContainer }}
                 >
-                  <Ionicons name={tip.icon} size={22} color={editorial.bg} />
+                  <Ionicons name={tip.icon} size={20} color={editorial.onSurface} />
                 </View>
                 <Text className="mt-2 flex-1 font-work-sans text-[15px] leading-6 text-ed-on-surface">
                   {tip.text}
