@@ -110,7 +110,7 @@ function Field({
 
 export default function ScannerEntryScreen() {
   const router = useRouter();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const { session, isLoading, saveSession, clearSession } = useScannerSession();
 
   const [code, setCode] = useState('');
@@ -387,10 +387,11 @@ export default function ScannerEntryScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Start a new shift with a different access code"
                         onPress={confirmNewShift}
-                        className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-ed-outline-variant"
+                        className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border"
+                        style={{ borderColor: colors.green }}
                       >
-                        <Ionicons name="add" size={17} color={editorial.onSurface} />
-                        <Text className="font-work-sans-bold text-[13px] text-ed-on-surface">
+                        <Ionicons name="add" size={17} color={colors.green} />
+                        <Text className="font-work-sans-bold text-[13px] text-of-green">
                           New shift
                         </Text>
                       </Pressable>
