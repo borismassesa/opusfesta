@@ -42,10 +42,12 @@ export function CountSegments({
   const { editorial } = useTheme();
   const onCamera = tone === 'camera';
 
-  // No track fill on light surfaces: a grey slab behind the counts read as a
-  // card competing with the real cards below it. The camera keeps its
-  // translucent track — over a live feed the counts need something to sit on.
-  const trackColor = onCamera ? 'rgba(255,255,255,0.14)' : 'transparent';
+  // On light surfaces the track is a real card — white surface with the same
+  // hairline border every other card on these screens wears — not a grey
+  // slab, which read as a filler block rather than part of the card family.
+  // The camera keeps its translucent track; over a live feed the counts need
+  // something to sit on.
+  const trackColor = onCamera ? 'rgba(255,255,255,0.14)' : editorial.surface;
   const activeColor = onCamera ? 'rgba(255,255,255,0.20)' : editorial.surfaceContainer;
   const activeBorder = onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface;
   const textColor = onCamera ? '#FFFFFF' : editorial.onSurface;
@@ -58,7 +60,11 @@ export function CountSegments({
   return (
     <View
       className="flex-row items-center rounded-2xl p-1"
-      style={{ backgroundColor: trackColor }}
+      style={{
+        backgroundColor: trackColor,
+        borderWidth: onCamera ? 0 : 1,
+        borderColor: onCamera ? 'transparent' : editorial.outlineVariant,
+      }}
     >
       {segments.map((segment, index) => {
         const active = activeKey === segment.key;
@@ -128,13 +134,13 @@ export function GroupChip({ activeTag, onPress, tone = 'surface' }: GroupChipPro
   const onCamera = tone === 'camera';
   const filtered = Boolean(activeTag);
 
+  // Card treatment to match the count bar it sits beside; a heavier border
+  // is what says a group filter is applied.
   const background = onCamera
     ? filtered
       ? 'rgba(255,255,255,0.24)'
       : 'rgba(255,255,255,0.14)'
-    : filtered
-      ? editorial.surface
-      : editorial.surfaceContainer;
+    : editorial.surface;
   const color = onCamera ? '#FFFFFF' : editorial.onSurface;
 
   return (
@@ -145,8 +151,14 @@ export function GroupChip({ activeTag, onPress, tone = 'surface' }: GroupChipPro
       className="h-[52px] max-w-[150px] flex-row items-center gap-1.5 rounded-2xl px-3.5"
       style={{
         backgroundColor: background,
-        borderWidth: filtered ? 1.5 : 0,
-        borderColor: filtered ? (onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface) : 'transparent',
+        borderWidth: onCamera ? (filtered ? 1.5 : 0) : filtered ? 1.5 : 1,
+        borderColor: onCamera
+          ? filtered
+            ? 'rgba(255,255,255,0.9)'
+            : 'transparent'
+          : filtered
+            ? editorial.onSurface
+            : editorial.outlineVariant,
       }}
     >
       <Ionicons name="people-circle-outline" size={19} color={color} />
