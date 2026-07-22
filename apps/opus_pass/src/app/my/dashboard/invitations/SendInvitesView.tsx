@@ -696,7 +696,7 @@ export default function SendInvitesView({
         <button
           role="tab"
           aria-selected={sendTab === 'ticket'}
-          className={`stb amber ${sendTab === 'ticket' ? 'on' : ''}`}
+          className={`stb ${sendTab === 'ticket' ? 'on' : ''}`}
           onClick={() => { setSendTab('ticket'); setSelected(new Set()) }}
         >
           <Ticket size={14} /> {strings.tab_pass_ticket}
@@ -754,10 +754,10 @@ export default function SendInvitesView({
           {sendTab === 'ticket' ? (
             <div className="ccard ticket">
               <Image
-                src="/entrance-pass/signature.png"
+                src="/entrance-pass/ticket-preview.png"
                 alt={strings.entrance_tag}
                 fill
-                sizes="260px"
+                sizes="112px"
                 className="object-cover"
               />
             </div>
@@ -824,6 +824,41 @@ export default function SendInvitesView({
                 </>
               )}
             </div>
+
+            {/* Pass Ticket tab — the ticket art is portrait, so the info
+                column carries the working numbers: clickable sent/not-sent
+                stats (they drive the same ticketFilter as the toolbar
+                segmented control) and the pass quota, instead of a lonely
+                full-width quota box under the card. */}
+            {sendTab === 'ticket' ? (
+              <>
+                <div className="tstats" role="group" aria-label={strings.filter_aria}>
+                  <button type="button" className={`tstat${ticketFilter === 'all' ? ' on' : ''}`} aria-pressed={ticketFilter === 'all'} onClick={() => setTicketFilter('all')}>
+                    <b>{attendingCount}</b><span>{strings.filter_attending}</span>
+                  </button>
+                  <button type="button" className={`tstat${ticketFilter === 'sent' ? ' on' : ''}`} aria-pressed={ticketFilter === 'sent'} onClick={() => setTicketFilter('sent')}>
+                    <b>{ticketSentCount}</b><span>{strings.entrance_status_sent}</span>
+                  </button>
+                  <button type="button" className={`tstat${ticketFilter === 'notsent' ? ' on' : ''}`} aria-pressed={ticketFilter === 'notsent'} onClick={() => setTicketFilter('notsent')}>
+                    <b>{ticketNotSentCount}</b><span>{strings.entrance_status_notsent}</span>
+                  </button>
+                </div>
+                {entranceQuota.purchased > 0 ? (
+                  <div className="equota">
+                    <div className="top">
+                      <span>{strings.entrance_quota_label}</span>
+                      <span>
+                        <b>{entranceQuota.used}</b> {fmt(strings.quota_used_suffix, { m: entranceQuota.purchased })} · {fmt(strings.quota_remaining, { n: entranceQuota.remaining })}
+                      </span>
+                    </div>
+                    <div className="bar"><i style={{ width: `${epct}%` }} /></div>
+                  </div>
+                ) : null}
+                {attendingCount === 0 ? (
+                  <div className="empty">{strings.empty_attending}</div>
+                ) : null}
+              </>
+            ) : null}
 
             {sendTab === 'cards' && event.hasPaidOrder ? (
               <>
@@ -908,22 +943,6 @@ export default function SendInvitesView({
               </div>
             ) : null}
           </div>
-        ) : sendTab === 'ticket' ? (
-          <div className="ctxsend">
-            {entranceQuota.purchased > 0 ? (
-              <div className="equota">
-                <div className="top">
-                  <span>{strings.entrance_quota_label}</span>
-                  <span><b>{entranceQuota.used}</b> {fmt(strings.quota_used_suffix, { m: entranceQuota.purchased })}</span>
-                </div>
-                <div className="bar"><i style={{ width: `${epct}%` }} /></div>
-                <div className="ft">{fmt(strings.quota_remaining, { n: entranceQuota.remaining })}</div>
-              </div>
-            ) : null}
-            {attendingCount === 0 ? (
-              <div className="empty">{strings.empty_attending}</div>
-            ) : null}
-          </div>
         ) : null}
       </div>
 
@@ -976,13 +995,13 @@ export default function SendInvitesView({
               </div>
             ) : (
               <div className="seg" role="tablist" aria-label={strings.filter_aria}>
-                <button className={`sg amber ${ticketFilter === 'all' ? 'on' : ''}`} onClick={() => setTicketFilter('all')}>
+                <button className={`sg ${ticketFilter === 'all' ? 'on' : ''}`} onClick={() => setTicketFilter('all')}>
                   <Ticket size={12} /> {strings.filter_attending}{attendingCount ? ` ${attendingCount}` : ''}
                 </button>
-                <button className={`sg amber ${ticketFilter === 'notsent' ? 'on' : ''}`} onClick={() => setTicketFilter('notsent')}>
+                <button className={`sg ${ticketFilter === 'notsent' ? 'on' : ''}`} onClick={() => setTicketFilter('notsent')}>
                   {strings.filter_notsent}{ticketNotSentCount ? ` ${ticketNotSentCount}` : ''}
                 </button>
-                <button className={`sg amber ${ticketFilter === 'sent' ? 'on' : ''}`} onClick={() => setTicketFilter('sent')}>
+                <button className={`sg ${ticketFilter === 'sent' ? 'on' : ''}`} onClick={() => setTicketFilter('sent')}>
                   {strings.entrance_status_sent}{ticketSentCount ? ` ${ticketSentCount}` : ''}
                 </button>
               </div>
@@ -1330,8 +1349,8 @@ export default function SendInvitesView({
                 <Image
                   src={entrancePreviewGuest.entrancePassUrl}
                   alt=""
-                  width={760}
-                  height={222}
+                  width={650}
+                  height={940}
                   className="waimgfull"
                   unoptimized
                 />
@@ -1518,7 +1537,7 @@ const css = `
 .si .btn.lg{ padding:11px 20px; font-size:14px; background:var(--purple); color:#fff; }
 /* Every actual "send now" button — invites, entrance passes, confirm-modal
    sends — uses this one consistent green, regardless of which tab/context
-   it's in, instead of tab-colored (purple for cards, amber for tickets). */
+   it's in, instead of tab-colored. */
 .si .btn.send{ background:var(--wa); color:#fff; box-shadow:var(--soft); }
 .si .btn.send:hover{ filter:brightness(1.06); background:var(--wa); }
 .si .btn.ghost{ background:#fff; color:var(--ink); border:1px solid var(--line); }
@@ -1536,7 +1555,7 @@ const css = `
 .si .ccard{ width:92px; height:122px; flex:none; border-radius:14px; position:relative; overflow:hidden;
   background:linear-gradient(155deg,var(--purple),var(--lav)); box-shadow:0 4px 14px rgba(107,63,160,.22); }
 .si .ccard.noDesign{ background:linear-gradient(155deg,var(--lav-soft),#fff); border:1.5px dashed var(--lav); box-shadow:none; }
-.si .ccard.ticket{ width:260px; height:76px; background:#FBEFDC; box-shadow:0 4px 14px rgba(138,109,26,.22); }
+.si .ccard.ticket{ width:112px; height:162px; border-radius:8px; background:transparent; box-shadow:0 4px 14px rgba(92,45,141,.25); }
 .si .ccard .ci{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
   justify-content:center; gap:5px; text-align:center; color:#fff; padding:8px; }
 .si .ccard .ci b{ font-size:13px; line-height:1.25; }
@@ -1570,12 +1589,17 @@ const css = `
 .si .bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--purple),var(--lav)); }
 .si .quota .ft{ font-size:11px; color:var(--muted); margin-top:9px; }
 .si .quota .ft a{ color:var(--purple); font-weight:600; text-decoration:none; }
-.si .equota{ margin-top:16px; padding:12px 14px; border:1px solid var(--amber-bd); border-radius:12px; background:#fff; }
-.si .equota .top{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:9px; }
+.si .tstats{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.si .tstat{ display:inline-flex; align-items:baseline; gap:7px; padding:8px 14px; border-radius:12px;
+  border:1px solid var(--line); background:#fff; cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+.si .tstat b{ font-size:17px; font-weight:700; color:var(--purple-d); }
+.si .tstat span{ font-size:12px; font-weight:600; color:var(--muted); }
+.si .tstat:hover:not(.on){ border-color:var(--lav); }
+.si .tstat.on{ background:var(--lav-soft); border-color:var(--lav); }
+.si .tstat.on b, .si .tstat.on span{ color:var(--purple-d); }
+.si .equota{ margin-top:12px; padding:10px 12px; max-width:520px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+.si .equota .top{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:7px; }
 .si .equota .top b{ color:var(--ink); }
-.si .equota .bar{ background:var(--amber-bg); }
-.si .equota .bar i{ background:linear-gradient(90deg,var(--amber-tx),#c99a2e); }
-.si .equota .ft{ font-size:11px; color:var(--muted); margin-top:9px; }
 .si .sendtabs{ display:flex; flex-wrap:wrap; align-items:center; gap:24px; margin-top:22px;
   padding-bottom:8px; border-bottom:1px solid var(--line); }
 .si .stb{ display:inline-flex; align-items:center; gap:7px; margin-bottom:-9px; background:none; border:none;
@@ -1583,14 +1607,11 @@ const css = `
   cursor:pointer; transition:color .12s, border-color .12s; }
 .si .stb:hover{ color:var(--ink); }
 .si .stb.on{ border-bottom-color:var(--ink); color:var(--ink); font-weight:600; }
-.si .stb.amber.on{ border-bottom-color:var(--amber-tx); color:var(--amber-tx); }
 .si .stbcnt{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px;
   padding:0 6px; background:rgba(0,0,0,.06); color:var(--muted); font-size:10.5px; font-weight:700; border-radius:999px; }
 .si .stb.on .stbcnt{ background:var(--ink); color:#fff; }
-.si .stb.amber.on .stbcnt{ background:var(--amber-tx); color:#fff; }
 .si .ctxsend{ margin-top:18px; }
 .si .ctxsend .chips{ margin-top:0; }
-.si .seg .sg.on.amber{ background:var(--amber-bg); color:var(--amber-tx); }
 .si .chips{ display:flex; gap:9px; margin-top:16px; flex-wrap:wrap; align-items:center; }
 .si .chip{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:#fff;
   border-radius:11px; padding:9px 13px; font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);

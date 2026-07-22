@@ -931,9 +931,9 @@ export interface EntrancePassData {
   /** e.g. "5:00 PM" — starts_at's time component, for templates that show
    *  date and time as separate lines. Null when starts_at has no time set. */
   timeLabel: string | null
-  /** Package tier id (lite/classic/elegant/signature) — selects which
-   *  entrance-pass ticket template to composite. */
-  cardTierId: string | null
+  /** Seats this invitation admits (>= 1) — drives the ticket's
+   *  SINGLE / DOUBLE / PARTY OF N label. */
+  partySize: number
 }
 
 /**
@@ -955,10 +955,10 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
 
   const { data: invitation } = await supabase
     .from('guest_invitations')
-    .select('id, rsvp_status')
+    .select('id, rsvp_status, party_size')
     .eq('guest_contact_id', guest.id)
     .eq('event_id', eventId)
-    .maybeSingle<{ id: string; rsvp_status: string }>()
+    .maybeSingle<{ id: string; rsvp_status: string; party_size: number | null }>()
   if (!invitation || invitation.rsvp_status !== 'attending') return null
 
   const { data: event } = await supabase
@@ -976,29 +976,16 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     }>()
   if (!event) return null
 
-  const [{ data: profile }, { data: order }] = await Promise.all([
-    supabase
-      .from('couple_profiles')
-      .select('partner1_name, partner2_name, invite_host_name')
-      .eq('user_id', guest.user_id)
-      .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>(),
-    supabase
-      .from('invitation_orders')
-      .select('items')
-      .eq('user_id', guest.user_id)
-      .eq('event_id', eventId)
-      .eq('status', 'paid')
-      .order('paid_at', { ascending: false })
-      .limit(1)
-      .maybeSingle<{ items: PaidOrderItem[] | null }>(),
-  ])
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name, invite_host_name')
+    .eq('user_id', guest.user_id)
+    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>()
 
   // Same precedence as getWhatsAppEntitlement: the couple's explicitly
   // confirmed template host name wins over their profile's partner names.
   const hostOverride = profile?.invite_host_name?.trim() || null
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
-  const items = order?.items ?? []
-  const withImage = items.find((it) => it.image)
 
   // A bare date (no time picked) parses to local midnight — treat that as
   // "no time set" rather than printing a misleading "12:00 AM".
@@ -1015,7 +1002,7 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
     dateLabel: formatLongDate(event.starts_at) || null,
     timeLabel,
-    cardTierId: withImage?.tierId ?? items[0]?.tierId ?? null,
+    partySize: Math.max(1, invitation.party_size ?? 1),
   }
 }
 
