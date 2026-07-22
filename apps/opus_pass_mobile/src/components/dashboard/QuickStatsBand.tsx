@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/useTheme';
+import { useSavedVendorIds } from '@/hooks/useSavedVendors';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -23,14 +24,20 @@ function StatPill({ stat }: { stat: QuickStat }) {
   );
 }
 
-/** Goal budget / Saved vendors don't have a backing feature yet, so they're
- * static placeholders — Attending is real, pulled from useDashboardStats. */
+/** Goal budget has no backing feature yet, so it stays a static placeholder —
+ * Attending and Saved vendors are real. */
 export function QuickStatsBand({ attending }: { attending: number }) {
   const { editorial } = useTheme();
+  const { data: savedVendorIds } = useSavedVendorIds();
 
   const stats: QuickStat[] = [
     { icon: 'wallet', iconColor: '#D46A9F', value: '--', label: 'Goal budget' },
-    { icon: 'storefront', iconColor: editorial.secondary, value: '0', label: 'Saved vendors' },
+    {
+      icon: 'storefront',
+      iconColor: editorial.secondary,
+      value: String(savedVendorIds?.length ?? 0),
+      label: 'Saved vendors',
+    },
     { icon: 'people', iconColor: '#5B8DEF', value: String(attending), label: 'Attending' },
   ];
 

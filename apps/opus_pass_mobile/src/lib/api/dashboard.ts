@@ -103,7 +103,9 @@ export async function getDashboardStats(client: SupabaseClient): Promise<Dashboa
 export async function getCoupleProfile(client: SupabaseClient): Promise<CoupleProfileLite | null> {
   const { data, error } = await client
     .from('couple_profiles')
-    .select('partner1_name, partner2_name, wedding_date, public_slug, cover_image_url, public_sharing_enabled')
+    .select(
+      'partner1_name, partner2_name, wedding_date, public_slug, cover_image_url, public_sharing_enabled, city',
+    )
     .maybeSingle<CoupleProfileLite>();
   if (error) throw error;
   return data ?? null;

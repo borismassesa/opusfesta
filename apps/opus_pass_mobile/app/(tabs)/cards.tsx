@@ -21,6 +21,7 @@ import type { InvitationProduct } from '@/types/invitations';
 import { matchesCategory } from '@/lib/api/invitation-categories';
 import { ACCENT, ON_ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type TopTab = 'designs' | 'favorites' | 'drafts' | 'orders';
 
@@ -189,24 +190,6 @@ function FaqItem({
         </Text>
       ) : null}
     </Pressable>
-  );
-}
-
-function EmptyState({
-  icon,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-}) {
-  const { editorial } = useTheme();
-  return (
-    <View className="flex-1 items-center justify-center py-24">
-      <Ionicons name={icon} size={32} color={editorial.onSurfaceVariant} />
-      <Text className="mt-3 px-10 text-center font-work-sans text-sm text-ed-on-surface-variant">
-        {label}
-      </Text>
-    </View>
   );
 }
 

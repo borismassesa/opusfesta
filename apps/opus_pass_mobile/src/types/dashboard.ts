@@ -117,6 +117,7 @@ export interface CoupleProfileLite {
   public_slug: string | null;
   cover_image_url: string | null;
   public_sharing_enabled: boolean;
+  city: string | null;
 }
 
 /** Mirrors apps/opus_pass/src/lib/dashboard/queries.ts `coupleFirstNames()`. */

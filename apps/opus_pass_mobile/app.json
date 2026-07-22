@@ -47,7 +47,8 @@
           "cameraPermission": "OpusPass uses the camera to scan guest entry passes at your event door.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
