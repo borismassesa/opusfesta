@@ -25,6 +25,10 @@ interface GuestConfirmCardProps {
   visible: boolean;
   guest: RosterEntry | null;
   busy?: boolean;
+  /** Why the last admit attempt failed. The card stays open while this is
+   *  set: dismissing on a rejected admit is what makes a guest walk in
+   *  against a check-in the server never recorded. */
+  error?: string | null;
   onCancel: () => void;
   onConfirm: (guest: RosterEntry) => void;
 }
@@ -43,6 +47,7 @@ export function GuestConfirmCard({
   visible,
   guest: incomingGuest,
   busy = false,
+  error = null,
   onCancel,
   onConfirm,
 }: GuestConfirmCardProps) {
@@ -219,6 +224,28 @@ export function GuestConfirmCard({
         {/* Stacked, full width and thumb-height: the attendant is one-handed
             with a phone in the other hand's light. */}
         <View className="border-t border-ed-outline-variant px-4 pb-2 pt-3">
+          {/* Sits with the buttons, not up in the scrolled detail, so it is
+              on screen next to the control the attendant just pressed. */}
+          {error ? (
+            <View
+              accessibilityRole="alert"
+              className="mb-3 flex-row items-start gap-2 rounded-2xl px-3 py-3"
+              style={{ backgroundColor: `${editorial.error}1A` }}
+            >
+              <Ionicons
+                name="alert-circle"
+                size={20}
+                color={editorial.error}
+                style={{ marginTop: 1 }}
+              />
+              <Text
+                className="min-w-0 flex-1 font-work-sans-semibold text-sm"
+                style={{ color: editorial.error }}
+              >
+                {error}
+              </Text>
+            </View>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={onCancel}

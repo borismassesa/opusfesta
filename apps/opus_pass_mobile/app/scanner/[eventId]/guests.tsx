@@ -18,13 +18,20 @@ import { GuestAvatar } from '@/components/scanner/GuestAvatar';
 import { GuestConfirmCard } from '@/components/scanner/GuestConfirmCard';
 import { PartyBadge } from '@/components/scanner/PartyBadge';
 import { submitScan, validateScannerSession } from '@/lib/api/checkin';
-import { countLabel, groupRoster, UNGROUPED_LABEL } from '@/lib/scannerRoster';
+import { arrivedHeads, countLabel, groupRoster, UNGROUPED_LABEL } from '@/lib/scannerRoster';
 import { useScannerSession } from '@/hooks/useScannerSession';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
 
 /** Brand green, matching the live/active pills used elsewhere in the product. */
 const LIVE_GREEN = '#9FE870';
+
+/** Used only when the server rejects an admission without saying why. */
+const FALLBACK_ADMIT_ERROR: Record<'duplicate' | 'invalid' | 'error', string> = {
+  duplicate: 'This guest is already checked in.',
+  invalid: 'This guest can no longer be admitted to this event.',
+  error: 'Check-in failed. Nothing was recorded — try again.',
+};
 
 type Filter = 'all' | 'pending' | 'arrived';
 
@@ -60,6 +67,7 @@ export default function ScannerGuestsScreen() {
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [confirming, setConfirming] = useState<RosterEntry | null>(null);
   const [admitting, setAdmitting] = useState(false);
+  const [admitError, setAdmitError] = useState<string | null>(null);
 
   const rosterQuery = useQuery({
     queryKey: ['scanner', 'roster', eventId],
@@ -99,17 +107,28 @@ export default function ScannerGuestsScreen() {
     () =>
       groupRoster(visible).map((group) => ({
         title: group.tag,
-        subtitle: countLabel(group.guests.length, group.heads),
+        // Under the arrived filter the heads figure has to be who actually
+        // walked in, not who was expected — otherwise a section of three
+        // part-arrived parties reads "3 guests · 9 people" with 5 in the room.
+        subtitle: countLabel(
+          group.guests.length,
+          filter === 'arrived' ? arrivedHeads(group.guests) : group.heads
+        ),
         data: [...group.guests].sort((a, b) => a.fullName.localeCompare(b.fullName)),
       })),
-    [visible]
+    [visible, filter]
   );
 
   const admit = async (guest: RosterEntry) => {
     if (!session || admitting) return;
     setAdmitting(true);
+    setAdmitError(null);
     try {
-      await submitScan({
+      // submitScan resolves rather than throws for every domain outcome —
+      // a rejected pass, an already-used one, a 429, an expired session. So
+      // the status has to be read: closing the card on all of them is how a
+      // guest walks in against a check-in that was never recorded.
+      const result = await submitScan({
         eventId: session.eventId,
         accessToken: session.accessToken,
         invitationId: guest.invitationId,
@@ -119,8 +138,18 @@ export default function ScannerGuestsScreen() {
         doorLabel: session.doorLabel,
         attendantName: session.attendantName ?? undefined,
       });
+      // The roster is refetched either way: on a duplicate it is the server
+      // that knows this guest is already in, and the row should say so.
       await queryClient.invalidateQueries({ queryKey: ['scanner', 'roster', eventId] });
-      setConfirming(null);
+      if (result.status === 'success') {
+        setConfirming(null);
+        return;
+      }
+      setAdmitError(result.message ?? FALLBACK_ADMIT_ERROR[result.status]);
+    } catch (err) {
+      // Network failure or the 15s request timeout. postJson already names
+      // the unreachable host, which is the detail worth surfacing.
+      setAdmitError(err instanceof Error ? err.message : FALLBACK_ADMIT_ERROR.error);
     } finally {
       setAdmitting(false);
     }
@@ -279,7 +308,10 @@ export default function ScannerGuestsScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${item.fullName}, ${arrived ? 'checked in' : 'not yet arrived'}`}
-                onPress={() => setConfirming(item)}
+                onPress={() => {
+                  setAdmitError(null);
+                  setConfirming(item);
+                }}
                 className="mb-3 flex-row items-center gap-3 rounded-2xl border border-ed-outline-variant bg-ed-surface p-4"
               >
                 <GuestAvatar fullName={item.fullName} colorKey={item.groupTag} />
@@ -342,7 +374,11 @@ export default function ScannerGuestsScreen() {
         visible={Boolean(confirming)}
         guest={confirming}
         busy={admitting}
-        onCancel={() => setConfirming(null)}
+        error={admitError}
+        onCancel={() => {
+          setConfirming(null);
+          setAdmitError(null);
+        }}
         onConfirm={(guest) => void admit(guest)}
       />
     </SafeAreaView>
