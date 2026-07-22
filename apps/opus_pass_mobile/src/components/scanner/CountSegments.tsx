@@ -47,7 +47,10 @@ export function CountSegments({
   const activeBorder = onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface;
   const textColor = onCamera ? '#FFFFFF' : editorial.onSurface;
   const idleColor = onCamera ? 'rgba(255,255,255,0.72)' : editorial.onSurfaceVariant;
-  const separatorColor = onCamera ? 'rgba(255,255,255,0.28)' : editorial.outlineVariant;
+  // outline, not outlineVariant: the variant is a near-match for the track
+  // grey and disappears into it. Same reason the camera value is well above
+  // the track's 0.14 white.
+  const separatorColor = onCamera ? 'rgba(255,255,255,0.45)' : editorial.outline;
 
   return (
     <View
@@ -58,12 +61,9 @@ export function CountSegments({
         const active = activeKey === segment.key;
         const color = active ? textColor : idleColor;
         // Inset divider: shorter than the segment so it floats between the
-        // counts instead of slicing the track into boxes. Hidden beside the
-        // active segment, whose own border already marks that edge.
-        const separatorHidden =
-          index === 0 ||
-          activeKey === segment.key ||
-          activeKey === segments[index - 1].key;
+        // counts instead of slicing the track into boxes. Always drawn —
+        // iOS hides the ones beside the selection, but our active style is
+        // too quiet for a missing line to read as anything but a bug.
         return (
           <Fragment key={segment.key}>
             {index > 0 ? (
@@ -73,7 +73,6 @@ export function CountSegments({
                   height: 22,
                   borderRadius: 0.5,
                   backgroundColor: separatorColor,
-                  opacity: separatorHidden ? 0 : 1,
                 }}
               />
             ) : null}
