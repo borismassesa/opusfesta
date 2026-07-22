@@ -42,8 +42,11 @@ export function CountSegments({
   const { editorial } = useTheme();
   const onCamera = tone === 'camera';
 
-  const trackColor = onCamera ? 'rgba(255,255,255,0.14)' : editorial.surfaceContainer;
-  const activeColor = onCamera ? 'rgba(255,255,255,0.20)' : editorial.surface;
+  // No track fill on light surfaces: a grey slab behind the counts read as a
+  // card competing with the real cards below it. The camera keeps its
+  // translucent track — over a live feed the counts need something to sit on.
+  const trackColor = onCamera ? 'rgba(255,255,255,0.14)' : 'transparent';
+  const activeColor = onCamera ? 'rgba(255,255,255,0.20)' : editorial.surfaceContainer;
   const activeBorder = onCamera ? 'rgba(255,255,255,0.9)' : editorial.onSurface;
   const textColor = onCamera ? '#FFFFFF' : editorial.onSurface;
   const idleColor = onCamera ? 'rgba(255,255,255,0.72)' : editorial.onSurfaceVariant;
