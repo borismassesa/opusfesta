@@ -207,7 +207,10 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
     dateLabel: hasValidDate
       ? startsAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       : '',
-    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', '),
+    // Venue name + street address on the first ticket row, the city on its
+    // own second row — matches apps/opus_pass's getEntrancePassData split.
+    venue: [event.venue_name, event.address].filter(Boolean).join(', '),
+    city: event.city || '',
   }
 
   if (!rawText.trim()) return { ok: false, error: 'Paste or upload at least one guest row' }

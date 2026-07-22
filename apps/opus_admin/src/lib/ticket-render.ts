@@ -23,8 +23,10 @@ export interface TicketFields {
   coupleName: string
   /** Pre-formatted long date, e.g. "12 July 2026"; '' when the event has no date. */
   dateLabel: string
-  /** Full venue line, e.g. "Holy Family Basilica, Arusha"; '' when unset. */
+  /** Venue name + street address (no city), e.g. "Holy Family Basilica"; '' when unset. */
   venue: string
+  /** City on its own — drawn on the ticket's second venue row; '' when unset. */
+  city: string
   partySize: number
   /** data: URL PNG from generateEntryPassQrDataUrl(). */
   qrDataUrl: string
@@ -40,7 +42,7 @@ const PURPLE = '#5C2D8D'
 
 const NAME_BAND = { top: 486, height: 292, sidePad: 60 }
 const DATE_ROW = { top: 770, height: 110 }
-const VENUE_ROW = { top: 916, sidePad: 60 }
+const VENUE_ROW = { top: 916, height: 190, sidePad: 60 }
 const PILL = { top: 1227, height: 87 }
 const QR_BOX = { top: 1386, size: 423, pad: 14 }
 
@@ -98,11 +100,13 @@ export function renderGuestTicketSvg(fields: TicketFields): string {
   const dateSize = dateValue.length > 26 ? 46 : 56
   const dateBaseline = Math.round(DATE_ROW.top + DATE_ROW.height / 2 + dateSize * 0.35)
 
-  // Venue — "Venue:" label + value, wrapped by hand onto at most two
-  // centered lines (SVG text doesn't flow); the size drops until the
-  // wrapped value fits.
+  // Venue — "Venue:" label + name/address, hand-wrapped onto at most two
+  // centered lines (SVG text doesn't flow), then the city on its own line
+  // beneath; the size drops until the venue value fits. The whole block is
+  // vertically centered in the slot so 1, 2, or 3 lines all sit balanced.
   const venueValue = fields.venue || 'Venue TBC'
-  let venueSize = venueValue.length > 56 ? 46 : 56
+  const cityValue = fields.city || ''
+  let venueSize = Math.max(venueValue.length, cityValue.length) > 40 ? 46 : 56
   let venueLines: string[]
   for (;;) {
     const charsPerLine = Math.floor(contentWidth / (venueSize * 0.52))
@@ -116,8 +120,9 @@ export function renderGuestTicketSvg(fields: TicketFields): string {
     if (venueLines.length <= 2 || venueSize <= 34) break
     venueSize -= 6
   }
-  const venueLineHeight = venueSize * 1.35
-  const venueBaseline = VENUE_ROW.top + venueSize
+  if (cityValue) venueLines.push(cityValue)
+  const venueLineHeight = venueSize * 1.3
+  const venueMidY = VENUE_ROW.top + VENUE_ROW.height / 2
 
   // Party pill — white capsule, purple Playfair text, width approximated
   // from glyph count (no text measurement in string-land; Playfair bold
@@ -142,7 +147,7 @@ export function renderGuestTicketSvg(fields: TicketFields): string {
     .map((line, i) => {
       const label = i === 0 && line.startsWith('Venue: ')
       const body = label ? line.slice('Venue: '.length) : line
-      const y = Math.round(venueBaseline + i * venueLineHeight)
+      const y = Math.round(venueMidY + (i - (venueLines.length - 1) / 2) * venueLineHeight + venueSize * 0.35)
       const prefix = label ? `<tspan fill="${YELLOW}">Venue: </tspan>` : ''
       return `<text x="${centerX}" y="${y}" text-anchor="middle" ${SERIF} font-size="${venueSize}">${prefix}<tspan fill="${WHITE}">${escapeXml(body)}</tspan></text>`
     })
