@@ -47,12 +47,20 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
       signal: abort.signal,
     });
-  } catch {
-    // The request never landed: wrong network, server down, a URL the
-    // device can't route to, or the timeout above. Naming the host is the
-    // whole point here — the usual cause is the app pointing somewhere it
-    // can't reach, and a generic "check your connection" hides exactly the
-    // detail needed.
+  } catch (err) {
+    // A timeout is not the same failure as an unreachable host, and must not
+    // claim nothing was recorded: the abort fires client-side, so the POST
+    // may already have committed the check-in. Telling the attendant to look
+    // before retrying is what stops a "why does it say already scanned".
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(
+        `${hostOf(url)} took too long to answer. This may still have gone through — check the guest before scanning again.`
+      );
+    }
+    // The request never landed: wrong network, server down, or a URL the
+    // device can't route to. Naming the host is the whole point here — the
+    // usual cause is the app pointing somewhere it can't reach, and a
+    // generic "check your connection" hides exactly the detail needed.
     throw new Error(`Can't reach ${hostOf(url)}. Check the network and that the server is running.`);
   } finally {
     // A settled fetch no longer needs its abort timer; without this every
