@@ -13,6 +13,23 @@
   color-scheme: light;
 }
 
+/* Entrance-pass ticket faces (lib/ticket-render.ts) — same files the
+   guest-facing pass in apps/opus_pass renders with, so an admin-printed
+   ticket matches the WhatsApp-sent one. Browsers fetch these lazily, only
+   when a rendered ticket actually uses the family. */
+@font-face {
+  font-family: 'Dancing Script';
+  src: url('/fonts/DancingScript-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('/fonts/PlayfairDisplay-Bold.woff') format('woff');
+  font-weight: 700;
+  font-display: swap;
+}
+
 @keyframes contributor-shake {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-6px); }

@@ -1,30 +1,62 @@
 import 'server-only'
-import { TICKET_TEMPLATE_SVG } from './ticket-template'
+
+/**
+ * OpusPass entrance-pass ticket for manually-admitted guests, drawn on the
+ * same portrait purple artwork as the WhatsApp-sent pass
+ * (apps/opus_pass/src/app/entrance-pass/[token]/ticket.tsx). The static art
+ * (background, ornaments, logo, "The wedding of", perforation) ships as a
+ * pre-rasterized template PNG in public/entrance-pass/ — rebuilt from the
+ * designer's SVG by apps/opus_pass/scripts/build-entrance-pass-template.mjs
+ * (2600px-wide export for print) — and this module lays the per-guest data
+ * over it as SVG text: couple names, date, venue, the SINGLE/DOUBLE party
+ * pill and the real check-in QR.
+ *
+ * Deliberately identical content to the guest-facing pass: no guest name,
+ * group tag, or time on the artwork — the ticket carries only what the
+ * design carries, and identification happens by scanning the QR. All
+ * geometry below is the opus_pass layout's 1300x1881 coordinate space;
+ * keep the two in sync.
+ */
 
 export interface TicketFields {
-  partner1Name: string
-  partner2Name: string
-  /** Pre-formatted, e.g. "02 OCTOBER, 2026". */
-  eventDateLabel: string
-  /** Pre-formatted, e.g. "8:20PM" — omit the field entirely (pass ''). */
-  eventTimeLabel: string
-  /** Street/venue line, e.g. "Serena Hotel, 123 Independence Ave". */
-  addressLine: string
-  /** City line, e.g. "Dar es Salaam". */
-  cityLine: string
-  contactPhone: string
-  guestName: string
+  /** e.g. "Claudia & Daniel" — host-name override already applied. */
+  coupleName: string
+  /** Pre-formatted long date, e.g. "12 July 2026"; '' when the event has no date. */
+  dateLabel: string
+  /** Full venue line, e.g. "Holy Family Basilica, Arusha"; '' when unset. */
+  venue: string
   partySize: number
-  groupTag: string | null
   /** data: URL PNG from generateEntryPassQrDataUrl(). */
   qrDataUrl: string
 }
 
-/** Matches the exact QR placeholder block in ticket-template.ts — see the
- * comment there for why this is safe to do with a non-greedy regex (the
- * block has exactly one level of nesting, all leaves, no other <g> pairs
- * inside it to confuse the "first double close" match). */
-const QR_BLOCK_RE = /<g id="Qr_Code">[\s\S]*?<\/g>\s*<\/g>/
+const TICKET_WIDTH = 1300
+const TICKET_HEIGHT = 1881
+const TEMPLATE_URL = '/entrance-pass/ticket-template.png'
+
+const YELLOW = '#FFF24D'
+const WHITE = '#FFFFFF'
+const PURPLE = '#5C2D8D'
+
+const NAME_BAND = { top: 486, height: 292, sidePad: 60 }
+const DATE_ROW = { top: 770, height: 110 }
+const VENUE_ROW = { top: 916, sidePad: 60 }
+const PILL = { top: 1227, height: 87 }
+const QR_BOX = { top: 1386, size: 423, pad: 14 }
+
+/** Tickets are only ever sold as Single or Double — those two words are
+ *  the entire pill vocabulary. Anything above one is a Double; "Party of
+ *  N" never appears on a ticket. */
+function partySizeLabel(partySize: number): string {
+  return partySize === 1 ? 'SINGLE' : 'DOUBLE'
+}
+
+/** Shrink a line to fit its slot — `em` is the font's rough average glyph
+ *  width in em for the script it renders. */
+function fitFontSize(text: string, maxWidth: number, base: number, em: number, floor: number): number {
+  const fitted = Math.floor(maxWidth / (em * Math.max(1, text.length)))
+  return Math.max(floor, Math.min(base, fitted))
+}
 
 function escapeXml(value: string): string {
   return value
@@ -34,12 +66,13 @@ function escapeXml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
+const SERIF = `font-family="Playfair Display" font-weight="700"`
+
 /**
- * Stamps the base ticket template (ticket-template.ts) with real event +
- * guest data and swaps the decorative QR placeholder for the guest's real
- * entry-pass QR. Pure string substitution against known, exact placeholder
- * text in the source artwork — brittle if the template file changes, but
- * avoids a full SVG/DOM parser dependency for a one-off admin tool.
+ * Stamp the entrance-pass artwork with real event + guest data. Returns
+ * SVG markup ready to render inline (dangerouslySetInnerHTML) or print;
+ * the template PNG is referenced by URL rather than inlined so a
+ * 500-guest import doesn't ship 500 copies of the same 160KB background.
  */
 export function renderGuestTicketSvg(fields: TicketFields): string {
   // The only field NOT run through escapeXml below — it's interpolated
@@ -52,42 +85,71 @@ export function renderGuestTicketSvg(fields: TicketFields): string {
     throw new Error('qrDataUrl is not a well-formed PNG data URL')
   }
 
-  // The embedded template starts with a leading newline + an
-  // <?xml ...?> declaration (an artifact of the source file, harmless
-  // when parsed by an HTML parser via dangerouslySetInnerHTML but not
-  // valid as a standalone XML document) — strip both so the result is
-  // clean either way.
-  let svg = TICKET_TEMPLATE_SVG.replace(/^\s*<\?xml[^>]*\?>\s*/, '')
+  const contentWidth = TICKET_WIDTH - NAME_BAND.sidePad * 2
+  const centerX = TICKET_WIDTH / 2
 
-  // "Save the Date" fits an announcement, not a door ticket a guest
-  // presents to be scanned in — relabeled to match actual use.
-  svg = svg.replace('Save the Date', 'ENTRY PASS')
+  // Couple names — Dancing Script yellow, centered in the band under
+  // "The wedding of".
+  const nameSize = fitFontSize(fields.coupleName, contentWidth, 160, 0.46, 64)
+  const nameBaseline = Math.round(NAME_BAND.top + NAME_BAND.height / 2 + nameSize * 0.32)
 
-  svg = svg.replaceAll('CLAUDIA', escapeXml(fields.partner1Name.toUpperCase()))
-  svg = svg.replaceAll('DANIEL', escapeXml(fields.partner2Name.toUpperCase()))
-  svg = svg.replace('DATE: 02 OCTOBER, 2024', escapeXml(`DATE: ${fields.eventDateLabel}`))
-  svg = svg.replace('TIME: 8:20PM', escapeXml(fields.eventTimeLabel ? `TIME: ${fields.eventTimeLabel}` : ''))
-  svg = svg.replace('ADDRESS: 123 ANYWHERE ST.', escapeXml(`ADDRESS: ${fields.addressLine}`.slice(0, 40)))
-  svg = svg.replace('ANY CITY', escapeXml(fields.cityLine.slice(0, 24)))
-  svg = svg.replaceAll('+123-456-7890', escapeXml(fields.contactPhone))
+  // Date only — the ticket never shows a time.
+  const dateValue = fields.dateLabel || 'Date TBC'
+  const dateSize = dateValue.length > 26 ? 46 : 56
+  const dateBaseline = Math.round(DATE_ROW.top + DATE_ROW.height / 2 + dateSize * 0.35)
 
-  const partyLabel = fields.partySize > 1 ? `PARTY OF ${fields.partySize}` : 'ADMIT ONE'
-  const subLabel = fields.groupTag ? `${partyLabel} · ${fields.groupTag.toUpperCase()}` : partyLabel
-
-  // Replace the decorative QR placeholder with the real, guest-specific
-  // entry-pass QR, plus the guest's name/party underneath it — the base
-  // artwork has no name slot at all (it's a generic invitation design),
-  // so this is new content, not a substitution.
-  const qrReplacement = `<g id="Qr_Code">
-    <image href="${fields.qrDataUrl}" x="484.6" y="61.72" width="82" height="80" preserveAspectRatio="xMidYMid meet"/>
-  </g>
-  <text class="st4" transform="translate(525.6 152)" text-anchor="middle"><tspan x="0" y="0">${escapeXml(fields.guestName.toUpperCase())}</tspan></text>
-  <text class="st3" transform="translate(525.6 163)" text-anchor="middle" fill="#5c2d8c"><tspan x="0" y="0">${escapeXml(subLabel)}</tspan></text>`
-
-  if (!QR_BLOCK_RE.test(svg)) {
-    throw new Error('Ticket template QR placeholder not found — template artwork may have changed')
+  // Venue — "Venue:" label + value, wrapped by hand onto at most two
+  // centered lines (SVG text doesn't flow); the size drops until the
+  // wrapped value fits.
+  const venueValue = fields.venue || 'Venue TBC'
+  let venueSize = venueValue.length > 56 ? 46 : 56
+  let venueLines: string[]
+  for (;;) {
+    const charsPerLine = Math.floor(contentWidth / (venueSize * 0.52))
+    const words = `Venue: ${venueValue}`.split(/\s+/)
+    venueLines = ['']
+    for (const word of words) {
+      const line = venueLines[venueLines.length - 1]
+      if (line && `${line} ${word}`.length > charsPerLine) venueLines.push(word)
+      else venueLines[venueLines.length - 1] = line ? `${line} ${word}` : word
+    }
+    if (venueLines.length <= 2 || venueSize <= 34) break
+    venueSize -= 6
   }
-  svg = svg.replace(QR_BLOCK_RE, qrReplacement)
+  const venueLineHeight = venueSize * 1.35
+  const venueBaseline = VENUE_ROW.top + venueSize
 
-  return svg
+  // Party pill — white capsule, purple Playfair text, width approximated
+  // from glyph count (no text measurement in string-land; Playfair bold
+  // uppercase averages ~0.66em/glyph, verified against the designer's
+  // SINGLE pill).
+  const pillLabel = partySizeLabel(fields.partySize)
+  const pillTextWidth = pillLabel.length * (52 * 0.66 + 3)
+  const pillWidth = Math.round(pillTextWidth + 104)
+  const pillBaseline = Math.round(PILL.top + PILL.height / 2 + 52 * 0.35)
+
+  // The artwork's sample QR was white-on-purple; the real one sits on a
+  // white card instead — inverted (light-on-dark) QRs fail on common
+  // scanner stacks, and the card doubles as the quiet zone.
+  const qrCardX = (TICKET_WIDTH - QR_BOX.size) / 2
+  const qrInner = QR_BOX.size - QR_BOX.pad * 2
+
+  return `<svg viewBox="0 0 ${TICKET_WIDTH} ${TICKET_HEIGHT}" xmlns="http://www.w3.org/2000/svg" role="img">
+  <image href="${TEMPLATE_URL}" x="0" y="0" width="${TICKET_WIDTH}" height="${TICKET_HEIGHT}"/>
+  <text x="${centerX}" y="${nameBaseline}" text-anchor="middle" font-family="Dancing Script" font-size="${nameSize}" fill="${YELLOW}">${escapeXml(fields.coupleName)}</text>
+  <text x="${centerX}" y="${dateBaseline}" text-anchor="middle" ${SERIF} font-size="${dateSize}"><tspan fill="${YELLOW}">Date: </tspan><tspan fill="${WHITE}">${escapeXml(dateValue)}</tspan></text>
+  ${venueLines
+    .map((line, i) => {
+      const label = i === 0 && line.startsWith('Venue: ')
+      const body = label ? line.slice('Venue: '.length) : line
+      const y = Math.round(venueBaseline + i * venueLineHeight)
+      const prefix = label ? `<tspan fill="${YELLOW}">Venue: </tspan>` : ''
+      return `<text x="${centerX}" y="${y}" text-anchor="middle" ${SERIF} font-size="${venueSize}">${prefix}<tspan fill="${WHITE}">${escapeXml(body)}</tspan></text>`
+    })
+    .join('\n  ')}
+  <rect x="${centerX - pillWidth / 2}" y="${PILL.top}" width="${pillWidth}" height="${PILL.height}" rx="${PILL.height / 2}" fill="${WHITE}"/>
+  <text x="${centerX}" y="${pillBaseline}" text-anchor="middle" ${SERIF} font-size="52" letter-spacing="3" fill="${PURPLE}">${escapeXml(pillLabel)}</text>
+  <rect x="${qrCardX}" y="${QR_BOX.top}" width="${QR_BOX.size}" height="${QR_BOX.size}" rx="24" fill="${WHITE}"/>
+  <image href="${fields.qrDataUrl}" x="${qrCardX + QR_BOX.pad}" y="${QR_BOX.top + QR_BOX.pad}" width="${qrInner}" height="${qrInner}"/>
+</svg>`
 }

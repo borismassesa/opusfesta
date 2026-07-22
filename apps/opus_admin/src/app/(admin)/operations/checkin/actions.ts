@@ -174,11 +174,12 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
 
   const { data: event, error: eventErr } = await supabase
     .from('wedding_events')
-    .select('id, user_id, venue_name, address, city, starts_at')
+    .select('id, user_id, name, venue_name, address, city, starts_at')
     .eq('id', eventId)
     .maybeSingle<{
       id: string
       user_id: string
+      name: string
       venue_name: string | null
       address: string | null
       city: string | null
@@ -189,23 +190,24 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
 
   const { data: couple } = await supabase
     .from('couple_profiles')
-    .select('partner1_name, partner2_name, whatsapp_phone')
+    .select('partner1_name, partner2_name, invite_host_name')
     .eq('user_id', event.user_id)
-    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; whatsapp_phone: string | null }>()
+    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; invite_host_name: string | null }>()
 
-  const eventDate = event.starts_at ? new Date(event.starts_at) : null
+  // Same labels and precedence as apps/opus_pass's getEntrancePassData(),
+  // so a manually-admitted guest's ticket reads exactly like the
+  // WhatsApp-sent pass: confirmed host name > partner names > event name.
+  // Date only — the ticket never carries a time.
+  const hostOverride = couple?.invite_host_name?.trim() || null
+  const partnerNames = [couple?.partner1_name, couple?.partner2_name].filter(Boolean)
+  const startsAt = event.starts_at ? new Date(event.starts_at) : null
+  const hasValidDate = startsAt !== null && !Number.isNaN(startsAt.getTime())
   const ticketBaseFields = {
-    partner1Name: couple?.partner1_name || 'The Couple',
-    partner2Name: couple?.partner2_name || '',
-    eventDateLabel: eventDate
-      ? eventDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()
-      : 'DATE TBC',
-    eventTimeLabel: eventDate
-      ? eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '')
+    coupleName: hostOverride ?? (partnerNames.length ? partnerNames.join(' & ') : event.name),
+    dateLabel: hasValidDate
+      ? startsAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       : '',
-    addressLine: event.venue_name || event.address || 'Venue TBC',
-    cityLine: event.city || '',
-    contactPhone: couple?.whatsapp_phone || '',
+    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', '),
   }
 
   if (!rawText.trim()) return { ok: false, error: 'Paste or upload at least one guest row' }
@@ -279,9 +281,7 @@ export async function importGuestsWithTickets(eventId: string, rawText: string):
     const qrDataUrl = await generateEntryPassQrDataUrl(guestContactId, invitation.id)
     const ticketSvg = renderGuestTicketSvg({
       ...ticketBaseFields,
-      guestName: row.fullName,
       partySize: row.partySize,
-      groupTag: row.groupTag,
       qrDataUrl,
     })
     imported.push({
