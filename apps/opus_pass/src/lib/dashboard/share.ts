@@ -187,6 +187,16 @@ export function formatLongDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+/** Entrance-pass ticket date, month-first, e.g. "December 12, 2026". Empty if
+ *  null. Kept separate from formatLongDate (which reads day-first everywhere
+ *  else in the app) so only the ticket carries this house style. */
+export function formatTicketDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 const SWAHILI_MONTHS = [
   'Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni',
   'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba',
