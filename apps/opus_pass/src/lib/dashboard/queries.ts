@@ -952,7 +952,10 @@ export interface EntrancePassData {
   /** Celebrant first names ("Claudia & Daniel") — see entranceCoupleName. */
   coupleName: string
   eventName: string
+  /** Venue name + street address (no city) — the ticket's first venue row. */
   venue: string | null
+  /** City on its own — drawn on the ticket's second venue row. */
+  city: string | null
   /** Formatted in the ticket's language (formatLongDate vs formatLongDateSw). */
   dateLabel: string | null
   /** Ticket intro line for the event's category, already in the ticket's
@@ -1022,7 +1025,8 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
     guestContactId: guest.id,
     coupleName: entranceCoupleName(event, profile),
     eventName: event.name,
-    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
+    venue: [event.venue_name, event.address].filter(Boolean).join(', ') || null,
+    city: event.city || null,
     dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
     introLabel: ticketIntroLabel(event.event_type, lang),
     ticketLanguage: lang,
@@ -1033,7 +1037,7 @@ export async function getEntrancePassData(token: string, eventId: string): Promi
 /** What the ticket renderer needs, minus anything guest-specific. */
 export type EntrancePassPreviewData = Pick<
   EntrancePassData,
-  'coupleName' | 'venue' | 'dateLabel' | 'introLabel' | 'ticketLanguage' | 'partySize'
+  'coupleName' | 'venue' | 'city' | 'dateLabel' | 'introLabel' | 'ticketLanguage' | 'partySize'
 >
 
 /**
@@ -1074,7 +1078,8 @@ export async function getEntrancePassPreviewData(eventId: string): Promise<Entra
   const lang: TicketLanguage = event.ticket_language === 'sw' ? 'sw' : 'en'
   return {
     coupleName: entranceCoupleName(event, profile),
-    venue: [event.venue_name, event.address, event.city].filter(Boolean).join(', ') || null,
+    venue: [event.venue_name, event.address].filter(Boolean).join(', ') || null,
+    city: event.city || null,
     dateLabel: (lang === 'sw' ? formatLongDateSw(event.starts_at) : formatLongDate(event.starts_at)) || null,
     introLabel: ticketIntroLabel(event.event_type, lang),
     ticketLanguage: lang,
