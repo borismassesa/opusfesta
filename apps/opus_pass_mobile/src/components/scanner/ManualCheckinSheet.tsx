@@ -12,6 +12,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GuestAvatar } from '@/components/scanner/GuestAvatar';
+import { GuestConfirmCard } from '@/components/scanner/GuestConfirmCard';
+import { PartyBadge } from '@/components/scanner/PartyBadge';
 import { ACCENT } from '@/theme/brand';
 import { useTheme } from '@/theme/useTheme';
 import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
@@ -79,6 +82,8 @@ export function ManualCheckinSheet({
   const [query, setQuery] = useState('');
   const [admitting, setAdmitting] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  /** Guest picked from the search results, awaiting confirmation. */
+  const [confirming, setConfirming] = useState<RosterEntry | null>(null);
 
   const codeInputRef = useRef<TextInput>(null);
   const nameInputRef = useRef<TextInput>(null);
@@ -95,6 +100,7 @@ export function ManualCheckinSheet({
       setQuery('');
       setAdmitting(null);
       setCodeError(null);
+      setConfirming(null);
     }
   }, [visible, initialMode]);
 
@@ -164,7 +170,9 @@ export function ManualCheckinSheet({
     if (admitting) return;
     setAdmitting(guest.invitationId);
     try {
-      finish(await onAdmit(guest));
+      const result = await onAdmit(guest);
+      setConfirming(null);
+      finish(result);
     } finally {
       setAdmitting(null);
     }
@@ -381,16 +389,22 @@ export function ManualCheckinSheet({
                   }
                   renderItem={({ item }) => {
                     const arrived = Boolean(item.checkedInAt);
-                    const busy = admitting === item.invitationId;
                     return (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityState={{ disabled: arrived || Boolean(admitting) }}
-                        disabled={arrived || Boolean(admitting)}
-                        onPress={() => void admitGuest(item)}
+                        accessibilityState={{ disabled: Boolean(admitting) }}
+                        disabled={Boolean(admitting)}
+                        // Opens the confirmation rather than admitting outright:
+                        // there is no QR backing this path, so the attendant has
+                        // to see who they are about to let in. Guests already
+                        // inside stay tappable — the card is also how you check
+                        // when and by which door they came through.
+                        onPress={() => setConfirming(item)}
                         className="mb-3 flex-row items-center gap-3 rounded-2xl border border-ed-outline-variant bg-ed-surface p-4"
-                        style={{ opacity: arrived || (admitting && !busy) ? 0.55 : 1 }}
+                        style={{ opacity: arrived ? 0.6 : 1 }}
                       >
+                        <GuestAvatar fullName={item.fullName} colorKey={item.groupTag} />
+
                         <View className="min-w-0 flex-1">
                           <View className="flex-row items-center gap-2">
                             <Text
@@ -414,35 +428,33 @@ export function ManualCheckinSheet({
                             ) : null}
                           </View>
 
-                          <View className="mt-1 flex-row items-center gap-2">
-                            {item.entryCode ? (
-                              <Text className="font-work-sans-bold text-[11px] tracking-[1px] text-ed-on-surface-variant">
-                                {item.entryCode}
-                              </Text>
-                            ) : null}
-                            <Text
-                              className="shrink font-work-sans text-xs text-ed-on-surface-variant"
-                              numberOfLines={1}
-                            >
-                              {arrived
-                                ? `Already checked in · ${item.checkedInPartySize ?? item.partySize} of ${item.partySize}`
-                                : item.partySize > 1
-                                  ? `Party of ${item.partySize}`
-                                  : 'Single guest'}
-                            </Text>
-                          </View>
+                          {/* The badge names the ticket type, so this row
+                              only carries the printed code and, once used,
+                              the arrival detail. */}
+                          {item.entryCode || arrived ? (
+                            <View className="mt-1 flex-row items-center gap-2">
+                              {item.entryCode ? (
+                                <Text className="font-work-sans-bold text-[11px] tracking-[1px] text-ed-on-surface-variant">
+                                  {item.entryCode}
+                                </Text>
+                              ) : null}
+                              {arrived ? (
+                                <Text
+                                  className="shrink font-work-sans text-xs text-ed-on-surface-variant"
+                                  numberOfLines={1}
+                                >
+                                  Already checked in ·{' '}
+                                  {item.checkedInPartySize ?? item.partySize} of {item.partySize}
+                                </Text>
+                              ) : null}
+                            </View>
+                          ) : null}
                         </View>
 
                         {arrived ? (
                           <Ionicons name="checkmark-circle" size={24} color="#1B7F4C" />
-                        ) : busy ? (
-                          <ActivityIndicator size="small" color={editorial.onSurface} />
                         ) : (
-                          <View className="rounded-full bg-ed-primary-container px-4 py-2.5">
-                            <Text className="font-work-sans-bold text-[11px] uppercase tracking-[1px] text-ed-on-primary">
-                              Check in
-                            </Text>
-                          </View>
+                          <PartyBadge partySize={item.partySize} />
                         )}
                       </Pressable>
                     );
@@ -452,6 +464,14 @@ export function ManualCheckinSheet({
             </>
           )}
         </KeyboardAvoidingView>
+
+        <GuestConfirmCard
+          visible={Boolean(confirming)}
+          guest={confirming}
+          busy={Boolean(admitting)}
+          onCancel={() => setConfirming(null)}
+          onConfirm={(guest) => void admitGuest(guest)}
+        />
       </SafeAreaView>
     </Modal>
   );

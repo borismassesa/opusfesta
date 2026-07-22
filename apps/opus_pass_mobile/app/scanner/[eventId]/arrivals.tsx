@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BackButton } from '@/components/navigation/BackButton';
 import { validateScannerSession } from '@/lib/api/checkin';
+import { arrivedHeads, expectedHeads } from '@/lib/scannerRoster';
 import { useScannerSession } from '@/hooks/useScannerSession';
 import { useTheme } from '@/theme/useTheme';
 import type { RosterEntry } from '@/types/checkin';
@@ -122,8 +123,10 @@ export default function ArrivalsScreen() {
   }, [visible]);
 
   const totalGuests = rosterQuery.data?.length ?? 0;
-  // Headcount, not row count: a party of 3 arriving is 3 people through the door.
-  const headsIn = arrived.reduce((sum, g) => sum + (g.checkedInPartySize ?? g.partySize), 0);
+  // Headcount, not row count: a party of 3 arriving is 3 people through the
+  // door. Shared with the other scanner screens — these are the numbers the
+  // couple is catered and billed against, so they derive in exactly one place.
+  const headsIn = arrivedHeads(arrived);
 
   /**
    * End-of-night summary, handed off through the native share sheet (WhatsApp,
@@ -133,13 +136,13 @@ export default function ArrivalsScreen() {
   const shareReport = () => {
     const roster = rosterQuery.data ?? [];
     const notArrived = roster.filter((g) => !g.checkedInAt);
-    const expectedHeads = roster.reduce((sum, g) => sum + g.partySize, 0);
+    const expected = expectedHeads(roster);
 
     const lines = [
       `${session?.eventName ?? 'Event'} — arrivals`,
       reportStamp(new Date()),
       '',
-      `${headsIn} of ${expectedHeads} guests through the door`,
+      `${headsIn} of ${expected} guests through the door`,
       `${arrived.length} of ${totalGuests} invitations scanned`,
       '',
       `ARRIVED (${arrived.length})`,
@@ -223,10 +226,44 @@ export default function ArrivalsScreen() {
         <Text className="mt-1 font-playfair-bold text-3xl text-ed-on-surface">Checked in</Text>
       </View>
 
-      {/* The two numbers a door attendant actually wants: how many people are
+      {/* Getting every guest in is the whole job, and it lands late in a long
+          shift — worth marking rather than leaving as a progress bar that
+          quietly reaches the end. */}
+      {totalGuests > 0 && arrived.length === totalGuests ? (
+        <View className="mx-5 mt-5 overflow-hidden rounded-3xl border border-ed-outline-variant bg-ed-surface">
+          <View className="flex-row items-center gap-4 p-5">
+            <View className="min-w-0 flex-1">
+              <Text className="font-playfair-bold text-[26px] leading-8 text-ed-on-surface">
+                Everyone is in
+              </Text>
+              <Text className="mt-1.5 font-work-sans text-sm text-ed-on-surface-variant">
+                All {totalGuests} invitations scanned. {headsIn}{' '}
+                {headsIn === 1 ? 'person' : 'people'} came through the door.
+              </Text>
+            </View>
+            <View
+              className="h-16 w-16 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: LIVE_GREEN }}
+            >
+              <Ionicons name="checkmark" size={32} color="#14532D" />
+            </View>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={shareReport}
+            className="flex-row items-center justify-center gap-2 border-t border-ed-outline-variant py-4"
+          >
+            <Ionicons name="share-outline" size={17} color={editorial.onSurface} />
+            <Text className="font-work-sans-semibold text-sm text-ed-on-surface">
+              Send the couple the final report
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+      /* The two numbers a door attendant actually wants: how many people are
           in the room (the headline), and how far through the guest list they
           are (progress). Scanned-vs-total is a ratio, so it reads as a bar
-          rather than a second competing figure in a cell. */}
+          rather than a second competing figure in a cell. */
       <View className="mx-5 mt-5 rounded-3xl border border-ed-outline-variant bg-ed-surface p-5">
         <View className="flex-row items-baseline gap-2">
           <Text className="font-playfair-bold text-[40px] leading-[42px] text-ed-on-surface">
@@ -262,6 +299,7 @@ export default function ArrivalsScreen() {
           </View>
         </View>
       </View>
+      )}
 
       {arrived.length > 0 ? (
         <View className="px-5 pt-4">

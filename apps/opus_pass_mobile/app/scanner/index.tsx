@@ -110,7 +110,7 @@ function Field({
 
 export default function ScannerEntryScreen() {
   const router = useRouter();
-  const { editorial } = useTheme();
+  const { editorial, colors } = useTheme();
   const { session, isLoading, saveSession, clearSession } = useScannerSession();
 
   const [code, setCode] = useState('');
@@ -387,10 +387,11 @@ export default function ScannerEntryScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Start a new shift with a different access code"
                         onPress={confirmNewShift}
-                        className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-ed-outline-variant"
+                        className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border"
+                        style={{ borderColor: colors.green }}
                       >
-                        <Ionicons name="add" size={17} color={editorial.onSurface} />
-                        <Text className="font-work-sans-bold text-[13px] text-ed-on-surface">
+                        <Ionicons name="add" size={17} color={colors.green} />
+                        <Text className="font-work-sans-bold text-[13px] text-of-green">
                           New shift
                         </Text>
                       </Pressable>
@@ -433,10 +434,12 @@ export default function ScannerEntryScreen() {
 
                   <View className="mt-6">
                     <FieldLabel>Your name</FieldLabel>
+                    {/* One line, no caveat: the "code already has a name"
+                        case resolves itself server-side, so spelling it out
+                        only asked the attendant to hold a rule they can't
+                        act on. */}
                     <Text className="mt-1.5 font-work-sans text-xs leading-5 text-ed-on-surface-variant">
-                      Recorded against each guest you check in. Skipped
-                      automatically if the team already assigned this code to
-                      someone.
+                      Recorded against every guest you check in.
                     </Text>
                     <Field
                       icon="person-outline"

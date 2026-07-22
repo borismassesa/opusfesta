@@ -8,9 +8,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BackButton } from '@/components/navigation/BackButton';
+import { CountSegments } from '@/components/scanner/CountSegments';
 import { ManualCheckinSheet } from '@/components/scanner/ManualCheckinSheet';
+import { PartySizeSheet } from '@/components/scanner/PartySizeSheet';
+import { ScanTipsBanner, ScanTipsModal } from '@/components/scanner/ScanTipsModal';
 import { amendPartySize, submitScan, validateScannerSession } from '@/lib/api/checkin';
+import { arrivedHeads } from '@/lib/scannerRoster';
 import { useScannerSession } from '@/hooks/useScannerSession';
+import { useScannerTips } from '@/hooks/useScannerTips';
 import { useTheme } from '@/theme/useTheme';
 import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
 
@@ -18,9 +23,6 @@ import type { CheckinScanResult, RosterEntry } from '@/types/checkin';
  *  fires continuously, and without this every guest triggers a burst of
  *  identical requests that all resolve as "duplicate". */
 const RESCAN_COOLDOWN_MS = 2500;
-
-/** Brand green, matching the live/active pills used elsewhere in the product. */
-const LIVE_GREEN = '#9FE870';
 
 /** Side of the square scan target the corner brackets frame. */
 const RETICLE_SIZE = 256;
@@ -49,11 +51,13 @@ export default function ScanScreen() {
     qrToken: string;
     guestName: string;
     partySize: number;
+    groupTag: string | null;
   } | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   /** Which way the manual sheet opens: typing the printed code (the usual
    *  case, reached from "QR not working") or searching a name. */
   const [manualMode, setManualMode] = useState<'code' | 'name'>('code');
+  const tips = useScannerTips();
 
   // Refs, not state: the camera callback fires many times a second and must
   // read the latest value without re-subscribing or re-rendering.
@@ -77,8 +81,10 @@ export default function ScanScreen() {
     },
   });
 
-  const totalGuests = rosterQuery.data?.length ?? 0;
-  const arrivedGuests = (rosterQuery.data ?? []).filter((g) => g.checkedInAt).length;
+  const roster = rosterQuery.data ?? [];
+  const totalGuests = roster.length;
+  const arrivedGuests = roster.filter((g) => g.checkedInAt).length;
+  const headsIn = arrivedHeads(roster);
 
   useEffect(() => {
     if (!permission?.granted && permission?.canAskAgain) requestPermission();
@@ -102,6 +108,10 @@ export default function ScanScreen() {
         if (scanResult.status === 'success') {
           // Keep the header count honest without blocking the next scan.
           void queryClient.invalidateQueries({ queryKey: ['scanner', 'roster', eventId] });
+          // A successful scan is proof the coaching worked: retire the tips
+          // banner on its own rather than leaving it to fight the reticle
+          // for attention all night.
+          if (tips.bannerVisible) tips.dismissBanner();
         }
         // Haptics matter here: attendants work in the dark, often not looking
         // at the screen between guests.
@@ -123,7 +133,7 @@ export default function ScanScreen() {
         busyRef.current = false;
       }
     },
-    [session, queryClient, eventId]
+    [session, queryClient, eventId, tips]
   );
 
   /**
@@ -263,6 +273,7 @@ export default function ScanScreen() {
         qrToken: lastScanRef.current.token,
         guestName: result.guestName ?? 'Guest',
         partySize: result.partySize ?? 1,
+        groupTag: result.groupTag ?? null,
       });
     }
   }, [result, partyPrompt]);
@@ -332,6 +343,10 @@ export default function ScanScreen() {
   }
 
   const resultStyle = result ? RESULT_STYLES[result.status] : null;
+  /** Anything covering the camera also has to stop it decoding: the feed keeps
+   *  running behind a modal, and a code drifting through frame while the
+   *  attendant is reading a sheet would fire a scan they never asked for. */
+  const cameraBlocked = Boolean(result || partyPrompt || manualOpen || tips.showTips);
 
   return (
     <View className="flex-1 bg-black">
@@ -339,9 +354,7 @@ export default function ScanScreen() {
         style={{ flex: 1 }}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        onBarcodeScanned={
-          result || partyPrompt || manualOpen ? undefined : handleBarcode
-        }
+        onBarcodeScanned={cameraBlocked ? undefined : handleBarcode}
       />
 
       {/* Header. A scrim, not per-button pills: white text over a live camera
@@ -424,47 +437,59 @@ export default function ScanScreen() {
               </Pressable>
             </View>
 
-            {/* Arrival progress — the one number an attendant is asked for all
-                night ("how many are in?"), so it belongs on the scanning
-                screen rather than only in the guest list. */}
+            {/* The state of the door in three numbers. Every one is a way in
+                to the matching list, so the counts an attendant is asked for
+                all night double as the navigation to answer follow-ups. */}
             {totalGuests > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="See who has arrived"
-                onPress={() => router.push(`/scanner/${eventId}/arrivals`)}
-                className="-mt-3 px-4 pb-2"
-              >
-                <View className="flex-row items-baseline justify-between">
-                  <Text className="font-work-sans-bold text-[13px] text-white">
-                    {arrivedGuests} of {totalGuests} arrived
+              <View className="-mt-3 px-4 pb-2">
+                <CountSegments
+                  tone="camera"
+                  segments={[
+                    {
+                      key: 'pending',
+                      icon: 'time-outline',
+                      label: 'Still to arrive',
+                      caption: 'waiting',
+                      count: totalGuests - arrivedGuests,
+                    },
+                    {
+                      key: 'arrived',
+                      icon: 'checkmark',
+                      label: 'Checked in',
+                      caption: 'in',
+                      count: arrivedGuests,
+                    },
+                    {
+                      key: 'all',
+                      icon: 'people-outline',
+                      label: 'On the list',
+                      caption: 'invited',
+                      count: totalGuests,
+                    },
+                  ]}
+                  onSelect={(key) => {
+                    if (key === 'arrived') router.push(`/scanner/${eventId}/arrivals`);
+                    else router.push(`/scanner/${eventId}/guests?filter=${key}`);
+                  }}
+                />
+                {/* Headcount only once there is one: at zero it's a third row
+                    of chrome saying nothing the bar doesn't. No status dot —
+                    it implied "live" without anything establishing that. */}
+                {headsIn > 0 ? (
+                  <Text
+                    className="mt-1.5 text-center font-work-sans text-[11px]"
+                    style={{ color: 'rgba(255,255,255,0.65)' }}
+                  >
+                    {headsIn} {headsIn === 1 ? 'person' : 'people'} through the door
                   </Text>
-                  <View className="flex-row items-center gap-1">
-                    <Text
-                      className="font-work-sans text-[11px]"
-                      style={{ color: 'rgba(255,255,255,0.65)' }}
-                    >
-                      See who
-                    </Text>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={11}
-                      color="rgba(255,255,255,0.65)"
-                    />
-                  </View>
-                </View>
-                <View
-                  className="mt-1.5 h-1 overflow-hidden rounded-full"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.22)' }}
-                >
-                  <View
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.round((arrivedGuests / totalGuests) * 100)}%`,
-                      backgroundColor: LIVE_GREEN,
-                    }}
-                  />
-                </View>
-              </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            {tips.ready && tips.bannerVisible ? (
+              <View className="pb-2 pt-1">
+                <ScanTipsBanner onOpen={tips.openTips} onDismiss={tips.dismissBanner} />
+              </View>
             ) : null}
           </SafeAreaView>
         </LinearGradient>
@@ -473,7 +498,7 @@ export default function ScanScreen() {
       {/* Reticle. Dimming everything outside it both aims the attendant at
           the right spot and stops a busy venue background reading as part of
           the UI — a bare outline on a live feed looked unfinished. */}
-      {!result && !partyPrompt && !manualOpen ? (
+      {!cameraBlocked ? (
         <>
           <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
             <View
@@ -547,40 +572,24 @@ export default function ScanScreen() {
       ) : null}
 
       {/* Party-size correction */}
-      {partyPrompt ? (
-        <View className="absolute inset-0 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <View className="rounded-t-3xl bg-ed-bg p-6 pb-10">
-            <Text className="font-playfair-bold text-xl text-ed-on-surface">
-              How many arrived?
-            </Text>
-            <Text className="mt-1 font-work-sans text-sm text-ed-on-surface-variant">
-              {partyPrompt.guestName} was expected with {partyPrompt.partySize} in
-              their party. All {partyPrompt.partySize} were counted in.
-            </Text>
-            <View className="mt-5 flex-row flex-wrap gap-2">
-              {Array.from({ length: partyPrompt.partySize }, (_, i) => i + 1).map((n) => (
-                <Pressable
-                  key={n}
-                  accessibilityRole="button"
-                  onPress={() => void correctPartySize(partyPrompt.qrToken, n)}
-                  className="h-12 w-12 items-center justify-center rounded-full border border-ed-outline-variant bg-ed-surface"
-                >
-                  <Text className="font-work-sans-bold text-base text-ed-on-surface">{n}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={dismiss}
-              className="mt-6 h-13 items-center justify-center rounded-full bg-ed-primary-container py-4"
-            >
-              <Text className="font-work-sans-bold text-xs uppercase tracking-[1px] text-ed-on-primary">
-                All {partyPrompt.partySize} arrived
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
+      <PartySizeSheet
+        visible={Boolean(partyPrompt)}
+        guestName={partyPrompt?.guestName ?? ''}
+        partySize={partyPrompt?.partySize ?? 1}
+        groupTag={partyPrompt?.groupTag}
+        busy={pending}
+        // Closing without a number keeps the full party the scan already
+        // recorded, which is the common case — a family walking in together.
+        onCancel={() => setPartyPrompt(null)}
+        onSubmit={(arrived) => {
+          if (!partyPrompt) return;
+          // An unchanged count is already what the server stored; sending it
+          // back would be a round trip that changes nothing, so drop straight
+          // to the result overlay instead.
+          if (arrived === partyPrompt.partySize) setPartyPrompt(null);
+          else void correctPartySize(partyPrompt.qrToken, arrived);
+        }}
+      />
 
       {/* Scan result */}
       {result && resultStyle && !partyPrompt ? (
@@ -669,6 +678,8 @@ export default function ScanScreen() {
         onAdmitByCode={admitByCode}
         onAdmitted={handleManualAdmitted}
       />
+
+      <ScanTipsModal visible={tips.showTips} onClose={tips.closeTips} />
     </View>
   );
 }
