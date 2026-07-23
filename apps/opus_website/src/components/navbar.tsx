@@ -490,17 +490,10 @@ export default function Navbar() {
               >
                 Dashboard
               </NavAnchor>
-              <NavAnchor
-                href="/opuspass/my/dashboard/invitations"
-                className="hidden 2xl:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
-              >
-                Invitations &amp; RSVPs
-              </NavAnchor>
-              {/* Dashboard destinations also live in the avatar menu so they
-                  stay reachable on mid-size desktops (1340–1535px) where the
-                  inline links are hidden for space. Both targets cross the
-                  /opuspass zone boundary, so they use a full-page nav (Action)
-                  rather than Clerk's client-side Link. */}
+              {/* Dashboard also lives in the avatar menu so it stays reachable
+                  on mid-size desktops (1340–1535px) where the inline button is
+                  hidden for space. It crosses the /opuspass zone boundary, so
+                  it uses a full-page nav (Action) rather than Clerk's Link. */}
               <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }}>
                 <UserButton.MenuItems>
                   <UserButton.Action
@@ -508,13 +501,6 @@ export default function Navbar() {
                     labelIcon={<Heart size={16} />}
                     onClick={() => {
                       window.location.href = '/opuspass/my/dashboard'
-                    }}
-                  />
-                  <UserButton.Action
-                    label="Invitations & RSVPs"
-                    labelIcon={<CalendarCheck size={16} />}
-                    onClick={() => {
-                      window.location.href = '/opuspass/my/dashboard/invitations'
                     }}
                   />
                 </UserButton.MenuItems>
@@ -725,21 +711,13 @@ export default function Navbar() {
                 </>
               ) : isLoaded ? (
                 <div className="flex flex-col gap-2.5">
-                  {/* Primary destination here too, so it matches the desktop
-                      nav rather than sitting level with the link below it. */}
+                  {/* Primary destination, matching the desktop nav. */}
                   <NavAnchor
                     href="/opuspass/my/dashboard"
                     onClick={() => setMobileOpen(false)}
                     className="w-full text-center py-3 rounded-full bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) text-sm font-bold transition-colors"
                   >
                     Dashboard
-                  </NavAnchor>
-                  <NavAnchor
-                    href="/opuspass/my/dashboard/invitations"
-                    onClick={() => setMobileOpen(false)}
-                    className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Invitations &amp; RSVPs
                   </NavAnchor>
                   <div className="flex items-center justify-center pt-1">
                     <UserButton appearance={{ elements: { avatarBox: 'w-10 h-10' } }} />
