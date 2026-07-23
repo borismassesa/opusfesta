@@ -25,40 +25,34 @@ type Notif = {
   actor_name: string | null
 }
 
-// Per-type icon token: a Lucide glyph in a tinted circle. Keyed on the types the
-// server actually emits (see lib/dashboard/notifications.ts + its call sites), so
-// gift claims and guestbook messages stop collapsing into a generic bell.
-const TYPE_ICON: Record<NotifType, { Icon: LucideIcon; wrap: string; fg: string }> = {
-  rsvp_received: { Icon: MailOpen, wrap: 'bg-sky-50', fg: 'text-sky-600' },
-  pledge_received: { Icon: HandCoins, wrap: 'bg-[#9FE870]/25', fg: 'text-[#3d7a1f]' },
-  gift_claimed: { Icon: Gift, wrap: 'bg-[#9FE870]/25', fg: 'text-[#3d7a1f]' },
-  guestbook_received: { Icon: PenLine, wrap: 'bg-[var(--accent)]/15', fg: 'text-[#8e57b3]' },
-  payment_submitted: { Icon: CreditCard, wrap: 'bg-amber-50', fg: 'text-amber-600' },
-  payment_confirmed: { Icon: BadgeCheck, wrap: 'bg-emerald-50', fg: 'text-emerald-600' },
-  system: { Icon: Bell, wrap: 'bg-gray-100', fg: 'text-gray-500' },
+// Per-type glyph. Restrained, Amazon/Etsy-style: every notification uses the same
+// neutral token — a monochrome line icon in a plain gray circle — so the list
+// reads calm. Type is conveyed by the glyph shape, not by colour; the only colour
+// in a row is the unread accent bar.
+const TYPE_ICON: Record<NotifType, LucideIcon> = {
+  rsvp_received: MailOpen,
+  pledge_received: HandCoins,
+  gift_claimed: Gift,
+  guestbook_received: PenLine,
+  payment_submitted: CreditCard,
+  payment_confirmed: BadgeCheck,
+  system: Bell,
 }
-const FALLBACK_ICON = TYPE_ICON.system
+const FALLBACK_ICON = Bell
 
-// Deterministic initials + tone for the actor avatar (no Math.random — must be
-// stable across SSR/renders).
-const AVATAR_TONES = [
-  'bg-rose-100 text-rose-700',
-  'bg-sky-100 text-sky-700',
-  'bg-amber-100 text-amber-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-violet-100 text-violet-700',
-  'bg-fuchsia-100 text-fuchsia-700',
-]
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   const first = parts[0]?.[0] ?? ''
   const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
   return (first + last).toUpperCase() || '?'
 }
-function toneFor(name: string): string {
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return AVATAR_TONES[h % AVATAR_TONES.length]
+
+// Pull a trailing " · ref <code>" out of the body so the code can render as a
+// chip on its own line instead of crowding the sentence behind a middle dot.
+function splitRef(body: string | null): { text: string; ref: string | null } {
+  if (!body) return { text: '', ref: null }
+  const m = body.match(/^(.*?)\s·\sref\s+(\S+)$/)
+  return m ? { text: m[1].trim(), ref: m[2] } : { text: body, ref: null }
 }
 
 function timeAgo(iso: string): string {
@@ -204,7 +198,8 @@ export default function NotificationsBell() {
             ) : (
               <ul className="divide-y divide-gray-50">
                 {items.map((n) => {
-                  const cfg = TYPE_ICON[n.type] ?? FALLBACK_ICON
+                  const Icon = TYPE_ICON[n.type] ?? FALLBACK_ICON
+                  const { text: bodyText, ref: bodyRef } = splitRef(n.body)
                   return (
                     <li key={n.id}>
                       <button
@@ -217,33 +212,22 @@ export default function NotificationsBell() {
                             : 'border-(--accent) bg-[var(--accent)]/[0.04]',
                         )}
                       >
-                        {/* Leading media: actor avatar (with a small type badge) when
-                            the notification is about a person, else the type token. */}
+                        {/* Leading media: neutral actor avatar with a small dark
+                            type pip when the notification is about a person, else a
+                            plain neutral type token. Restrained, big-company style. */}
                         <span className="relative mt-0.5 shrink-0" aria-hidden>
                           {n.actor_name ? (
                             <>
-                              <span
-                                className={cn(
-                                  'grid h-9 w-9 place-items-center rounded-full text-xs font-bold',
-                                  toneFor(n.actor_name),
-                                )}
-                              >
+                              <span className="grid h-9 w-9 place-items-center rounded-full bg-gray-100 text-xs font-bold text-gray-600">
                                 {initials(n.actor_name)}
                               </span>
-                              <span
-                                className={cn(
-                                  'absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full ring-2 ring-white',
-                                  cfg.wrap,
-                                )}
-                              >
-                                <cfg.Icon className={cn('h-2.5 w-2.5', cfg.fg)} strokeWidth={2.5} />
+                              <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-[#1A1A1A] ring-2 ring-white">
+                                <Icon className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
                               </span>
                             </>
                           ) : (
-                            <span
-                              className={cn('grid h-9 w-9 place-items-center rounded-full', cfg.wrap)}
-                            >
-                              <cfg.Icon className={cn('h-[18px] w-[18px]', cfg.fg)} strokeWidth={2} />
+                            <span className="grid h-9 w-9 place-items-center rounded-full bg-gray-100">
+                              <Icon className="h-[18px] w-[18px] text-gray-500" strokeWidth={2} />
                             </span>
                           )}
                         </span>
@@ -256,10 +240,19 @@ export default function NotificationsBell() {
                           >
                             {n.title}
                           </span>
-                          {n.body && (
-                            <span className="mt-0.5 block truncate text-xs text-gray-500">{n.body}</span>
+                          {bodyText && (
+                            <span className="mt-0.5 block truncate text-xs text-gray-500">{bodyText}</span>
                           )}
-                          <span className="mt-1 block text-[11px] text-gray-400">{timeAgo(n.created_at)}</span>
+                          {bodyRef && (
+                            <span
+                              title={bodyRef}
+                              className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600"
+                            >
+                              <span className="text-gray-400">ref</span>
+                              <span className="truncate font-mono tracking-tight text-gray-700">{bodyRef}</span>
+                            </span>
+                          )}
+                          <span className="mt-1.5 block text-[11px] text-gray-400">{timeAgo(n.created_at)}</span>
                         </span>
                       </button>
                     </li>
