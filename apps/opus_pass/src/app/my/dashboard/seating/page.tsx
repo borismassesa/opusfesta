@@ -5,11 +5,11 @@ import { EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { getEvents, getSeatingData } from '@/lib/dashboard/queries'
 import { resolveEventScope } from '@/lib/dashboard/event-scope'
-import { EventChooser } from '@/components/dashboard/EventScope'
+import { EventChooser, EventPicker } from '@/components/dashboard/EventScope'
 import { getLocale } from '@/lib/cms/locale'
 import { loadUiStrings } from '@/lib/cms/ui-strings'
 import type { DashboardSeatingStrings } from '@/lib/cms/ui-strings-fallback'
-import SeatingPlanner, { SeatingEventPicker } from './SeatingPlanner'
+import SeatingPlanner from './SeatingPlanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +21,7 @@ export default async function SeatingPage({
   const { event: eventParam } = await searchParams
   const locale = await getLocale()
   const strings = await loadUiStrings('dashboard-seating', locale)
+  const scopeStrings = await loadUiStrings('dashboard-event-scope', locale)
   const events = await getEvents()
 
   if (events.length === 0) {
@@ -47,7 +48,6 @@ export default async function SeatingPage({
   // the selection then follows them across sections via ?event= + cookie.
   const scope = await resolveEventScope(events, eventParam)
   if (scope.needsChooser) {
-    const scopeStrings = await loadUiStrings('dashboard-event-scope', locale)
     return (
       <div className="space-y-6">
         <Header strings={strings} />
@@ -66,7 +66,7 @@ export default async function SeatingPage({
         strings={strings}
         action={
           seating ? (
-            <SeatingEventPicker events={eventList} eventId={selectedId} eventName={seating.event.name} strings={strings} />
+            <EventPicker events={eventList} selectedId={selectedId} strings={scopeStrings} />
           ) : null
         }
       />
@@ -84,14 +84,16 @@ export default async function SeatingPage({
 
 function Header({ strings, action }: { strings: DashboardSeatingStrings; action?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-black/[0.06] pb-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-          {strings.header_title}
-        </h1>
-        <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_description}</p>
+    <header className="dash-header-safe border-b border-black/[0.06] pb-6">
+      <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
+        {strings.header_title}
+      </h1>
+      {/* Event picker rides the right end of the subtitle row rather than the
+          title row, so the header top line stays clean. */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_description}</p>
+        {action}
       </div>
-      {action}
     </header>
   )
 }

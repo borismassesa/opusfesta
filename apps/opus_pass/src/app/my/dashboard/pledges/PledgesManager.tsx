@@ -81,7 +81,7 @@ import type {
   CheckoutFormStrings,
   CheckoutPaymentStrings,
 } from '@/lib/cms/ui-strings-fallback'
-import { EventSwitcher } from '@/components/dashboard/EventScope'
+import { EventPicker } from '@/components/dashboard/EventScope'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -785,15 +785,6 @@ export default function PledgesManager({
             </span>
           ) : undefined
         }
-        actions={
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-          >
-            <Plus className="h-3.5 w-3.5" /> {copy.add_pledge_cta}
-          </button>
-        }
       />
 
       <PledgeSubNav
@@ -975,6 +966,13 @@ export default function PledgesManager({
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#C9A0DC] px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+          >
+            <Plus className="h-4 w-4" /> {copy.add_pledge_cta}
+          </button>
         </div>
       ) : null}
 
@@ -1392,7 +1390,7 @@ function PledgeSubNav({
         )
       })}
       {events.length > 1 ? (
-        <EventSwitcher
+        <EventPicker
           events={events}
           selectedId={selectedEventId ?? ''}
           strings={scopeStrings}

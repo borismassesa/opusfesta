@@ -166,7 +166,7 @@ export default function RsvpSetupWizard({
   return (
     <div className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-4xl flex-col">
       {/* Header + progress (pinned to top) */}
-      <div className="flex items-center justify-between">
+      <div className="dash-header-safe flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-[#1A1A1A]">Set up RSVPs</h1>
         <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]">
           Close

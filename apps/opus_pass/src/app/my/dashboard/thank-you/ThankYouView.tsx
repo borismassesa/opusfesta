@@ -12,7 +12,6 @@ import {
   X,
   RotateCcw,
   Loader2,
-  ChevronDown,
   Lock,
   Clock,
   HeartHandshake,
@@ -30,8 +29,8 @@ import { firstNameOf } from '@/lib/dashboard/share'
 import { THANK_YOU_TEMPLATE } from '@/lib/whatsapp/types'
 import type { ThankYouData, ThankYouGuestRow } from '@/lib/dashboard/queries'
 import { TEMPLATE_CARD_PRICE, parseTemplateCardItemId, type PledgeCardCatalogItem } from '@/lib/dashboard/pledge-card-templates'
-import type { DashboardThankYouStrings, CheckoutFormStrings, CheckoutPaymentStrings } from '@/lib/cms/ui-strings-fallback'
-import { setActiveEventCookie } from '@/components/dashboard/EventScope'
+import type { DashboardThankYouStrings, CheckoutFormStrings, CheckoutPaymentStrings, DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
+import { EventPicker } from '@/components/dashboard/EventScope'
 import TemplatePurchaseModal, { type TemplatePurchaseTarget } from '@/components/dashboard/TemplatePurchaseModal'
 import PaymentSummaryModal from '@/components/dashboard/PaymentSummaryModal'
 import Confetti from '@/components/invitations/Confetti'
@@ -74,9 +73,11 @@ export default function ThankYouView({
   contactPhone,
   checkoutFormStrings,
   checkoutPaymentStrings,
+  scopeStrings,
 }: {
   data: ThankYouData
   strings: DashboardThankYouStrings
+  scopeStrings: DashboardEventScopeStrings
   coverImageUrl: string | null
   coverIsFullTemplate: boolean
   cardCatalog: PledgeCardCatalogItem[]
@@ -315,11 +316,6 @@ export default function ThankYouView({
     })
   }
 
-  function switchEvent(id: string) {
-    setActiveEventCookie(id)
-    router.push(`${pathname}?event=${id}`)
-  }
-
   function stageSend(ids?: string[]) {
     const pool = ids ? guests.filter((g) => ids.includes(g.id)) : guests
     const eligible = pool.filter(hasPhone)
@@ -390,24 +386,16 @@ export default function ThankYouView({
     <div className="ty">
       <style>{css}</style>
 
-      <div className="head">
+      <div className="head dash-header-safe">
         <div>
           <h1>{strings.heading}</h1>
-          <p className="sub">{strings.subheading}</p>
+          {/* Subtitle + event switcher share one row so the dropdown sits on
+              the subtitle line, not up beside the title. */}
+          <div className="subrow">
+            <p className="sub">{strings.subheading}</p>
+            <EventPicker events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} disabled={pending} />
+          </div>
         </div>
-        {events.length > 1 ? (
-          <label className="evswitch">
-            <span>{strings.event_switcher_label}</span>
-            <span className="selwrap">
-              <select value={selectedEventId ?? ''} onChange={(e) => switchEvent(e.target.value)} disabled={pending}>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="selchev" aria-hidden="true" />
-            </span>
-          </label>
-        ) : null}
       </div>
 
       {/* Thank-you card: a design pulled from the invitation catalog, used as
@@ -734,16 +722,14 @@ const css = `
   --ok-bg:#EAF6EF; --ok-tx:#2E7D55; --bad-bg:#fcecec; --bad-tx:#c0392b;
   --radius:16px; --soft:0 1px 2px rgba(20,18,30,.05);
   color:var(--ink); }
-.ty .serif, .ty h1, .ty h3{ font-family:var(--font-cormorant),Georgia,serif; }
-.ty h1{ font-weight:600; font-size:30px; letter-spacing:-.3px; }
-.ty .head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-.ty .sub{ color:var(--muted); font-size:14px; margin-top:6px; max-width:640px; line-height:1.5; }
-.ty .evswitch{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--muted); }
-.ty .selwrap{ position:relative; display:inline-flex; align-items:center; }
-.ty .evswitch select{ appearance:none; border:1px solid var(--line); border-radius:10px; padding:8px 34px 8px 12px;
-  font-size:13px; font-weight:600; color:var(--ink); background:#fff; max-width:240px; }
-.ty .evswitch select:focus{ outline:none; border-color:var(--lav); }
-.ty .selchev{ position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--faint); pointer-events:none; }
+/* Headings use the dashboard's default sans (like Overview, Guests, Pledges),
+   not this view's own Cormorant serif, so the thank-you page matches the rest
+   of the dashboard. The .serif class stays for any deliberate accent. */
+.ty .serif{ font-family:var(--font-cormorant),Georgia,serif; }
+.ty h1{ font-weight:700; font-size:30px; letter-spacing:-.3px; }
+.ty .head > div{ width:100%; }
+.ty .subrow{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-top:6px; }
+.ty .sub{ color:var(--muted); font-size:14px; max-width:640px; line-height:1.5; }
 .ty .gt{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); margin-top:18px; box-shadow:var(--soft); overflow:hidden; }
 .ty .cardpicker{ background:#fff; border:1px solid var(--line); border-radius:var(--radius); margin-top:18px; padding:18px 20px; box-shadow:var(--soft); }
 .ty .cphead h2{ font-size:16px; font-weight:600; }
