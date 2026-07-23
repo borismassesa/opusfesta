@@ -59,8 +59,6 @@ import type { EventType, TicketLanguage } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings, DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import { setActiveEventCookie, EventPicker } from '@/components/dashboard/EventScope'
-import { createCheckinRealtimeClient } from '@/lib/checkin/realtimeClient'
-import { checkinChannelName, type CheckinBroadcastPayload } from '@/lib/checkin/shared'
 import type { CheckinReportData } from '@/lib/checkin-report-pdf'
 
 /** Short stable digest of the ticket's visible fields — appended to the
@@ -160,7 +158,7 @@ function formatClock(iso: string): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-/** A door scan received live over the broadcast channel, newest-first. */
+/** A recent door arrival from the ownership-gated arrivals poll, newest-first. */
 interface LiveArrival {
   name: string
   door: string
@@ -200,10 +198,10 @@ export default function SendInvitesView({
   // Live Check-ins tab sub-filter (attended roster is always scoped to
   // "attending"), kept separate so switching tabs never leaks filter state.
   const [checkinFilter, setCheckinFilter] = useState<'all' | 'arrived' | 'pending'>('all')
-  // Door scans received live over the broadcast channel while this tab is open.
-  // The authoritative roster still comes from the server (each guest's
-  // checked_in_at), refreshed by the poll below and nudged after each scan;
-  // this feed is instant visual feedback layered on top.
+  // Recent door scans, polled from the server while this tab is open (see the
+  // effect below). The authoritative roster still comes from the server (each
+  // guest's checked_in_at), refreshed on the same poll; this feed is a live
+  // convenience layered on top.
   const [liveArrivals, setLiveArrivals] = useState<LiveArrival[]>([])
   const [checkinConnected, setCheckinConnected] = useState(false)
   const [reportBusy, setReportBusy] = useState(false)
@@ -384,46 +382,56 @@ export default function SendInvitesView({
     return () => clearInterval(t)
   }, [router, pending, sendingRow])
 
-  // Coalesce the roster re-fetches a burst of scans would otherwise trigger:
-  // one refresh ~1.2s after the last scan pulls the fresh check-ins (door +
-  // time per guest) without hammering the server during a rush at the gate.
-  const checkinRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => {
-    if (checkinRefreshTimer.current) clearTimeout(checkinRefreshTimer.current)
-  }, [])
-
-  // Live door feed — only subscribed while the Check-ins tab is actually open,
-  // so no socket is held for couples who never look at it. The broadcast is a
-  // UI enhancement (see broadcast.ts); the roster below is the source of truth.
+  // Live door feed — polled from a server endpoint (/api/checkin/arrivals)
+  // gated on this couple's ownership of the event, only while the Check-ins
+  // tab is actually open. This replaced an anon Realtime Broadcast channel
+  // that was world-readable: anyone with the public anon key who knew an
+  // eventId (they appear in guest-facing share links) could subscribe and
+  // watch a stranger's guests check in. The roster below stays the source of
+  // truth; this strip is a live convenience layered on top.
+  //
+  // Read through a ref so the poll can compare against the latest server-
+  // rendered count without re-subscribing every time the roster refreshes.
+  const arrivedCountRef = useRef(arrivedCount)
+  useEffect(() => {
+    arrivedCountRef.current = arrivedCount
+  }, [arrivedCount])
   useEffect(() => {
     if (sendTab !== 'checkins' || !eventId) return
-    let client: ReturnType<typeof createCheckinRealtimeClient>
-    try {
-      client = createCheckinRealtimeClient()
-    } catch {
-      return
-    }
-    const channel = client
-      .channel(checkinChannelName(eventId))
-      .on('broadcast', { event: 'scan' }, ({ payload }) => {
-        const p = payload as CheckinBroadcastPayload
-        setLiveArrivals((prev) =>
-          [
-            { name: p.guestName, door: p.doorLabel, at: p.at, duplicate: p.status === 'duplicate' },
-            ...prev,
-          ].slice(0, 8),
-        )
-        // A fresh arrival changes the roster (checked_in_at); pull it in shortly
-        // so the guest's row flips to "Arrived" with the real door + time.
-        if (p.status === 'success') {
-          if (checkinRefreshTimer.current) clearTimeout(checkinRefreshTimer.current)
-          checkinRefreshTimer.current = setTimeout(() => router.refresh(), 1200)
+    let cancelled = false
+
+    async function poll() {
+      try {
+        const res = await fetch(`/api/checkin/arrivals?event=${encodeURIComponent(eventId!)}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) throw new Error(`arrivals poll failed: ${res.status}`)
+        const json = (await res.json()) as {
+          arrivals: { name: string; door: string; at: string; partySize: number }[]
+          arrivedCount: number
         }
-      })
-      .subscribe((status) => setCheckinConnected(status === 'SUBSCRIBED'))
+        if (cancelled) return
+        setCheckinConnected(true)
+        setLiveArrivals(
+          json.arrivals.map((a) => ({ name: a.name, door: a.door, at: a.at, duplicate: false })),
+        )
+        // A new arrival changes the roster (checked_in_at); pull it in so each
+        // guest row flips to "Arrived" with the real door + time.
+        if (json.arrivedCount !== arrivedCountRef.current) {
+          arrivedCountRef.current = json.arrivedCount
+          router.refresh()
+        }
+      } catch {
+        if (!cancelled) setCheckinConnected(false)
+      }
+    }
+
+    poll()
+    const t = setInterval(poll, 5000)
     return () => {
+      cancelled = true
       setCheckinConnected(false)
-      client.removeChannel(channel)
+      clearInterval(t)
     }
   }, [sendTab, eventId, router])
 

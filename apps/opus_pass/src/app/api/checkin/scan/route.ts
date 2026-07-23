@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { candidateScannerAccessHashes, verifyEntryPassToken } from '@/lib/checkin/tokens'
-import { broadcastCheckin } from '@/lib/checkin/broadcast'
 import { RATE_LIMITED_RESPONSE, withinRateLimit } from '@/lib/checkin/rate-limit'
 
 interface ScanBody {
@@ -168,7 +167,7 @@ export async function POST(request: Request) {
   const tableName = seatAssignment?.seating_tables?.name ?? null
 
   // The audit trail records who was holding the device and why, while the
-  // broadcast/UI door label stays plain so the live feed reads cleanly.
+  // UI door label stays plain so the couple's live feed reads cleanly.
   const auditLabel = [
     effectiveAttendantName || 'Unknown attendant',
     `(${displayDoor})`,
@@ -178,13 +177,6 @@ export async function POST(request: Request) {
     .join(' ')
 
   if (invitation.checked_in_at) {
-    await broadcastCheckin(eventId, {
-      status: 'duplicate',
-      guestName,
-      partySize: invitation.checked_in_party_size ?? rsvpdPartySize,
-      doorLabel: displayDoor,
-      at: invitation.checked_in_at,
-    })
     return NextResponse.json({
       status: 'duplicate',
       guestName,
@@ -211,13 +203,6 @@ export async function POST(request: Request) {
   // The RPC returns an all-null row (not an error) when another device won
   // the race between our lookup above and the atomic UPDATE.
   if (!updated || !updated.checked_in_at) {
-    await broadcastCheckin(eventId, {
-      status: 'duplicate',
-      guestName,
-      partySize: rsvpdPartySize,
-      doorLabel: displayDoor,
-      at: new Date().toISOString(),
-    })
     return NextResponse.json({
       status: 'duplicate',
       guestName,
@@ -231,14 +216,6 @@ export async function POST(request: Request) {
   }
 
   const admitted = updated.checked_in_party_size ?? rsvpdPartySize
-
-  await broadcastCheckin(eventId, {
-    status: 'success',
-    guestName,
-    partySize: admitted,
-    doorLabel: displayDoor,
-    at: updated.checked_in_at,
-  })
 
   return NextResponse.json({
     status: 'success',

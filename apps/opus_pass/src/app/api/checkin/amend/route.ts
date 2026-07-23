@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { candidateScannerAccessHashes, verifyEntryPassToken } from '@/lib/checkin/tokens'
-import { broadcastCheckin } from '@/lib/checkin/broadcast'
 import { RATE_LIMITED_RESPONSE, withinRateLimit } from '@/lib/checkin/rate-limit'
 
 interface AmendBody {
@@ -29,7 +28,7 @@ interface AmendBody {
  * action rather than a side effect of re-scanning.
  */
 export async function POST(request: Request) {
-  const { eventId, accessToken, qrToken, invitationId, checkedInPartySize, doorLabel } =
+  const { eventId, accessToken, qrToken, invitationId, checkedInPartySize } =
     (await request.json().catch(() => ({}))) as AmendBody
 
   if (!eventId || !accessToken || typeof checkedInPartySize !== 'number') {
@@ -116,16 +115,8 @@ export async function POST(request: Request) {
     .maybeSingle<{ seating_tables: { name: string } | null }>()
   const tableName = seatAssignment?.seating_tables?.name ?? null
 
-  // Re-broadcast so live dashboards converge on the corrected number rather
-  // than keeping the optimistic full-party figure from the original scan.
-  await broadcastCheckin(eventId, {
-    status: 'success',
-    guestName: guest?.full_name ?? 'Guest',
-    partySize: amended,
-    doorLabel: doorLabel || 'Main Gate',
-    at: invitation.checked_in_at,
-  })
-
+  // The corrected headcount is now persisted on the row; the couple's and
+  // admin's live views converge on it on their next arrivals poll.
   return NextResponse.json({
     status: 'success',
     guestName: guest?.full_name ?? 'Guest',

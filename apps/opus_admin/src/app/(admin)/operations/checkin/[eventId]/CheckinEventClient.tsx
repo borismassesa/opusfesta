@@ -12,11 +12,6 @@ import {
   UserPlus,
   UserRoundX,
 } from 'lucide-react'
-import {
-  checkinChannelName,
-  createCheckinRealtimeClient,
-  type CheckinBroadcastPayload,
-} from '@/lib/checkin-realtime'
 import { assignAttendant, revokeAttendant, type AttendantAssignment } from '../actions'
 import {
   ACCESS_CODE_VALIDITY_OPTIONS,
@@ -123,28 +118,39 @@ export default function CheckinEventClient({
   )
   const [connected, setConnected] = useState(false)
 
+  // Live feed — polled from a permission-gated server endpoint
+  // (/api/checkin/arrivals) rather than an anon Realtime Broadcast channel,
+  // which was world-readable: anyone with the public anon key who knew an
+  // eventId could subscribe and watch a stranger's guests check in. The
+  // baseline above renders immediately; the poll keeps it current.
   useEffect(() => {
-    let client: ReturnType<typeof createCheckinRealtimeClient>
-    try {
-      client = createCheckinRealtimeClient()
-    } catch {
-      return
+    let cancelled = false
+
+    async function poll() {
+      try {
+        const res = await fetch(`/api/checkin/arrivals?event=${encodeURIComponent(eventId)}`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) throw new Error(`arrivals poll failed: ${res.status}`)
+        const json = (await res.json()) as {
+          arrivals: { guestName: string; doorLabel: string | null; checkedInAt: string }[]
+          totalCheckedIn: number
+        }
+        if (cancelled) return
+        setConnected(true)
+        setFeed(json.arrivals)
+        setCheckedIn(json.totalCheckedIn)
+      } catch {
+        if (!cancelled) setConnected(false)
+      }
     }
-    const channel = client
-      .channel(checkinChannelName(eventId))
-      .on('broadcast', { event: 'scan' }, ({ payload }) => {
-        const p = payload as CheckinBroadcastPayload
-        setFeed((prev) =>
-          [
-            { guestName: p.guestName, doorLabel: p.doorLabel, checkedInAt: p.at, duplicate: p.status === 'duplicate' },
-            ...prev,
-          ].slice(0, 20),
-        )
-        if (p.status === 'success') setCheckedIn((n) => n + 1)
-      })
-      .subscribe((status) => setConnected(status === 'SUBSCRIBED'))
+
+    poll()
+    const t = setInterval(poll, 5000)
     return () => {
-      client.removeChannel(channel)
+      cancelled = true
+      setConnected(false)
+      clearInterval(t)
     }
   }, [eventId])
 
