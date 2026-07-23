@@ -127,6 +127,14 @@ export interface GuestInvitation {
   /** Last time this guest was sent a thank-you message for THIS event. NULL = never sent. */
   thank_you_sent_at: string | null
   thank_you_count: number
+  /** Door check-in audit for THIS event, written by the checkin_guest_invitation
+   *  RPC when an attendant scans the guest's entrance pass. NULL until they
+   *  arrive; drives the couple's live Check-ins view. */
+  checked_in_at: string | null
+  checked_in_by: string | null
+  checked_in_door: string | null
+  /** Headcount actually admitted at the door (clamped 1..party_size). */
+  checked_in_party_size: number | null
   created_at: string
   updated_at: string
 }

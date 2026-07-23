@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -26,6 +26,8 @@ import {
   Send,
   CheckCheck,
   CalendarCheck,
+  Download,
+  Share2,
 } from 'lucide-react'
 import {
   sendWhatsAppInvites,
@@ -57,6 +59,9 @@ import type { EventType, TicketLanguage } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
 import type { DashboardSendStrings, DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import { setActiveEventCookie, EventPicker } from '@/components/dashboard/EventScope'
+import { createCheckinRealtimeClient } from '@/lib/checkin/realtimeClient'
+import { checkinChannelName, type CheckinBroadcastPayload } from '@/lib/checkin/shared'
+import type { CheckinReportData } from '@/lib/checkin-report-pdf'
 
 /** Short stable digest of the ticket's visible fields — appended to the
  *  preview image URL so a save produces a new URL, and the browser can
@@ -148,6 +153,21 @@ function CategoryField({
   )
 }
 
+/** Short wall-clock for an arrival timestamp (e.g. "18:42"). */
+function formatClock(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+/** A door scan received live over the broadcast channel, newest-first. */
+interface LiveArrival {
+  name: string
+  door: string
+  at: string
+  duplicate: boolean
+}
+
 /** A queued bulk send awaiting the couple's confirmation. */
 interface PendingSend {
   ids?: string[]
@@ -176,7 +196,17 @@ export default function SendInvitesView({
   // `filter` above so switching tabs never leaks one tab's filter state into
   // the other.
   const [ticketFilter, setTicketFilter] = useState<'all' | 'notsent' | 'sent'>('all')
-  const [sendTab, setSendTab] = useState<'cards' | 'ticket'>('cards')
+  const [sendTab, setSendTab] = useState<'cards' | 'ticket' | 'checkins'>('cards')
+  // Live Check-ins tab sub-filter (attended roster is always scoped to
+  // "attending"), kept separate so switching tabs never leaks filter state.
+  const [checkinFilter, setCheckinFilter] = useState<'all' | 'arrived' | 'pending'>('all')
+  // Door scans received live over the broadcast channel while this tab is open.
+  // The authoritative roster still comes from the server (each guest's
+  // checked_in_at), refreshed by the poll below and nudged after each scan;
+  // this feed is instant visual feedback layered on top.
+  const [liveArrivals, setLiveArrivals] = useState<LiveArrival[]>([])
+  const [checkinConnected, setCheckinConnected] = useState(false)
+  const [reportBusy, setReportBusy] = useState(false)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sendingRow, setSendingRow] = useState<string | null>(null)
@@ -297,6 +327,29 @@ export default function SendInvitesView({
     [guests, entranceSentIds],
   )
 
+  // Live Check-ins tab: the attending roster with each guest's door check-in
+  // (server-side, from guest_invitations.checked_in_at).
+  const attendingGuests = useMemo(() => guests.filter((g) => g.status === 'attending'), [guests])
+  const arrivedCount = useMemo(() => attendingGuests.filter((g) => g.checkedInAt).length, [attendingGuests])
+  const checkinPct = attendingCount > 0 ? Math.round((arrivedCount / attendingCount) * 100) : 0
+  const visibleCheckins = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return attendingGuests
+      .filter((g) => {
+        if (checkinFilter === 'arrived' && !g.checkedInAt) return false
+        if (checkinFilter === 'pending' && g.checkedInAt) return false
+        if (q && !`${g.name} ${g.phone ?? ''} ${g.whatsappPhone ?? ''}`.toLowerCase().includes(q)) return false
+        return true
+      })
+      // Arrived first, most recent scan on top; the not-yet-arrived trail after.
+      .sort((a, b) => {
+        if (a.checkedInAt && b.checkedInAt) return b.checkedInAt.localeCompare(a.checkedInAt)
+        if (a.checkedInAt) return -1
+        if (b.checkedInAt) return 1
+        return a.name.localeCompare(b.name)
+      })
+  }, [attendingGuests, checkinFilter, search])
+
   // Pass Ticket tab only ever sends to confirmed guests — the guest list
   // beneath it is always scoped to "attending", regardless of whatever
   // filter was last picked on the Digital Cards tab.
@@ -331,6 +384,49 @@ export default function SendInvitesView({
     return () => clearInterval(t)
   }, [router, pending, sendingRow])
 
+  // Coalesce the roster re-fetches a burst of scans would otherwise trigger:
+  // one refresh ~1.2s after the last scan pulls the fresh check-ins (door +
+  // time per guest) without hammering the server during a rush at the gate.
+  const checkinRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (checkinRefreshTimer.current) clearTimeout(checkinRefreshTimer.current)
+  }, [])
+
+  // Live door feed — only subscribed while the Check-ins tab is actually open,
+  // so no socket is held for couples who never look at it. The broadcast is a
+  // UI enhancement (see broadcast.ts); the roster below is the source of truth.
+  useEffect(() => {
+    if (sendTab !== 'checkins' || !eventId) return
+    let client: ReturnType<typeof createCheckinRealtimeClient>
+    try {
+      client = createCheckinRealtimeClient()
+    } catch {
+      return
+    }
+    const channel = client
+      .channel(checkinChannelName(eventId))
+      .on('broadcast', { event: 'scan' }, ({ payload }) => {
+        const p = payload as CheckinBroadcastPayload
+        setLiveArrivals((prev) =>
+          [
+            { name: p.guestName, door: p.doorLabel, at: p.at, duplicate: p.status === 'duplicate' },
+            ...prev,
+          ].slice(0, 8),
+        )
+        // A fresh arrival changes the roster (checked_in_at); pull it in shortly
+        // so the guest's row flips to "Arrived" with the real door + time.
+        if (p.status === 'success') {
+          if (checkinRefreshTimer.current) clearTimeout(checkinRefreshTimer.current)
+          checkinRefreshTimer.current = setTimeout(() => router.refresh(), 1200)
+        }
+      })
+      .subscribe((status) => setCheckinConnected(status === 'SUBSCRIBED'))
+    return () => {
+      setCheckinConnected(false)
+      client.removeChannel(channel)
+    }
+  }, [sendTab, eventId, router])
+
   // Heading name comes from the event itself (falls back to the couple profile
   // only when no events exist). The event type renders separately as a pill
   // (in the package facts row when paid, alongside date/venue otherwise) —
@@ -363,6 +459,117 @@ export default function SendInvitesView({
   function switchEvent(id: string) {
     setActiveEventCookie(id)
     router.push(`${pathname}?event=${id}`)
+  }
+
+  // ── Downloadable / shareable check-in report ───────────────────────────────
+  /** Ticket label a guest is admitted on (Single/Double), from the headcount
+   *  actually let in when known, else what they RSVP'd for. */
+  const ticketLabelOf = (g: SendGuestRow) =>
+    (g.checkedInPartySize ?? g.rsvpPartySize ?? g.assignedPartySize) >= 2
+      ? strings.party_double
+      : strings.party_single
+
+  function buildReportData(): CheckinReportData {
+    const rows = attendingGuests.map((g) => ({
+      name: g.name,
+      ticket: ticketLabelOf(g),
+      table: g.tableName,
+      door: g.checkedInAt ? g.checkedInDoor : null,
+      attendant: g.checkedInAt ? g.checkedInBy : null,
+      arrivedAt: g.checkedInAt ? formatClock(g.checkedInAt) : null,
+    }))
+    return {
+      eventName: headingName,
+      eventDate: event.dateLabel ?? null,
+      venue: event.venue ?? null,
+      generatedAt: new Date().toLocaleString(undefined, {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      totalAttending: attendingCount,
+      totalArrived: arrivedCount,
+      rows,
+    }
+  }
+
+  /** Plain-text fallback for share targets that can't take a file attachment
+   *  (older browsers) — pasteable straight into WhatsApp. */
+  function buildReportText(): string {
+    const lines = [
+      fmt(strings.checkin_report_title, { event: headingName }),
+      `${arrivedCount} / ${attendingCount} ${strings.checkin_arrived_suffix}`,
+      '',
+    ]
+    for (const g of attendingGuests) {
+      const mark = g.checkedInAt
+        ? `✓ ${formatClock(g.checkedInAt)}${g.checkedInBy ? ` · ${g.checkedInBy}` : ''}`
+        : strings.checkin_not_arrived
+      const seat = g.tableName ? ` [${g.tableName}]` : ''
+      lines.push(`${g.name}${seat} — ${mark}`)
+    }
+    return lines.join('\n')
+  }
+
+  async function fetchReportBlob(): Promise<Blob> {
+    const res = await fetch('/api/checkin-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildReportData()),
+    })
+    if (!res.ok) throw new Error('Report request failed')
+    return res.blob()
+  }
+
+  const reportFilename = `${headingName.replace(/[^A-Za-z0-9 _-]/g, '').trim() || 'OpusPass'}-Checkin-Report.pdf`
+
+  async function downloadReport() {
+    setReportBusy(true)
+    try {
+      const blob = await fetchReportBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = reportFilename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error(strings.checkin_toast_report_failed)
+    } finally {
+      setReportBusy(false)
+    }
+  }
+
+  /** Native share sheet with the PDF attached (WhatsApp, Files, email, …) where
+   *  supported; otherwise copies a text summary so there's always something to
+   *  send. Mirrors the seating-plan share flow. */
+  async function shareReport() {
+    setReportBusy(true)
+    try {
+      const blob = await fetchReportBlob()
+      const file = new File([blob], reportFilename, { type: 'application/pdf' })
+      const canShareFile = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })
+      if (canShareFile && navigator.share) {
+        await navigator.share({ files: [file], title: fmt(strings.checkin_report_title, { event: headingName }) })
+        return
+      }
+      await navigator.clipboard.writeText(buildReportText())
+      toast.success(strings.checkin_toast_report_copied)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return // user cancelled the share sheet
+      try {
+        await navigator.clipboard.writeText(buildReportText())
+        toast.success(strings.checkin_toast_report_copied)
+      } catch {
+        toast.error(strings.checkin_toast_report_failed)
+      }
+    } finally {
+      setReportBusy(false)
+    }
   }
 
   function assignUnassignedOrder(orderId: string) {
@@ -736,13 +943,21 @@ export default function SendInvitesView({
 
       <div className="head dash-header-safe">
         <div>
-          <h1>{sendTab === 'ticket' ? strings.entrance_title : strings.heading}</h1>
+          <h1>
+            {sendTab === 'checkins'
+              ? strings.checkin_title
+              : sendTab === 'ticket'
+                ? strings.entrance_title
+                : strings.heading}
+          </h1>
           <p className="sub">
-            {sendTab === 'ticket'
-              ? strings.entrance_desc
-              : event.hasPaidOrder
-                ? strings.subheading
-                : strings.no_design_subheading}
+            {sendTab === 'checkins'
+              ? strings.checkin_desc
+              : sendTab === 'ticket'
+                ? strings.entrance_desc
+                : event.hasPaidOrder
+                  ? strings.subheading
+                  : strings.no_design_subheading}
           </p>
         </div>
       </div>
@@ -767,6 +982,15 @@ export default function SendInvitesView({
         >
           <Ticket size={14} /> {strings.tab_pass_ticket}
           {attendingCount > 0 ? <span className="stbcnt">{attendingCount}</span> : null}
+        </button>
+        <button
+          role="tab"
+          aria-selected={sendTab === 'checkins'}
+          className={`stb ${sendTab === 'checkins' ? 'on' : ''}`}
+          onClick={() => { setSendTab('checkins'); setSelected(new Set()) }}
+        >
+          <CalendarCheck size={14} /> {strings.tab_checkins}
+          {arrivedCount > 0 ? <span className="stbcnt">{arrivedCount}</span> : null}
         </button>
         {events.length > 1 ? (
           <EventPicker
@@ -811,7 +1035,9 @@ export default function SendInvitesView({
         </div>
       ) : null}
 
-      {/* Event context */}
+      {/* Event context — cards/ticket only; the Check-ins tab has its own
+          live summary card below. */}
+      {sendTab !== 'checkins' ? (
       <div className="ctx">
         <div className="ctxbody">
           {sendTab === 'ticket' ? (
@@ -1103,6 +1329,7 @@ export default function SendInvitesView({
           </div>
         ) : null}
       </div>
+      ) : null}
 
       {/* Funnel + quota — Digital Cards only; Entrance Pass has its own
        *  quota bar in the event context card above. */}
@@ -1120,7 +1347,135 @@ export default function SendInvitesView({
         </div>
       ) : null}
 
-      {/* Guest table */}
+      {/* Live Check-ins — a live door summary plus the attending roster, each
+          guest flipping to "Arrived" the moment an attendant scans their pass. */}
+      {sendTab === 'checkins' ? (
+        <div className="checkins">
+          <div className="livesum">
+            <div className="livetop">
+              <div className="livehead">
+                <span className={`livedot${checkinConnected ? ' on' : ''}`} />
+                <span>{checkinConnected ? strings.checkin_live : strings.checkin_offline}</span>
+              </div>
+              <div className="livebtns">
+                <button className="btn ghost" disabled={reportBusy || attendingCount === 0} onClick={downloadReport}>
+                  {reportBusy ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
+                  {strings.checkin_report_download}
+                </button>
+                <button className="btn ghost" disabled={reportBusy || attendingCount === 0} onClick={shareReport}>
+                  <Share2 size={14} /> {strings.checkin_report_share}
+                </button>
+              </div>
+            </div>
+            <div className="livebig">
+              {arrivedCount}
+              <span> / {attendingCount} {strings.checkin_arrived_suffix}</span>
+            </div>
+            <div className="bar"><i style={{ width: `${checkinPct}%` }} /></div>
+            {liveArrivals.length > 0 ? (
+              <div className="livefeed">
+                <div className="lfhead">{strings.checkin_just_arrived}</div>
+                {liveArrivals.map((a, i) => (
+                  <div key={`${a.at}-${i}`} className="lf">
+                    <span className="lfname">{fullNameOf(a.name)}</span>
+                    <span className="lfmeta">
+                      {a.duplicate ? `${strings.checkin_duplicate} · ` : ''}
+                      {a.door} · {formatClock(a.at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="gt">
+            <div className="gth">
+              <h2>{strings.checkin_roster_title}</h2>
+              <input
+                className="gsearch"
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={strings.search_placeholder}
+                aria-label={strings.search_aria}
+              />
+              <div className="acts">
+                <div className="seg" role="tablist" aria-label={strings.filter_aria}>
+                  <button className={`sg ${checkinFilter === 'all' ? 'on' : ''}`} onClick={() => setCheckinFilter('all')}>
+                    {strings.filter_all}{attendingCount ? ` ${attendingCount}` : ''}
+                  </button>
+                  <button className={`sg ${checkinFilter === 'arrived' ? 'on' : ''}`} onClick={() => setCheckinFilter('arrived')}>
+                    <CalendarCheck size={12} /> {strings.checkin_filter_arrived}{arrivedCount ? ` ${arrivedCount}` : ''}
+                  </button>
+                  <button className={`sg ${checkinFilter === 'pending' ? 'on' : ''}`} onClick={() => setCheckinFilter('pending')}>
+                    {strings.checkin_filter_pending}{attendingCount - arrivedCount ? ` ${attendingCount - arrivedCount}` : ''}
+                  </button>
+                </div>
+              </div>
+            </div>
+            {visibleCheckins.length === 0 ? (
+              <div className="empty">
+                {attendingCount === 0
+                  ? strings.checkin_empty_none
+                  : search.trim()
+                    ? strings.empty_search
+                    : checkinFilter === 'arrived'
+                      ? strings.checkin_empty_arrived
+                      : checkinFilter === 'pending'
+                        ? strings.checkin_empty_pending
+                        : strings.checkin_empty_arrived}
+              </div>
+            ) : (
+              <div className="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{strings.th_guest}</th>
+                      <th>{strings.th_ticket}</th>
+                      <th>{strings.checkin_th_table}</th>
+                      <th>{strings.checkin_th_door}</th>
+                      <th>{strings.checkin_th_attendant}</th>
+                      <th style={{ textAlign: 'right' }}>{strings.checkin_th_arrived}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleCheckins.map((g) => {
+                      const seats = g.checkedInPartySize ?? g.rsvpPartySize ?? g.assignedPartySize
+                      return (
+                        <tr key={g.id} className={g.checkedInAt ? 'arrived' : ''}>
+                          <td className="who">{g.name}</td>
+                          <td>
+                            <span className="ppill">{seats >= 2 ? strings.party_double : strings.party_single}</span>
+                          </td>
+                          <td>
+                            {g.tableName ? (
+                              <span className="seatpill">{g.tableName}</span>
+                            ) : (
+                              <span className="noseat">{strings.checkin_no_table}</span>
+                            )}
+                          </td>
+                          <td className="contact">{g.checkedInAt ? (g.checkedInDoor ?? '—') : '—'}</td>
+                          <td className="contact">{g.checkedInAt ? (g.checkedInBy ?? '—') : '—'}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            {g.checkedInAt ? (
+                              <span className="status s-yes"><Check size={12} /> {formatClock(g.checkedInAt)}</span>
+                            ) : (
+                              <span className="status s-none">{strings.checkin_not_arrived}</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Guest table — cards/ticket only. */}
+      {sendTab !== 'checkins' ? (
       <div className="gt">
         <div className="gth">
           <input
@@ -1442,6 +1797,7 @@ export default function SendInvitesView({
           </div>
         )}
       </div>
+      ) : null}
 
       {/* Bulk-send confirm — the couple must approve {{2}}/{{3}} to send */}
       {confirmSend ? (
@@ -1925,6 +2281,30 @@ const css = `
   background:var(--green); color:var(--green-tx); font-size:10.5px; font-weight:700; letter-spacing:.3px; }
 .si .dtag{ font-size:10.5px; font-weight:600; color:var(--purple-d); background:var(--lav-soft); padding:2px 8px; border-radius:999px; }
 .si .derr{ font-size:11.5px; color:var(--bad-tx); }
+
+/* Live Check-ins tab — live door summary + attending roster */
+.si .checkins{ margin-top:22px; }
+.si .livesum{ background:#fff; border:1px solid var(--line); border-radius:20px; padding:22px; box-shadow:var(--soft); }
+.si .livetop{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.si .livebtns{ display:flex; gap:8px; flex-wrap:wrap; }
+.si .livehead{ display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--muted); }
+.si .livedot{ width:8px; height:8px; border-radius:50%; background:var(--faint); flex:none; }
+.si .livedot.on{ background:var(--wa); box-shadow:0 0 0 4px rgba(37,211,102,.16); animation:si-pulse 1.6s ease-in-out infinite; }
+@keyframes si-pulse{ 0%,100%{ opacity:1 } 50%{ opacity:.5 } }
+.si .livebig{ margin-top:10px; font-size:38px; font-weight:700; letter-spacing:-.5px; color:var(--purple-d); line-height:1; }
+.si .livebig span{ font-size:16px; font-weight:600; color:var(--muted); letter-spacing:0; }
+.si .livesum .bar{ margin-top:14px; max-width:520px; }
+.si .livefeed{ margin-top:16px; border-top:1px solid var(--line); padding-top:14px; max-width:520px; }
+.si .lfhead{ font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--faint); margin-bottom:8px; }
+.si .lf{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:5px 0; font-size:13px; animation:si-fade .35s ease; }
+.si .lf .lfname{ font-weight:600; color:var(--ink); }
+.si .lf .lfmeta{ font-size:11.5px; color:var(--muted); white-space:nowrap; }
+@keyframes si-fade{ from{ opacity:0; transform:translateY(-3px) } to{ opacity:1; transform:none } }
+.si .checkins .gt{ margin-top:18px; }
+.si .status.s-yes svg{ margin-right:3px; }
+.si .seatpill{ display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; background:var(--lav-soft);
+  color:var(--purple-d); font-size:11.5px; font-weight:600; white-space:nowrap; }
+.si .noseat{ font-size:12px; color:var(--faint); }
 
 @media(max-width:900px){ .si .funnel{ grid-template-columns:repeat(2,1fr); }
   .si .funnel .quota{ grid-column:span 2; } }
