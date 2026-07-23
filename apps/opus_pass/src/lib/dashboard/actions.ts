@@ -942,7 +942,11 @@ export async function sendPledgeReminderEmail(pledgeId: string, message: string)
     .select('partner1_name, partner2_name')
     .eq('user_id', user.id)
     .maybeSingle<{ partner1_name: string | null; partner2_name: string | null }>()
-  const coupleName = [profile?.partner1_name, profile?.partner2_name].filter(Boolean).join(' & ') || 'The Couple'
+  const coupleName =
+    [profile?.partner1_name, profile?.partner2_name]
+      .filter(Boolean)
+      .map((n) => firstNameOf(n!))
+      .join(' & ') || 'The Couple'
 
   let ok = true
   if (live) {
@@ -2647,13 +2651,19 @@ export async function claimGiftRegistryItem(
     claimedTitle = item.title
   }
 
-  const coupleNames = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || 'you'
-  // Title stays short — this lands on the couple's OWN dashboard, so "from your
-  // registry" is redundant. The claimed item is the body.
+  // Couples are addressed by first name only (e.g. "Jonathan & Jenifer", not
+  // "Jonathan David & Jenifer Kasala") everywhere they're shown to guests.
+  const coupleFirstNames = [profile.partner1_name, profile.partner2_name]
+    .filter(Boolean)
+    .map((n) => firstNameOf(n!))
+    .join(' & ')
+  const coupleNames = coupleFirstNames || 'you'
   await createNotification({
     userId: profile.user_id,
     type: 'gift_claimed',
-    title: `${name} claimed a gift`,
+    title: coupleFirstNames
+      ? `${name} claimed a gift from ${coupleFirstNames}'s registry`
+      : `${name} claimed a gift`,
     body: claimedTitle,
     actorName: name,
     href: '/my/dashboard/gift-registry',
