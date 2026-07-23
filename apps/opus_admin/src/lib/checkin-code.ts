@@ -83,12 +83,18 @@ export function accessCodeExpiry(
   // admitted after the published time.
   const end = eventEndsAt ? new Date(eventEndsAt) : null
   const start = eventStartsAt ? new Date(eventStartsAt) : null
+  const validEnd = end && !Number.isNaN(end.getTime()) ? end : null
+  const validStart = start && !Number.isNaN(start.getTime()) ? start : null
+  // Anchor on the LATER of the two when both are set. Normally that's the end
+  // time, but if the data is corrupt (ends_at before starts_at) picking the
+  // end blindly would give a shorter window than the start alone — the exact
+  // lock-out this function exists to prevent — so max() guards that.
   const anchor =
-    end && !Number.isNaN(end.getTime())
-      ? end
-      : start && !Number.isNaN(start.getTime())
-        ? start
-        : null
+    validEnd && validStart
+      ? validEnd.getTime() >= validStart.getTime()
+        ? validEnd
+        : validStart
+      : (validEnd ?? validStart)
   if (!anchor) {
     return new Date(now.getTime() + NO_START_FALLBACK_HOURS * HOUR_MS).toISOString()
   }

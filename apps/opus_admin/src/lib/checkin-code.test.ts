@@ -68,3 +68,15 @@ test('a malformed end time falls back to the start', () => {
     new Date(new Date(startsAt).getTime() + 12 * HOUR).toISOString(),
   )
 })
+
+test("'event' with ends_at before starts_at anchors on the start, not the earlier end", () => {
+  // Corrupt data: the end time precedes the start. Anchoring blindly on the
+  // end would give a SHORTER window than the start alone (the exact lock-out
+  // this function guards against), so the later time — the start — must win.
+  const startsAt = '2026-08-01T18:00:00.000Z'
+  const endsAtBeforeStart = '2026-08-01T16:00:00.000Z'
+  assert.equal(
+    accessCodeExpiry('event', startsAt, endsAtBeforeStart, NOW),
+    new Date(new Date(startsAt).getTime() + 12 * HOUR).toISOString(),
+  )
+})
