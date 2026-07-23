@@ -72,13 +72,6 @@
       "env": { "OPUS_PASS_DIST_DIR": ".next-preview" }
     },
     {
-      "name": "opus_scanner",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev", "--port", "3111"],
-      "port": 3111,
-      "cwd": "apps/opus_scanner"
-    },
-    {
       "name": "opus_scanner_mobile",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--web", "--port", "8090"],
