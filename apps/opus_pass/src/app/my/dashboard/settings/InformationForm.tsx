@@ -1,35 +1,40 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { toast } from 'sonner'
 import { Button, Field, inputClass } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
+import { upsertCoupleProfile } from '@/lib/dashboard/actions'
+import type { CoupleProfileLite } from '@/lib/dashboard/queries'
 
-export default function InformationForm() {
+export default function InformationForm({ profile }: { profile: CoupleProfileLite | null }) {
   const { user, isLoaded } = useUser()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [hydrated, setHydrated] = useState(false)
+  // This is a couple's account, so "your information" is the two partners'
+  // names (couple_profiles), not a single account holder. Same field the
+  // Wedding details page edits — both write couple_profiles.
+  const [partner1, setPartner1] = useState(profile?.partner1_name ?? '')
+  const [partner2, setPartner2] = useState(profile?.partner2_name ?? '')
   const [pending, startTransition] = useTransition()
 
-  useEffect(() => {
-    if (isLoaded && user && !hydrated) {
-      setFirstName(user.firstName ?? '')
-      setLastName(user.lastName ?? '')
-      setHydrated(true)
-    }
-  }, [isLoaded, user, hydrated])
-
   function save() {
-    if (!user) return
-    if (!firstName.trim()) {
-      toast.error('Enter your first name')
+    if (!partner1.trim()) {
+      toast.error('Enter at least one name')
       return
     }
     startTransition(async () => {
       try {
-        await user.update({ firstName: firstName.trim(), lastName: lastName.trim() })
+        // upsertCoupleProfile rewrites the whole row, so pass the rest of the
+        // saved profile through unchanged — only the names are edited here.
+        await upsertCoupleProfile({
+          partner1_name: partner1.trim(),
+          partner2_name: partner2.trim() || null,
+          wedding_date: profile?.wedding_date ?? null,
+          whatsapp_phone: profile?.whatsapp_phone ?? null,
+          city: profile?.city ?? null,
+          pledge_payment_instructions: profile?.pledge_payment_instructions ?? null,
+          pledge_goal_amount: profile?.pledge_goal_amount ?? null,
+        })
         toast.success('Saved')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not save')
@@ -45,22 +50,24 @@ export default function InformationForm() {
         <h2 className="text-lg font-bold text-[#1A1A1A]">Your information</h2>
         <div className="mt-4 rounded-2xl border border-black/[0.08] bg-white p-5 shadow-sm sm:p-6">
           <div className="grid gap-4">
-            <Field label="First name" required>
-              <input
-                className={inputClass}
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                disabled={!isLoaded}
-              />
-            </Field>
-            <Field label="Last name" required>
-              <input
-                className={inputClass}
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                disabled={!isLoaded}
-              />
-            </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Partner 1 name" required>
+                <input
+                  className={inputClass}
+                  value={partner1}
+                  onChange={(e) => setPartner1(e.target.value)}
+                  placeholder="e.g. Boris"
+                />
+              </Field>
+              <Field label="Partner 2 name">
+                <input
+                  className={inputClass}
+                  value={partner2}
+                  onChange={(e) => setPartner2(e.target.value)}
+                  placeholder="e.g. Grace"
+                />
+              </Field>
+            </div>
             <Field label="Email address" required hint="To change your email, use Password and security.">
               <input
                 className={cn(inputClass, 'cursor-not-allowed bg-black/[0.03] text-[#1A1A1A]/55')}
@@ -71,7 +78,7 @@ export default function InformationForm() {
             </Field>
           </div>
           <div className="mt-5">
-            <Button onClick={save} disabled={pending || !isLoaded}>
+            <Button onClick={save} disabled={pending}>
               {pending ? 'Saving…' : 'Save changes'}
             </Button>
           </div>
