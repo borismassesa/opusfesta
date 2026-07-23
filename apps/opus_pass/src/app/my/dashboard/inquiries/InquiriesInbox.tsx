@@ -176,7 +176,7 @@ export default function InquiriesInbox({ initialInquiries, marketplaceUrl, prese
   return (
     <div className="flex flex-col gap-5">
       {/* Header */}
-      <div>
+      <div className="dash-header-safe">
         <h1 className="text-2xl font-extrabold text-[#1A1A1A] tracking-tight">Your Inquiries</h1>
         <p className="text-sm text-gray-400 mt-1">Chat with vendors and track your quote requests.</p>
       </div>

@@ -707,7 +707,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
   'dashboard-events': {
     page_title: 'Events',
     page_description:
-      'Set up every moment of your ceremony, reception and everything in between. Guests will see the right details and RSVP to each event separately.',
+      'Set up every moment of your ceremony, reception and everything in between.',
     tabs_aria: 'Event views',
     tab_event_list: 'Event list',
     tab_create_event: 'Create event',
@@ -907,7 +907,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     entrance_tag: 'Entrance Passes',
     entrance_title: 'Send tickets to confirmed guests',
     entrance_desc:
-      'Guests who confirmed attending get a personal Entrance Pass Ticket with their own scannable QR code, sent over WhatsApp only once they’ve said yes.',
+      "Guests who RSVP'd get a personal Entrance Pass Ticket with their own scannable QR code.",
     entrance_best_for: 'Guests who already RSVP’d yes. Real check-in QR codes.',
     entrance_quota_label: 'Entrance passes',
     guest_list: 'Guest list',
@@ -929,6 +929,7 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     th_guest: 'Guest',
     th_contact: 'Contact',
     th_channel: 'Preferred channel',
+    th_ticket: 'Ticket',
     th_status: 'Status',
     th_send: 'Send',
     channel_whatsapp: 'WhatsApp',
@@ -2453,6 +2454,7 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'th_guest', label: 'Header: Guest', kind: 'text', max: 20 },
         { key: 'th_contact', label: 'Header: Contact', kind: 'text', max: 20 },
         { key: 'th_channel', label: 'Header: Preferred channel', kind: 'text', max: 24 },
+        { key: 'th_ticket', label: 'Header: Ticket type', kind: 'text', max: 20 },
         { key: 'th_status', label: 'Header: Status', kind: 'text', max: 20 },
         { key: 'th_send', label: 'Header: Send', kind: 'text', max: 20 },
         { key: 'channel_whatsapp', label: 'Channel: WhatsApp', kind: 'text', max: 20 },

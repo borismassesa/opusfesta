@@ -21,7 +21,7 @@ import {
   PanelLeftOpen,
   LogOut,
   Store,
-  MessageCircle,
+  MessagesSquare,
   ChevronUp,
   BookHeart,
   HeartHandshake,
@@ -32,6 +32,8 @@ import Logo from '@/components/ui/Logo'
 import { useT } from '@/components/providers/UIStringsProvider'
 import { cn } from '@/lib/utils'
 import DashboardSearch from './DashboardSearch'
+import DashboardTopIcons from './DashboardTopIcons'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 
 // opus_website (the marketplace + couple planning dashboard) lives at a different
 // origin than this app. In production both share the opusfesta.com apex (and the
@@ -70,7 +72,7 @@ const NAV: NavItem[] = [
   { href: '/my/dashboard/seating', labelKey: 'nav_seating', icon: Armchair },
   // Vendor inquiries (quote requests + conversations) now render inside the
   // dashboard; the data is read from the shared marketplace tables.
-  { href: '/my/dashboard/inquiries', label: 'Inquiries', icon: MessageCircle },
+  { href: '/my/dashboard/inquiries', label: 'Inquiries', icon: MessagesSquare },
 ]
 
 function NavLinks({
@@ -144,6 +146,10 @@ export default function DashboardShell({
 }) {
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  // The icon cluster (bell + cart) polls, so mounting both the mobile and
+  // desktop copies would double every poll. CSS only hides one; this makes
+  // exactly one actually mount for the current breakpoint.
+  const isDesktop = useIsDesktop()
   const t = useT('dashboard-chrome')
 
   // Resolved nav labels feed the search dropdown's "Pages" group.
@@ -215,12 +221,10 @@ export default function DashboardShell({
           <Menu className="h-5 w-5" />
         </button>
         <Logo className="text-xl" />
-        <span
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9A0DC]/25 text-xs font-bold text-[#8e57b3]"
-          aria-hidden="true"
-        >
-          {userInitial}
-        </span>
+        <div className="flex items-center gap-0.5">
+          {!isDesktop && <DashboardTopIcons />}
+          <AccountFooter email={userEmail} initial={userInitial} layout="header" />
+        </div>
       </header>
 
       {/* Drawer — mobile */}
@@ -261,7 +265,21 @@ export default function DashboardShell({
 
       {/* Content */}
       <main className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-[76px]' : 'lg:pl-64')}>
-        <div className="mx-auto max-w-[1600px] px-3 py-6 sm:px-4 lg:px-6 lg:py-8">{children}</div>
+        <div className="relative mx-auto max-w-[1600px] px-3 pt-4 pb-6 sm:px-4 lg:px-6 lg:pt-5 lg:pb-8">
+          {/* Account cluster — desktop. Overlaid in the top-right corner so it
+              sits on the same line as each page's title (which now starts at
+              the top of the content) instead of pushing every title onto a
+              second row. Absolute, so it takes no vertical space. Every page
+              title header reserves room on its right (the `dash-header-safe`
+              utility, ~w-56 of clearance) so right-aligned page controls clear
+              the icons and wrap below when tight. Mobile uses the top bar. */}
+          <div className="absolute right-3 top-4 z-20 hidden items-center gap-1 sm:right-4 lg:right-6 lg:flex">
+            {isDesktop && <DashboardTopIcons />}
+            <div className="mx-1.5 h-6 w-px bg-black/10" />
+            <AccountFooter email={userEmail} initial={userInitial} layout="header" />
+          </div>
+          {children}
+        </div>
       </main>
     </div>
   )
@@ -272,17 +290,22 @@ function AccountFooter({
   initial,
   onNavigate,
   collapsed,
+  layout = 'sidebar',
 }: {
   email: string
   initial: string
   onNavigate?: () => void
   collapsed?: boolean
+  // 'sidebar' — full-width trigger, dropdown opens upward (sidebar footer).
+  // 'header' — avatar-only trigger, dropdown opens downward, right-aligned.
+  layout?: 'sidebar' | 'header'
 }) {
   const pathname = usePathname()
   const { signOut } = useClerk()
   const [open, setOpen] = useState(false)
   const t = useT('dashboard-chrome')
   const active = pathname.startsWith('/my/dashboard/settings')
+  const header = layout === 'header'
 
   const close = () => setOpen(false)
 
@@ -299,13 +322,17 @@ function AccountFooter({
         />
       ) : null}
 
-      {/* Dropdown — opens upward (footer sits at the bottom of the sidebar) */}
+      {/* Dropdown — sidebar footer opens upward; header avatar opens downward. */}
       {open ? (
         <div
           role="menu"
           className={cn(
-            'absolute bottom-full z-50 mb-2 overflow-hidden rounded-xl border border-black/8 bg-white py-1 shadow-lg',
-            collapsed ? 'left-0 w-56' : 'left-0 right-0',
+            'absolute z-50 overflow-hidden rounded-xl border border-black/8 bg-white py-1 shadow-lg',
+            header
+              ? 'right-0 top-full mt-2 w-56'
+              : collapsed
+                ? 'bottom-full left-0 mb-2 w-56'
+                : 'bottom-full left-0 right-0 mb-2',
           )}
         >
           <Link
@@ -363,8 +390,10 @@ function AccountFooter({
         title={t('account_title')}
         aria-label={t('account_title')}
         className={cn(
-          'flex w-full items-center gap-3 rounded-xl px-3 py-2 transition-colors',
-          collapsed && 'justify-center px-0',
+          'flex items-center gap-3 rounded-xl transition-colors',
+          header
+            ? 'p-0.5'
+            : cn('w-full px-3 py-2', collapsed && 'justify-center px-0'),
           open || active ? 'bg-[#C9A0DC]/15' : 'hover:bg-black/4',
         )}
       >
@@ -374,7 +403,7 @@ function AccountFooter({
         >
           {initial}
         </span>
-        {collapsed ? null : (
+        {header || collapsed ? null : (
           <>
             <span className="min-w-0 flex-1 text-left">
               <span className="block text-sm font-medium text-[#1A1A1A]">{t('account_label')}</span>

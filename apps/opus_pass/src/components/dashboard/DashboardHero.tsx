@@ -26,7 +26,7 @@ export function DashboardHero({
   return (
     <header
       className={cn(
-        'flex flex-wrap items-end justify-between gap-4 pb-6',
+        'dash-header-safe flex flex-wrap items-end justify-between gap-4 pb-6',
         divider && 'border-b border-black/[0.06]',
         className,
       )}

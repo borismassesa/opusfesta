@@ -306,3 +306,14 @@ svg {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Dashboard page-title headers reserve room on their right for the account
+   icons overlaid in the top-right corner of the content (DashboardShell), so
+   right-aligned page controls (filters, action buttons, the event switcher)
+   clear the icons and wrap below on tight widths. Desktop only — the mobile
+   layout puts the icons in its own top bar. Tune the reserved width here. */
+@media (min-width: 1024px) {
+  .dash-header-safe {
+    padding-right: 15rem;
+  }
+}

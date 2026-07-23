@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
-import { Tabs, inputClass } from '@/components/dashboard/controls'
-import { EventSwitcher } from '@/components/dashboard/EventScope'
+import { Tabs } from '@/components/dashboard/controls'
+import { EventPicker } from '@/components/dashboard/EventScope'
 import { ALL_EVENTS } from '@/lib/dashboard/event-scope-constants'
 import RsvpSetupPanel from './RsvpSetupPanel'
 import RsvpTracker from './RsvpTracker'
@@ -121,29 +121,7 @@ export default function RsvpsClient({
 
   return (
     <div className="space-y-6">
-      <DashboardHero
-        content={hero}
-        divider={false}
-        actions={
-          <>
-            {hasResponses ? (
-              <button
-                type="button"
-                onClick={downloadReport}
-                className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-              >
-                <Download className="h-3.5 w-3.5" /> Download
-              </button>
-            ) : null}
-            <Link
-              href="/my/dashboard/rsvps/setup"
-              className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-            >
-              Guided setup
-            </Link>
-          </>
-        }
-      />
+      <DashboardHero content={hero} divider={false} />
 
       <div>
         <Tabs<Tab>
@@ -154,29 +132,36 @@ export default function RsvpsClient({
             { id: 'responses', label: 'Responses' },
           ]}
           trailing={
-            events.length > 1 ? (
-              tab === 'responses' ? (
-                <EventSwitcher events={events} selectedId={eventFilter} strings={scopeStrings} allowAll />
+            <div className="flex items-center gap-2">
+              {/* Responses is URL-scoped (?event=) with an all-events view;
+                  Setup is per-event local state, so it drives setupEventId
+                  directly via onSelect instead of navigating. */}
+              {tab === 'responses' ? (
+                <EventPicker events={events} selectedId={eventFilter} strings={scopeStrings} allowAll />
               ) : (
-                <label className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-[#1A1A1A]/60">{scopeStrings.switcher_label}</span>
-                  <span className="relative inline-flex items-center">
-                    <select
-                      className={`${inputClass} w-auto appearance-none pr-9`}
-                      value={setupEventId}
-                      onChange={(e) => setSetupEventId(e.target.value)}
-                    >
-                      {events.map((e) => (
-                        <option key={e.id} value={e.id}>
-                          {e.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#1A1A1A]/45" />
-                  </span>
-                </label>
-              )
-            ) : undefined
+                <EventPicker
+                  events={events}
+                  selectedId={setupEventId}
+                  strings={scopeStrings}
+                  onSelect={setSetupEventId}
+                />
+              )}
+              {hasResponses ? (
+                <button
+                  type="button"
+                  onClick={downloadReport}
+                  className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </button>
+              ) : null}
+              <Link
+                href="/my/dashboard/rsvps/setup"
+                className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+              >
+                Guided setup
+              </Link>
+            </div>
           }
         />
         {tab === 'setup' ? (

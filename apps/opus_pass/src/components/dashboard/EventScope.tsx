@@ -173,3 +173,69 @@ export function EventSwitcher({
     </label>
   )
 }
+
+/**
+ * The bordered "EVENT ｜ Name ⌄" event picker shared across the simple
+ * header pages (seating, guestbook, gift registry, thank you, RSVPs). The
+ * label rides inside the control on the left with a short divider — inset
+ * top and bottom so it doesn't run edge to edge — before the selected name.
+ *
+ * Selecting an event navigates the current route to `?event=<id>` (and pins
+ * the active-event cookie) by default; pass `onSelect` to drive local state
+ * instead (e.g. the RSVP setup tab, which isn't URL-scoped).
+ */
+export function EventPicker({
+  events,
+  selectedId,
+  strings,
+  allowAll = false,
+  disabled = false,
+  onSelect,
+  className,
+}: {
+  events: Pick<WeddingEvent, 'id' | 'name'>[]
+  selectedId: string
+  strings: DashboardEventScopeStrings
+  allowAll?: boolean
+  disabled?: boolean
+  onSelect?: (id: string) => void
+  className?: string
+}) {
+  const router = useRouter()
+  const pathname = usePathname()
+
+  if (events.length < 2) return null
+
+  function switchTo(id: string) {
+    if (onSelect) {
+      onSelect(id)
+      return
+    }
+    setActiveEventCookie(id)
+    router.push(`${pathname}?event=${id}`)
+  }
+
+  return (
+    <label className={cn('relative inline-flex items-center', className)}>
+      <span className="pointer-events-none absolute left-3 text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/40">
+        {strings.switcher_label}
+      </span>
+      {/* Divider between the label and the selected name — inset top/bottom. */}
+      <span className="pointer-events-none absolute left-[68px] top-2 bottom-2 w-px bg-black/[0.12]" />
+      <select
+        value={selectedId}
+        onChange={(e) => switchTo(e.target.value)}
+        disabled={disabled}
+        className="appearance-none rounded-xl border border-black/[0.12] bg-white py-2.5 pl-[86px] pr-9 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/30 disabled:opacity-60"
+      >
+        {allowAll ? <option value="all">{strings.switcher_all}</option> : null}
+        {events.map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40" />
+    </label>
+  )
+}

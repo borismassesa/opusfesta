@@ -14,7 +14,7 @@ import { guestbookPath } from '@/lib/dashboard/share'
 import { GUESTBOOK_STATUS_LABELS, type GuestbookEntry, type GuestbookReviewStatus } from '@/lib/dashboard/types'
 import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import { Card, SectionTitle, EmptyState } from '@/components/dashboard/primitives'
-import { EventSwitcher } from '@/components/dashboard/EventScope'
+import { EventPicker } from '@/components/dashboard/EventScope'
 import { cn } from '@/lib/utils'
 
 const STATUS_PILL: Record<GuestbookReviewStatus, string> = {
@@ -79,11 +79,16 @@ export default function GuestbookClient({
 
   return (
     <div className="space-y-6">
-      <SectionTitle
-        title="Guestbook"
-        subtitle="A standalone link where guests leave messages and photo memories — no wedding website required."
-        action={<EventSwitcher events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} />}
-      />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Guestbook</h1>
+        {/* Event picker rides the right end of the subtitle row. */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 flex-1 text-sm text-[#1A1A1A]/65 sm:text-base">
+            A standalone link where guests leave messages and photo memories — no wedding website required.
+          </p>
+          <EventPicker events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} />
+        </div>
+      </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card className="px-5 py-4">

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import {
   Armchair,
   Check,
-  ChevronDown,
   Download,
   GripVertical,
   Pencil,
@@ -27,7 +26,6 @@ import {
 } from '@/lib/dashboard/actions'
 import type { SeatableGuest, SeatingData, SeatingTable } from '@/lib/dashboard/types'
 import type { DashboardSeatingStrings } from '@/lib/cms/ui-strings-fallback'
-import { setActiveEventCookie } from '@/components/dashboard/EventScope'
 import type { SeatingPlanPdfData } from '@/lib/seating-plan-pdf'
 import { formatLongDate } from '@/lib/dashboard/share'
 
@@ -40,8 +38,6 @@ function formatGeneratedAt(d: Date): string {
   const time = d.toLocaleTimeString('en-US', { timeZone: EAT_TIME_ZONE, hour: 'numeric', minute: '2-digit' })
   return `${date} at ${time}`
 }
-
-type EventLite = { id: string; name: string }
 
 /** Substitute {var} placeholders in a CMS template string. */
 function fmt(t: string, v: Record<string, string | number>): string {
@@ -483,50 +479,6 @@ export default function SeatingPlanner({
         pending={busy}
       />
     </div>
-  )
-}
-
-/** Event selector for the seating page header (top right) — same bordered
- *  "EVENT | Name ⌄" control that used to sit in the toolbar, just relocated
- *  so it reads next to the page title instead of above the stat tiles. */
-export function SeatingEventPicker({
-  events,
-  eventId,
-  eventName,
-  strings,
-}: {
-  events: EventLite[]
-  eventId: string
-  eventName: string
-  strings: DashboardSeatingStrings
-}) {
-  const router = useRouter()
-
-  if (events.length <= 1) {
-    return <span className="text-sm font-semibold text-[#1A1A1A]">{eventName}</span>
-  }
-
-  return (
-    <label className="relative inline-flex items-center">
-      <span className="pointer-events-none absolute left-3 text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/40">
-        {strings.toolbar_event_label}
-      </span>
-      <select
-        value={eventId}
-        onChange={(e) => {
-          setActiveEventCookie(e.target.value)
-          router.push(`/my/dashboard/seating?event=${e.target.value}`)
-        }}
-        className="appearance-none rounded-xl border border-black/[0.12] bg-white py-2.5 pl-[68px] pr-9 text-sm font-semibold text-[#1A1A1A] outline-none focus:border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/30"
-      >
-        {events.map((ev) => (
-          <option key={ev.id} value={ev.id}>
-            {ev.name}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#1A1A1A]/40" />
-    </label>
   )
 }
 

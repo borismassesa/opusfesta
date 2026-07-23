@@ -1006,6 +1006,7 @@ export interface DashboardSendStrings {
   th_guest: string
   th_contact: string
   th_channel: string
+  th_ticket: string
   th_status: string
   th_send: string
   channel_whatsapp: string
@@ -1815,7 +1816,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
   'dashboard-events': {
     page_title: 'Events',
     page_description:
-      'Set up every moment of your ceremony, reception and everything in between. Guests will see the right details and RSVP to each event separately.',
+      'Set up every moment of your ceremony, reception and everything in between.',
     tabs_aria: 'Event views',
     tab_event_list: 'Event list',
     tab_create_event: 'Create event',
@@ -2016,7 +2017,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     entrance_tag: 'Entrance Passes',
     entrance_title: 'Send tickets to confirmed guests',
     entrance_desc:
-      'Guests who confirmed attending get a personal Entrance Pass Ticket with their own scannable QR code, sent over WhatsApp only once they’ve said yes.',
+      "Guests who RSVP'd get a personal Entrance Pass Ticket with their own scannable QR code.",
     entrance_best_for: 'Guests who already RSVP’d yes. Real check-in QR codes.',
     entrance_quota_label: 'Entrance passes',
     guest_list: 'Guest list',
@@ -2038,6 +2039,7 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     th_guest: 'Guest',
     th_contact: 'Contact',
     th_channel: 'Preferred channel',
+    th_ticket: 'Ticket',
     th_status: 'Status',
     th_send: 'Send',
     channel_whatsapp: 'WhatsApp',

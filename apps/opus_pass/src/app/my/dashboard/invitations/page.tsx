@@ -28,9 +28,10 @@ export default async function InvitationsPage({
     )
   }
 
-  const [data, strings] = await Promise.all([
+  const [data, strings, scopeStrings] = await Promise.all([
     getSendInvitesData(scope.selected?.id, events),
     loadUiStrings('dashboard-send', locale),
+    loadUiStrings('dashboard-event-scope', locale),
   ])
-  return <SendInvitesView data={data} strings={strings} />
+  return <SendInvitesView data={data} strings={strings} scopeStrings={scopeStrings} />
 }

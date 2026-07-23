@@ -56,7 +56,7 @@ import type { GiftRegistryClaimRow, GiftRegistryHero, GiftRegistryItemWithClaims
 import { GIFT_REGISTRY_CATEGORIES, type GiftRegistryItem } from '@/lib/dashboard/types'
 import { Card, EmptyState, SectionTitle, StatCard } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Field, Slideover, inputClass } from '@/components/dashboard/controls'
-import { EventSwitcher } from '@/components/dashboard/EventScope'
+import { EventPicker } from '@/components/dashboard/EventScope'
 import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
 import ImagePickerModal from '@/components/dashboard/ImagePickerModal'
 import { cn } from '@/lib/utils'
@@ -751,18 +751,17 @@ export default function GiftRegistryManager({
 
   return (
     <div className="space-y-6">
-      <SectionTitle
-        title="Gift registry"
-        subtitle="Add gifts you'd love to receive — guests reserve one from your public link so nobody doubles up."
-        action={
-          <div className="flex items-center gap-3">
-            <EventSwitcher events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} />
-            <Button onClick={openCreate}>
-              <Gift className="h-4 w-4" /> Add a gift
-            </Button>
-          </div>
-        }
-      />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Gift registry</h1>
+        {/* Event picker rides the right end of the subtitle row; Add-a-gift
+            lives on the search/filter toolbar below. */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 flex-1 text-sm text-[#1A1A1A]/65 sm:text-base">
+            Add gifts you&apos;d love to receive — guests reserve one from your public link so nobody doubles up.
+          </p>
+          <EventPicker events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} />
+        </div>
+      </div>
 
       <div className="relative mt-2 overflow-hidden rounded-3xl bg-black/[0.04]">
         {/* Cover — full-bleed photo with the header/date overlaid once one is set; a plain background before that.
@@ -1082,6 +1081,9 @@ export default function GiftRegistryManager({
                 </option>
               ))}
             </FilterSelect>
+            <Button onClick={openCreate}>
+              <Gift className="h-4 w-4" /> Add a gift
+            </Button>
           </div>
 
           {visibleItems.length === 0 ? (

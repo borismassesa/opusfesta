@@ -11,15 +11,11 @@ import {
   Check,
   Pencil,
   Trash2,
-  Link2,
   Upload,
   MessageCircle,
-  Mail,
-  Smartphone,
   X,
   ClipboardSignature,
   ArrowUp,
-  ArrowDown,
   CalendarHeart,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
@@ -31,25 +27,15 @@ import {
   updateGuest,
   deleteGuest,
   bulkImportGuests,
-  recordSend,
   sendWhatsAppCollectorRequests,
-  sendWhatsAppInvites,
   sendWhatsAppRsvpReminders,
   type GuestInput,
 } from '@/lib/dashboard/actions'
-import {
-  emailShareUrl,
-  firstNameOf,
-  inviteMessage,
-  rsvpUrl,
-  smsShareUrl,
-  whatsappShareUrl,
-} from '@/lib/dashboard/share'
 import { fileToImportLines, SpreadsheetError } from '@/lib/dashboard/import-spreadsheet'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { GuestsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type { DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
-import { EventSwitcher } from '@/components/dashboard/EventScope'
+import { EventPicker } from '@/components/dashboard/EventScope'
 import type {
   ChildEntry,
   GuestInvitation,
@@ -112,14 +98,6 @@ function hasPlusOne(form: GuestInput): boolean {
   )
 }
 
-function summaryStatus(invitations: GuestInvitation[]): RsvpStatus | null {
-  if (invitations.length === 0) return null
-  if (invitations.some((i) => i.rsvp_status === 'attending')) return 'attending'
-  if (invitations.every((i) => i.rsvp_status === 'declined')) return 'declined'
-  if (invitations.some((i) => i.rsvp_status === 'maybe')) return 'maybe'
-  return 'pending'
-}
-
 /** Narrow a guest's invitations to the currently selected event scope. */
 function scopedInvitations(g: GuestWithInvitations, eventFilter: string): GuestInvitation[] {
   return eventFilter === 'all' ? g.invitations : g.invitations.filter((i) => i.event_id === eventFilter)
@@ -154,11 +132,9 @@ export default function GuestsManager({
   events,
   eventFilter,
   scopeStrings,
-  coupleName,
   hero,
   collectorToken,
   copy,
-  whatsappLive,
 }: {
   initialGuests: GuestWithInvitations[]
   /** Which event(s) each guest has a logged send for, keyed by guest id. */
@@ -174,7 +150,6 @@ export default function GuestsManager({
   whatsappLive: boolean
 }) {
   const [query, setQuery] = useState('')
-  const [groupFilter, setGroupFilter] = useState('all')
   const [rsvpFilter, setRsvpFilter] = useState<Set<RsvpStatus>>(new Set())
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
@@ -193,13 +168,8 @@ export default function GuestsManager({
   const [form, setForm] = useState<GuestInput>(emptyForm)
   const [pending, startTransition] = useTransition()
 
-  const groups = useMemo(
-    () => [...new Set(initialGuests.map((g) => g.group_tag).filter(Boolean))] as string[],
-    [initialGuests]
-  )
-
   // Guests belonging to the selected event scope, before any search/view/
-  // group/rsvp refinement. This is the stable base for the stat cards and
+  // rsvp refinement. This is the stable base for the stat cards and
   // sub-nav badges, so those numbers track the event switcher but don't
   // fluctuate as the user types a search query or flips sub-nav tabs.
   const eventScopedGuests = useMemo(
@@ -213,7 +183,6 @@ export default function GuestsManager({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matched = eventScopedGuests.filter((g) => {
-      if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
       if (view === 'invite' && wasSentForScope(g, eventFilter, sentEventIds)) return false
       if (view === 'address' && guestHasFullAddress(g)) return false
       if (rsvpFilter.size > 0) {
@@ -236,7 +205,7 @@ export default function GuestsManager({
         ? a.full_name.localeCompare(b.full_name)
         : b.full_name.localeCompare(a.full_name),
     )
-  }, [eventScopedGuests, query, groupFilter, sortDir, view, rsvpFilter, eventFilter, sentEventIds])
+  }, [eventScopedGuests, query, sortDir, view, rsvpFilter, eventFilter, sentEventIds])
 
   // Close the Filter popover when the user clicks outside it.
   useEffect(() => {
@@ -298,7 +267,10 @@ export default function GuestsManager({
         if (inv.rsvp_status !== 'pending') replied += 1
       }
     }
-    return { missingContact, invited, replied, totalInvites }
+    // Entrance passes are a Single/Double product — a guest allocated 2+
+    // seats is a Double (max_party_size is clamped to 2 on write).
+    const doubles = filtered.filter((g) => g.max_party_size >= 2).length
+    return { missingContact, invited, replied, totalInvites, doubles }
   }, [filtered, eventFilter, sentEventIds])
 
   const allSelected = filtered.length > 0 && filtered.every((g) => selected.has(g.id))
@@ -511,77 +483,6 @@ export default function GuestsManager({
     })
   }
 
-  async function copyLink(g: GuestWithInvitations) {
-    const url = rsvpUrl(window.location.origin, g.public_token)
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      toast.error('Could not copy link')
-      return
-    }
-    toast.success('RSVP link copied')
-    recordSend(g.id, 'link', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
-  }
-
-  function openManualWhatsApp(g: GuestWithInvitations) {
-    const link = rsvpUrl(window.location.origin, g.public_token)
-    const msg = inviteMessage(coupleName, g.full_name, link)
-    const url = whatsappShareUrl(g, msg)
-    window.open(url, '_blank', 'noopener,noreferrer')
-    recordSend(g.id, 'whatsapp', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
-  }
-
-  function sendWhatsApp(g: GuestWithInvitations) {
-    // WhatsApp Business live → send the approved invite template (card image +
-    // RSVP buttons), same pipeline as Send Invites. The wa.me prefill remains
-    // for pre-go-live and for couples without a paid card (the template needs one).
-    //
-    // With 2+ events, a templated send needs to know WHICH event's design and
-    // quota to use, so it's only available while the page is scoped to one
-    // event via the switcher; the 'all' roster view falls back to the manual
-    // wa.me share, which carries no event-specific card and can't charge the
-    // wrong quota.
-    const scopedEventId = events.length > 1 ? eventFilter : undefined
-    if (!whatsappLive || scopedEventId === 'all') {
-      openManualWhatsApp(g)
-      return
-    }
-    startTransition(async () => {
-      try {
-        const r = await sendWhatsAppInvites([g.id], scopedEventId)
-        const nothingHappened = r.sent === 0 && r.failed === 0 && r.blocked === 0 && r.skipped === 0
-        if (!r.hasPaidOrder || nothingHappened) {
-          openManualWhatsApp(g)
-          return
-        }
-        if (r.sent > 0 && r.dryRun) toast.success('1 queued (dry run)')
-        else if (r.sent > 0) toast.success(`Invitation sent to ${firstNameOf(g.full_name)}`)
-        else if (r.blocked > 0) toast.error('Over your invitation quota — top up to keep sending')
-        else if (r.skipped > 0) toast.error('No usable phone number for this guest')
-        else toast.error(`Could not send to ${firstNameOf(g.full_name)}`)
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Send failed')
-      }
-    })
-  }
-
-  function sendEmail(g: GuestWithInvitations) {
-    const link = rsvpUrl(window.location.origin, g.public_token)
-    const msg = inviteMessage(coupleName, g.full_name, link)
-    const url = emailShareUrl(g, `You're invited — ${coupleName}`, msg)
-    window.location.href = url
-    recordSend(g.id, 'email', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
-  }
-
-  function sendSms(g: GuestWithInvitations) {
-    const link = rsvpUrl(window.location.origin, g.public_token)
-    const msg = inviteMessage(coupleName, g.full_name, link)
-    const url = smsShareUrl(g, msg)
-    window.location.href = url
-    recordSend(g.id, 'sms', eventFilter !== 'all' ? eventFilter : undefined).catch(() => {})
-  }
-
-
   function pickImportFile() {
     fileInputRef.current?.click()
   }
@@ -627,6 +528,12 @@ export default function GuestsManager({
   // title, so it's obvious at a glance which event's guest list is showing.
   const selectedEventName = events.length > 1 && eventFilter !== 'all' ? eventName(eventFilter) : undefined
 
+  // "Invited to" only earns its column across the whole roster (a guest can
+  // belong to several events). Scoped to one event it just repeats the event
+  // name on every row, so the guest-level mailing address — always useful and
+  // never redundant — takes that slot instead. The Address view forces it too.
+  const showAddressCol = eventFilter !== 'all' || view === 'address'
+
   return (
     <div className="space-y-6">
       <DashboardHero
@@ -638,23 +545,11 @@ export default function GuestsManager({
             </span>
           ) : undefined
         }
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={openCreate}
-              className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
-            >
-              <Plus className="h-3.5 w-3.5" /> {copy.add_guests_cta}
-            </button>
-          </>
-        }
       />
 
       <GuestSubNav
         view={view}
         onChange={setView}
-        notInvitedCount={viewCounts.notInvited}
         copy={copy}
         events={events}
         eventFilter={eventFilter}
@@ -769,6 +664,13 @@ export default function GuestsManager({
             <Upload className="h-4 w-4" />
             <span>{copy.upload_spreadsheet_cta}</span>
           </button>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#C9A0DC] px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+          >
+            <Plus className="h-4 w-4" /> {copy.add_guests_cta}
+          </button>
         </div>
       ) : null}
 
@@ -874,12 +776,7 @@ export default function GuestsManager({
                       </p>
                     ) : null}
                   </th>
-                  <th scope="col" className="hidden py-3 pr-4 md:table-cell">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-                      Invited to
-                    </span>
-                  </th>
-                  {view === 'address' ? (
+                  {showAddressCol ? (
                     <th scope="col" className="py-3 pr-4">
                       <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
                         Address
@@ -890,24 +787,22 @@ export default function GuestsManager({
                         </p>
                       ) : null}
                     </th>
-                  ) : null}
+                  ) : (
+                    <th scope="col" className="hidden py-3 pr-4 md:table-cell">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+                        Invited to
+                      </span>
+                    </th>
+                  )}
                   <th scope="col" className="py-3 pr-4">
                     <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-                      RSVP
+                      Ticket type
                     </span>
-                    {counts.totalInvites > 0 ? (
+                    {counts.doubles > 0 ? (
                       <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-[#1A1A1A]/45">
-                        {counts.replied} of {counts.totalInvites} replied
+                        {counts.doubles} double{counts.doubles === 1 ? '' : 's'}
                       </p>
                     ) : null}
-                  </th>
-                  <th scope="col" className="py-3 pr-4">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-                      Invite sent?
-                    </span>
-                    <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-[#1A1A1A]/45">
-                      {counts.invited} of {filtered.length} sent
-                    </p>
                   </th>
                   <th scope="col" className="w-1 py-3 pr-3">
                     <span className="sr-only">Actions</span>
@@ -917,9 +812,7 @@ export default function GuestsManager({
               <tbody className="divide-y divide-black/[0.05]">
                 {filtered.map((g) => {
                   const invitationsInScope = scopedInvitations(g, eventFilter)
-                  const status = summaryStatus(invitationsInScope)
                   const isSelected = selected.has(g.id)
-                  const sent = wasSentForScope(g, eventFilter, sentEventIds)
                   return (
                     <tr
                       key={g.id}
@@ -961,28 +854,7 @@ export default function GuestsManager({
                           )}
                         </div>
                       </td>
-                      <td className="hidden py-3.5 pr-4 md:table-cell">
-                        {invitationsInScope.length === 0 ? (
-                          <span className="text-xs text-[#1A1A1A]/40">Not invited yet</span>
-                        ) : (
-                          <div className="flex max-w-[180px] flex-wrap gap-1">
-                            {invitationsInScope.slice(0, 2).map((inv) => (
-                              <span
-                                key={inv.id}
-                                className="rounded-full bg-black/[0.05] px-2 py-0.5 text-xs text-[#1A1A1A]/70"
-                              >
-                                {eventName(inv.event_id)}
-                              </span>
-                            ))}
-                            {invitationsInScope.length > 2 ? (
-                              <span className="text-xs text-[#1A1A1A]/40">
-                                +{invitationsInScope.length - 2}
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-                      </td>
-                      {view === 'address' ? (
+                      {showAddressCol ? (
                         <td className="py-3.5 pr-4">
                           {guestHasFullAddress(g) ? (
                             <p className="max-w-[260px] truncate text-xs text-[#1A1A1A]/70" title={formatAddress(g)}>
@@ -1001,89 +873,53 @@ export default function GuestsManager({
                             </button>
                           )}
                         </td>
-                      ) : null}
+                      ) : (
+                        <td className="hidden py-3.5 pr-4 md:table-cell">
+                          {invitationsInScope.length === 0 ? (
+                            <span className="text-xs text-[#1A1A1A]/40">Not invited yet</span>
+                          ) : (
+                            <div className="flex max-w-[180px] flex-wrap gap-1">
+                              {invitationsInScope.slice(0, 2).map((inv) => (
+                                <span
+                                  key={inv.id}
+                                  className="rounded-full bg-black/[0.05] px-2 py-0.5 text-xs text-[#1A1A1A]/70"
+                                >
+                                  {eventName(inv.event_id)}
+                                </span>
+                              ))}
+                              {invitationsInScope.length > 2 ? (
+                                <span className="text-xs text-[#1A1A1A]/40">
+                                  +{invitationsInScope.length - 2}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </td>
+                      )}
                       <td className="py-3.5 pr-4">
-                        {status ? (
-                          <StatusPill status={status} />
-                        ) : (
-                          <span className="text-xs text-[#1A1A1A]/35">—</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 pr-4">
-                        {sent ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#9FE870]/25 px-2.5 py-1 text-xs font-medium text-[#3f6b1f]">
-                            <Check className="h-3 w-3" />
-                            Sent{eventFilter === 'all' && g.invite_count > 1 ? ` · ${g.invite_count}×` : ''}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-black/[0.05] px-2.5 py-1 text-xs font-medium text-[#1A1A1A]/55">
-                            Not sent
-                          </span>
-                        )}
+                        <span className="inline-flex items-center rounded-full bg-[#9FE870]/25 px-2.5 py-1 text-xs font-medium text-[#3f6b1f]">
+                          {g.max_party_size >= 2 ? 'Double' : 'Single'}
+                        </span>
                       </td>
                       <td className="py-3.5 pr-3 text-right">
-                        <div className="inline-flex flex-col items-end gap-1">
-                          {/* Upper row — send the invite */}
-                          <div className="inline-flex gap-1">
-                            <button
-                              onClick={() => sendEmail(g)}
-                              disabled={!g.email}
-                              aria-label="Send invite by email"
-                              title={g.email ? 'Send invite by email' : 'No email on file'}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                            >
-                              <Mail className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => sendWhatsApp(g)}
-                              disabled={!g.whatsapp_phone && !g.phone}
-                              aria-label="Send invite on WhatsApp"
-                              title={
-                                g.whatsapp_phone || g.phone
-                                  ? 'Send invite on WhatsApp'
-                                  : 'No phone on file'
-                              }
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => sendSms(g)}
-                              disabled={!g.phone && !g.whatsapp_phone}
-                              aria-label="Send invite by SMS"
-                              title={
-                                g.phone || g.whatsapp_phone ? 'Send invite by SMS' : 'No phone on file'
-                              }
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
-                            >
-                              <Smartphone className="h-4 w-4" />
-                            </button>
-                          </div>
-                          {/* Lower row — row tools */}
-                          <div className="inline-flex gap-1">
-                            <button
-                              onClick={() => copyLink(g)}
-                              aria-label="Copy RSVP link"
-                              title="Copy RSVP link"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
-                            >
-                              <Link2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => openEdit(g)}
-                              aria-label="Edit"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/50 hover:bg-black/[0.05]"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setPendingDelete(g)}
-                              aria-label="Remove"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                        {/* Sends happen in the Send Invites console; this
+                            table is for managing the roster, so it keeps only
+                            edit + remove. */}
+                        <div className="inline-flex gap-1">
+                          <button
+                            onClick={() => openEdit(g)}
+                            aria-label="Edit"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/50 hover:bg-black/[0.05]"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setPendingDelete(g)}
+                            aria-label="Remove"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1262,7 +1098,6 @@ function Stat({ value, label }: { value: number; label: string }) {
 function GuestSubNav({
   view,
   onChange,
-  notInvitedCount,
   copy,
   events,
   eventFilter,
@@ -1271,7 +1106,6 @@ function GuestSubNav({
 }: {
   view: GuestView
   onChange: (v: GuestView) => void
-  notInvitedCount: number
   copy: GuestsDashboardCopy
   events: { id: string; name: string }[]
   eventFilter: string
@@ -1337,7 +1171,7 @@ function GuestSubNav({
         {copy.nav_rsvps} <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
       </Link>
       {events.length > 1 ? (
-        <EventSwitcher
+        <EventPicker
           events={events}
           selectedId={eventFilter}
           strings={scopeStrings}

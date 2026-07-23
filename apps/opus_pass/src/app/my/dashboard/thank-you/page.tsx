@@ -55,6 +55,7 @@ export default async function ThankYouPage({
     dashboardUser,
     checkoutFormStrings,
     checkoutPaymentStrings,
+    scopeStrings,
   ] = await Promise.all([
     getThankYouData(selectedEventId ?? undefined, events),
     loadUiStrings('dashboard-thank-you', locale),
@@ -65,6 +66,7 @@ export default async function ThankYouPage({
     getDashboardUser(),
     loadUiStrings('checkout-form', locale),
     loadUiStrings('checkout-payment', locale),
+    loadUiStrings('dashboard-event-scope', locale),
   ])
 
   // Same fallback the Pledges card picker uses: no "Kadi za Michango" designs
@@ -90,6 +92,7 @@ export default async function ThankYouPage({
       contactPhone={profile?.whatsapp_phone ?? null}
       checkoutFormStrings={checkoutFormStrings}
       checkoutPaymentStrings={checkoutPaymentStrings}
+      scopeStrings={scopeStrings}
     />
   )
 }

@@ -301,7 +301,7 @@ export default function EventsManager({
 
   return (
     <div className="space-y-6">
-      <header className="border-b border-black/[0.06] pb-6">
+      <header className="dash-header-safe border-b border-black/[0.06] pb-6">
         <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
           {strings.page_title}
         </h1>

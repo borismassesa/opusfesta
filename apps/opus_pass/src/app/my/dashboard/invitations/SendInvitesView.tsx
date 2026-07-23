@@ -22,7 +22,6 @@ import {
   Trash2,
   Check,
   Ticket,
-  ChevronDown,
   ImagePlus,
   Send,
   CheckCheck,
@@ -56,8 +55,8 @@ import { INVITE_TEMPLATE, ENTRANCE_PASS_TEMPLATE } from '@/lib/whatsapp/types'
 import { EVENT_TYPE_LABELS, EVENT_TYPE_LABELS_SW } from '@/lib/dashboard/types'
 import type { EventType, TicketLanguage } from '@/lib/dashboard/types'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
-import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
-import { setActiveEventCookie } from '@/components/dashboard/EventScope'
+import type { DashboardSendStrings, DashboardEventScopeStrings } from '@/lib/cms/ui-strings-fallback'
+import { setActiveEventCookie, EventPicker } from '@/components/dashboard/EventScope'
 
 /** Short stable digest of the ticket's visible fields — appended to the
  *  preview image URL so a save produces a new URL, and the browser can
@@ -160,9 +159,11 @@ interface PendingSend {
 export default function SendInvitesView({
   data,
   strings,
+  scopeStrings,
 }: {
   data: SendInvitesData
   strings: DashboardSendStrings
+  scopeStrings: DashboardEventScopeStrings
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -733,7 +734,7 @@ export default function SendInvitesView({
     <div className="si">
       <style>{css}</style>
 
-      <div className="head">
+      <div className="head dash-header-safe">
         <div>
           <h1>{sendTab === 'ticket' ? strings.entrance_title : strings.heading}</h1>
           <p className="sub">
@@ -768,17 +769,14 @@ export default function SendInvitesView({
           {attendingCount > 0 ? <span className="stbcnt">{attendingCount}</span> : null}
         </button>
         {events.length > 1 ? (
-          <label className="evswitch">
-            <span>{strings.event_switcher_label}</span>
-            <span className="selwrap">
-              <select value={selectedEventId ?? ''} onChange={(e) => switchEvent(e.target.value)} disabled={pending}>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="selchev" aria-hidden="true" />
-            </span>
-          </label>
+          <EventPicker
+            events={events}
+            selectedId={selectedEventId ?? ''}
+            strings={scopeStrings}
+            disabled={pending}
+            onSelect={switchEvent}
+            className="ml-auto"
+          />
         ) : null}
       </div>
 
@@ -1202,6 +1200,7 @@ export default function SendInvitesView({
               <thead>
                 <tr>
                   <th style={{ width: 30 }}></th><th>{strings.th_guest}</th><th>{strings.th_contact}</th>
+                  <th>{strings.th_ticket}</th>
                   <th>{strings.th_channel}</th><th>{strings.th_status}</th><th style={{ textAlign: 'right' }}>{strings.th_send}</th>
                 </tr>
               </thead>
@@ -1229,7 +1228,7 @@ export default function SendInvitesView({
                         inputMode="tel"
                       />
                     </td>
-                    <td colSpan={2}></td>
+                    <td colSpan={3}></td>
                     <td>
                       <div className="ra">
                         <button className="ia send" disabled={pending || !newGuest.name.trim()} onClick={addGuest}>
@@ -1263,7 +1262,7 @@ export default function SendInvitesView({
                           inputMode="tel"
                         />
                       </td>
-                      <td colSpan={2}></td>
+                      <td colSpan={3}></td>
                       <td>
                         <div className="ra">
                           <button className="ia send" disabled={pending} onClick={saveRowEdit}>
@@ -1285,17 +1284,7 @@ export default function SendInvitesView({
                   ) : (
                   <tr key={g.id}>
                     <td><input type="checkbox" className="ck" checked={selected.has(g.id)} onChange={() => toggleSelect(g.id)} /></td>
-                    <td className="who">
-                      {g.name}
-                      {/* Cards tab: the invite type the couple assigned.
-                          Pass Ticket tab: what the guest confirmed at RSVP —
-                          the same Single/Double their ticket pill shows. */}
-                      <span className="ppill">
-                        {(sendTab === 'ticket' ? (g.rsvpPartySize ?? g.assignedPartySize) : g.assignedPartySize) >= 2
-                          ? strings.party_double
-                          : strings.party_single}
-                      </span>
-                    </td>
+                    <td className="who">{g.name}</td>
                     <td className="contact">
                       {g.phone ?? g.whatsappPhone ?? (
                         phoneEdit?.id === g.id ? (
@@ -1316,6 +1305,16 @@ export default function SendInvitesView({
                           </button>
                         )
                       )}
+                    </td>
+                    {/* Cards tab: the invite type the couple assigned. Pass
+                        Ticket tab: what the guest confirmed at RSVP — the same
+                        Single/Double their ticket pill shows. */}
+                    <td>
+                      <span className="ppill">
+                        {(sendTab === 'ticket' ? (g.rsvpPartySize ?? g.assignedPartySize) : g.assignedPartySize) >= 2
+                          ? strings.party_double
+                          : strings.party_single}
+                      </span>
                     </td>
                     <td style={{ position: 'relative' }}>
                       {(() => {
@@ -1678,8 +1677,11 @@ const css = `
   --green:#9FE870; --green-tx:#3f6b1f;
   --radius:16px; --soft:0 1px 2px rgba(20,18,30,.05);
   color:var(--ink); }
-.si .serif, .si h1, .si h2, .si h3, .si .n, .si .ci b{ font-family:var(--font-cormorant),Georgia,serif; }
-.si h1{ font-weight:600; font-size:30px; letter-spacing:-.3px; }
+/* Headings use the dashboard's default sans (like Overview, Guests, Pledges),
+   not this view's own Cormorant serif — keep the send console consistent with
+   the rest of the dashboard. The .serif class stays for any deliberate accent. */
+.si .serif{ font-family:var(--font-cormorant),Georgia,serif; }
+.si h1{ font-weight:700; font-size:30px; letter-spacing:-.3px; }
 .si .head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .si .evswitch{ display:flex; align-items:center; gap:8px; margin-left:auto; font-size:12px; font-weight:600; color:var(--muted); }
 .si .selwrap{ position:relative; display:inline-flex; align-items:center; }
@@ -1919,7 +1921,7 @@ const css = `
 .si .dglabel.failed{ color:var(--bad-tx); } .si .dglabel.blocked, .si .dglabel.skipped{ color:var(--amber-tx); }
 .si .drow{ display:flex; align-items:baseline; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; flex-wrap:wrap; }
 .si .dname{ font-weight:600; }
-.si .ppill{ display:inline-flex; align-items:center; margin-left:8px; padding:2px 9px; border-radius:999px;
+.si .ppill{ display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px;
   background:var(--green); color:var(--green-tx); font-size:10.5px; font-weight:700; letter-spacing:.3px; }
 .si .dtag{ font-size:10.5px; font-weight:600; color:var(--purple-d); background:var(--lav-soft); padding:2px 8px; border-radius:999px; }
 .si .derr{ font-size:11.5px; color:var(--bad-tx); }
