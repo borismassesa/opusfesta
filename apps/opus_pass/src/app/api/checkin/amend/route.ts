@@ -115,8 +115,11 @@ export async function POST(request: Request) {
     .maybeSingle<{ seating_tables: { name: string } | null }>()
   const tableName = seatAssignment?.seating_tables?.name ?? null
 
-  // The corrected headcount is now persisted on the row; the couple's and
-  // admin's live views converge on it on their next arrivals poll.
+  // The corrected headcount is persisted on the row and returned to the
+  // scanner in the response below. The couple's roster reflects it on its
+  // next full dashboard refresh (the periodic ~25s refresh, not the arrivals
+  // poll — that only re-pulls the roster when the arrived count changes, which
+  // an amend doesn't). The admin console doesn't surface party size today.
   return NextResponse.json({
     status: 'success',
     guestName: guest?.full_name ?? 'Guest',
