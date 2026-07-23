@@ -29,6 +29,7 @@ function guest(overrides: Partial<RosterEntry> & { fullName: string }): RosterEn
     checkedInBy: null,
     groupTag: null,
     isVip: false,
+    table: null,
     ...overrides,
   };
 }

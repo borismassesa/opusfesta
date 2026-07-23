@@ -186,6 +186,7 @@ export default function ScannerEntryScreen() {
         doorLabel: validated.doorLabel,
         attendantName: validated.attendantName ?? attendantName.trim() ?? null,
         eventName: validated.event?.name ?? null,
+        expiresAt: validated.expiresAt ?? null,
       });
       router.push(`/scanner/${resolved.eventId}/scan`);
     } catch (err) {

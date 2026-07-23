@@ -26,6 +26,9 @@ export interface RosterEntry {
   groupTag: string | null;
   /** Heuristic: the couple wrote "VIP" in the group tag. Not a real tier. */
   isVip: boolean;
+  /** Seating table this guest is assigned to (from Seat collection). Null
+   *  when the guest hasn't been seated yet. */
+  table: string | null;
 }
 
 export type ResolveCodeResult =
@@ -39,6 +42,9 @@ export type ValidateSessionResult =
       /** Set when an admin assigned this code to a named attendant — the
        *  app must then skip asking who is scanning. */
       attendantName: string | null;
+      /** When the door code (and the attendant's shift) expires. The app ends
+       *  the shift automatically once this passes. Null on older servers. */
+      expiresAt: string | null;
       event: ScannerEvent | null;
       roster: RosterEntry[];
     }
@@ -62,6 +68,9 @@ export interface CheckinScanResult {
   checkedInAt?: string | null;
   isVip?: boolean;
   groupTag?: string | null;
+  /** Seating table this guest is assigned to (from Seat collection). Null
+   *  when the guest hasn't been seated yet. */
+  table?: string | null;
 }
 
 /** A validated door session, persisted so a mid-shift restart doesn't force re-login. */
@@ -71,4 +80,8 @@ export interface ScannerSession {
   doorLabel: string;
   attendantName: string | null;
   eventName: string | null;
+  /** ISO time the shift auto-ends (the door code's expiry). Null for sessions
+   *  saved before auto-end shipped, or when the server didn't send one — those
+   *  simply don't auto-end client-side (the server still rejects late scans). */
+  expiresAt: string | null;
 }
