@@ -3001,7 +3001,12 @@ export async function sendEntrancePasses(guestIds?: string[], eventId?: string):
       dateLabel,
       timeLabel,
       venue,
-      headerImageUrl: `${origin}/entrance-pass/${g.public_token}?event=${resolvedEventId}`,
+      // Cache-buster (`v`): Meta downloads and caches header media keyed by URL,
+      // so a guest re-sent their pass — or sent one after the couple edits the
+      // ticket or we ship a new template — would otherwise receive Meta's stale
+      // cached image forever (the URL is stable per guest+event). A per-send
+      // timestamp forces a fresh fetch every time. The route ignores `v`.
+      headerImageUrl: `${origin}/entrance-pass/${g.public_token}?event=${resolvedEventId}&v=${Date.now()}`,
     })
 
     // Delivery-status log only now — credit_consumptions (written by
