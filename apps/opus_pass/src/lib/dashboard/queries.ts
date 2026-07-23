@@ -2140,6 +2140,21 @@ export interface SendGuestRow {
   /** Seats the guest confirmed at RSVP for THIS event — the ticket's pill
    *  and the door scanner's count. Null until they're attending. */
   rsvpPartySize: number | null
+  /** Door check-in for THIS event — set once an attendant scans this guest's
+   *  entrance pass. Null until they arrive; drives the live Check-ins tab. */
+  checkedInAt: string | null
+  /** The door the guest was scanned at (e.g. "Main Gate"). */
+  checkedInDoor: string | null
+  /** Headcount actually admitted at the door. Null until scanned. */
+  checkedInPartySize: number | null
+  /** The attendant who scanned this guest in. Parsed from the check-in audit
+   *  label (which also embeds the door + any manual-override reason) down to
+   *  just the person's name for display. Null until scanned. */
+  checkedInBy: string | null
+  /** The seating table this guest is assigned to for THIS event (from the
+   *  Seat collection planner), so an usher can send an arrival to their seat.
+   *  Null when the guest hasn't been seated yet. */
+  tableName: string | null
 }
 
 export interface SendInvitesData {
@@ -2314,6 +2329,31 @@ export async function getSendInvitesData(
   const sentSet = new Set(entitlement.alreadySentIds)
   const entranceSentSet = new Set(entitlement.entrancePassSentIds)
 
+  // Seat collection assignments → each guest's table name, so the live
+  // Check-ins roster can point an arriving guest to their seat. Read-only
+  // here; the seating itself is arranged on the Seat collection page.
+  const [{ data: seatTables }, { data: seatAssignments }] = await Promise.all([
+    supabase
+      .from('seating_tables')
+      .select('id, name')
+      .eq('user_id', user.id)
+      .eq('event_id', selectedEventId),
+    supabase
+      .from('seating_assignments')
+      .select('guest_contact_id, table_id')
+      .eq('user_id', user.id)
+      .eq('event_id', selectedEventId),
+  ])
+  const tableNameById = new Map(
+    ((seatTables ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name]),
+  )
+  const tableNameByGuest = new Map<string, string>()
+  for (const a of (seatAssignments ?? []) as { guest_contact_id: string; table_id: string }[]) {
+    // Skip stale assignments whose table was since removed.
+    const name = tableNameById.get(a.table_id)
+    if (name) tableNameByGuest.set(a.guest_contact_id, name)
+  }
+
   const roster = guests.filter((g) => g.review_status !== 'unconfirmed')
 
   const rows: SendGuestRow[] = roster.map((g) => {
@@ -2359,6 +2399,13 @@ export async function getSendInvitesData(
       entrancePassSent: entranceSentSet.has(g.id),
       assignedPartySize: Math.max(1, g.max_party_size ?? 1),
       rsvpPartySize: attending ? Math.max(1, attending.party_size ?? 1) : null,
+      checkedInAt: attending?.checked_in_at ?? null,
+      checkedInDoor: attending?.checked_in_door ?? null,
+      checkedInPartySize: attending?.checked_in_party_size ?? null,
+      // The audit label is "Name (Door) (manual: reason)"; the couple only
+      // needs the attendant's name — the door has its own column.
+      checkedInBy: attending?.checked_in_by ? attending.checked_in_by.split(' (')[0].trim() || null : null,
+      tableName: tableNameByGuest.get(g.id) ?? null,
     }
   })
 

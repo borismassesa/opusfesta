@@ -614,6 +614,15 @@ export default function ScanScreen() {
               </Text>
             </View>
           ) : null}
+          {/* Where this guest sits — so the attendant can point them straight
+              to their table on arrival. Only shown once they've been seated
+              in the couple's Seat collection. */}
+          {result.table ? (
+            <View className="mt-3 flex-row items-center gap-1.5 rounded-full bg-white/25 px-3.5 py-1.5">
+              <Ionicons name="restaurant-outline" size={14} color="#FFFFFF" />
+              <Text className="font-work-sans-bold text-sm text-white">{result.table}</Text>
+            </View>
+          ) : null}
           {result.status === 'success' && result.checkedInPartySize ? (
             <Text className="mt-3 text-center font-work-sans text-base text-white/90">
               {result.checkedInPartySize} of {result.partySize} admitted

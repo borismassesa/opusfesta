@@ -99,9 +99,22 @@ export async function POST(request: Request) {
 
   const { data: guest } = await supabase
     .from('guest_contacts')
-    .select('full_name')
+    .select('full_name, group_tag')
     .eq('id', invitation.guest_contact_id)
     .maybeSingle()
+
+  const groupTag = guest?.group_tag ?? null
+  const isVip = /vip/i.test(groupTag ?? '')
+
+  // Keep the guest's table on the corrected result so the scan card stays
+  // whole after a headcount fix (same read-only seating lookup as /scan).
+  const { data: seatAssignment } = await supabase
+    .from('seating_assignments')
+    .select('seating_tables(name)')
+    .eq('event_id', eventId)
+    .eq('guest_contact_id', invitation.guest_contact_id)
+    .maybeSingle<{ seating_tables: { name: string } | null }>()
+  const tableName = seatAssignment?.seating_tables?.name ?? null
 
   // Re-broadcast so live dashboards converge on the corrected number rather
   // than keeping the optimistic full-party figure from the original scan.
@@ -118,5 +131,8 @@ export async function POST(request: Request) {
     guestName: guest?.full_name ?? 'Guest',
     partySize: rsvpd,
     checkedInPartySize: amended,
+    isVip,
+    groupTag,
+    table: tableName,
   })
 }

@@ -971,6 +971,33 @@ export interface DashboardSendStrings {
   // Send-invites sub-tabs
   tab_digital_cards: string
   tab_pass_ticket: string
+  tab_checkins: string
+  // Live check-ins tab — arrivals as attendants scan entrance passes
+  checkin_title: string
+  checkin_desc: string
+  checkin_live: string
+  checkin_offline: string
+  checkin_arrived_suffix: string // {n}/{m} guests arrived
+  checkin_roster_title: string
+  checkin_filter_arrived: string
+  checkin_filter_pending: string
+  checkin_th_door: string
+  checkin_th_attendant: string
+  checkin_th_table: string
+  checkin_no_table: string
+  checkin_th_arrived: string
+  checkin_not_arrived: string
+  checkin_duplicate: string
+  checkin_just_arrived: string
+  checkin_empty_none: string
+  checkin_empty_arrived: string
+  checkin_empty_pending: string
+  // Downloadable / shareable attendance report
+  checkin_report_download: string
+  checkin_report_share: string
+  checkin_report_title: string // {event}
+  checkin_toast_report_failed: string
+  checkin_toast_report_copied: string
   // Personal invites (Targeted) mode
   targeted_tag: string
   targeted_title: string
@@ -2004,6 +2031,34 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     chip_open: 'Open',
     tab_digital_cards: 'Digital Cards',
     tab_pass_ticket: 'Entrance Pass Ticket',
+    tab_checkins: 'Live Check-ins',
+    checkin_title: 'Live arrivals at the door',
+    checkin_desc:
+      'Watch guests check in as your attendants scan their Entrance Pass at the door.',
+    checkin_live: 'Live',
+    checkin_offline: 'Showing last known arrivals',
+    checkin_arrived_suffix: 'arrived',
+    checkin_roster_title: 'Arrivals',
+    checkin_filter_arrived: 'Arrived',
+    checkin_filter_pending: 'Not arrived',
+    checkin_th_door: 'Door',
+    checkin_th_attendant: 'Attendant',
+    checkin_th_table: 'Table',
+    checkin_no_table: 'Not seated',
+    checkin_th_arrived: 'Checked in',
+    checkin_not_arrived: 'Not arrived yet',
+    checkin_duplicate: 'already scanned',
+    checkin_just_arrived: 'Just arrived',
+    checkin_empty_none:
+      'No confirmed guests yet. Once guests RSVP as attending, their arrivals show here the moment they are scanned at the door.',
+    checkin_empty_arrived:
+      'No arrivals yet. Guests appear here as your attendants scan their Entrance Pass.',
+    checkin_empty_pending: 'Everyone has arrived. 🎉',
+    checkin_report_download: 'Download report',
+    checkin_report_share: 'Share',
+    checkin_report_title: '{event}: Check-in report',
+    checkin_toast_report_failed: 'Could not generate the report. Please try again.',
+    checkin_toast_report_copied: 'Check-in report copied. Paste it to share.',
     targeted_tag: 'Targeted',
     targeted_title: 'Personal invites',
     targeted_desc:

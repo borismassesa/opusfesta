@@ -208,6 +208,11 @@ export function GuestConfirmCard({
                 value={guest.groupTag || 'No group'}
               />
               <DetailRow
+                icon="restaurant-outline"
+                label="Table"
+                value={guest.table ?? 'Not seated'}
+              />
+              <DetailRow
                 icon="barcode-outline"
                 label="Ticket code"
                 value={guest.entryCode ?? 'Not issued'}

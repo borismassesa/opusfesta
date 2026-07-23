@@ -156,6 +156,17 @@ export async function POST(request: Request) {
   const displayDoor = doorLabel || 'Main Gate'
   const rsvpdPartySize = invitation.party_size ?? 1
 
+  // The guest's seating table for this event, so the attendant can point them
+  // to their seat on arrival. Read-only: the seating itself is arranged on the
+  // couple's Seat collection page. Null when the guest isn't seated yet.
+  const { data: seatAssignment } = await supabase
+    .from('seating_assignments')
+    .select('seating_tables(name)')
+    .eq('event_id', eventId)
+    .eq('guest_contact_id', invitation.guest_contact_id)
+    .maybeSingle<{ seating_tables: { name: string } | null }>()
+  const tableName = seatAssignment?.seating_tables?.name ?? null
+
   // The audit trail records who was holding the device and why, while the
   // broadcast/UI door label stays plain so the live feed reads cleanly.
   const auditLabel = [
@@ -182,6 +193,7 @@ export async function POST(request: Request) {
       checkedInAt: invitation.checked_in_at,
       isVip,
       groupTag,
+      table: tableName,
     })
   }
 
@@ -214,6 +226,7 @@ export async function POST(request: Request) {
       checkedInAt: null,
       isVip,
       groupTag,
+      table: tableName,
     })
   }
 
@@ -234,5 +247,6 @@ export async function POST(request: Request) {
     checkedInPartySize: admitted,
     isVip,
     groupTag,
+    table: tableName,
   })
 }
