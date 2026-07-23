@@ -52,14 +52,14 @@ export async function assignAttendant(
 
   const { data: event, error: eventErr } = await supabase
     .from('wedding_events')
-    .select('id, user_id, starts_at')
+    .select('id, user_id, starts_at, ends_at')
     .eq('id', eventId)
-    .maybeSingle<{ id: string; user_id: string; starts_at: string | null }>()
+    .maybeSingle<{ id: string; user_id: string; starts_at: string | null; ends_at: string | null }>()
   if (eventErr) return { ok: false, error: eventErr.message }
   if (!event) return { ok: false, error: 'Event not found' }
 
   const { rawToken, tokenHash } = generateScannerAccessToken()
-  const expiresAt = accessCodeExpiry(validity, event.starts_at)
+  const expiresAt = accessCodeExpiry(validity, event.starts_at, event.ends_at)
 
   const { error } = await supabase.from('scanner_access_tokens').insert({
     user_id: event.user_id,

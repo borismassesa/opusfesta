@@ -22,6 +22,10 @@ export interface RosterEntry {
   /** Heuristic only: the couple wrote "VIP" somewhere in the group tag.
    *  There is no dedicated VIP tier in OpusPass's data model. */
   isVip: boolean
+  /** Seating table this guest is assigned to (from the couple's Seat
+   *  collection), so the attendant can point them to their seat. Null when
+   *  the guest hasn't been seated yet. */
+  table: string | null
 }
 
 /**
@@ -87,10 +91,24 @@ export async function POST(request: Request) {
   const { data: invitations } = await supabase
     .from('guest_invitations')
     .select(
-      'id, entry_code, party_size, checked_in_at, checked_in_party_size, checked_in_door, checked_in_by, guest_contacts(full_name, group_tag)'
+      'id, guest_contact_id, entry_code, party_size, checked_in_at, checked_in_party_size, checked_in_door, checked_in_by, guest_contacts(full_name, group_tag)'
     )
     .eq('event_id', eventId)
     .eq('rsvp_status', 'attending')
+
+  // Seat collection assignments → each guest's table name. One event-wide
+  // read (not per-guest) mapped by contact id, so the roster can show where
+  // each arrival sits without an extra round-trip per row.
+  const { data: seatAssignments } = await supabase
+    .from('seating_assignments')
+    .select('guest_contact_id, seating_tables(name)')
+    .eq('event_id', eventId)
+  const tableByGuest = new Map<string, string>()
+  for (const a of seatAssignments ?? []) {
+    // to-one embed: one assignment points at one table (or none).
+    const table = a.seating_tables as unknown as { name: string } | null
+    if (table?.name) tableByGuest.set(a.guest_contact_id as string, table.name)
+  }
 
   const roster: RosterEntry[] = (invitations ?? []).map((inv) => {
     const contact = inv.guest_contacts as unknown as {
@@ -108,6 +126,7 @@ export async function POST(request: Request) {
       checkedInBy: inv.checked_in_by,
       groupTag: contact?.group_tag ?? null,
       isVip: /vip/i.test(contact?.group_tag ?? ''),
+      table: tableByGuest.get(inv.guest_contact_id) ?? null,
     }
   })
 
@@ -117,6 +136,10 @@ export async function POST(request: Request) {
     /** Non-null when an admin assigned this code to a named attendant at
      *  issuance — authoritative, so the app must skip the name-entry step. */
     attendantName: row.attendant_name,
+    /** When this door code (and therefore the attendant's shift) stops being
+     *  valid. The scanner ends the shift automatically once this passes, so a
+     *  forgotten shift can't stay open after the event. */
+    expiresAt: row.expires_at,
     event,
     roster,
   })

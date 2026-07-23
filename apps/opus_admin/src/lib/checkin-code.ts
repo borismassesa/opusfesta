@@ -70,18 +70,30 @@ const HOUR_MS = 60 * 60 * 1000
 export function accessCodeExpiry(
   validity: AccessCodeValidity,
   eventStartsAt: string | null,
+  eventEndsAt: string | null = null,
   now: Date = new Date(),
 ): string {
   if (validity !== 'event') {
     return new Date(now.getTime() + FIXED_VALIDITY_HOURS[validity] * HOUR_MS).toISOString()
   }
 
+  // Anchor to the couple's explicit end time when they set one — that's the
+  // truest "the event is over" signal — and fall back to the start otherwise.
+  // Either way a trailing window is added so late arrivals can still be
+  // admitted after the published time.
+  const end = eventEndsAt ? new Date(eventEndsAt) : null
   const start = eventStartsAt ? new Date(eventStartsAt) : null
-  if (!start || Number.isNaN(start.getTime())) {
+  const anchor =
+    end && !Number.isNaN(end.getTime())
+      ? end
+      : start && !Number.isNaN(start.getTime())
+        ? start
+        : null
+  if (!anchor) {
     return new Date(now.getTime() + NO_START_FALLBACK_HOURS * HOUR_MS).toISOString()
   }
 
-  const eventEnd = new Date(start.getTime() + EVENT_WINDOW_TRAIL_HOURS * HOUR_MS)
+  const eventEnd = new Date(anchor.getTime() + EVENT_WINDOW_TRAIL_HOURS * HOUR_MS)
   // A code re-issued mid-event (dead phone, extra attendant) must still be
   // usable, so never hand back an already-expired token: give it the lead
   // window from now instead.
