@@ -7,6 +7,7 @@ export type NotificationType =
   | 'rsvp_received'
   | 'pledge_received'
   | 'payment_confirmed'
+  | 'payment_submitted'
   | 'guestbook_received'
   | 'gift_claimed'
   | 'system'

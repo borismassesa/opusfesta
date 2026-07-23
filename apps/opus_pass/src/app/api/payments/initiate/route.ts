@@ -130,7 +130,7 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
       dashboardUser
         ? createNotification({
             userId: dashboardUser.id,
-            type: 'system',
+            type: 'payment_submitted',
             title: 'Invitation payment submitted',
             body: `${formatTzs(pricing.amountTotal)} is under finance review${paymentReference ? ` · ref ${paymentReference}` : ''}`,
             href: '/my/dashboard/orders',

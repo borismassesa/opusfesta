@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, CreditCard, Gift, HandCoins, MailOpen, PenLine, type LucideIcon } from 'lucide-react'
+import { Bell, BadgeCheck, CreditCard, Gift, HandCoins, MailOpen, PenLine, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type NotifType =
   | 'rsvp_received'
   | 'pledge_received'
   | 'payment_confirmed'
+  | 'payment_submitted'
   | 'guestbook_received'
   | 'gift_claimed'
   | 'system'
@@ -32,7 +33,8 @@ const TYPE_ICON: Record<NotifType, { Icon: LucideIcon; wrap: string; fg: string 
   pledge_received: { Icon: HandCoins, wrap: 'bg-[#9FE870]/25', fg: 'text-[#3d7a1f]' },
   gift_claimed: { Icon: Gift, wrap: 'bg-[#9FE870]/25', fg: 'text-[#3d7a1f]' },
   guestbook_received: { Icon: PenLine, wrap: 'bg-[var(--accent)]/15', fg: 'text-[#8e57b3]' },
-  payment_confirmed: { Icon: CreditCard, wrap: 'bg-amber-50', fg: 'text-amber-600' },
+  payment_submitted: { Icon: CreditCard, wrap: 'bg-amber-50', fg: 'text-amber-600' },
+  payment_confirmed: { Icon: BadgeCheck, wrap: 'bg-emerald-50', fg: 'text-emerald-600' },
   system: { Icon: Bell, wrap: 'bg-gray-100', fg: 'text-gray-500' },
 }
 const FALLBACK_ICON = TYPE_ICON.system
