@@ -751,12 +751,12 @@ export default function GiftRegistryManager({
 
   return (
     <div className="space-y-6">
-      <div className="dash-header-safe">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Gift registry</h1>
         {/* Event picker rides the right end of the subtitle row; Add-a-gift
             lives on the search/filter toolbar below. */}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[#1A1A1A]/65 sm:text-base">
+          <p className="min-w-0 flex-1 text-sm text-[#1A1A1A]/65 sm:text-base">
             Add gifts you&apos;d love to receive — guests reserve one from your public link so nobody doubles up.
           </p>
           <EventPicker events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} />

@@ -84,14 +84,15 @@ export default async function SeatingPage({
 
 function Header({ strings, action }: { strings: DashboardSeatingStrings; action?: ReactNode }) {
   return (
-    <header className="dash-header-safe border-b border-black/[0.06] pb-6">
+    <header className="border-b border-black/[0.06] pb-6">
       <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
         {strings.header_title}
       </h1>
-      {/* Event picker rides the right end of the subtitle row rather than the
-          title row, so the header top line stays clean. */}
+      {/* Event picker rides the right end of the subtitle row (which sits below
+          the overlaid account icons, so it needs no right clearance). The
+          subtitle flexes/shrinks so the picker stays on the same line. */}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_description}</p>
+        <p className="min-w-0 flex-1 text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_description}</p>
         {action}
       </div>
     </header>

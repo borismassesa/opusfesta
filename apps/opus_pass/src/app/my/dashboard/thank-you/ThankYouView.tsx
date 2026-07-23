@@ -386,7 +386,7 @@ export default function ThankYouView({
     <div className="ty">
       <style>{css}</style>
 
-      <div className="head dash-header-safe">
+      <div className="head">
         <div>
           <h1>{strings.heading}</h1>
           {/* Subtitle + event switcher share one row so the dropdown sits on

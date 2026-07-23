@@ -79,11 +79,11 @@ export default function GuestbookClient({
 
   return (
     <div className="space-y-6">
-      <div className="dash-header-safe">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Guestbook</h1>
         {/* Event picker rides the right end of the subtitle row. */}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[#1A1A1A]/65 sm:text-base">
+          <p className="min-w-0 flex-1 text-sm text-[#1A1A1A]/65 sm:text-base">
             A standalone link where guests leave messages and photo memories — no wedding website required.
           </p>
           <EventPicker events={events} selectedId={selectedEventId ?? ''} strings={scopeStrings} />
