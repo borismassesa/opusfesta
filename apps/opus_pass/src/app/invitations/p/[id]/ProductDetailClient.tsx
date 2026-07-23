@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import { useFavorites } from '@/components/providers/FavoritesProvider'
 import { DesignCarousel } from '@/components/guests/DesignCarousel'
 import type { CatalogProduct } from '@/data/invitations-products'
 import ProductBadgePill from '@/components/invitations/ProductBadge'
@@ -72,12 +73,25 @@ const containsHtml = (s: string): boolean => /<\/?[a-z][\s\S]*?>/i.test(s)
 // above the preview on mobile, in the right column on desktop — so the title
 // always leads on phones.
 function TitleBlock({ product, className }: { product: CatalogProduct; className?: string }) {
+  const { isFavorite, toggle } = useFavorites()
+  const favourited = isFavorite(product.id)
   return (
     <div className={className}>
       <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-500 mb-2">{product.category}</p>
-      <h1 className="text-2xl md:text-3xl lg:text-[34px] font-serif font-medium text-gray-900 leading-tight">
-        {product.name}
-      </h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-2xl md:text-3xl lg:text-[34px] font-serif font-medium text-gray-900 leading-tight">
+          {product.name}
+        </h1>
+        <button
+          type="button"
+          onClick={() => toggle(product.id)}
+          aria-label={favourited ? 'Remove from saved designs' : 'Save this design'}
+          aria-pressed={favourited}
+          className="mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#1A1A1A]/12 bg-white transition-colors hover:bg-[#1A1A1A]/5"
+        >
+          <Heart className={cn('h-5 w-5', favourited ? 'fill-red-500 text-red-500' : 'text-[#1A1A1A]')} />
+        </button>
+      </div>
     </div>
   )
 }

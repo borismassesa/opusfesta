@@ -89,6 +89,7 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
     type: 'pledge_received',
     title: `${cleanName} pledged a contribution`,
     body: `TZS ${amount.toLocaleString('en-US')}${input.promised_date ? ` · by ${input.promised_date}` : ''}`,
+    actorName: cleanName,
     href: '/my/dashboard/pledges',
   })
 

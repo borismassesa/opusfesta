@@ -5,6 +5,7 @@ import { Yellowtail, Playfair_Display, Cormorant_Garamond, Dancing_Script, Monts
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
+import { FavoritesProvider } from '@/components/providers/FavoritesProvider'
 import ClerkLoadFallback from '@/components/ClerkLoadFallback'
 import JsonLd from '@/components/JsonLd'
 import './globals.css'
@@ -83,7 +84,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ClerkLoadFallback />
           <JsonLd data={organizationSchema} />
           <CartProvider>
-            <SmoothScrollProvider>{children}</SmoothScrollProvider>
+            <FavoritesProvider>
+              <SmoothScrollProvider>{children}</SmoothScrollProvider>
+            </FavoritesProvider>
           </CartProvider>
           <ToastProvider />
         </body>

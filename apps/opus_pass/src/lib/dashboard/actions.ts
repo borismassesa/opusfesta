@@ -1504,6 +1504,7 @@ export async function submitPublicRsvp(
       type: 'rsvp_received',
       title: `${guest.full_name} responded to your invitation`,
       body: label,
+      actorName: guest.full_name,
       href: '/my/dashboard/rsvps',
     })
   }
@@ -1777,6 +1778,7 @@ export async function submitPublicInviteRsvp(
     type: 'rsvp_received',
     title: `${fullName} RSVP'd via your shared link`,
     body: `${statusLabel} · needs review`,
+    actorName: fullName,
     href: '/my/dashboard/guests?review=1',
   })
 
@@ -2029,6 +2031,7 @@ export async function submitGuestbookEntry(
     userId: event.user_id,
     type: 'guestbook_received',
     title: `${guestName} left ${event.name} a guestbook message`,
+    actorName: guestName,
     body: message.length > 120 ? `${message.slice(0, 117)}…` : message,
     href: '/my/dashboard/guestbook',
   })
@@ -2645,11 +2648,14 @@ export async function claimGiftRegistryItem(
   }
 
   const coupleNames = [profile.partner1_name, profile.partner2_name].filter(Boolean).join(' & ') || 'you'
+  // Title stays short — this lands on the couple's OWN dashboard, so "from your
+  // registry" is redundant. The claimed item is the body.
   await createNotification({
     userId: profile.user_id,
     type: 'gift_claimed',
-    title: `${name} claimed a gift from ${coupleNames}'s registry`,
+    title: `${name} claimed a gift`,
     body: claimedTitle,
+    actorName: name,
     href: '/my/dashboard/gift-registry',
   })
 

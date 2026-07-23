@@ -19,6 +19,8 @@ export interface NotificationRecord {
   href: string | null
   read: boolean
   created_at: string
+  /** Person the notification is about (guest name); drives the initials avatar. */
+  actor_name: string | null
 }
 
 const LIST_LIMIT = 20
@@ -34,6 +36,8 @@ export async function createNotification(input: {
   title: string
   body?: string | null
   href?: string | null
+  /** Guest name this notification is about — powers the initials avatar. */
+  actorName?: string | null
 }): Promise<void> {
   try {
     const supabase = createDashboardClient()
@@ -43,6 +47,7 @@ export async function createNotification(input: {
       title: input.title,
       body: input.body ?? null,
       href: input.href ?? null,
+      actor_name: input.actorName ?? null,
     })
     if (error) console.error('[notifications] insert failed', error)
   } catch (err) {
@@ -55,7 +60,7 @@ export async function listNotifications(userId: string): Promise<NotificationRec
   const supabase = createDashboardClient()
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, type, title, body, href, read, created_at')
+    .select('id, type, title, body, href, read, created_at, actor_name')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(LIST_LIMIT)

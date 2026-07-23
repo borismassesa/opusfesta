@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import { useFavorites } from '@/components/providers/FavoritesProvider'
 import { PROMO_CODE, ProductInfo } from '@/components/guests/productInfo'
 import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { CatalogProduct } from '@/data/invitations-products'
@@ -68,15 +69,6 @@ export default function InvitationsCatalogClient({
   promoBanner: InvitationsPromoBannerContent
   styleStrip: InvitationsStyleStripContent
 }) {
-  const [favourites, setFavourites] = useState<Set<string>>(new Set())
-  const toggleFavourite = (id: string) =>
-    setFavourites((s) => {
-      const next = new Set(s)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortMode>('popular')
   const [range, setRange] = useState<TimeRange>('all')
@@ -250,8 +242,6 @@ export default function InvitationsCatalogClient({
               perGuestLabel={perGuestLabel}
               perDesignLabel={perDesignLabel}
               fromLabel={fromLabel}
-              favourites={favourites}
-              onToggleFavourite={toggleFavourite}
             />
           )}
           {autoLoading && (
@@ -398,7 +388,8 @@ function FilterMenu<T extends string>({
 
 type StyleStripItem = InvitationsStyleStripContent['items'][number]
 
-function CategoryStrip({ items }: { items: StyleStripItem[] }) {
+// Exported so the Favorites empty state offers the same "browse by style" row.
+export function CategoryStrip({ items }: { items: StyleStripItem[] }) {
   const { scrollRef, progress, scrolling, scrollNext, scrollPrev } = useScrollCarousel()
   // Arrows stay hidden until the user hovers the row or scrolls it.
   const arrowReveal = scrolling
@@ -480,16 +471,12 @@ function ProductGrid({
   perGuestLabel,
   perDesignLabel,
   fromLabel,
-  favourites,
-  onToggleFavourite,
 }: {
   products: Product[]
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
   fromLabel?: string
-  favourites: Set<string>
-  onToggleFavourite: (id: string) => void
 }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10">
@@ -501,31 +488,29 @@ function ProductGrid({
           perGuestLabel={perGuestLabel}
           perDesignLabel={perDesignLabel}
           fromLabel={fromLabel}
-          favourited={favourites.has(product.id)}
-          onToggleFavourite={() => onToggleFavourite(product.id)}
         />
       ))}
     </div>
   )
 }
 
-function ProductCard({
+// Exported so the Favorites page renders identical cards (single source of truth
+// for the catalog tile). Favorite state is read straight from FavoritesProvider.
+export function ProductCard({
   product,
   fromGuestPrice,
   perGuestLabel,
   perDesignLabel,
   fromLabel,
-  favourited,
-  onToggleFavourite,
 }: {
   product: Product
   fromGuestPrice?: number
   perGuestLabel?: string
   perDesignLabel?: string
   fromLabel?: string
-  favourited: boolean
-  onToggleFavourite: () => void
 }) {
+  const { isFavorite, toggle } = useFavorites()
+  const favourited = isFavorite(product.id)
   // Card image: prefer the attached hero artwork, then fall back to the first
   // designer-uploaded design, then the built-in CSS treatment. Products created
   // via designer upload often have no `imageUrl` (only `designs`), so without
@@ -558,7 +543,7 @@ function ProductCard({
           aria-pressed={favourited}
           onClick={(e) => {
             e.preventDefault()
-            onToggleFavourite()
+            toggle(product.id)
           }}
           className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white/90 shadow-sm hover:bg-white z-10"
         >
