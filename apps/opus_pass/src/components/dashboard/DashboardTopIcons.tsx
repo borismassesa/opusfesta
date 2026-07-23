@@ -16,7 +16,7 @@ export default function DashboardTopIcons() {
   return (
     <div className="flex items-center gap-0.5 sm:gap-1">
       <Link href="/my/dashboard/inquiries" aria-label="Messages" className={ICON_BUTTON}>
-        <MessagesSquare size={18} className="text-[#1A1A1A]" />
+        <MessagesSquare size={18} />
       </Link>
       {/* Favorites — destination still to be wired; kept in place per the header design. */}
       <Link href="#" aria-label="Favorites" className={ICON_BUTTON}>

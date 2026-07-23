@@ -33,6 +33,7 @@ import { useT } from '@/components/providers/UIStringsProvider'
 import { cn } from '@/lib/utils'
 import DashboardSearch from './DashboardSearch'
 import DashboardTopIcons from './DashboardTopIcons'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 
 // opus_website (the marketplace + couple planning dashboard) lives at a different
 // origin than this app. In production both share the opusfesta.com apex (and the
@@ -145,6 +146,10 @@ export default function DashboardShell({
 }) {
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  // The icon cluster (bell + cart) polls, so mounting both the mobile and
+  // desktop copies would double every poll. CSS only hides one; this makes
+  // exactly one actually mount for the current breakpoint.
+  const isDesktop = useIsDesktop()
   const t = useT('dashboard-chrome')
 
   // Resolved nav labels feed the search dropdown's "Pages" group.
@@ -217,7 +222,7 @@ export default function DashboardShell({
         </button>
         <Logo className="text-xl" />
         <div className="flex items-center gap-0.5">
-          <DashboardTopIcons />
+          {!isDesktop && <DashboardTopIcons />}
           <AccountFooter email={userEmail} initial={userInitial} layout="header" />
         </div>
       </header>
@@ -269,7 +274,7 @@ export default function DashboardShell({
               utility, ~w-56 of clearance) so right-aligned page controls clear
               the icons and wrap below when tight. Mobile uses the top bar. */}
           <div className="absolute right-3 top-4 z-20 hidden items-center gap-1 sm:right-4 lg:right-6 lg:flex">
-            <DashboardTopIcons />
+            {isDesktop && <DashboardTopIcons />}
             <div className="mx-1.5 h-6 w-px bg-black/10" />
             <AccountFooter email={userEmail} initial={userInitial} layout="header" />
           </div>
