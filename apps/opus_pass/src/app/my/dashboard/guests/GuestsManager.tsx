@@ -16,7 +16,6 @@ import {
   X,
   ClipboardSignature,
   ArrowUp,
-  ArrowDown,
   CalendarHeart,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
@@ -151,7 +150,6 @@ export default function GuestsManager({
   whatsappLive: boolean
 }) {
   const [query, setQuery] = useState('')
-  const [groupFilter, setGroupFilter] = useState('all')
   const [rsvpFilter, setRsvpFilter] = useState<Set<RsvpStatus>>(new Set())
   const [filterOpen, setFilterOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
@@ -170,13 +168,8 @@ export default function GuestsManager({
   const [form, setForm] = useState<GuestInput>(emptyForm)
   const [pending, startTransition] = useTransition()
 
-  const groups = useMemo(
-    () => [...new Set(initialGuests.map((g) => g.group_tag).filter(Boolean))] as string[],
-    [initialGuests]
-  )
-
   // Guests belonging to the selected event scope, before any search/view/
-  // group/rsvp refinement. This is the stable base for the stat cards and
+  // rsvp refinement. This is the stable base for the stat cards and
   // sub-nav badges, so those numbers track the event switcher but don't
   // fluctuate as the user types a search query or flips sub-nav tabs.
   const eventScopedGuests = useMemo(
@@ -190,7 +183,6 @@ export default function GuestsManager({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matched = eventScopedGuests.filter((g) => {
-      if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
       if (view === 'invite' && wasSentForScope(g, eventFilter, sentEventIds)) return false
       if (view === 'address' && guestHasFullAddress(g)) return false
       if (rsvpFilter.size > 0) {
@@ -213,7 +205,7 @@ export default function GuestsManager({
         ? a.full_name.localeCompare(b.full_name)
         : b.full_name.localeCompare(a.full_name),
     )
-  }, [eventScopedGuests, query, groupFilter, sortDir, view, rsvpFilter, eventFilter, sentEventIds])
+  }, [eventScopedGuests, query, sortDir, view, rsvpFilter, eventFilter, sentEventIds])
 
   // Close the Filter popover when the user clicks outside it.
   useEffect(() => {
@@ -558,7 +550,6 @@ export default function GuestsManager({
       <GuestSubNav
         view={view}
         onChange={setView}
-        notInvitedCount={viewCounts.notInvited}
         copy={copy}
         events={events}
         eventFilter={eventFilter}
@@ -1107,7 +1098,6 @@ function Stat({ value, label }: { value: number; label: string }) {
 function GuestSubNav({
   view,
   onChange,
-  notInvitedCount,
   copy,
   events,
   eventFilter,
@@ -1116,7 +1106,6 @@ function GuestSubNav({
 }: {
   view: GuestView
   onChange: (v: GuestView) => void
-  notInvitedCount: number
   copy: GuestsDashboardCopy
   events: { id: string; name: string }[]
   eventFilter: string
