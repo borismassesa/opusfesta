@@ -1,0 +1,161 @@
+import { createSupabaseAdminClient, hasSupabaseAdminConfig } from '@/lib/supabase'
+
+export type SupportStatus = 'bot' | 'needs_human' | 'assigned' | 'resolved'
+export type SupportFilter = 'attention' | 'open' | 'resolved' | 'all'
+
+export type ConversationListItem = {
+  id: string
+  status: SupportStatus
+  awaiting_staff: boolean
+  subject: string | null
+  topic: string | null
+  contact_name: string | null
+  contact_email: string | null
+  page_url: string | null
+  assignee_name: string | null
+  last_message_at: string
+  created_at: string
+}
+
+export type SupportMessage = {
+  id: string
+  role: 'user' | 'assistant' | 'agent' | 'system'
+  content: string
+  created_at: string
+  agent_name: string | null
+}
+
+export type ConversationDetail = {
+  id: string
+  status: SupportStatus
+  awaiting_staff: boolean
+  subject: string | null
+  topic: string | null
+  escalation_reason: string | null
+  contact_name: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  page_url: string | null
+  locale: string | null
+  assigned_to: string | null
+  assignee_name: string | null
+  created_at: string
+  messages: SupportMessage[]
+}
+
+export type SupportSummary = { attention: number; open: number; resolved: number; all: number }
+
+export async function getSupportSummary(): Promise<SupportSummary> {
+  if (!hasSupabaseAdminConfig()) return { attention: 0, open: 0, resolved: 0, all: 0 }
+  const sb = createSupabaseAdminClient()
+  const table = () => sb.from('support_conversations').select('id', { count: 'exact', head: true })
+  const [attention, open, resolved, all] = await Promise.all([
+    table().eq('awaiting_staff', true),
+    table().in('status', ['needs_human', 'assigned']),
+    table().eq('status', 'resolved'),
+    table(),
+  ])
+  return {
+    attention: attention.count ?? 0,
+    open: open.count ?? 0,
+    resolved: resolved.count ?? 0,
+    all: all.count ?? 0,
+  }
+}
+
+export async function listConversations(
+  filter: SupportFilter,
+  q: string,
+): Promise<ConversationListItem[]> {
+  if (!hasSupabaseAdminConfig()) return []
+  const sb = createSupabaseAdminClient()
+  let query = sb
+    .from('support_conversations')
+    .select(
+      'id, status, awaiting_staff, subject, topic, contact_name, contact_email, page_url, last_message_at, created_at, assignee:assigned_to(full_name)',
+    )
+    .order('awaiting_staff', { ascending: false })
+    .order('last_message_at', { ascending: false })
+    .limit(100)
+
+  if (filter === 'attention') query = query.eq('awaiting_staff', true)
+  else if (filter === 'open') query = query.in('status', ['needs_human', 'assigned'])
+  else if (filter === 'resolved') query = query.eq('status', 'resolved')
+
+  if (q.trim()) {
+    const like = `%${q.trim()}%`
+    query = query.or(`subject.ilike.${like},contact_name.ilike.${like},contact_email.ilike.${like}`)
+  }
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => {
+    const assignee = r.assignee as { full_name: string } | { full_name: string }[] | null
+    const name = Array.isArray(assignee) ? assignee[0]?.full_name : assignee?.full_name
+    return {
+      id: r.id as string,
+      status: r.status as SupportStatus,
+      awaiting_staff: r.awaiting_staff as boolean,
+      subject: r.subject as string | null,
+      topic: r.topic as string | null,
+      contact_name: r.contact_name as string | null,
+      contact_email: r.contact_email as string | null,
+      page_url: r.page_url as string | null,
+      assignee_name: name ?? null,
+      last_message_at: r.last_message_at as string,
+      created_at: r.created_at as string,
+    }
+  })
+}
+
+export async function getConversationDetail(id: string): Promise<ConversationDetail | null> {
+  if (!hasSupabaseAdminConfig()) return null
+  const sb = createSupabaseAdminClient()
+  const { data: c, error } = await sb
+    .from('support_conversations')
+    .select(
+      'id, status, awaiting_staff, subject, topic, escalation_reason, contact_name, contact_email, contact_phone, page_url, locale, assigned_to, created_at, assignee:assigned_to(full_name)',
+    )
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!c) return null
+
+  const { data: msgs } = await sb
+    .from('support_messages')
+    .select('id, role, content, created_at, agent:agent_id(full_name)')
+    .eq('conversation_id', id)
+    .order('created_at', { ascending: true })
+    .limit(200)
+
+  const assignee = c.assignee as { full_name: string } | { full_name: string }[] | null
+  const assigneeName = Array.isArray(assignee) ? assignee[0]?.full_name : assignee?.full_name
+
+  return {
+    id: c.id as string,
+    status: c.status as SupportStatus,
+    awaiting_staff: c.awaiting_staff as boolean,
+    subject: c.subject as string | null,
+    topic: c.topic as string | null,
+    escalation_reason: c.escalation_reason as string | null,
+    contact_name: c.contact_name as string | null,
+    contact_email: c.contact_email as string | null,
+    contact_phone: c.contact_phone as string | null,
+    page_url: c.page_url as string | null,
+    locale: c.locale as string | null,
+    assigned_to: c.assigned_to as string | null,
+    assignee_name: assigneeName ?? null,
+    created_at: c.created_at as string,
+    messages: (msgs ?? []).map((m) => {
+      const agent = m.agent as { full_name: string } | { full_name: string }[] | null
+      const agentName = Array.isArray(agent) ? agent[0]?.full_name : agent?.full_name
+      return {
+        id: m.id as string,
+        role: m.role as SupportMessage['role'],
+        content: m.content as string,
+        created_at: m.created_at as string,
+        agent_name: agentName ?? null,
+      }
+    }),
+  }
+}
