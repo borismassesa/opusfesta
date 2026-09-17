@@ -570,6 +570,10 @@ export default function SendInvitesView({
     ? strings.card_status_designing
     : strings.card_status_confirmed
   const displayCardImageUrl = showCardProductionLock ? (productionOrder?.cardImageUrl ?? null) : event.cardImageUrl
+  /** The header image the next invite send will actually carry — the couple's
+   *  uploaded preview image, else the paid card art. Mirrors the same fallback
+   *  sendWhatsAppInvites applies, so the preview can't drift from the send. */
+  const previewHeaderImage = event.previewImageUrl ?? event.cardImageUrl
   const displayCardTreatment = showCardProductionLock ? (productionOrder?.cardTreatment ?? null) : event.cardTreatment
 
   const previewBody = INVITE_TEMPLATE.body
@@ -2555,9 +2559,9 @@ export default function SendInvitesView({
                 <div className="wabubble">
                   {/* Exactly what sendWhatsAppInvites will put in the header:
                       the uploaded preview image, else the paid card art. */}
-                  {event.previewImageUrl ?? event.cardImageUrl ? (
+                  {previewHeaderImage ? (
                     <Image
-                      src={(event.previewImageUrl ?? event.cardImageUrl)!}
+                      src={previewHeaderImage}
                       alt=""
                       width={760}
                       height={1064}

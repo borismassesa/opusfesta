@@ -1455,10 +1455,12 @@ export async function saveInvitePreviewImage(eventId: string, url: string | null
   const user = await requireDashboardUser()
   const supabase = createDashboardClient()
   const trimmed = url?.trim() || null
-  // Only ever our own storage/CDN origins: this URL is handed to Meta as a
-  // template header and rendered by <Image>, so an arbitrary attacker-supplied
-  // origin has no business here even though only the couple can write it.
-  if (trimmed && !/^https:\/\//.test(trimmed)) throw new Error('Preview image must be an https URL')
+  // In practice this is always a URL uploadInvitePreviewImage just handed back,
+  // and only the signed-in couple can write their own event. The scheme check
+  // is the floor, not the ceiling: the value is fetched by Meta for the
+  // template header and by link-preview scrapers for og:image, and both refuse
+  // plain http, so storing one would fail silently at send time.
+  if (trimmed && !trimmed.startsWith('https://')) throw new Error('Preview image must be an https URL')
 
   const { data: event } = await supabase
     .from('wedding_events')
