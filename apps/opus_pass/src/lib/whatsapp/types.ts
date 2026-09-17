@@ -18,7 +18,10 @@ export type ButtonKind = (typeof BTN)[keyof typeof BTN]
  * the guest token for webhook mapping. Order matters: button index 0/1/2.
  */
 export const INVITE_TEMPLATE = {
-  /** Header is an IMAGE: the card the couple paid for. */
+  /** Header is an IMAGE: the couple's uploaded invitation preview image when
+   *  they've set one (wedding_events.invite_preview_image_url — the same file
+   *  served as og:image on their shared invite link, so the template and a
+   *  forwarded link show the same picture), else the card they paid for. */
   header: 'IMAGE' as const,
   /** Body placeholders, in order: {{1}} guest first name, {{2}} couple name,
    *  {{3}} event category (Swahili noun, e.g. "harusi"). This is the EXACT
@@ -122,8 +125,9 @@ export interface ThankYouSend {
   coupleName: string
   /** Event category (Swahili noun, e.g. "harusi") interpolated ({{3}}). */
   eventCategory: string
-  /** Absolute URL of the couple's chosen card design, or a generic banner
-   *  when none is picked yet (template image header). */
+  /** Absolute URL for the template image header, best first: the couple's
+   *  chosen thank-you card design, their invitation preview image, else a
+   *  generic banner. */
   headerImageUrl: string
   /** Template language code, e.g. 'sw' or 'en'. */
   languageCode?: string
@@ -162,7 +166,9 @@ export interface LinkSend {
   contactFirstName: string
   /** Couple/honoree name interpolated into the template body ({{2}}). */
   coupleName: string
-  /** Absolute URL of a generic OpusPass banner image (template image header). */
+  /** Absolute URL for the template image header, best first: this event's
+   *  pledge card design (pledge links), the couple's invitation preview
+   *  image, else a generic OpusPass banner. */
   headerImageUrl: string
   /** The collector/pledge/card-details token — the dynamic URL button suffix. */
   token: string
@@ -184,7 +190,9 @@ export interface InviteSend {
   coupleName: string
   /** Event category (Swahili noun, e.g. "harusi") interpolated into the template body ({{3}}). */
   eventCategory: string
-  /** Absolute URL of the card the couple PAID FOR (template image header). */
+  /** Absolute URL for the template image header: the couple's invitation
+   *  preview image when set, else the card they PAID FOR. Must be a public
+   *  https JPEG/PNG — Meta fetches it itself and renders nothing else. */
   headerImageUrl: string
   /** Guest public_token, embedded in each button payload for webhook mapping. */
   token: string

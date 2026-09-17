@@ -25,12 +25,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     [formatLongDate(data.weddingDate), data.city].filter(Boolean).join(' - ') ||
     'Tap to view the save-the-date details'
 
+  // Same picture as the invite link and the WhatsApp template header when the
+  // couple uploaded one — see the sibling /rsvp/event/[slug] page.
+  const previewImage = data.previewImageUrl
   return {
     metadataBase: new URL(origin),
     title,
     description,
-    openGraph: { type: 'website', url, siteName: 'OpusPass', title, description },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: {
+      type: 'website',
+      url,
+      siteName: 'OpusPass',
+      title,
+      description,
+      ...(previewImage ? { images: [{ url: previewImage, alt: title }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(previewImage ? { images: [previewImage] } : {}),
+    },
   }
 }
 

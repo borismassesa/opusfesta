@@ -1156,6 +1156,11 @@ export interface PublicInviteData {
   city: string | null
   coverImageUrl: string | null
   coverIsFullTemplate: boolean
+  /** The couple's uploaded invitation preview image. Served verbatim as this
+   *  page's og:image when set, so a forwarded link previews with exactly the
+   *  picture the WhatsApp template header carries; null falls back to the
+   *  generated OG card (see opengraph-image.tsx). */
+  previewImageUrl: string | null
   /** True once this event's date has passed — the hub closes RSVPs. */
   hasPassed: boolean
   /** This event accepts RSVPs AND its date hasn't passed. */
@@ -1211,7 +1216,7 @@ export async function getPublicInvite(slug: string): Promise<PublicInviteData | 
   const { data: event, error } = await supabase
     .from('wedding_events')
     .select(
-      'id, user_id, name, event_type, description, venue_name, address, city, starts_at, ends_at, dress_code, allow_rsvp, invite_sharing_enabled',
+      'id, user_id, name, event_type, description, venue_name, address, city, starts_at, ends_at, dress_code, allow_rsvp, invite_sharing_enabled, invite_preview_image_url',
     )
     .eq('invite_slug', slug)
     .maybeSingle<{
@@ -1228,6 +1233,7 @@ export async function getPublicInvite(slug: string): Promise<PublicInviteData | 
       dress_code: string | null
       allow_rsvp: boolean
       invite_sharing_enabled: boolean
+      invite_preview_image_url: string | null
     }>()
   if (error) {
     console.error('[public-invite] event lookup failed', error)
@@ -1272,6 +1278,7 @@ export async function getPublicInvite(slug: string): Promise<PublicInviteData | 
     city: event.city,
     coverImageUrl,
     coverIsFullTemplate: Boolean(pledgeCover.coverImageUrl && pledgeCover.coverIsFullTemplate),
+    previewImageUrl: event.invite_preview_image_url?.trim() || null,
     hasPassed,
     allowRsvp: !hasPassed && event.allow_rsvp,
     event: {
@@ -1802,8 +1809,13 @@ export interface WhatsAppEntitlement {
   used: number
   remaining: number
   hasPaidOrder: boolean
-  /** The paid invitation card's hero image — used as the WhatsApp header. */
+  /** The paid invitation card's hero image — the WhatsApp header's fallback
+   *  when the couple hasn't uploaded their own preview image. */
   cardImageUrl: string | null
+  /** The couple's uploaded invitation preview image for THIS event. When set
+   *  it wins over cardImageUrl as the WhatsApp template's image header, so the
+   *  template and the shared link's preview show the same artwork. */
+  previewImageUrl: string | null
   /** Visual treatment — fallback thumbnail when the card has no hero image. */
   cardTreatment: Treatment | null
   /** The paid card's tier (e.g. "Signature"), for the "card purchased" badge. */
@@ -2069,10 +2081,16 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
   // earliest event," now that a couple can be sending for any of several.
   const { data: primaryEvent } = await supabase
     .from('wedding_events')
-    .select('name, event_type, partner1_name, partner2_name')
+    .select('name, event_type, partner1_name, partner2_name, invite_preview_image_url')
     .eq('user_id', user.id)
     .eq('id', eventId)
-    .maybeSingle<{ name: string | null; event_type: string; partner1_name: string | null; partner2_name: string | null }>()
+    .maybeSingle<{
+      name: string | null
+      event_type: string
+      partner1_name: string | null
+      partner2_name: string | null
+      invite_preview_image_url: string | null
+    }>()
   const eventCategory = categoryOverride ?? eventTypeLabelSw(primaryEvent?.event_type ?? 'other')
 
   // No partner names on the profile yet? Fall back to the event's own title
@@ -2177,6 +2195,7 @@ export async function getWhatsAppEntitlement(eventId: string): Promise<WhatsAppE
     entrancePassSentIds,
     hasPaidOrder: orders.length > 0,
     cardImageUrl,
+    previewImageUrl: primaryEvent?.invite_preview_image_url?.trim() || null,
     cardTreatment,
     cardTier,
     cardName,
@@ -2319,6 +2338,10 @@ export interface SendInvitesData {
     cardName: string | null
     /** The paid card's hero artwork — rendered in the event-context preview. */
     cardImageUrl: string | null
+    /** The couple's uploaded invitation preview image for this event: the
+     *  WhatsApp template header and the shared link's og:image. Null means
+     *  they haven't uploaded one and the card hero is still doing both jobs. */
+    previewImageUrl: string | null
     /** Visual treatment — fallback thumbnail when the card has no hero image. */
     cardTreatment: Treatment | null
     /** Save the Date template selected for this event. Separate from the
@@ -2429,6 +2452,7 @@ export async function getSendInvitesData(
         cardTier: null,
         cardName: null,
         cardImageUrl: null,
+        previewImageUrl: null,
         cardTreatment: null,
         saveDateTemplateId: null,
         saveDateTemplateName: null,
@@ -2600,6 +2624,7 @@ export async function getSendInvitesData(
       cardTier: entitlement.cardTier,
       cardName: entitlement.cardName,
       cardImageUrl: entitlement.cardImageUrl,
+      previewImageUrl: entitlement.previewImageUrl,
       cardTreatment: entitlement.cardTreatment,
       saveDateTemplateId: saveDateTemplate?.id ?? null,
       saveDateTemplateName: saveDateTemplate?.name ?? null,

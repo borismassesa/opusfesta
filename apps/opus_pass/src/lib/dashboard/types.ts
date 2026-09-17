@@ -58,6 +58,11 @@ export interface WeddingEvent {
    *  per event so a multi-event couple doesn't fan one guest's RSVP across every event. */
   invite_slug: string | null
   invite_sharing_enabled: boolean
+  /** Public URL of this event's invitation preview image — the WhatsApp
+   *  template's image header AND the og:image on the shared invite link, so
+   *  both show the same artwork. Null falls back to the paid card's hero
+   *  image (WhatsApp) and the generated OG card (link preview). */
+  invite_preview_image_url: string | null
   sort_order: number
   created_at: string
   updated_at: string

@@ -55,6 +55,8 @@ import {
   deleteGuest,
   deleteGuests,
   recordSend,
+  uploadInvitePreviewImage,
+  saveInvitePreviewImage,
   type WhatsAppSendSummary,
   type WhatsAppSendResult,
 } from '@/lib/dashboard/actions'
@@ -568,6 +570,10 @@ export default function SendInvitesView({
     ? strings.card_status_designing
     : strings.card_status_confirmed
   const displayCardImageUrl = showCardProductionLock ? (productionOrder?.cardImageUrl ?? null) : event.cardImageUrl
+  /** The header image the next invite send will actually carry — the couple's
+   *  uploaded preview image, else the paid card art. Mirrors the same fallback
+   *  sendWhatsAppInvites applies, so the preview can't drift from the send. */
+  const previewHeaderImage = event.previewImageUrl ?? event.cardImageUrl
   const displayCardTreatment = showCardProductionLock ? (productionOrder?.cardTreatment ?? null) : event.cardTreatment
 
   const previewBody = INVITE_TEMPLATE.body
@@ -1913,6 +1919,18 @@ export default function SendInvitesView({
       </div>
       ) : null}
 
+      {/* Invitation preview image — the one picture that is both the WhatsApp
+          template's header and the og:image on the shared invite link. Cards
+          tab only: it's the invitation's artwork, not the ticket's. */}
+      {sendTab === 'cards' && event.hasPaidOrder ? (
+        <PreviewImagePanel
+          strings={strings}
+          eventId={selectedEventId}
+          value={event.previewImageUrl}
+          fallbackUrl={event.cardImageUrl}
+        />
+      ) : null}
+
       {/* Funnel + quota — Digital Cards only; Entrance Pass has its own
        *  quota bar in the event context card above. */}
       {sendTab === 'cards' && event.hasPaidOrder ? (
@@ -2539,9 +2557,11 @@ export default function SendInvitesView({
               </div>
               <div className="wawrap">
                 <div className="wabubble">
-                  {event.cardImageUrl ? (
+                  {/* Exactly what sendWhatsAppInvites will put in the header:
+                      the uploaded preview image, else the paid card art. */}
+                  {previewHeaderImage ? (
                     <Image
-                      src={event.cardImageUrl}
+                      src={previewHeaderImage}
                       alt=""
                       width={760}
                       height={1064}
@@ -2608,6 +2628,104 @@ export default function SendInvitesView({
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * The invitation's preview image for one event: uploaded once, used as the
+ * WhatsApp template's image header AND as the og:image on the shared invite
+ * link, so a guest who gets the template and a guest who is forwarded the link
+ * see the same artwork. Empty, the paid card's hero art keeps doing both jobs.
+ */
+function PreviewImagePanel({
+  strings,
+  eventId,
+  value,
+  fallbackUrl,
+}: {
+  strings: DashboardSendStrings
+  eventId: string | null
+  value: string | null
+  /** The paid card art standing in until a preview image is uploaded. */
+  fallbackUrl: string | null
+}) {
+  const router = useRouter()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function handleFile(file: File | undefined | null) {
+    if (!file || !eventId) return
+    setBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const url = await uploadInvitePreviewImage(fd)
+      await saveInvitePreviewImage(eventId, url)
+      toast.success(strings.preview_image_saved)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setBusy(false)
+      // Clear the input so re-picking the same file still fires onChange.
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  async function remove() {
+    if (!eventId) return
+    setBusy(true)
+    try {
+      await saveInvitePreviewImage(eventId, null)
+      toast.success(strings.preview_image_removed)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not remove the image')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const shown = value ?? fallbackUrl
+
+  return (
+    <div className="previmg">
+      <div className="pishot">
+        {shown ? (
+          <Image src={shown} alt="" fill sizes="132px" className="object-cover" unoptimized />
+        ) : (
+          <div className="piph"><ImagePlus size={18} /></div>
+        )}
+        {!value && shown ? <span className="pitag">{strings.preview_image_default_note}</span> : null}
+      </div>
+      <div className="piinfo">
+        <h3>{strings.preview_image_title}</h3>
+        <p>{strings.preview_image_desc}</p>
+        <div className="pibtns">
+          <button className="btn ghost" disabled={busy || !eventId} onClick={() => inputRef.current?.click()}>
+            {busy ? <Loader2 size={14} className="spin" /> : <ImagePlus size={14} />}
+            {busy
+              ? strings.preview_image_uploading
+              : value
+                ? strings.preview_image_replace
+                : strings.preview_image_upload_cta}
+          </button>
+          {value ? (
+            <button className="btn ghost" disabled={busy} onClick={remove}>
+              <Trash2 size={14} /> {strings.preview_image_remove}
+            </button>
+          ) : null}
+        </div>
+        <p className="pihint">{strings.preview_image_hint}</p>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files?.[0])}
+        />
+      </div>
     </div>
   )
 }
@@ -2823,6 +2941,18 @@ const css = `
   /* The busy spinner stays: it is the only signal that a send is in flight. */
   .si .prodpanel .dp em, .si .livedot.on, .si .lf{ animation:none; }
   .si .btn:hover{ transform:none; } }
+/* Invitation preview image — WhatsApp template header + shared-link preview. */
+.si .previmg{ display:grid; grid-template-columns:132px minmax(0,1fr); gap:18px; align-items:start;
+  background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--soft); }
+.si .pishot{ position:relative; width:132px; aspect-ratio:1200/630; border-radius:10px; overflow:hidden;
+  background:var(--lav-soft); border:1px solid var(--line); }
+.si .piph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--faint); }
+.si .pitag{ position:absolute; left:0; right:0; bottom:0; padding:4px 6px; font-size:9px; line-height:1.25;
+  text-align:center; background:rgba(28,27,32,.72); color:#fff; }
+.si .piinfo h3{ font-size:14px; font-weight:600; margin:0; }
+.si .piinfo p{ font-size:12px; color:var(--muted); margin:6px 0 0; max-width:62ch; }
+.si .pibtns{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.si .pihint{ font-size:11px; color:var(--faint); margin-top:8px; }
 .si .funnel{ display:grid; grid-template-columns:repeat(4,1fr) 1.5fr; gap:12px; }
 .si .fc{ position:relative; background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--soft); }
 .si .fcicon{ position:absolute; top:14px; right:14px; width:26px; height:26px; border-radius:50%;
@@ -3031,6 +3161,8 @@ const css = `
 .si .noseat{ font-size:12px; color:var(--faint); }
 
 @media(max-width:900px){ .si .funnel{ grid-template-columns:repeat(2,1fr); }
+  .si .previmg{ grid-template-columns:minmax(0,1fr); }
+  .si .pishot{ width:100%; max-width:260px; }
   .si .funnel .quota{ grid-column:span 2; }
   .si .ctx.production .ctxbody{ grid-template-columns:104px minmax(0,1fr); gap:16px 18px; }
   .si .ctx.production .ccard{ width:104px; height:146px; }
