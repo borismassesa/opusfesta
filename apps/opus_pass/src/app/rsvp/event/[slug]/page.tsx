@@ -27,13 +27,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     [formatLongDate(data.weddingDate), data.city].filter(Boolean).join(' • ') ||
     'Tap to view the invitation and RSVP'
 
-  // The sibling opengraph-image route supplies the (absolute) og:image.
+  // When the couple uploaded an invitation preview image, serve it verbatim:
+  // it's the exact picture the WhatsApp template carries as its header, so a
+  // guest who is forwarded this link sees the same artwork as a guest who got
+  // the template. Setting openGraph.images here overrides the sibling
+  // opengraph-image route, which stays the fallback for everyone else.
+  const previewImage = data.previewImageUrl
   return {
     metadataBase: new URL(origin),
     title,
     description,
-    openGraph: { type: 'website', url, siteName: 'OpusPass', title, description },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: {
+      type: 'website',
+      url,
+      siteName: 'OpusPass',
+      title,
+      description,
+      ...(previewImage ? { images: [{ url: previewImage, alt: title }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(previewImage ? { images: [previewImage] } : {}),
+    },
   }
 }
 

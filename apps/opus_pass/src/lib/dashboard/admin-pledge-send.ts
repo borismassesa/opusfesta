@@ -182,11 +182,24 @@ export async function sendPledgeRequestForCouple(
     const provider = getWhatsAppProvider()
     let headerImageUrl = `${publicOrigin()}/assets/images/couples_together.jpg`
     if (resolvedEventId) {
-      const { data: profile } = await supabase
-        .from('couple_profiles')
-        .select('pledge_page')
-        .eq('user_id', userId)
-        .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
+      // Mirrors sendWhatsAppLinkRequests' preference order so a staff-sent ask
+      // looks identical to the couple's own: invitation preview image over the
+      // generic banner, and this event's pledge card design over both.
+      const [{ data: profile }, { data: event }] = await Promise.all([
+        supabase
+          .from('couple_profiles')
+          .select('pledge_page')
+          .eq('user_id', userId)
+          .maybeSingle<{ pledge_page: PledgePageConfig | null }>(),
+        supabase
+          .from('wedding_events')
+          .select('invite_preview_image_url')
+          .eq('id', resolvedEventId)
+          .eq('user_id', userId)
+          .maybeSingle<{ invite_preview_image_url: string | null }>(),
+      ])
+      const invitePreview = event?.invite_preview_image_url?.trim() || null
+      if (invitePreview) headerImageUrl = invitePreview
       const cover = resolveEventCover(profile?.pledge_page, resolvedEventId)
       if (cover.coverImageUrl) headerImageUrl = cover.coverImageUrl
     }

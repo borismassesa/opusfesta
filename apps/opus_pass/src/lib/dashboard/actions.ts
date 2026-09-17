@@ -1409,6 +1409,79 @@ export async function uploadPledgeCover(formData: FormData): Promise<string> {
   return data.publicUrl
 }
 
+/** Image types Meta accepts in a template image header — the same file is also
+ *  served as og:image, so anything outside this set is refused at upload. */
+const INVITE_PREVIEW_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png'])
+
+/**
+ * Upload an invitation PREVIEW image for one event — the picture that becomes
+ * both the WhatsApp template's image header and the og:image on the event's
+ * shared invite link. Returns its public URL; the caller then persists it with
+ * saveInvitePreviewImage.
+ *
+ * Stricter than uploadPledgeCover on purpose. Meta only renders JPEG and PNG
+ * in a template image header, and this same file is served straight to
+ * WhatsApp/Facebook as the link preview, so a WebP or a video that looks fine
+ * in the dashboard would silently fail the send and blank the preview. Reject
+ * it here, where we can say why, rather than at send time.
+ */
+export async function uploadInvitePreviewImage(formData: FormData): Promise<string> {
+  const user = await requireDashboardUser()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file selected')
+  if (!INVITE_PREVIEW_TYPES.has(file.type)) throw new Error('Please choose a JPG or PNG image')
+  // Meta caps a template header image at 5MB, and og:image scrapers give up on
+  // large files — same ceiling uploadPledgeCover uses for stills.
+  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller')
+
+  const supabase = createDashboardClient()
+  const ext = file.type === 'image/png' ? 'png' : 'jpg'
+  const path = `${user.id}/invite-preview-${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('pledge-covers')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage.from('pledge-covers').getPublicUrl(path)
+  return data.publicUrl
+}
+
+/**
+ * Persist (or clear, with null) one event's invitation preview image. Scoped
+ * to the signed-in couple's own event, and revalidates the public invite/
+ * save-the-date paths so a re-shared link stops advertising the old picture.
+ */
+export async function saveInvitePreviewImage(eventId: string, url: string | null): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const trimmed = url?.trim() || null
+  // Only ever our own storage/CDN origins: this URL is handed to Meta as a
+  // template header and rendered by <Image>, so an arbitrary attacker-supplied
+  // origin has no business here even though only the couple can write it.
+  if (trimmed && !/^https:\/\//.test(trimmed)) throw new Error('Preview image must be an https URL')
+
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('invite_slug')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ invite_slug: string | null }>()
+  if (!event) throw new Error('Event not found')
+
+  const { error } = await supabase
+    .from('wedding_events')
+    .update({ invite_preview_image_url: trimmed, updated_at: new Date().toISOString() })
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  if (event.invite_slug) {
+    revalidatePath(`/rsvp/event/${event.invite_slug}`)
+    revalidatePath(`/save-the-date/${event.invite_slug}`)
+  }
+  revalidateDashboard()
+}
+
 /** Snapshot the legacy top-level Contact Collector fields onto every OTHER
  *  existing event the first time eventContent is used, mirroring
  *  backfillLegacyPledgeCover — otherwise events that were implicitly
@@ -3202,9 +3275,13 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
   summary.purchased = ent.purchased
   summary.remaining = ent.remaining
 
-  // Nothing to send until the couple has paid for a card FOR THIS EVENT (gives
-  // both the header image and the credit quota).
-  if (!ent.cardImageUrl || ent.purchased <= 0) return summary
+  // The template's image header: the couple's own uploaded preview image when
+  // they've set one (the same picture a shared invite link previews with), else
+  // the paid card's hero artwork. Nothing to send until the couple has paid for
+  // a card FOR THIS EVENT — that's what grants the credit quota, and without a
+  // preview image it's also the only header art we have.
+  const headerImageUrl = ent.previewImageUrl ?? ent.cardImageUrl
+  if (!headerImageUrl || ent.purchased <= 0) return summary
 
   let q = supabase
     .from('guest_contacts')
@@ -3252,7 +3329,7 @@ export async function sendWhatsAppInvites(guestIds?: string[], eventId?: string)
       guestFirstName: firstNameOf(g.full_name),
       coupleName: ent.coupleName,
       eventCategory: ent.eventCategory,
-      headerImageUrl: ent.cardImageUrl,
+      headerImageUrl,
       token: g.public_token,
       eventId: resolvedEventId,
     })
@@ -3523,14 +3600,18 @@ export async function sendWhatsAppTestInvite(
 
   const to = normalizePhone(rawPhone)
   if (!to || to.length < 9) return { ok: false, dryRun: !provider.live, error: 'invalid phone number' }
-  if (!ent.cardImageUrl) return { ok: false, dryRun: !provider.live, error: 'no paid card to preview' }
+  // Same header resolution as the real send (preview image wins over the paid
+  // card hero) — a test that showed different art than the bulk send would be
+  // worse than no test at all.
+  const headerImageUrl = ent.previewImageUrl ?? ent.cardImageUrl
+  if (!headerImageUrl) return { ok: false, dryRun: !provider.live, error: 'no paid card to preview' }
 
   const result = await provider.sendInvite({
     to,
     guestFirstName: templateParam(overrides?.guestName, 'Rafiki'),
     coupleName: templateParam(overrides?.coupleName, ent.coupleName),
     eventCategory: templateParam(overrides?.eventCategory, ent.eventCategory),
-    headerImageUrl: ent.cardImageUrl,
+    headerImageUrl,
     token: 'test',
     eventId: resolvedEventId,
   })
@@ -3650,10 +3731,13 @@ export async function sendThankYouMessages(guestIds?: string[], eventId?: string
   return summary
 }
 
-/** The thank-you message's header image for one event: the couple's chosen
- *  card design if they've applied one (see applyThankYouCardTemplate),
- *  else a generic OpusPass banner — same fallback sendWhatsAppLinkRequests
- *  uses for collector/pledge links. */
+/** The thank-you message's header image for one event, in preference order:
+ *  the couple's chosen thank-you card design (see applyThankYouCardTemplate),
+ *  then their invitation preview image so the post-event note carries the same
+ *  artwork the invitation did, else a generic OpusPass banner — the same
+ *  fallback sendWhatsAppLinkRequests uses for collector/pledge links. The
+ *  thank-you card wins because it's a deliberate choice for THIS message;
+ *  the preview image is the invitation's art reused. */
 async function resolveThankYouHeaderImage(
   supabase: ReturnType<typeof createDashboardClient>,
   userId: string,
@@ -3665,7 +3749,26 @@ async function resolveThankYouHeaderImage(
     .eq('user_id', userId)
     .maybeSingle<{ thank_you_config: ThankYouCardConfig | null }>()
   const cover = resolveThankYouCover(profile?.thank_you_config ?? null, eventId)
-  return cover.coverImageUrl ?? `${publicOrigin()}/assets/images/couples_together.jpg`
+  if (cover.coverImageUrl) return cover.coverImageUrl
+  const preview = await readInvitePreviewImage(supabase, userId, eventId)
+  return preview ?? `${publicOrigin()}/assets/images/couples_together.jpg`
+}
+
+/** One event's uploaded invitation preview image, or null. Read directly
+ *  rather than via getWhatsAppEntitlement so the send paths that only need
+ *  this one field don't pay for the full orders/credits roll-up. */
+async function readInvitePreviewImage(
+  supabase: ReturnType<typeof createDashboardClient>,
+  userId: string,
+  eventId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('invite_preview_image_url')
+    .eq('id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle<{ invite_preview_image_url: string | null }>()
+  return data?.invite_preview_image_url?.trim() || null
 }
 
 /** Bump the thank-you send tracker on one guest's invitation row for this
@@ -4087,9 +4190,14 @@ async function sendWhatsAppLinkRequests(
   // whenever there's no better option (collector links, or a pledge that
   // hasn't had a card design applied to this event yet).
   let headerImageUrl = `${publicOrigin()}/assets/images/couples_together.jpg`
-  // For pledge links, lead with the couple's own selected/paid pledge card
-  // design for this event (if they've applied one) so the WhatsApp message
-  // shows the actual card instead of a generic banner.
+  // The couple's invitation preview image beats the generic banner for every
+  // kind: a contact asked for their details by the same couple whose
+  // invitation they'll get should see that couple's artwork, not stock art.
+  const invitePreview = await readInvitePreviewImage(supabase, user.id, resolvedEventId)
+  if (invitePreview) headerImageUrl = invitePreview
+  // For pledge links, the couple's own selected/paid pledge card design for
+  // this event still wins — it's chosen specifically for the pledge page the
+  // link opens, so it matches where the contact is about to land.
   if (kind === 'pledge') {
     const { data: profile } = await supabase
       .from('couple_profiles')

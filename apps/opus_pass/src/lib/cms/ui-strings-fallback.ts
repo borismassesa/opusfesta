@@ -970,6 +970,18 @@ export interface DashboardSendStrings {
   card_locked_savedates_cta: string
   card_sample_badge: string
   card_sample_note: string
+  // Invitation preview image — the WhatsApp template header + link preview
+  preview_image_title: string
+  preview_image_desc: string
+  preview_image_upload_cta: string
+  preview_image_hint: string
+  preview_image_replace: string
+  preview_image_remove: string
+  preview_image_uploading: string
+  preview_image_saved: string
+  preview_image_removed: string
+  /** Shown on the empty state when the paid card art is standing in. */
+  preview_image_default_note: string
   entrance_purchased: string
   fact_package: string
   fact_design: string
@@ -2093,6 +2105,17 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     card_locked_savedates_cta: 'Send save the dates',
     card_sample_badge: 'Sample',
     card_sample_note: 'Sample wording shown. Your details are set before release.',
+    preview_image_title: 'Invitation preview image',
+    preview_image_desc:
+      'One picture for both: the image at the top of every WhatsApp invitation, and the preview that shows up when your invitation link is shared or forwarded.',
+    preview_image_upload_cta: 'Upload a preview image',
+    preview_image_hint: 'JPG or PNG, up to 5MB. Landscape works best — WhatsApp crops tall images.',
+    preview_image_replace: 'Replace',
+    preview_image_remove: 'Remove',
+    preview_image_uploading: 'Uploading…',
+    preview_image_saved: 'Preview image saved',
+    preview_image_removed: 'Preview image removed',
+    preview_image_default_note: 'Until you add one, your card design is used.',
     entrance_purchased: 'Entrance passes ready',
     fact_package: 'Package',
     fact_design: 'Design',
