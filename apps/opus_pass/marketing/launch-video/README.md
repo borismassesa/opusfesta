@@ -11,7 +11,7 @@ The film follows **one guest, Amani**, through **one celebration** (Claudia & Da
 - Plus Jakarta Sans (800 headlines, as on the site hero) paired with an italic Cormorant serif, which echoes the logo's didone letterforms.
 - The four-point **sparkle** from the OpusPass mark is used as the motif for twinkles, the tag icon and the final flare.
 - The real OpusPass logo SVG, the entrance-pass layout (`public/entrance-pass/ticket-preview.png`), the site's couple photography, and CTA styling (lavender pill, uppercase, wide tracking).
-- Night-event stage: deep plum with drifting bokeh and gold light, soft vignette and film grain. The film resolves to a cream end card.
+- Neutral stage: warm charcoal with drifting champagne and warm-white light, soft vignette and film grain. Brand plum appears only in the product UI and logo. The film resolves to a cream end card.
 
 ## Sequence & on-screen copy
 

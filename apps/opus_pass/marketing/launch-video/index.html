@@ -22,7 +22,7 @@
 /* OpusPass brand tokens (apps/opus_pass globals.css + logo + dashboard). */
 :root {
   --plum: #5C2D8C; --plum-2: #7E5896; --plum-3: #8e57b3;
-  --night: #120A1C; --night-2: #1D1030;
+  --night: #0F0E0E; --night-2: #1B1918;
   --lav: #C6A1CB; --accent: #C9A0DC; --lav-soft: #F0DFF6; --violet: #8350E8;
   --cream: #FAF6EF; --ink: #1A1A1A; --lime: #9FE870; --forest: #14342B; --gold: #F3D98B;
 }
@@ -34,11 +34,11 @@ body { font-family: Jakarta, sans-serif; color: #fff; -webkit-font-smoothing: an
 
 /* ---------- Background ---------- */
 #bg { position: absolute; inset: 0; background:
-  radial-gradient(1200px 800px at 50% 40%, #2B1545 0%, #180C27 55%, #0E0716 100%); }
+  radial-gradient(1200px 800px at 50% 40%, #262320 0%, #151413 55%, #0A0A0A 100%); }
 .glow { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform; }
 .bokeh { position: absolute; left: 0; top: 0; border-radius: 50%; }
 #vignette { position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(5,2,10,.55) 100%); }
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
 #grain { position: absolute; inset: 0; mix-blend-mode: overlay; opacity: .09; pointer-events: none; }
 
 /* ---------- 3D world ---------- */
@@ -95,7 +95,7 @@ body { font-family: Jakarta, sans-serif; color: #fff; -webkit-font-smoothing: an
 #notif .t2 { font-size: 12.5px; color: rgba(26,26,26,.72); margin-top: 2px; }
 
 /* Entrance-pass screen (mirrors public/entrance-pass/ticket-preview.png) */
-#scrPass { background: #0E0716; }
+#scrPass { background: #0C0B0B; }
 .pass { position: absolute; left: 16px; right: 16px; top: 60px; bottom: 26px; border-radius: 28px; overflow: hidden;
   background: radial-gradient(120% 70% at 50% 0%, #7A45AE 0%, var(--plum) 45%, #45206B 100%); text-align: center; color: #fff; }
 .pass .orn { position: absolute; width: 40px; height: 40px; border: 1.5px solid rgba(243,217,139,.55); }
@@ -106,7 +106,7 @@ body { font-family: Jakarta, sans-serif; color: #fff; -webkit-font-smoothing: an
 .pass-meta b { color: var(--gold); font-weight: 700; }
 .perf { position: relative; margin: 18px 0 0; height: 2px; }
 .perf::before { content: ''; position: absolute; left: 22px; right: 22px; top: 0; border-top: 2px dashed rgba(255,255,255,.28); }
-.perf i { position: absolute; top: -13px; width: 26px; height: 26px; border-radius: 50%; background: #0E0716; }
+.perf i { position: absolute; top: -13px; width: 26px; height: 26px; border-radius: 50%; background: #0C0B0B; }
 .pass-tag { display: inline-block; margin-top: 18px; padding: 6px 16px; border-radius: 999px; background: #fff; color: var(--plum); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
 .qr-wrap { position: relative; margin: 16px auto 0; width: 236px; height: 236px; border-radius: 20px; background: #fff; padding: 14px; }
 #qr { width: 208px; height: 208px; display: block; }
@@ -149,7 +149,7 @@ body { font-family: Jakarta, sans-serif; color: #fff; -webkit-font-smoothing: an
 .tile .prog i { display: block; height: 100%; background: #fff; }
 .toast { padding: 10px 16px 10px 10px; display: flex; align-items: center; gap: 10px; border-radius: 999px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .toast b { font-weight: 800; }
-#galaTag { padding: 12px 20px; border-radius: 999px; background: rgba(20,10,30,.55); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.14);
+#galaTag { padding: 12px 20px; border-radius: 999px; background: rgba(15,14,14,.55); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.14);
   font-size: 14px; font-weight: 700; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
 #pledge { width: 410px; padding: 26px 26px 14px; }
 .prow { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid #F1EEF3; }
@@ -183,7 +183,7 @@ body { font-family: Jakarta, sans-serif; color: #fff; -webkit-font-smoothing: an
 .cap { position: absolute; left: 150px; top: 400px; width: 560px; }
 .cap .eb { display: flex; align-items: center; gap: 14px; font-size: 13px; font-weight: 700; letter-spacing: .22em; color: rgba(255,255,255,.62); }
 .cap .eb b { color: var(--accent); font-weight: 800; letter-spacing: .06em; }
-.cap .eb i { display: block; height: 1px; width: 44px; background: rgba(201,160,220,.6); transform-origin: 0 50%; }
+.cap .eb i { display: block; height: 1px; width: 44px; background: rgba(255,255,255,.35); transform-origin: 0 50%; }
 .cap .l1 { margin-top: 22px; font-size: 80px; font-weight: 800; letter-spacing: -.03em; line-height: 1.02; }
 .cap .l2 { font-family: Cormorant; font-style: italic; font-weight: 600; font-size: 92px; line-height: .95; color: var(--accent); }
 
@@ -194,11 +194,11 @@ body { font-family: Jakarta, sans-serif; color: #fff; -webkit-font-smoothing: an
 
 #flare { position: absolute; left: 960px; top: 540px; width: 0; height: 0; }
 #flare .core { position: absolute; left: -400px; top: -400px; width: 800px; height: 800px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(201,160,220,.7) 12%, rgba(131,80,232,.25) 35%, transparent 65%); }
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,244,222,.7) 12%, rgba(243,217,139,.18) 35%, transparent 65%); }
 #flare svg { position: absolute; left: -200px; top: -200px; width: 400px; height: 400px; }
 
 #end { position: absolute; inset: 0; background: var(--cream); color: var(--ink); visibility: hidden; }
-#endGlow { position: absolute; inset: 0; background: radial-gradient(900px 520px at 50% 44%, rgba(201,160,220,.30), transparent 70%); }
+#endGlow { position: absolute; inset: 0; background: radial-gradient(900px 520px at 50% 44%, rgba(255,255,255,.75), transparent 70%); }
 #logoWrap { position: absolute; left: 50%; top: 404px; width: 940px; height: 302px; margin: -151px 0 0 -470px; }
 #logoWrap svg { width: 100%; height: 100%; overflow: visible; }
 #endLine { position: absolute; left: 0; right: 0; top: 626px; text-align: center; font-size: 16px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: rgba(26,26,26,.5); white-space: nowrap; }
@@ -616,16 +616,16 @@ const twinkles = [[-560, -120, 1.2, 0], [590, -150, 0.9, 1.3], [-470, 150, 0.7, 
 
 // ---------- build: background glows, bokeh, grain ----------
 const glows = [
-  { x: 520, y: 360, r: 900, c: 'rgba(92,45,140,.55)', k: 0.6 },
-  { x: 1500, y: 720, r: 1000, c: 'rgba(131,80,232,.22)', k: 1.1 },
-  { x: 1100, y: 160, r: 700, c: 'rgba(201,160,220,.16)', k: 0.8 },
+  { x: 520, y: 360, r: 900, c: 'rgba(255,240,220,.07)', k: 0.6 },
+  { x: 1500, y: 720, r: 1000, c: 'rgba(243,217,139,.06)', k: 1.1 },
+  { x: 1100, y: 160, r: 700, c: 'rgba(255,255,255,.05)', k: 0.8 },
 ].map((g) => { const d = document.createElement('div'); d.className = 'glow'; d.style.cssText += `width:${g.r}px;height:${g.r}px;background:radial-gradient(circle, ${g.c}, transparent 65%)`; $('glows').appendChild(d); return { ...g, d } })
 const R = rng(42)
 const bokeh = Array.from({ length: 26 }, () => {
   const size = 8 + R() * 60, depth = 0.3 + R() * 1.2
   const d = document.createElement('div'); d.className = 'bokeh'
   const gold = R() < 0.35
-  d.style.cssText += `width:${size}px;height:${size}px;background:radial-gradient(circle, ${gold ? 'rgba(243,217,139,.55)' : 'rgba(201,160,220,.6)'}, transparent 70%);filter:blur(${size > 40 ? 6 : 1.5}px)`
+  d.style.cssText += `width:${size}px;height:${size}px;background:radial-gradient(circle, ${gold ? 'rgba(243,217,139,.5)' : 'rgba(255,246,232,.45)'}, transparent 70%);filter:blur(${size > 40 ? 6 : 1.5}px)`
   $('bokeh').appendChild(d)
   return { d, x: R() * 1920, y: R() * 1080, depth, ph: R() * 6.28, sp: 0.4 + R() * 0.8, a: 0.25 + R() * 0.55 }
 })
@@ -691,9 +691,9 @@ function drawFloor(t) {
   c.clearRect(0, 0, 1500, 900)
   // venue floor
   const g = c.createRadialGradient(750, 450, 50, 750, 450, 800)
-  g.addColorStop(0, 'rgba(92,45,140,.40)'); g.addColorStop(1, 'rgba(92,45,140,0)')
+  g.addColorStop(0, 'rgba(255,245,230,.10)'); g.addColorStop(1, 'rgba(255,245,230,0)')
   c.fillStyle = g; roundRect(c, 20, 20, 1460, 860, 40); c.fill()
-  c.strokeStyle = 'rgba(201,160,220,.22)'; c.lineWidth = 2; roundRect(c, 20, 20, 1460, 860, 40); c.stroke()
+  c.strokeStyle = 'rgba(255,255,255,.16)'; c.lineWidth = 2; roundRect(c, 20, 20, 1460, 860, 40); c.stroke()
   // dance floor
   c.save(); c.fillStyle = 'rgba(255,255,255,.035)'; roundRect(c, 600, 380, 300, 220, 18); c.fill()
   c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 1
